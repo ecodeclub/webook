@@ -3,16 +3,17 @@ package web
 import (
 	"bytes"
 	"errors"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+
+	"github.com/ecodeclub/webook/internal/domain"
+	"github.com/ecodeclub/webook/internal/service"
+	svcmocks "github.com/ecodeclub/webook/internal/service/mocks"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
-	"net/http"
-	"net/http/httptest"
-	"testing"
-	"webook/internal/domain"
-	"webook/internal/service"
-	svcmocks "webook/internal/service/mocks"
 )
 
 // Handler测试的主要难点

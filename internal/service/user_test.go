@@ -2,12 +2,13 @@ package service
 
 import (
 	"context"
+	"testing"
+
+	"github.com/ecodeclub/webook/internal/domain"
+	"github.com/ecodeclub/webook/internal/repository"
+	repomocks "github.com/ecodeclub/webook/internal/repository/mocks"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
-	"testing"
-	"webook/internal/domain"
-	"webook/internal/repository"
-	repomocks "webook/internal/repository/mocks"
 )
 
 func TestUserService_Signup(t *testing.T) {

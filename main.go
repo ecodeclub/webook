@@ -1,14 +1,14 @@
 package main
 
 import (
+	"github.com/ecodeclub/webook/config"
+	"github.com/ecodeclub/webook/internal/repository"
+	"github.com/ecodeclub/webook/internal/repository/dao"
+	"github.com/ecodeclub/webook/internal/service"
+	"github.com/ecodeclub/webook/internal/web"
 	"github.com/gin-gonic/gin"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
-	"signup_issue/webook/config"
-	"signup_issue/webook/internal/repository"
-	"signup_issue/webook/internal/repository/dao"
-	"signup_issue/webook/internal/service"
-	"signup_issue/webook/internal/web"
 )
 
 func main() {

@@ -4,13 +4,14 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"testing"
+
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/go-sql-driver/mysql"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	gormMysql "gorm.io/driver/mysql"
 	"gorm.io/gorm"
-	"testing"
 )
 
 func TestGormUserDAO_Insert(t *testing.T) {
