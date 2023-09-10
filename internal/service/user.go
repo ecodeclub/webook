@@ -2,8 +2,9 @@ package service
 
 import (
 	"context"
-	"webook/internal/domain"
-	"webook/internal/repository"
+
+	"github.com/ecodeclub/webook/internal/domain"
+	"github.com/ecodeclub/webook/internal/repository"
 )
 
 var (

@@ -2,13 +2,14 @@ package repository
 
 import (
 	"context"
-	"github.com/stretchr/testify/assert"
-	"go.uber.org/mock/gomock"
 	"testing"
 	"time"
-	"webook/internal/domain"
-	"webook/internal/repository/dao"
-	daomocks "webook/internal/repository/dao/mocks"
+
+	"github.com/ecodeclub/webook/internal/domain"
+	"github.com/ecodeclub/webook/internal/repository/dao"
+	daomocks "github.com/ecodeclub/webook/internal/repository/dao/mocks"
+	"github.com/stretchr/testify/assert"
+	"go.uber.org/mock/gomock"
 )
 
 func TestUserInfoRepository_Create(t *testing.T) {

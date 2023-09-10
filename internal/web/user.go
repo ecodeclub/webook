@@ -1,11 +1,12 @@
 package web
 
 import (
-	regexp "github.com/dlclark/regexp2"
-	"github.com/gin-gonic/gin"
 	"net/http"
-	"webook/internal/domain"
-	"webook/internal/service"
+
+	regexp "github.com/dlclark/regexp2"
+	"github.com/ecodeclub/webook/internal/domain"
+	"github.com/ecodeclub/webook/internal/service"
+	"github.com/gin-gonic/gin"
 )
 
 const (
