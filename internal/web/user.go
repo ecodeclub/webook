@@ -16,12 +16,14 @@ const (
 
 type UserHandler struct {
 	svc              service.UserAndService
+	evc              service.EmailService
 	passwordRegexExp *regexp.Regexp
 }
 
-func NewUserHandler(svc service.UserAndService) *UserHandler {
+func NewUserHandler(svc service.UserAndService, evc service.EmailService) *UserHandler {
 	return &UserHandler{
 		svc:              svc,
+		evc:              evc,
 		passwordRegexExp: regexp.MustCompile(passwordRegexPattern, regexp.None),
 	}
 }
@@ -67,5 +69,24 @@ func (u *UserHandler) SignUp(ctx *gin.Context) {
 		ctx.String(http.StatusInternalServerError, "系统错误！")
 		return
 	}
+
 	ctx.String(http.StatusOK, "注册成功！")
+
+	//发送验证邮箱的邮件
+	err = u.evc.Send(ctx.Request.Context(), info.Email)
+	if err != nil {
+		// 应该有日志
+		return
+	}
+}
+
+func (u *UserHandler) EmailVerify(ctx *gin.Context) {
+	token := ctx.Param("token")
+
+	err := u.evc.Verify(ctx.Request.Context(), token)
+	if err != nil {
+		ctx.String(http.StatusOK, "验证失败!")
+		return
+	}
+	ctx.String(http.StatusOK, "验证成功!")
 }
