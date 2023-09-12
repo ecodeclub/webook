@@ -12,16 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:build e2e
+
 package integration
 
 import (
 	"bytes"
+	"context"
+	"database/sql"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
 
-	"github.com/ecodeclub/webook/config"
 	"github.com/ecodeclub/webook/internal/repository"
 	"github.com/ecodeclub/webook/internal/repository/dao"
 	"github.com/ecodeclub/webook/internal/service"
@@ -176,7 +180,23 @@ func InitTest() *gin.Engine {
 }
 
 func initDB() *gorm.DB {
-	db, err := gorm.Open(mysql.Open(config.Config.DB.DSN))
+	dsn := "root:root@tcp(localhost:13316)/webook"
+	sqlDB, err := sql.Open("mysql", dsn)
+	if err != nil {
+		panic(err)
+	}
+
+	for {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		err = sqlDB.PingContext(ctx)
+		cancel()
+		if err == nil {
+			break
+		}
+		log.Println("初始化集成测试的 DB", err)
+		time.Sleep(time.Second)
+	}
+	db, err := gorm.Open(mysql.Open(dsn))
 	if err != nil {
 		panic(err)
 	}
