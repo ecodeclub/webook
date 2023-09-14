@@ -12,24 +12,37 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:build e2e
+
 package integration
 
 import (
 	"bytes"
+	"context"
+	"database/sql"
+	"encoding/json"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
 
+	"github.com/gin-gonic/gin"
+	"github.com/stretchr/testify/assert"
+	"go.uber.org/zap"
+	"gopkg.in/gomail.v2"
+	"gorm.io/driver/mysql"
+	"gorm.io/gorm"
+
 	"github.com/ecodeclub/webook/config"
 	"github.com/ecodeclub/webook/internal/repository"
 	"github.com/ecodeclub/webook/internal/repository/dao"
 	"github.com/ecodeclub/webook/internal/service"
+	"github.com/ecodeclub/webook/internal/service/mail"
+	"github.com/ecodeclub/webook/internal/service/mail/testmail"
 	"github.com/ecodeclub/webook/internal/web"
-	"github.com/gin-gonic/gin"
-	"github.com/stretchr/testify/assert"
-	"gorm.io/driver/mysql"
-	"gorm.io/gorm"
+	tokenGen "github.com/ecodeclub/webook/internal/web/token/generator"
+	tokenVfy "github.com/ecodeclub/webook/internal/web/token/validator"
 )
 
 func TestUserHandler_e2e_SignUp(t *testing.T) {
@@ -167,6 +180,270 @@ func TestUserHandler_e2e_SignUp(t *testing.T) {
 	}
 }
 
+func TestUserHandler_e2e_EmailVerify(t *testing.T) {
+	const emailVerify = "/users/email/verification"
+	server := InitTest()
+	db := initDB()
+	tg := initTokenGen()
+	now := time.Now()
+
+	tests := []struct {
+		// 名字
+		name string
+		// 要提前准备数据
+		before func(t *testing.T)
+		// 验证并且删除数据
+		after     func(t *testing.T)
+		email     string
+		paramsKey string
+		token     string
+
+		// 预期响应
+		wantCode   int
+		wantResult web.Result
+	}{
+		{
+			name: "验证成功",
+			before: func(t *testing.T) {
+				ctx := context.Background()
+				email := "foo@example.com"
+				u := dao.User{
+					Email:         email,
+					Password:      "$2a$10$s51GBcU20dkNUVTpUAQqpe6febjXkRYvhEwa5OkN5rU6rw2KTbNUi",
+					EmailVerified: false,
+					CreateTime:    now.UnixMilli(),
+					UpdateTime:    now.UnixMilli(),
+				}
+				err := db.WithContext(ctx).Create(&u).Error
+				// 断言必然新增了数据
+				assert.NoError(t, err)
+			},
+			after: func(t *testing.T) {
+				ctx := context.Background()
+				email := "foo@example.com"
+				// 删除数据
+				defer func() {
+					err := db.WithContext(ctx).
+						Where(&dao.User{Email: email}, "Email").
+						Delete(&dao.User{}).Error
+					assert.NoError(t, err)
+				}()
+				// 查询数据
+				var u dao.User
+				err := db.WithContext(ctx).Model(&dao.User{}).
+					Where(&dao.User{Email: email}, "Email").
+					Take(&u).Error
+				assert.NoError(t, err)
+				// 断言是否已认证
+				assert.True(t, u.EmailVerified == true)
+			},
+			email:      "foo@example.com",
+			paramsKey:  "code",
+			wantCode:   http.StatusOK,
+			wantResult: web.Result{Msg: "验证成功"},
+		},
+		{
+			name: "参数错误",
+			before: func(t *testing.T) {
+				ctx := context.Background()
+				email := "foo@example.com"
+				u := dao.User{
+					Email:         email,
+					Password:      "$2a$10$s51GBcU20dkNUVTpUAQqpe6febjXkRYvhEwa5OkN5rU6rw2KTbNUi",
+					EmailVerified: false,
+					CreateTime:    now.UnixMilli(),
+					UpdateTime:    now.UnixMilli(),
+				}
+				err := db.WithContext(ctx).Create(&u).Error
+				// 断言必然新增了数据
+				assert.NoError(t, err)
+			},
+			after: func(t *testing.T) {
+				ctx := context.Background()
+				email := "foo@example.com"
+				// 查询数据
+				var u dao.User
+				err := db.WithContext(ctx).Model(&dao.User{}).
+					Where(&dao.User{Email: email}, "Email").
+					Take(&u).Error
+				assert.NoError(t, err)
+				// 断言是否已认证
+				assert.True(t, u.EmailVerified == false)
+
+				// 删除数据
+				err = db.WithContext(ctx).
+					Where(&dao.User{Email: email}, "Email").
+					Delete(&dao.User{}).Error
+				assert.NoError(t, err)
+			},
+			email:    "foo@example.com",
+			wantCode: http.StatusBadRequest,
+			wantResult: web.Result{
+				Code: web.CodeParamsErr,
+				Msg:  "参数错误",
+			},
+		},
+		{
+			name: "code认证失败",
+			before: func(t *testing.T) {
+				ctx := context.Background()
+				email := "foo@example.com"
+				u := dao.User{
+					Email:         email,
+					Password:      "$2a$10$s51GBcU20dkNUVTpUAQqpe6febjXkRYvhEwa5OkN5rU6rw2KTbNUi",
+					EmailVerified: false,
+					CreateTime:    now.UnixMilli(),
+					UpdateTime:    now.UnixMilli(),
+				}
+				err := db.WithContext(ctx).Create(&u).Error
+				// 断言必然新增了数据
+				assert.NoError(t, err)
+			},
+			after: func(t *testing.T) {
+				ctx := context.Background()
+				email := "foo@example.com"
+				// 删除数据
+				defer func() {
+					err := db.WithContext(ctx).
+						Where(&dao.User{Email: email}, "Email").
+						Delete(&dao.User{}).Error
+					assert.NoError(t, err)
+				}()
+				// 查询数据
+				var u dao.User
+				err := db.WithContext(ctx).Model(&dao.User{}).
+					Where(&dao.User{Email: email}, "Email").
+					Take(&u).Error
+				assert.NoError(t, err)
+				// 断言是否已认证
+				assert.True(t, u.EmailVerified == false)
+			},
+			email:     "foo@example.com",
+			paramsKey: "code",
+			token:     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJ3ZWJvb2stZW1haWwtdmVyaWZ5Iiwic3ViIjoiZm9vQGV4YW1wbGUuY29tIiwiZXhwIjoxNjk0NTM5NzQzLCJpYXQiOjE2OTQ1MzkxNDN9.N5hnHn-zfVJUjRUVf9u4w0iDEnfhYE-Z9cBVvP5oP10",
+			wantCode:  http.StatusBadRequest,
+			wantResult: web.Result{
+				Code: web.CodeEmailVerifyFailed,
+				Msg:  "验证失败",
+			},
+		},
+		{
+			name: "邮箱已验证",
+			before: func(t *testing.T) {
+				ctx := context.Background()
+				email := "foo@example.com"
+				u := dao.User{
+					Email:         email,
+					Password:      "$2a$10$s51GBcU20dkNUVTpUAQqpe6febjXkRYvhEwa5OkN5rU6rw2KTbNUi",
+					EmailVerified: true,
+					CreateTime:    now.UnixMilli(),
+					UpdateTime:    now.UnixMilli(),
+				}
+				err := db.WithContext(ctx).Create(&u).Error
+				// 断言必然新增了数据
+				assert.NoError(t, err)
+			},
+			after: func(t *testing.T) {
+				ctx := context.Background()
+				email := "foo@example.com"
+				// 删除数据
+				defer func() {
+					err := db.WithContext(ctx).
+						Where(&dao.User{Email: email}, "Email").
+						Delete(&dao.User{}).Error
+					assert.NoError(t, err)
+				}()
+				// 查询数据
+				var u dao.User
+				err := db.WithContext(ctx).Model(&dao.User{}).
+					Where(&dao.User{Email: email}, "Email").
+					Take(&u).Error
+				assert.NoError(t, err)
+				// 断言是否已认证
+				assert.True(t, u.EmailVerified == true)
+			},
+			email:     "foo@example.com",
+			paramsKey: "code",
+			wantCode:  http.StatusBadRequest,
+			wantResult: web.Result{
+				Code: web.CodeEmailVerified,
+				Msg:  "邮箱已验证",
+			},
+		},
+		{
+			name: "验证失败没有这个用户",
+			before: func(t *testing.T) {
+				ctx := context.Background()
+				email := "foo@example.com"
+				u := dao.User{
+					Email:         email,
+					Password:      "$2a$10$s51GBcU20dkNUVTpUAQqpe6febjXkRYvhEwa5OkN5rU6rw2KTbNUi",
+					EmailVerified: false,
+					CreateTime:    now.UnixMilli(),
+					UpdateTime:    now.UnixMilli(),
+				}
+				err := db.WithContext(ctx).Create(&u).Error
+				// 断言必然新增了数据
+				assert.NoError(t, err)
+			},
+			after: func(t *testing.T) {
+				ctx := context.Background()
+				email := "foo@example.com"
+				// 删除数据
+				defer func() {
+					err := db.WithContext(ctx).
+						Where(&dao.User{Email: email}, "Email").
+						Delete(&dao.User{}).Error
+					assert.NoError(t, err)
+				}()
+				// 查询数据
+				var u dao.User
+				err := db.WithContext(ctx).Model(&dao.User{}).
+					Where(&dao.User{Email: email}, "Email").
+					Take(&u).Error
+				assert.NoError(t, err)
+				// 断言是否已认证
+				assert.True(t, u.EmailVerified == false)
+			},
+			email:     "bar@example.com",
+			paramsKey: "code",
+			wantCode:  http.StatusBadRequest,
+			wantResult: web.Result{
+				Code: web.CodeEmailVerifyFailed,
+				Msg:  "验证失败",
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			defer tt.after(t)
+			tt.before(t)
+			// 准备token，如果没有填token则动态生成
+			if tt.token == "" {
+				var err error
+				tt.token, err = tg.GenerateToken(tt.email,
+					time.Duration(10)*time.Minute)
+				assert.NoError(t, err)
+			}
+
+			req, err := http.NewRequest(http.MethodGet,
+				emailVerify+"?"+tt.paramsKey+"="+tt.token, nil)
+			assert.NoError(t, err)
+
+			recorder := httptest.NewRecorder()
+			server.ServeHTTP(recorder, req)
+
+			code := recorder.Code
+			// 反序列化为结果
+			assert.Equal(t, tt.wantCode, code)
+			var result web.Result
+			err = json.Unmarshal(recorder.Body.Bytes(), &result)
+			assert.NoError(t, err)
+			assert.Equal(t, tt.wantResult, result)
+		})
+	}
+}
+
 func InitTest() *gin.Engine {
 	r := initWebServer()
 	db := initDB()
@@ -176,7 +453,23 @@ func InitTest() *gin.Engine {
 }
 
 func initDB() *gorm.DB {
-	db, err := gorm.Open(mysql.Open(config.Config.DB.DSN))
+	dsn := "root:root@tcp(localhost:13316)/webook"
+	sqlDB, err := sql.Open("mysql", dsn)
+	if err != nil {
+		panic(err)
+	}
+
+	for {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		err = sqlDB.PingContext(ctx)
+		cancel()
+		if err == nil {
+			break
+		}
+		log.Println("初始化集成测试的 DB", err)
+		time.Sleep(time.Second)
+	}
+	db, err := gorm.Open(mysql.Open(dsn))
 	if err != nil {
 		panic(err)
 	}
@@ -192,10 +485,58 @@ func initWebServer() *gin.Engine {
 	return r
 }
 
+func initGoMailDial() gomail.SendCloser {
+	cfg := config.Config.EmailConf
+	dial, err := gomail.NewDialer(
+		cfg.Host, cfg.Port, cfg.Username, cfg.Password,
+	).Dial()
+	if err != nil {
+		panic(err)
+	}
+	return dial
+}
+
+func initTestMail() mail.Service {
+	return testmail.NewService()
+}
+
+func initTokenGen() tokenGen.TokenGenerator {
+	conf := config.Config
+	return tokenGen.NewJWTTokenGen(conf.EmailVfyConf.Issuer, conf.EmailVfyConf.Key)
+}
+
+func initTokenVfy() tokenVfy.Verifier {
+	conf := config.Config
+	return tokenVfy.NewJWTTokenVerifier(conf.EmailVfyConf.Key)
+}
+
+func initLogger() *zap.Logger {
+	logger, err := zap.NewDevelopment()
+	if err != nil {
+		panic(err)
+	}
+	return logger
+}
+
 func initUser(db *gorm.DB) *web.UserHandler {
-	da := dao.NewUserInfoDAO(db)
-	repo := repository.NewUserInfoRepository(da)
-	svc := service.NewUserService(repo)
-	u := web.NewUserHandler(svc)
+	conf := config.Config
+	lg := initLogger()
+
+	userDAO := dao.NewUserInfoDAO(db)
+	userRepo := repository.NewUserInfoRepository(userDAO)
+	userSvc := service.NewUserService(userRepo, lg)
+
+	// 邮箱服务
+	// emailCli := initGoMailDial()
+	// mailSvc := goemail.NewService(conf.EmailConf.Username, emailCli)
+	mailSvc := initTestMail()
+
+	// token
+	eTokenGen := initTokenGen()
+	eTokenVfy := initTokenVfy()
+
+	emailSvc := service.NewEmailService(mailSvc)
+	u := web.NewUserHandler(userSvc, emailSvc, eTokenGen,
+		eTokenVfy, conf.EmailVfyConf.AbsoluteURL, lg)
 	return u
 }

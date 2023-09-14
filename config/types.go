@@ -15,9 +15,24 @@
 package config
 
 type WebookConfig struct {
-	DB DBConfig
+	DB           DBConfig
+	EmailConf    EmailConfig
+	EmailVfyConf EmailVfyConfig
 }
 
 type DBConfig struct {
 	DSN string
+}
+
+type EmailConfig struct {
+	Host     string
+	Port     int
+	Username string
+	Password string
+}
+
+type EmailVfyConfig struct {
+	Issuer      string
+	Key         string
+	AbsoluteURL string // 跳转到前端的绝对URL
 }

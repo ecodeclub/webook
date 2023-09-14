@@ -36,3 +36,13 @@ e2e_up:
 .PHONY: e2e_down
 e2e_down:
 	docker compose -f script/integration_test_compose.yml down
+
+.PHONY: mock
+mock:
+	@mockgen -source=./internal/web/token/generator/jwt.go -package=tokenmocks -destination=./internal/web/token/mocks/tokenGenerator.mock.go
+	@mockgen -source=./internal/web/token/validator/token.go -package=tokenmocks -destination=./internal/web/token/mocks/tokenValidator.mock.go
+	@mockgen -source=./internal/service/user.go -package=svcmocks -destination=./internal/service/mocks/user.mock.go
+	@mockgen -source=./internal/service/email.go -package=svcmocks -destination=./internal/service/mocks/email.mock.go
+	@mockgen -source=./internal/service/mail/types.go -package=mailmocks -destination=./internal/service/mail/mocks/mail.mock.go
+	@mockgen -source=./internal/repository/user.go -package=repomocks -destination=./internal/repository/mocks/user.mock.go
+	@mockgen -source=./internal/repository/dao/user.go -package=daomocks -destination=./internal/repository/dao/mocks/user.mock.go
