@@ -29,9 +29,9 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-  "github.com/golang-jwt/jwt/v5"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/assert"
-  "github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 	"gopkg.in/gomail.v2"
 	"gorm.io/driver/mysql"
@@ -443,11 +443,14 @@ func TestUserHandler_e2e_EmailVerify(t *testing.T) {
 			err = json.Unmarshal(recorder.Body.Bytes(), &result)
 			assert.NoError(t, err)
 			assert.Equal(t, tt.wantResult, result)
+		})
+	}
+}
 
 func TestUserHandler_e2e_Login(t *testing.T) {
 	//	server := InitWebServer()
 	server := gin.Default()
-	//db := initDB()
+	// db := initDB()
 	var db *gorm.DB
 	da := dao.NewUserInfoDAO(db)
 	repo := repository.NewUserInfoRepository(da)
@@ -465,7 +468,7 @@ func TestUserHandler_e2e_Login(t *testing.T) {
 		wantBody    string
 		fingerprint string
 		after       func(t *testing.T)
-		//userId   int64 // jwt-token 中携带的信息
+		// userId   int64 // jwt-token 中携带的信息
 	}{
 		{
 			name:        "参数绑定失败",
@@ -485,12 +488,12 @@ func TestUserHandler_e2e_Login(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			//构造请求
+			// 构造请求
 			req, err := http.NewRequest(http.MethodPost, "/users/login", bytes.NewBuffer([]byte(tc.reqBody)))
 			require.NoError(t, err)
 			req.Header.Set("Content-Type", "application/json")
 
-			//用于接收resp
+			// 用于接收resp
 			resp := httptest.NewRecorder()
 
 			server.ServeHTTP(resp, req)
@@ -499,8 +502,8 @@ func TestUserHandler_e2e_Login(t *testing.T) {
 			assert.Equal(t, tc.wantCode, resp.Code)
 
 			assert.Equal(t, tc.wantBody, resp.Body.String())
-			//登录成功才需要判断
-			//登录成功才需要判断
+			// 登录成功才需要判断
+			// 登录成功才需要判断
 			if resp.Code == http.StatusOK {
 				accessToken := resp.Header().Get("x-access-token")
 				refreshToken := resp.Header().Get("x-refresh-token")
@@ -516,7 +519,7 @@ func TestUserHandler_e2e_Login(t *testing.T) {
 					panic("强制类型转换失败")
 				}
 				assert.Equal(t, tc.fingerprint, accessTokenClaim.Fingerprint)
-				//判断过期时间
+				// 判断过期时间
 				if now.Add(time.Minute*29).UnixMilli() > accessTokenClaim.RegisteredClaims.ExpiresAt.Time.UnixMilli() {
 					panic("过期时间异常")
 				}
@@ -530,7 +533,7 @@ func TestUserHandler_e2e_Login(t *testing.T) {
 				}
 				refreshTokenClaim := refreshT.(*web.TokenClaims)
 				assert.Equal(t, tc.fingerprint, refreshTokenClaim.Fingerprint)
-				//判断过期时间
+				// 判断过期时间
 				if now.Add(time.Hour*168).UnixMilli() < accessTokenClaim.RegisteredClaims.ExpiresAt.Time.UnixMilli() {
 					panic("过期时间异常")
 				}
@@ -645,15 +648,15 @@ func Decrypt(encryptString string, secret string) (interface{}, error) {
 		fmt.Println("解析失败:", err)
 		return nil, err
 	}
-	//检查过期时间
+	// 检查过期时间
 	if claims.ExpiresAt.Time.Before(time.Now()) {
-		//过期了
+		// 过期了
 
 		return nil, err
 	}
-	//TODO 这里测试按需判断 claims.Uid
+	// TODO 这里测试按需判断 claims.Uid
 	if token == nil || !token.Valid {
-		//解析成功  但是 token 以及 claims 不一定合法
+		// 解析成功  但是 token 以及 claims 不一定合法
 
 		return nil, err
 	}
