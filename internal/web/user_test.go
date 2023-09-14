@@ -4,12 +4,14 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -18,6 +20,7 @@ import (
 	"github.com/ecodeclub/webook/internal/domain"
 	"github.com/ecodeclub/webook/internal/service"
 	svcmocks "github.com/ecodeclub/webook/internal/service/mocks"
+
 	tokenGen "github.com/ecodeclub/webook/internal/web/token/generator"
 	tokenmocks "github.com/ecodeclub/webook/internal/web/token/mocks"
 	tokenVfy "github.com/ecodeclub/webook/internal/web/token/validator"
@@ -186,6 +189,7 @@ func TestUserHandler_SignUp(t *testing.T) {
 		})
 	}
 }
+
 
 func TestUserHandler_EmailVerify(t *testing.T) {
 	lg, err := zap.NewDevelopment()
@@ -385,4 +389,137 @@ func TestUserHandler_URLGenerator(t *testing.T) {
 			assert.Equalf(t, tt.want, got, "URLGenerator(%v, %v)", tt.absoluteURL, tt.params)
 		})
 	}
+}
+
+func TestUserHandle_TokenLogin(t *testing.T) {
+	now := time.Now()
+	testCases := []struct {
+		name        string
+		mock        func(ctl *gomock.Controller) service.UserAndService
+		reqBody     string
+		wantCode    int
+		wantBody    string
+		fingerprint string
+		userId      int64 // jwt-token 中携带的信息
+	}{
+		{
+			name: "参数绑定失败",
+			mock: func(ctl *gomock.Controller) service.UserAndService {
+				return nil
+			},
+			reqBody:     `{"email":"asxxxxxxxxxx163.com","password":"123456","fingerprint":"for-test"}`,
+			wantCode:    http.StatusBadRequest,
+			wantBody:    "参数合法性验证失败",
+			fingerprint: "",
+		},
+		{
+			name: "登录成功",
+			mock: func(ctl *gomock.Controller) service.UserAndService {
+				return nil
+			},
+			reqBody:     `{"email":"asxxxxxxxxxx@163.com","password":"123456","fingerprint":"for-test"}`,
+			wantCode:    http.StatusOK,
+			wantBody:    "登陆成功",
+			fingerprint: "for-test",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+			server := gin.New()
+			h := NewUserHandler(tc.mock(ctrl))
+			h.RegisterRoutes(server)
+
+			req, err := http.NewRequest(http.MethodPost, "/users/login", bytes.NewBuffer([]byte(tc.reqBody)))
+			require.NoError(t, err)
+			req.Header.Set("Content-Type", "application/json")
+
+			//用于接收resp
+			resp := httptest.NewRecorder()
+
+			server.ServeHTTP(resp, req)
+
+			assert.Equal(t, tc.wantCode, resp.Code)
+
+			assert.Equal(t, tc.wantBody, resp.Body.String())
+			//登录成功才需要判断
+			if resp.Code == http.StatusOK {
+				accessToken := resp.Header().Get("x-access-token")
+				refreshToken := resp.Header().Get("x-refresh-token")
+
+				acessT, err := Decrypt(accessToken, AccessSecret)
+
+				if err != nil {
+					panic(err)
+				}
+				accessTokenClaim, ok := acessT.(*TokenClaims)
+				if !ok {
+					fmt.Println(acessT, err)
+					panic("强制类型转换失败")
+				}
+				assert.Equal(t, tc.fingerprint, accessTokenClaim.Fingerprint)
+				//判断过期时间
+				if now.Add(time.Minute*29).UnixMilli() > accessTokenClaim.RegisteredClaims.ExpiresAt.Time.UnixMilli() {
+					panic("过期时间异常")
+				}
+				refreshT, err := Decrypt(refreshToken, RefreshSecret)
+				if err != nil {
+					panic(err)
+				}
+				if !ok {
+					fmt.Println(refreshT, err)
+					panic("强制类型转换失败")
+				}
+				refreshTokenClaim := refreshT.(*TokenClaims)
+				assert.Equal(t, tc.fingerprint, refreshTokenClaim.Fingerprint)
+				//判断过期时间
+				if now.Add(time.Hour*168).UnixMilli() < accessTokenClaim.RegisteredClaims.ExpiresAt.Time.UnixMilli() {
+					panic("过期时间异常")
+				}
+			}
+  )}
+}
+  
+func CreateToken() (string, string) {
+	now := time.Now()
+	claims := TokenClaims{
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(now.Add(time.Minute * 30)),
+		},
+		Fingerprint: "for-test",
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS512, claims)
+	tokenStr, _ := token.SignedString([]byte(AccessSecret))
+
+	claims.RegisteredClaims.ExpiresAt = jwt.NewNumericDate(now.Add(time.Hour * 168))
+	token = jwt.NewWithClaims(jwt.SigningMethodHS512, claims)
+	//下面的密钥可以使用不同的密钥(一样的也行)
+	refreshToken, _ := token.SignedString([]byte(RefreshSecret))
+	return tokenStr, refreshToken
+}
+
+func Decrypt(encryptString string, secret string) (interface{}, error) {
+	claims := &TokenClaims{}
+	token, err := jwt.ParseWithClaims(encryptString, claims, func(token *jwt.Token) (interface{}, error) {
+		return []byte(secret), nil
+	})
+	if err != nil {
+		fmt.Println("解析失败:", err)
+		return nil, err
+	}
+	//检查过期时间
+	if claims.ExpiresAt.Time.Before(time.Now()) {
+		//过期了
+
+		return nil, err
+	}
+	//TODO 这里测试按需判断 claims.Uid
+	if token == nil || !token.Valid {
+		//解析成功  但是 token 以及 claims 不一定合法
+
+		return nil, err
+	}
+	return claims, nil
 }

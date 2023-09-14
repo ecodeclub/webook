@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+  "github.com/golang-jwt/jwt/v5"
 	regexp "github.com/dlclark/regexp2"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
@@ -27,6 +28,8 @@ var (
 const (
 	// 密码规则：长度至少 6 位
 	passwordRegexPattern = `^.{6,}$`
+	AccessSecret         = "95osj3fUD7fo0mlYdDbncXz4VD2igvf0"
+	RefreshSecret        = "95osj3fUD7fo0m123DbncXz4VD2igvf0"
 )
 
 type UserHandler struct {
@@ -38,6 +41,15 @@ type UserHandler struct {
 	emailVerifyABSURL string // 前端的绝对URL
 	logger            *zap.Logger
 }
+
+type TokenClaims struct {
+	jwt.RegisteredClaims
+	// 这是一个前端采集了用户的登录环境生成的一个码
+	Fingerprint string
+	//用于查找用户信息的一个字段
+	Uid int64
+}
+
 
 func NewUserHandler(svc service.UserService, emailSvc service.EmailService,
 	emailVerifyGen tokenGen.TokenGenerator, emailVerifier tokenVfy.Verifier,
@@ -183,4 +195,61 @@ func (u *UserHandler) URLGenerator(absoluteURL string, params map[string][]strin
 
 	up.RawQuery = uv.Encode()
 	return up.String(), nil
+}
+
+func (u *UserHandler) Login(ctx *gin.Context) {
+	type TokenLoginReq struct {
+		Email       string `json:"email" binding:"required,email"`
+		Password    string `json:"password" binding:"required"`
+		Fingerprint string `json:"fingerprint" binding:"required"` //你可以认为这是一个前端采集了用户的登录环境生成的一个码，你编码进去 EncryptionHandle acccess_token 中。
+	}
+	var req TokenLoginReq
+	err := ctx.ShouldBind(&req)
+	if err != nil {
+		ctx.String(http.StatusBadRequest, "参数合法性验证失败")
+		return
+	}
+
+	// 先定义一个uid,实际要在数据库里面查一下
+	var uid int64
+	err = u.setAccessToken(ctx, req.Fingerprint, uid)
+	if err != nil {
+		ctx.String(http.StatusBadRequest, "系统错误")
+		return
+	}
+
+	ctx.String(http.StatusOK, "登陆成功")
+}
+
+func (u *UserHandler) setAccessToken(ctx *gin.Context, fingerprint string, uid int64) error {
+	now := time.Now()
+	//TODO access token
+	claims := TokenClaims{
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(now.Add(time.Minute * 30)),
+		},
+		Fingerprint: fingerprint,
+		Uid:         uid,
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS512, claims)
+	accessToken, err := token.SignedString([]byte(AccessSecret))
+	if err != nil {
+		return err
+	}
+	//TODO refresh token
+	claims.RegisteredClaims.ExpiresAt = jwt.NewNumericDate(now.Add(time.Hour * 24 * 7))
+	token = jwt.NewWithClaims(jwt.SigningMethodHS512, claims)
+	refreshToken, err := token.SignedString([]byte(RefreshSecret))
+	if err != nil {
+		return err
+	}
+
+	//TODO 设置token
+	ctx.Header("x-access-token", accessToken)
+	//可以换一种方式保持到redis里面,避免refresh_token 被人拿到之后一直使用
+	//可以使用MD5 转一下,或者直接截取指定长度的字符串 如: 以key 为 前面获取到的字符串
+	ctx.Header("x-refresh-token", refreshToken)
+
+	return nil
 }
