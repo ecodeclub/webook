@@ -86,8 +86,6 @@ func (u *UserHandler) Login(ctx *gin.Context) {
 	var req TokenLoginReq
 	err := ctx.ShouldBind(&req)
 	if err != nil {
-		//bing  有异常绑定处理  直接返回就行
-		//fmt.Println(err.Error())
 		ctx.String(http.StatusBadRequest, "参数合法性验证失败")
 		return
 	}
