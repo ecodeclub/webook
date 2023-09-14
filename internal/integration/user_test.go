@@ -552,7 +552,7 @@ func InitTest() *gin.Engine {
 }
 
 func initDB() *gorm.DB {
-	dsn := "root:123456@tcp(localhost:13306)/webook"
+	dsn := "root:root@tcp(localhost:13316)/webook"
 	sqlDB, err := sql.Open("mysql", dsn)
 	if err != nil {
 		panic(err)
