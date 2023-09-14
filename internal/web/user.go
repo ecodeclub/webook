@@ -6,10 +6,10 @@ import (
 
 	regexp "github.com/dlclark/regexp2"
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
 
 	"github.com/ecodeclub/webook/internal/domain"
 	"github.com/ecodeclub/webook/internal/service"
-	"github.com/ecodeclub/webook/internal/web/encryption"
 )
 
 const (
@@ -22,14 +22,20 @@ const (
 type UserHandler struct {
 	svc              service.UserAndService
 	passwordRegexExp *regexp.Regexp
-	encryption.Handle
 }
 
-func NewUserHandler(svc service.UserAndService, jwt encryption.Handle) *UserHandler {
+type TokenClaims struct {
+	jwt.RegisteredClaims
+	// 这是一个前端采集了用户的登录环境生成的一个码
+	Fingerprint string
+	//用于查找用户信息的一个字段
+	Uid int64
+}
+
+func NewUserHandler(svc service.UserAndService) *UserHandler {
 	return &UserHandler{
 		svc:              svc,
 		passwordRegexExp: regexp.MustCompile(passwordRegexPattern, regexp.None),
-		Handle:           jwt,
 	}
 }
 
@@ -89,24 +95,47 @@ func (u *UserHandler) Login(ctx *gin.Context) {
 		ctx.String(http.StatusBadRequest, "参数合法性验证失败")
 		return
 	}
-	//验证登录用户合法性 获取个人信息查找的标识: 例如id
-	tmpMap := map[string]string{
-		//"id":id,
-		"fingerprint": req.Fingerprint,
-	}
-	accessToken, err := u.Encryption(tmpMap, AccessSecret, time.Minute*30)
+
+	// 先定义一个uid,实际要在数据库里面查一下
+	var uid int64
+	err = u.setAccessToken(ctx, req.Fingerprint, uid)
 	if err != nil {
-		ctx.String(http.StatusInternalServerError, "系统异常")
+		ctx.String(http.StatusBadRequest, "系统错误")
 		return
 	}
-	refreshToken, err := u.Encryption(tmpMap, RefreshSecret, time.Hour*24*7)
-	if err != nil {
-		ctx.String(http.StatusInternalServerError, "系统异常")
-		return
+
+	ctx.String(http.StatusOK, "登陆成功")
+}
+
+func (u *UserHandler) setAccessToken(ctx *gin.Context, fingerprint string, uid int64) error {
+	now := time.Now()
+	//TODO access token
+	claims := TokenClaims{
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(now.Add(time.Minute * 30)),
+		},
+		Fingerprint: fingerprint,
+		Uid:         uid,
 	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS512, claims)
+	accessToken, err := token.SignedString([]byte(AccessSecret))
+	if err != nil {
+		return err
+	}
+	//TODO refresh token
+	claims.RegisteredClaims.ExpiresAt = jwt.NewNumericDate(now.Add(time.Hour * 24 * 7))
+	token = jwt.NewWithClaims(jwt.SigningMethodHS512, claims)
+	refreshToken, err := token.SignedString([]byte(RefreshSecret))
+	if err != nil {
+		return err
+	}
+
+	//TODO 设置token
 	ctx.Header("x-access-token", accessToken)
-	ctx.Header("x-refresh-token", refreshToken)
 	//可以换一种方式保持到redis里面,避免refresh_token 被人拿到之后一直使用
 	//可以使用MD5 转一下,或者直接截取指定长度的字符串 如: 以key 为 前面获取到的字符串
-	ctx.String(http.StatusOK, "登陆成功")
+	ctx.Header("x-refresh-token", refreshToken)
+
+	return nil
 }

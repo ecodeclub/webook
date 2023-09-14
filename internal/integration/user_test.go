@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"context"
 	"database/sql"
+	"fmt"
 	"log"
 	"net/http"
 	"net/http/httptest"
@@ -27,6 +28,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gorm.io/driver/mysql"
@@ -36,7 +38,6 @@ import (
 	"github.com/ecodeclub/webook/internal/repository/dao"
 	"github.com/ecodeclub/webook/internal/service"
 	"github.com/ecodeclub/webook/internal/web"
-	jwt2 "github.com/ecodeclub/webook/internal/web/encryption/jwt"
 )
 
 func TestUserHandler_e2e_SignUp(t *testing.T) {
@@ -183,8 +184,7 @@ func TestUserHandler_e2e_Login(t *testing.T) {
 	repo := repository.NewUserInfoRepository(da)
 	svc := service.NewUserService(repo)
 
-	jwt := jwt2.NewJwt()
-	userHandle := web.NewUserHandler(svc, jwt)
+	userHandle := web.NewUserHandler(svc)
 	userHandle.RegisterRoutes(server)
 	now := time.Now()
 
@@ -231,32 +231,39 @@ func TestUserHandler_e2e_Login(t *testing.T) {
 
 			assert.Equal(t, tc.wantBody, resp.Body.String())
 			//登录成功才需要判断
+			//登录成功才需要判断
 			if resp.Code == http.StatusOK {
 				accessToken := resp.Header().Get("x-access-token")
 				refreshToken := resp.Header().Get("x-refresh-token")
-				//jwt.Decrypt(accessToken, web.AccessSecret)
-				acessT, err := jwt.Decrypt(accessToken, web.AccessSecret)
+
+				acessT, err := Decrypt(accessToken, web.AccessSecret)
+
 				if err != nil {
 					panic(err)
 				}
-				accessTokenClaim := acessT.(*jwt2.TokenClaims)
+				accessTokenClaim, ok := acessT.(*web.TokenClaims)
+				if !ok {
+					fmt.Println(acessT, err)
+					panic("强制类型转换失败")
+				}
 				assert.Equal(t, tc.fingerprint, accessTokenClaim.Fingerprint)
 				//判断过期时间
 				if now.Add(time.Minute*29).UnixMilli() > accessTokenClaim.RegisteredClaims.ExpiresAt.Time.UnixMilli() {
 					panic("过期时间异常")
-					return
 				}
-
-				refreshT, err := jwt.Decrypt(refreshToken, web.RefreshSecret)
+				refreshT, err := Decrypt(refreshToken, web.RefreshSecret)
 				if err != nil {
 					panic(err)
 				}
-				refreshTokenClaim := refreshT.(*jwt2.TokenClaims)
+				if !ok {
+					fmt.Println(refreshT, err)
+					panic("强制类型转换失败")
+				}
+				refreshTokenClaim := refreshT.(*web.TokenClaims)
 				assert.Equal(t, tc.fingerprint, refreshTokenClaim.Fingerprint)
 				//判断过期时间
 				if now.Add(time.Hour*168).UnixMilli() < accessTokenClaim.RegisteredClaims.ExpiresAt.Time.UnixMilli() {
 					panic("过期时间异常")
-					return
 				}
 			}
 		})
@@ -308,7 +315,30 @@ func initUser(db *gorm.DB) *web.UserHandler {
 	da := dao.NewUserInfoDAO(db)
 	repo := repository.NewUserInfoRepository(da)
 	svc := service.NewUserService(repo)
-	jwt := jwt2.NewJwt()
-	u := web.NewUserHandler(svc, jwt)
+	u := web.NewUserHandler(svc)
 	return u
+}
+
+func Decrypt(encryptString string, secret string) (interface{}, error) {
+	claims := &web.TokenClaims{}
+	token, err := jwt.ParseWithClaims(encryptString, claims, func(token *jwt.Token) (interface{}, error) {
+		return []byte(secret), nil
+	})
+	if err != nil {
+		fmt.Println("解析失败:", err)
+		return nil, err
+	}
+	//检查过期时间
+	if claims.ExpiresAt.Time.Before(time.Now()) {
+		//过期了
+
+		return nil, err
+	}
+	//TODO 这里测试按需判断 claims.Uid
+	if token == nil || !token.Valid {
+		//解析成功  但是 token 以及 claims 不一定合法
+
+		return nil, err
+	}
+	return claims, nil
 }

@@ -3,13 +3,14 @@ package web
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
 
 	"github.com/gin-gonic/gin"
-	jwtMoudle "github.com/golang-jwt/jwt/v5"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -17,9 +18,6 @@ import (
 	"github.com/ecodeclub/webook/internal/domain"
 	"github.com/ecodeclub/webook/internal/service"
 	svcmocks "github.com/ecodeclub/webook/internal/service/mocks"
-	"github.com/ecodeclub/webook/internal/web/encryption"
-	"github.com/ecodeclub/webook/internal/web/encryption/jwt"
-	jwtmocks "github.com/ecodeclub/webook/internal/web/encryption/jwt/mock"
 )
 
 // Handler测试的主要难点
@@ -28,16 +26,16 @@ import (
 func TestUserHandler_SignUp(t *testing.T) {
 	testCases := []struct {
 		name     string
-		mock     func(ctrl *gomock.Controller) (service.UserAndService, encryption.Handle)
+		mock     func(ctrl *gomock.Controller) service.UserAndService
 		body     string
 		wantCode int
 		wantBody string
 	}{
 		{
 			name: "绑定信息错误！",
-			mock: func(ctrl *gomock.Controller) (service.UserAndService, encryption.Handle) {
+			mock: func(ctrl *gomock.Controller) service.UserAndService {
 				userSvc := svcmocks.NewMockUserAndService(ctrl)
-				return userSvc, nil
+				return userSvc
 			},
 			body: `
 		{
@@ -48,13 +46,13 @@ func TestUserHandler_SignUp(t *testing.T) {
 		},
 		{
 			name: "两次输入密码不一致！",
-			mock: func(ctrl *gomock.Controller) (service.UserAndService, encryption.Handle) {
+			mock: func(ctrl *gomock.Controller) service.UserAndService {
 				userSvc := svcmocks.NewMockUserAndService(ctrl)
 				//userSvc.EXPECT().Signup(gomock.Any(), &domain.User{
 				//	Email:    "l0slakers@gmail.com",
 				//	Password: "Abcd#1234",
 				//})
-				return userSvc, nil
+				return userSvc
 			},
 			body: `
 		{
@@ -68,9 +66,9 @@ func TestUserHandler_SignUp(t *testing.T) {
 		},
 		{
 			name: "密码格式不正确！",
-			mock: func(ctrl *gomock.Controller) (service.UserAndService, encryption.Handle) {
+			mock: func(ctrl *gomock.Controller) service.UserAndService {
 				userSvc := svcmocks.NewMockUserAndService(ctrl)
-				return userSvc, nil
+				return userSvc
 			},
 			body: `
 		{
@@ -84,13 +82,13 @@ func TestUserHandler_SignUp(t *testing.T) {
 		},
 		{
 			name: "重复邮箱！",
-			mock: func(ctrl *gomock.Controller) (service.UserAndService, encryption.Handle) {
+			mock: func(ctrl *gomock.Controller) service.UserAndService {
 				userSvc := svcmocks.NewMockUserAndService(ctrl)
 				userSvc.EXPECT().Signup(gomock.Any(), &domain.User{
 					Email:    "l0slakers@gmail.com",
 					Password: "Abcd#1234",
 				}).Return(service.ErrUserDuplicate)
-				return userSvc, nil
+				return userSvc
 			},
 			body: `
 		{
@@ -104,13 +102,13 @@ func TestUserHandler_SignUp(t *testing.T) {
 		},
 		{
 			name: "系统错误！",
-			mock: func(ctrl *gomock.Controller) (service.UserAndService, encryption.Handle) {
+			mock: func(ctrl *gomock.Controller) service.UserAndService {
 				userSvc := svcmocks.NewMockUserAndService(ctrl)
 				userSvc.EXPECT().Signup(gomock.Any(), &domain.User{
 					Email:    "l0slakers@gmail.com",
 					Password: "Abcd#1234",
 				}).Return(errors.New("any error"))
-				return userSvc, nil
+				return userSvc
 			},
 			body: `
 		{
@@ -124,13 +122,13 @@ func TestUserHandler_SignUp(t *testing.T) {
 		},
 		{
 			name: "注册成功！",
-			mock: func(ctrl *gomock.Controller) (service.UserAndService, encryption.Handle) {
+			mock: func(ctrl *gomock.Controller) service.UserAndService {
 				userSvc := svcmocks.NewMockUserAndService(ctrl)
 				userSvc.EXPECT().Signup(gomock.Any(), &domain.User{
 					Email:    "l0slakers@gmail.com",
 					Password: "Abcd#1234",
 				}).Return(nil)
-				return userSvc, nil
+				return userSvc
 			},
 			body: `
 {
@@ -174,17 +172,17 @@ func TestUserHandle_TokenLogin(t *testing.T) {
 	now := time.Now()
 	testCases := []struct {
 		name        string
-		mock        func(ctl *gomock.Controller) (service.UserAndService, encryption.Handle)
+		mock        func(ctl *gomock.Controller) service.UserAndService
 		reqBody     string
 		wantCode    int
 		wantBody    string
 		fingerprint string
-		//userId   int64 // jwt-token 中携带的信息
+		userId      int64 // jwt-token 中携带的信息
 	}{
 		{
 			name: "参数绑定失败",
-			mock: func(ctl *gomock.Controller) (service.UserAndService, encryption.Handle) {
-				return nil, nil
+			mock: func(ctl *gomock.Controller) service.UserAndService {
+				return nil
 			},
 			reqBody:     `{"email":"asxxxxxxxxxx163.com","password":"123456","fingerprint":"for-test"}`,
 			wantCode:    http.StatusBadRequest,
@@ -192,43 +190,9 @@ func TestUserHandle_TokenLogin(t *testing.T) {
 			fingerprint: "",
 		},
 		{
-			name: "系统异常",
-			mock: func(ctl *gomock.Controller) (service.UserAndService, encryption.Handle) {
-				jwt1 := jwtmocks.NewMockHandle(ctl)
-				jwt1.EXPECT().Encryption(gomock.Any(), gomock.Any(), gomock.Any()).Return("", errors.New("系统异常"))
-				return nil, jwt1
-			},
-			reqBody:     `{"email":"asxxxxxxxxxx@163.com","password":"123456","fingerprint":"for-test"}`,
-			wantCode:    http.StatusInternalServerError,
-			wantBody:    "系统异常",
-			fingerprint: "",
-		},
-		{
 			name: "登录成功",
-			mock: func(ctl *gomock.Controller) (service.UserAndService, encryption.Handle) {
-				jwt1 := jwtmocks.NewMockHandle(ctl)
-				tokenStr, refreshToken := CreateToken()
-				jwt1.EXPECT().Encryption(gomock.Any(), AccessSecret, time.Minute*30).Return(
-					tokenStr, nil)
-				jwt1.EXPECT().Encryption(gomock.Any(), RefreshSecret, time.Hour*24*7).Return(
-					refreshToken, nil)
-				jwt1.EXPECT().Decrypt(gomock.Any(), AccessSecret).Return(
-					&jwt.TokenClaims{
-						RegisteredClaims: jwtMoudle.RegisteredClaims{
-							ExpiresAt: jwtMoudle.NewNumericDate(now.Add(time.Minute * 30)),
-						},
-						Fingerprint: "for-test",
-					}, nil,
-				)
-				jwt1.EXPECT().Decrypt(gomock.Any(), RefreshSecret).Return(
-					&jwt.TokenClaims{
-						RegisteredClaims: jwtMoudle.RegisteredClaims{
-							ExpiresAt: jwtMoudle.NewNumericDate(now.Add(time.Hour * 24 * 7)),
-						},
-						Fingerprint: "for-test",
-					}, nil,
-				)
-				return nil, jwt1
+			mock: func(ctl *gomock.Controller) service.UserAndService {
+				return nil
 			},
 			reqBody:     `{"email":"asxxxxxxxxxx@163.com","password":"123456","fingerprint":"for-test"}`,
 			wantCode:    http.StatusOK,
@@ -261,22 +225,31 @@ func TestUserHandle_TokenLogin(t *testing.T) {
 			if resp.Code == http.StatusOK {
 				accessToken := resp.Header().Get("x-access-token")
 				refreshToken := resp.Header().Get("x-refresh-token")
-				acessT, err := h.Decrypt(accessToken, AccessSecret)
+
+				acessT, err := Decrypt(accessToken, AccessSecret)
+
 				if err != nil {
 					panic(err)
 				}
-				accessTokenClaim := acessT.(*jwt.TokenClaims)
+				accessTokenClaim, ok := acessT.(*TokenClaims)
+				if !ok {
+					fmt.Println(acessT, err)
+					panic("强制类型转换失败")
+				}
 				assert.Equal(t, tc.fingerprint, accessTokenClaim.Fingerprint)
 				//判断过期时间
 				if now.Add(time.Minute*29).UnixMilli() > accessTokenClaim.RegisteredClaims.ExpiresAt.Time.UnixMilli() {
 					panic("过期时间异常")
 				}
-
-				refreshT, err := h.Decrypt(refreshToken, RefreshSecret)
+				refreshT, err := Decrypt(refreshToken, RefreshSecret)
 				if err != nil {
 					panic(err)
 				}
-				refreshTokenClaim := refreshT.(*jwt.TokenClaims)
+				if !ok {
+					fmt.Println(refreshT, err)
+					panic("强制类型转换失败")
+				}
+				refreshTokenClaim := refreshT.(*TokenClaims)
 				assert.Equal(t, tc.fingerprint, refreshTokenClaim.Fingerprint)
 				//判断过期时间
 				if now.Add(time.Hour*168).UnixMilli() < accessTokenClaim.RegisteredClaims.ExpiresAt.Time.UnixMilli() {
@@ -289,18 +262,42 @@ func TestUserHandle_TokenLogin(t *testing.T) {
 
 func CreateToken() (string, string) {
 	now := time.Now()
-	claims := jwt.TokenClaims{
-		RegisteredClaims: jwtMoudle.RegisteredClaims{
-			ExpiresAt: jwtMoudle.NewNumericDate(now.Add(time.Minute * 30)),
+	claims := TokenClaims{
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(now.Add(time.Minute * 30)),
 		},
 		Fingerprint: "for-test",
 	}
-	token := jwtMoudle.NewWithClaims(jwtMoudle.SigningMethodHS512, claims)
+	token := jwt.NewWithClaims(jwt.SigningMethodHS512, claims)
 	tokenStr, _ := token.SignedString([]byte(AccessSecret))
 
-	claims.RegisteredClaims.ExpiresAt = jwtMoudle.NewNumericDate(now.Add(time.Hour * 168))
-	token = jwtMoudle.NewWithClaims(jwtMoudle.SigningMethodHS512, claims)
+	claims.RegisteredClaims.ExpiresAt = jwt.NewNumericDate(now.Add(time.Hour * 168))
+	token = jwt.NewWithClaims(jwt.SigningMethodHS512, claims)
 	//下面的密钥可以使用不同的密钥(一样的也行)
 	refreshToken, _ := token.SignedString([]byte(RefreshSecret))
 	return tokenStr, refreshToken
+}
+
+func Decrypt(encryptString string, secret string) (interface{}, error) {
+	claims := &TokenClaims{}
+	token, err := jwt.ParseWithClaims(encryptString, claims, func(token *jwt.Token) (interface{}, error) {
+		return []byte(secret), nil
+	})
+	if err != nil {
+		fmt.Println("解析失败:", err)
+		return nil, err
+	}
+	//检查过期时间
+	if claims.ExpiresAt.Time.Before(time.Now()) {
+		//过期了
+
+		return nil, err
+	}
+	//TODO 这里测试按需判断 claims.Uid
+	if token == nil || !token.Valid {
+		//解析成功  但是 token 以及 claims 不一定合法
+
+		return nil, err
+	}
+	return claims, nil
 }

@@ -10,7 +10,6 @@ import (
 	"github.com/ecodeclub/webook/internal/repository/dao"
 	"github.com/ecodeclub/webook/internal/service"
 	"github.com/ecodeclub/webook/internal/web"
-	"github.com/ecodeclub/webook/internal/web/encryption/jwt"
 )
 
 func main() {
@@ -45,7 +44,6 @@ func initUser(db *gorm.DB) *web.UserHandler {
 	da := dao.NewUserInfoDAO(db)
 	repo := repository.NewUserInfoRepository(da)
 	svc := service.NewUserService(repo)
-	jwtToken := jwt.NewJwt()
-	u := web.NewUserHandler(svc, jwtToken)
+	u := web.NewUserHandler(svc)
 	return u
 }
