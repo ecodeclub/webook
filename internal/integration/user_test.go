@@ -448,15 +448,16 @@ func TestUserHandler_e2e_EmailVerify(t *testing.T) {
 }
 
 func TestUserHandler_e2e_Login(t *testing.T) {
+	lg := initLogger()
 	//	server := InitWebServer()
 	server := gin.Default()
 	// db := initDB()
 	var db *gorm.DB
 	da := dao.NewUserInfoDAO(db)
 	repo := repository.NewUserInfoRepository(da)
-	svc := service.NewUserService(repo)
+	svc := service.NewUserService(repo, lg)
 
-	userHandle := web.NewUserHandler(svc)
+	userHandle := web.NewUserHandler(svc, nil, nil, nil, "", lg)
 	userHandle.RegisterRoutes(server)
 	now := time.Now()
 
@@ -551,7 +552,7 @@ func InitTest() *gin.Engine {
 }
 
 func initDB() *gorm.DB {
-	dsn := "root:root@tcp(localhost:13316)/webook"
+	dsn := "root:123456@tcp(localhost:13306)/webook"
 	sqlDB, err := sql.Open("mysql", dsn)
 	if err != nil {
 		panic(err)
