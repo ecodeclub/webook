@@ -7,6 +7,7 @@ require (
 	github.com/dlclark/regexp2 v1.10.0
 	github.com/gin-gonic/gin v1.9.1
 	github.com/go-sql-driver/mysql v1.7.1
+	github.com/golang-jwt/jwt/v5 v5.0.0
 	github.com/stretchr/testify v1.8.4
 	go.uber.org/mock v0.2.0
 	gorm.io/driver/mysql v1.5.1

@@ -26,14 +26,17 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gin-gonic/gin"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"gorm.io/driver/mysql"
+	"gorm.io/gorm"
+
 	"github.com/ecodeclub/webook/internal/repository"
 	"github.com/ecodeclub/webook/internal/repository/dao"
 	"github.com/ecodeclub/webook/internal/service"
 	"github.com/ecodeclub/webook/internal/web"
-	"github.com/gin-gonic/gin"
-	"github.com/stretchr/testify/assert"
-	"gorm.io/driver/mysql"
-	"gorm.io/gorm"
+	jwt2 "github.com/ecodeclub/webook/internal/web/encryption/jwt"
 )
 
 func TestUserHandler_e2e_SignUp(t *testing.T) {
@@ -171,6 +174,95 @@ func TestUserHandler_e2e_SignUp(t *testing.T) {
 	}
 }
 
+func TestUserHandler_e2e_Login(t *testing.T) {
+	//	server := InitWebServer()
+	server := gin.Default()
+	//db := initDB()
+	var db *gorm.DB
+	da := dao.NewUserInfoDAO(db)
+	repo := repository.NewUserInfoRepository(da)
+	svc := service.NewUserService(repo)
+
+	jwt := jwt2.NewJwt()
+	userHandle := web.NewUserHandler(svc, jwt)
+	userHandle.RegisterRoutes(server)
+	now := time.Now()
+
+	testCases := []struct {
+		name        string
+		before      func(t *testing.T)
+		reqBody     string
+		wantCode    int
+		wantBody    string
+		fingerprint string
+		after       func(t *testing.T)
+		//userId   int64 // jwt-token 中携带的信息
+	}{
+		{
+			name:        "参数绑定失败",
+			reqBody:     `{"email":"asxxxxxxxxxx163.com","password":"123456","fingerprint":""}`,
+			wantCode:    http.StatusBadRequest,
+			wantBody:    "参数合法性验证失败",
+			fingerprint: "",
+		},
+		{
+			name:        "登陆成功",
+			reqBody:     `{"email":"asxxxxxxxxxx@163.com","password":"123456","fingerprint":"long-short-token"}`,
+			wantCode:    http.StatusOK,
+			wantBody:    "登陆成功",
+			fingerprint: "long-short-token",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			//构造请求
+			req, err := http.NewRequest(http.MethodPost, "/users/login", bytes.NewBuffer([]byte(tc.reqBody)))
+			require.NoError(t, err)
+			req.Header.Set("Content-Type", "application/json")
+
+			//用于接收resp
+			resp := httptest.NewRecorder()
+
+			server.ServeHTTP(resp, req)
+
+			// 判断结果
+			assert.Equal(t, tc.wantCode, resp.Code)
+
+			assert.Equal(t, tc.wantBody, resp.Body.String())
+			//登录成功才需要判断
+			if resp.Code == http.StatusOK {
+				accessToken := resp.Header().Get("x-access-token")
+				refreshToken := resp.Header().Get("x-refresh-token")
+				//jwt.Decrypt(accessToken, web.AccessSecret)
+				acessT, err := jwt.Decrypt(accessToken, web.AccessSecret)
+				if err != nil {
+					panic(err)
+				}
+				accessTokenClaim := acessT.(*jwt2.TokenClaims)
+				assert.Equal(t, tc.fingerprint, accessTokenClaim.Fingerprint)
+				//判断过期时间
+				if now.Add(time.Minute*29).UnixMilli() > accessTokenClaim.RegisteredClaims.ExpiresAt.Time.UnixMilli() {
+					panic("过期时间异常")
+					return
+				}
+
+				refreshT, err := jwt.Decrypt(refreshToken, web.RefreshSecret)
+				if err != nil {
+					panic(err)
+				}
+				refreshTokenClaim := refreshT.(*jwt2.TokenClaims)
+				assert.Equal(t, tc.fingerprint, refreshTokenClaim.Fingerprint)
+				//判断过期时间
+				if now.Add(time.Hour*168).UnixMilli() < accessTokenClaim.RegisteredClaims.ExpiresAt.Time.UnixMilli() {
+					panic("过期时间异常")
+					return
+				}
+			}
+		})
+	}
+}
+
 func InitTest() *gin.Engine {
 	r := initWebServer()
 	db := initDB()
@@ -180,7 +272,7 @@ func InitTest() *gin.Engine {
 }
 
 func initDB() *gorm.DB {
-	dsn := "root:root@tcp(localhost:13316)/webook"
+	dsn := "root:r4t7u#8i9s@tcp(120.132.118.90:3306)/webook"
 	sqlDB, err := sql.Open("mysql", dsn)
 	if err != nil {
 		panic(err)
@@ -216,6 +308,7 @@ func initUser(db *gorm.DB) *web.UserHandler {
 	da := dao.NewUserInfoDAO(db)
 	repo := repository.NewUserInfoRepository(da)
 	svc := service.NewUserService(repo)
-	u := web.NewUserHandler(svc)
+	jwt := jwt2.NewJwt()
+	u := web.NewUserHandler(svc, jwt)
 	return u
 }
