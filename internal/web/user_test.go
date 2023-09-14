@@ -270,7 +270,6 @@ func TestUserHandle_TokenLogin(t *testing.T) {
 				//判断过期时间
 				if now.Add(time.Minute*29).UnixMilli() > accessTokenClaim.RegisteredClaims.ExpiresAt.Time.UnixMilli() {
 					panic("过期时间异常")
-					return
 				}
 
 				refreshT, err := h.Decrypt(refreshToken, RefreshSecret)
@@ -282,7 +281,6 @@ func TestUserHandle_TokenLogin(t *testing.T) {
 				//判断过期时间
 				if now.Add(time.Hour*168).UnixMilli() < accessTokenClaim.RegisteredClaims.ExpiresAt.Time.UnixMilli() {
 					panic("过期时间异常")
-					return
 				}
 			}
 		})
