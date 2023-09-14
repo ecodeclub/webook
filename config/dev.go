@@ -12,23 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:build !k8s
-
 package config
 
 var Config = WebookConfig{
 	DB: DBConfig{
 		DSN: "root:root@tcp(localhost:13316)/webook",
-	},
-	EmailConf: EmailConfig{
-		Host:     "smtp.example.com",
-		Port:     587,
-		Username: "foo@example.com",
-		Password: "bar",
-	},
-	EmailVfyConf: EmailVfyConfig{
-		Issuer:      "webook-email-verify",
-		Key:         "test",
-		AbsoluteURL: "https://webook.com/email/verification",
 	},
 }
