@@ -2,6 +2,7 @@ package email
 
 import (
 	"context"
+
 	"github.com/go-gomail/gomail"
 )
 

@@ -2,9 +2,10 @@ package ioc
 
 import (
 	"crypto/tls"
-	"github.com/go-gomail/gomail"
 	"os"
 	"strconv"
+
+	"github.com/go-gomail/gomail"
 )
 
 func InitEmailCfg() *gomail.Dialer {

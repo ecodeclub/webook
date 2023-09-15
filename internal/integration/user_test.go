@@ -20,8 +20,9 @@ import (
 	"bytes"
 	"context"
 	"database/sql"
-	"github.com/ecodeclub/webook/internal/ioc"
+
 	"github.com/ecodeclub/webook/internal/service/email"
+
 	//"github.com/golang-jwt/jwt/v5"
 	"fmt"
 	"log"
@@ -245,7 +246,7 @@ func TestUserHandler_e2e_Login(t *testing.T) {
 	var db *gorm.DB
 	da := dao.NewUserInfoDAO(db)
 	repo := repository.NewUserInfoRepository(da)
-	evc := email.NewEmailService(ioc.InitEmailCfg())
+	evc := &email.NoOpService{}
 	svc := service.NewUserService(repo, evc)
 
 	userHandle := web.NewUserHandler(svc)
@@ -378,7 +379,7 @@ func initWebServer() *gin.Engine {
 func initUser(db *gorm.DB) *web.UserHandler {
 	da := dao.NewUserInfoDAO(db)
 	repo := repository.NewUserInfoRepository(da)
-	evc := email.NewEmailService(ioc.InitEmailCfg())
+	evc := &email.NoOpService{}
 	svc := service.NewUserService(repo, evc)
 	u := web.NewUserHandler(svc)
 	return u
