@@ -20,6 +20,9 @@ import (
 	"bytes"
 	"context"
 	"database/sql"
+	"github.com/ecodeclub/webook/internal/ioc"
+	"github.com/ecodeclub/webook/internal/service/email"
+	//"github.com/golang-jwt/jwt/v5"
 	"fmt"
 	"log"
 	"net/http"
@@ -175,6 +178,66 @@ func TestUserHandler_e2e_SignUp(t *testing.T) {
 	}
 }
 
+func TestUserHandler_e2e_EmailVerify(t *testing.T) {
+	r := initWebServer()
+	db := initDB()
+	u := initUser(db)
+	u.RegisterRoutes(r)
+	testCases := []struct {
+		name     string
+		body     string
+		before   func(t *testing.T)
+		after    func(t *testing.T)
+		token    string
+		email    string
+		wantCode int
+		wantBody string
+	}{
+		{
+			name: "验证成功!",
+			before: func(t *testing.T) {
+			},
+			after: func(t *testing.T) {
+
+			},
+			body:     "",
+			token:    genToken("abc@163.com", 1),
+			email:    "abc@163.com",
+			wantCode: http.StatusOK,
+			wantBody: "验证成功!",
+		},
+		{
+			name: "验证失败!",
+			before: func(t *testing.T) {
+
+			},
+			after: func(t *testing.T) {
+
+			},
+			body:     "",
+			email:    "abc@163.com",
+			wantCode: http.StatusOK,
+			wantBody: "验证失败!",
+			token:    "eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJFbWFpbCI6Imp1bm55ZmVuZ0AxNjMuY29tIiwiZXhwIjoxNjk0NTIxODQzfQ.gwGcIDcaKuFG6DyyLnWfEn5poIZ3BMUk2lNQsDhyA3DMBSTo9HkEJ1eyIUQ0XDqp29XVme5dOOMuY2LgRfI60Q",
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			tc.before(t)
+			req, err := http.NewRequest(http.MethodPost, "/users/email/verify/"+tc.token, bytes.NewBuffer([]byte(tc.body)))
+			assert.NoError(t, err)
+			req.Header.Set("Content-Type", "application/json")
+
+			resp := httptest.NewRecorder()
+			r.ServeHTTP(resp, req)
+
+			assert.Equal(t, tc.wantCode, resp.Code)
+			assert.Equal(t, tc.wantBody, resp.Body.String())
+			tc.after(t)
+		})
+	}
+}
+
 func TestUserHandler_e2e_Login(t *testing.T) {
 	//	server := InitWebServer()
 	server := gin.Default()
@@ -182,7 +245,8 @@ func TestUserHandler_e2e_Login(t *testing.T) {
 	var db *gorm.DB
 	da := dao.NewUserInfoDAO(db)
 	repo := repository.NewUserInfoRepository(da)
-	svc := service.NewUserService(repo)
+	evc := email.NewEmailService(ioc.InitEmailCfg())
+	svc := service.NewUserService(repo, evc)
 
 	userHandle := web.NewUserHandler(svc)
 	userHandle.RegisterRoutes(server)
@@ -314,9 +378,21 @@ func initWebServer() *gin.Engine {
 func initUser(db *gorm.DB) *web.UserHandler {
 	da := dao.NewUserInfoDAO(db)
 	repo := repository.NewUserInfoRepository(da)
-	svc := service.NewUserService(repo)
+	evc := email.NewEmailService(ioc.InitEmailCfg())
+	svc := service.NewUserService(repo, evc)
 	u := web.NewUserHandler(svc)
 	return u
+}
+
+func genToken(emailAddr string, timeout int) string {
+	token := jwt.NewWithClaims(jwt.SigningMethodHS512, service.EmailClaims{
+		Email: emailAddr,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Minute * time.Duration(timeout))),
+		},
+	})
+	tokenStr, _ := token.SignedString([]byte(service.EmailJWTKey))
+	return tokenStr
 }
 
 func Decrypt(encryptString string, secret string) (interface{}, error) {

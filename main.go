@@ -6,9 +6,11 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/ecodeclub/webook/config"
+	"github.com/ecodeclub/webook/internal/ioc"
 	"github.com/ecodeclub/webook/internal/repository"
 	"github.com/ecodeclub/webook/internal/repository/dao"
 	"github.com/ecodeclub/webook/internal/service"
+	"github.com/ecodeclub/webook/internal/service/email"
 	"github.com/ecodeclub/webook/internal/web"
 )
 
@@ -43,7 +45,8 @@ func initWebServer() *gin.Engine {
 func initUser(db *gorm.DB) *web.UserHandler {
 	da := dao.NewUserInfoDAO(db)
 	repo := repository.NewUserInfoRepository(da)
-	svc := service.NewUserService(repo)
+	evc := email.NewEmailService(ioc.InitEmailCfg())
+	svc := service.NewUserService(repo, evc)
 	u := web.NewUserHandler(svc)
 	return u
 }

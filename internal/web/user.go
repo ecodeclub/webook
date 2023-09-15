@@ -20,7 +20,7 @@ const (
 )
 
 type UserHandler struct {
-	svc              service.UserAndService
+	svc              service.UserService
 	passwordRegexExp *regexp.Regexp
 }
 
@@ -32,7 +32,7 @@ type TokenClaims struct {
 	Uid int64
 }
 
-func NewUserHandler(svc service.UserAndService) *UserHandler {
+func NewUserHandler(svc service.UserService) *UserHandler {
 	return &UserHandler{
 		svc:              svc,
 		passwordRegexExp: regexp.MustCompile(passwordRegexPattern, regexp.None),
@@ -81,6 +81,24 @@ func (u *UserHandler) SignUp(ctx *gin.Context) {
 		return
 	}
 	ctx.String(http.StatusOK, "注册成功！")
+
+	//发送验证邮箱的邮件
+	err = u.svc.SendVerifyEmail(ctx.Request.Context(), info.Email)
+	if err != nil {
+		//TODO： 用zap写日志
+		return
+	}
+}
+
+func (u *UserHandler) EmailVerify(ctx *gin.Context) {
+	token := ctx.Param("token")
+
+	err := u.svc.VerifyEmail(ctx, token)
+	if err != nil {
+		ctx.String(http.StatusOK, "验证失败!")
+		return
+	}
+	ctx.String(http.StatusOK, "验证成功!")
 }
 
 func (u *UserHandler) Login(ctx *gin.Context) {
