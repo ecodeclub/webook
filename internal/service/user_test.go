@@ -2,13 +2,16 @@ package service
 
 import (
 	"context"
-	"testing"
-
 	"github.com/ecodeclub/webook/internal/domain"
 	"github.com/ecodeclub/webook/internal/repository"
 	repomocks "github.com/ecodeclub/webook/internal/repository/mocks"
+	"github.com/ecodeclub/webook/internal/service/email"
+	evcmocks "github.com/ecodeclub/webook/internal/service/email/mocks"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
+	"testing"
+	"time"
 )
 
 func TestUserService_Signup(t *testing.T) {
@@ -39,9 +42,96 @@ func TestUserService_Signup(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
 
-			svc := NewUserService(tc.mock(ctrl))
+			svc := NewUserService(tc.mock(ctrl), nil)
 			err := svc.Signup(context.Background(), tc.user)
 			assert.Equal(t, tc.wantErr, err)
 		})
 	}
+}
+
+func TestUserService_SendVerifyEmail(t *testing.T) {
+	testCases := []struct {
+		name    string
+		mock    func(*gomock.Controller) (repository.UserRepository, email.Service)
+		email   string
+		wantErr error
+	}{
+		{
+			name:  "发送认证邮件成功",
+			email: "abc@163.com",
+			mock: func(ctrl *gomock.Controller) (repository.UserRepository, email.Service) {
+				repo := repomocks.NewMockUserRepository(ctrl)
+				emailsvc := evcmocks.NewMockService(ctrl)
+				emailsvc.EXPECT().Send(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+				return repo, emailsvc
+			},
+			wantErr: nil,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			svc := NewUserService(tc.mock(ctrl))
+			err := svc.SendVerifyEmail(context.Background(), tc.email)
+			assert.Equal(t, tc.wantErr, err)
+		})
+	}
+}
+
+func TestUserService_VerifyEmail(t *testing.T) {
+	testCases := []struct {
+		name    string
+		ctx     context.Context
+		mock    func(*gomock.Controller) repository.UserRepository
+		token   string
+		email   string
+		wantErr error
+	}{
+		{
+			name:  "success",
+			email: "abc@qq.com",
+			token: genToken("abc@qq.com", 1),
+			ctx:   context.Background(),
+			mock: func(ctrl *gomock.Controller) repository.UserRepository {
+				mock := repomocks.NewMockUserRepository(ctrl)
+				mock.EXPECT().UpdateEmailVerified(gomock.Any(), gomock.Any()).Return(nil)
+				return mock
+			},
+			wantErr: nil,
+		},
+		{
+			name:  "token 不合法",
+			email: "abc@qq.com",
+			token: "ereqr2332f2g2f23f23",
+			ctx:   context.Background(),
+			mock: func(ctrl *gomock.Controller) repository.UserRepository {
+				mock := repomocks.NewMockUserRepository(ctrl)
+				return mock
+			},
+			wantErr: ErrTokenInvalid,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			svc := NewUserService(tc.mock(ctrl), nil)
+			err := svc.VerifyEmail(context.Background(), tc.token)
+			assert.Equal(t, tc.wantErr, err)
+		})
+	}
+}
+
+func genToken(emailAddr string, timeout int) string {
+	token := jwt.NewWithClaims(jwt.SigningMethodHS512, EmailClaims{
+		Email: emailAddr,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Minute * time.Duration(timeout))),
+		},
+	})
+	tokenStr, _ := token.SignedString([]byte(EmailJWTKey))
+	return tokenStr
 }
