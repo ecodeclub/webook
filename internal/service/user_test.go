@@ -2,6 +2,9 @@ package service
 
 import (
 	"context"
+	"testing"
+	"time"
+
 	"github.com/ecodeclub/webook/internal/domain"
 	"github.com/ecodeclub/webook/internal/repository"
 	repomocks "github.com/ecodeclub/webook/internal/repository/mocks"
@@ -10,8 +13,6 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
-	"testing"
-	"time"
 )
 
 func TestUserService_Signup(t *testing.T) {

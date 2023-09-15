@@ -83,6 +83,7 @@ func TestGormUserDAO_Insert(t *testing.T) {
 				// 如果为 false ，则即使是单一语句，也会开启事务
 				SkipDefaultTransaction: true,
 			})
+			assert.NoError(t, err)
 			d := NewUserInfoDAO(db)
 			err = d.Insert(tc.ctx, tc.user)
 			assert.Equal(t, tc.wantErr, err)
@@ -142,6 +143,7 @@ func TestGormUserDAO_FindByEmail(t *testing.T) {
 				// 如果为 false ，则即使是单一语句，也会开启事务
 				SkipDefaultTransaction: true,
 			})
+			require.NoError(t, err)
 			dao := NewUserInfoDAO(db)
 			user, err := dao.FindByEmail(tt.ctx, tt.email)
 			assert.Equal(t, tt.wantErr, err)
@@ -188,6 +190,7 @@ func TestGormUserDAO_UpdateEmailVerified(t *testing.T) {
 				// 如果为 false ，则即使是单一语句，也会开启事务
 				SkipDefaultTransaction: true,
 			})
+			assert.NoError(t, err)
 			dao := NewUserInfoDAO(db)
 			err = dao.UpdateEmailVerified(tt.ctx, tt.user.Email)
 			assert.Equal(t, tt.wantErr, err)

@@ -4,12 +4,13 @@ package email
 
 import (
 	"context"
+	"testing"
+
 	"github.com/ecodeclub/webook/internal/ioc"
 	"github.com/ecodeclub/webook/internal/repository/dao"
 	daomocks "github.com/ecodeclub/webook/internal/repository/dao/mocks"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
-	"testing"
 )
 
 func TestEmailServic_Send(t *testing.T) {
