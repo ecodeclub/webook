@@ -18,7 +18,7 @@ func TestService_Send(t *testing.T) {
 		name       string
 		ctxFun     func() (context.Context, context.CancelFunc)
 		mocksEmail func(ctrl *gomock.Controller) email.Service
-		retry      Strategy
+		retry      func() Strategy
 		subject    string
 		to         string
 		content    []byte
@@ -35,6 +35,9 @@ func TestService_Send(t *testing.T) {
 				svc.EXPECT().Send(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
 				return svc
 			},
+			retry: func() Strategy {
+				return NewEmailRetryStrategy()
+			},
 			wantErr: nil,
 		},
 		{
@@ -42,6 +45,9 @@ func TestService_Send(t *testing.T) {
 			ctxFun: func() (context.Context, context.CancelFunc) {
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 				return ctx, cancel
+			},
+			retry: func() Strategy {
+				return NewEmailRetryStrategy()
 			},
 			mocksEmail: func(ctrl *gomock.Controller) email.Service {
 				svc := evcmocks.NewMockService(ctrl)
@@ -58,6 +64,9 @@ func TestService_Send(t *testing.T) {
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 				return ctx, cancel
 			},
+			retry: func() Strategy {
+				return NewEmailRetryStrategy()
+			},
 			mocksEmail: func(ctrl *gomock.Controller) email.Service {
 				svc := evcmocks.NewMockService(ctrl)
 				svc.EXPECT().Send(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(context.Canceled)
@@ -73,6 +82,9 @@ func TestService_Send(t *testing.T) {
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 				return ctx, cancel
 			},
+			retry: func() Strategy {
+				return NewEmailRetryStrategy()
+			},
 			mocksEmail: func(ctrl *gomock.Controller) email.Service {
 				svc := evcmocks.NewMockService(ctrl)
 
@@ -81,11 +93,7 @@ func TestService_Send(t *testing.T) {
 				time.Sleep(time.Second * 2)
 				return svc
 			},
-			retry: &EmailRetryStrategy{
-				Interval:   time.Millisecond * 500,
-				MaxCnt:     3,
-				currentCnt: 0,
-			},
+
 			wantErr: context.DeadlineExceeded,
 		},
 		{
@@ -94,16 +102,15 @@ func TestService_Send(t *testing.T) {
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 				return ctx, cancel
 			},
+			retry: func() Strategy {
+				return NewEmailRetryStrategy()
+			},
 			mocksEmail: func(ctrl *gomock.Controller) email.Service {
 				svc := evcmocks.NewMockService(ctrl)
 				svc.EXPECT().Send(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(4).Return(errors.New("未知错误"))
 				return svc
 			},
-			retry: &EmailRetryStrategy{
-				Interval:   time.Millisecond * 100,
-				MaxCnt:     3,
-				currentCnt: 0,
-			},
+
 			wantErr: overRetryTimes,
 		},
 	}
@@ -114,7 +121,7 @@ func TestService_Send(t *testing.T) {
 			defer ctl.Finish()
 			//必须要把ctx 初始化 方便测试下面的ctx 的异常测试
 			ctx, cancel := tc.ctxFun()
-			retryService := NewService(tc.mocksEmail(ctl), tc.retry)
+			retryService := NewRetryEmailService(tc.mocksEmail(ctl), tc.retry)
 			err := retryService.Send(ctx, tc.subject, tc.to, tc.content)
 			cancel()
 			assert.Equal(t, tc.wantErr, err)

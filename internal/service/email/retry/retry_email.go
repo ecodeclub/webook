@@ -13,19 +13,27 @@ var (
 )
 
 type Service struct {
-	svc           email.Service
-	retryStrategy Strategy
+	svc       email.Service
+	retryFunc func() Strategy
 }
 
-func NewService(svc email.Service, retryStrategy Strategy) email.Service {
+//func NewService(svc email.Service, retryStrategy Strategy) email.Service {
+//	return &Service{
+//		svc:           svc,
+//		retryStrategy: retryStrategy,
+//	}
+//}
+
+func NewRetryEmailService(svc email.Service, fac func() Strategy) email.Service {
 	return &Service{
-		svc:           svc,
-		retryStrategy: retryStrategy,
+		svc:       svc,
+		retryFunc: fac,
 	}
 }
 
 func (s *Service) Send(ctx context.Context, subject, to string, content []byte) error {
 	var retryTimer *time.Timer
+	retry := s.retryFunc()
 	defer func() {
 		//谨慎一下
 		if retryTimer != nil {
@@ -38,13 +46,12 @@ func (s *Service) Send(ctx context.Context, subject, to string, content []byte) 
 			//第一次就成功
 			return nil
 		}
-
 		//如果第一次发送就 “超时”或者被“调用者取消” 就没必须继续重试了
 		if err != nil && (errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled)) {
 			return err
 		}
 		//开始重试
-		timeInterval, try := s.retryStrategy.Next()
+		timeInterval, try := retry.Next()
 		if !try {
 			return overRetryTimes
 		}
@@ -73,9 +80,25 @@ type EmailRetryStrategy struct {
 	//时间间隔
 	Interval time.Duration
 	//最大重试次数
-	MaxCnt int
+	MaxCnt int64
 	//当前重试次数
-	currentCnt int
+	currentCnt int64
+}
+
+func NewEmailRetryStrategy() Strategy {
+	return &EmailRetryStrategy{
+		Interval:   time.Millisecond * 200,
+		MaxCnt:     3,
+		currentCnt: 0,
+	}
+}
+
+func NewEmailRetryStrategyV1(duration time.Duration, maxCnt, curCnt int64) Strategy {
+	return &EmailRetryStrategy{
+		Interval:   duration,
+		MaxCnt:     maxCnt,
+		currentCnt: curCnt,
+	}
 }
 
 func (e *EmailRetryStrategy) Next() (time.Duration, bool) {
