@@ -9,7 +9,7 @@ import (
 )
 
 var (
-	OverRetryTimes = errors.New("超过最大重试次数2")
+	overRetryTimes = errors.New("超过最大重试次数")
 )
 
 type Service struct {
@@ -46,7 +46,7 @@ func (s *Service) Send(ctx context.Context, subject, to string, content []byte) 
 		//开始重试
 		timeInterval, try := s.retryStrategy.Next()
 		if !try {
-			return OverRetryTimes
+			return overRetryTimes
 		}
 		if retryTimer == nil {
 			retryTimer = time.NewTimer(timeInterval)

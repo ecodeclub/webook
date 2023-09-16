@@ -104,7 +104,7 @@ func TestService_Send(t *testing.T) {
 				MaxCnt:     3,
 				currentCnt: 0,
 			},
-			wantErr: OverRetryTimes,
+			wantErr: overRetryTimes,
 		},
 	}
 
