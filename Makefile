@@ -42,4 +42,4 @@ mock:
 	@mockgen -source=internal/repository/dao/user.go -package=sqlmock -destination=internal/repository/dao/mocks/user.mock.go
 	@mockgen  -source=internal/repository/user.go -package=repomocks -destination=internal/repository/mocks/user.mock.go
 	@mockgen  -source=internal/service/user.go -package=svcmocks -destination=internal/service/mocks/user.mock.go
-	@mockgen -source=internal/service/email/email.go -package=evcmocks -destination=internal/service/email/mocks/email.mock.go
+	@mockgen -source=internal/service/email/types.go -package=evcmocks -destination=internal/service/email/gomail/mocks/email.mock.go
