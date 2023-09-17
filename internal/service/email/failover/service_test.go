@@ -22,7 +22,7 @@ func TestFailoverEmailService_Send(t *testing.T) {
 		wantErr error
 	}{
 		{
-			name:    "success",
+			name:    "发送成功",
 			ctx:     context.Background(),
 			to:      "to@163.com",
 			subject: "test",
