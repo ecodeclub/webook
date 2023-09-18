@@ -33,7 +33,7 @@ func (f *FailoverEmailService) Send(ctx context.Context, to, subject string, con
 		case context.DeadlineExceeded, context.Canceled:
 			return err
 		default:
-			zap.L().Info("发送邮件失败：", zap.Error(err))
+			zap.L().Warn("发送邮件失败：", zap.Error(err))
 		}
 	}
 	return errors.New("所有邮件服务都失败!")
