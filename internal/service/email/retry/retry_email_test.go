@@ -56,12 +56,17 @@ func TestService_Send(t *testing.T) {
 				svc := evcmocks.NewMockService(ctrl)
 				//time.Sleep(time.Second * 2)
 				//法1
-				//svc.EXPECT().Send(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(context.DeadlineExceeded)
-				//法2
-				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-				defer cancel()
-				time.Sleep(time.Second * 2)
-				svc.EXPECT().Send(ctx, gomock.Any(), gomock.Any(), gomock.Any()).Return(ctx.Err())
+				svc.EXPECT().Send(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(context.DeadlineExceeded)
+				//法2  本地测试能过 但是在github 提交有异常
+				/*
+					Got: context.Background.WithDeadline(2023-09-18 01:15:18.983456296 +0000 UTC m=+1.000517412 [-1.000415033s]) (*context.timerCtx)
+					            Want: is equal to context.Background.WithDeadline(2023-09-18 01:15:18.983457096 +0000 UTC m=+1.000518212 [-1.000428533s]) (*context.timerCtx)
+					        controller.go:251: missing call(s) to *evcmocks.MockService.Send(is equal to context.Background.WithDeadline(2023-09-18 01:15:18.983457096 +0000 UTC m=+1.000518212 [-1.000510435s])
+				*/
+				//ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+				//defer cancel()
+				//time.Sleep(time.Second * 2)
+				//svc.EXPECT().Send(ctx, gomock.Any(), gomock.Any(), gomock.Any()).Return(ctx.Err())
 
 				//写个延时 保证contex 必定超时
 				return svc
