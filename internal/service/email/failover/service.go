@@ -3,9 +3,10 @@ package failover
 import (
 	"context"
 	"errors"
+	"sync/atomic"
+
 	"github.com/ecodeclub/webook/internal/service/email"
 	"go.uber.org/zap"
-	"sync/atomic"
 )
 
 type FailoverEmailService struct {
