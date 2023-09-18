@@ -9,6 +9,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
 
+	"github.com/ecodeclub/ekit/retry"
+
 	"github.com/ecodeclub/webook/internal/service/email"
 	evcmocks "github.com/ecodeclub/webook/internal/service/email/mocks"
 )
@@ -18,7 +20,7 @@ func TestService_Send(t *testing.T) {
 		name       string
 		ctxFun     func() (context.Context, context.CancelFunc)
 		mocksEmail func(ctrl *gomock.Controller) email.Service
-		retry      func() Strategy
+		retry      func() retry.Strategy
 		subject    string
 		to         string
 		content    []byte
@@ -35,7 +37,7 @@ func TestService_Send(t *testing.T) {
 				svc.EXPECT().Send(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
 				return svc
 			},
-			retry: func() Strategy {
+			retry: func() retry.Strategy {
 				return NewEmailRetryStrategy()
 			},
 			wantErr: nil,
@@ -44,15 +46,23 @@ func TestService_Send(t *testing.T) {
 			name: "首次发送失败,然后,超时(不进行重试)",
 			ctxFun: func() (context.Context, context.CancelFunc) {
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+
 				return ctx, cancel
 			},
-			retry: func() Strategy {
+			retry: func() retry.Strategy {
 				return NewEmailRetryStrategy()
 			},
 			mocksEmail: func(ctrl *gomock.Controller) email.Service {
 				svc := evcmocks.NewMockService(ctrl)
 				//time.Sleep(time.Second * 2)
-				svc.EXPECT().Send(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(context.DeadlineExceeded)
+				//法1
+				//svc.EXPECT().Send(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(context.DeadlineExceeded)
+				//法2
+				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+				defer cancel()
+				time.Sleep(time.Second * 2)
+				svc.EXPECT().Send(ctx, gomock.Any(), gomock.Any(), gomock.Any()).Return(ctx.Err())
+
 				//写个延时 保证contex 必定超时
 				return svc
 			},
@@ -64,14 +74,20 @@ func TestService_Send(t *testing.T) {
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 				return ctx, cancel
 			},
-			retry: func() Strategy {
+			retry: func() retry.Strategy {
 				return NewEmailRetryStrategy()
 			},
 			mocksEmail: func(ctrl *gomock.Controller) email.Service {
 				svc := evcmocks.NewMockService(ctrl)
+				//法1
 				svc.EXPECT().Send(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(context.Canceled)
-				//写个延时 保证contex 必定超时
 
+				//这里直接调用cancel 有问题
+				//missing call(s) to *evcmocks.MockService.Send(is equal to context.Background.WithDeadline(2023-09-18 08:33:39.7659259 +0800 +08 m=+3.016250601 [849.5447ms]) (*context.timerCtx)
+				//
+				//ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+				//cancel()
+				//svc.EXPECT().Send(ctx, gomock.Any(), gomock.Any(), gomock.Any()).Return(ctx.Err())
 				return svc
 			},
 			wantErr: context.Canceled,
@@ -80,9 +96,11 @@ func TestService_Send(t *testing.T) {
 			name: "首次发送失败,然后进行重试,重试第一次超时",
 			ctxFun: func() (context.Context, context.CancelFunc) {
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+				//写个延时 保证contex 必定超时
+				time.Sleep(time.Second * 2)
 				return ctx, cancel
 			},
-			retry: func() Strategy {
+			retry: func() retry.Strategy {
 				return NewEmailRetryStrategy()
 			},
 			mocksEmail: func(ctrl *gomock.Controller) email.Service {
@@ -90,7 +108,7 @@ func TestService_Send(t *testing.T) {
 
 				svc.EXPECT().Send(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(errors.New("未知错误"))
 				//写个延时 保证contex 必定超时
-				time.Sleep(time.Second * 2)
+				//time.Sleep(time.Second * 2)
 				return svc
 			},
 
@@ -102,7 +120,7 @@ func TestService_Send(t *testing.T) {
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 				return ctx, cancel
 			},
-			retry: func() Strategy {
+			retry: func() retry.Strategy {
 				return NewEmailRetryStrategy()
 			},
 			mocksEmail: func(ctrl *gomock.Controller) email.Service {

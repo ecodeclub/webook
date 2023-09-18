@@ -5,6 +5,8 @@ import (
 	"errors"
 	"time"
 
+	"github.com/ecodeclub/ekit/retry"
+
 	"github.com/ecodeclub/webook/internal/service/email"
 )
 
@@ -14,7 +16,7 @@ var (
 
 type Service struct {
 	svc       email.Service
-	retryFunc func() Strategy
+	retryFunc func() retry.Strategy
 }
 
 //func NewService(svc email.Service, retryStrategy Strategy) email.Service {
@@ -24,7 +26,7 @@ type Service struct {
 //	}
 //}
 
-func NewRetryEmailService(svc email.Service, fac func() Strategy) email.Service {
+func NewRetryEmailService(svc email.Service, fac func() retry.Strategy) *Service {
 	return &Service{
 		svc:       svc,
 		retryFunc: fac,
@@ -33,7 +35,7 @@ func NewRetryEmailService(svc email.Service, fac func() Strategy) email.Service 
 
 func (s *Service) Send(ctx context.Context, subject, to string, content []byte) error {
 	var retryTimer *time.Timer
-	retry := s.retryFunc()
+	retryFunc := s.retryFunc()
 	defer func() {
 		//谨慎一下
 		if retryTimer != nil {
@@ -51,14 +53,14 @@ func (s *Service) Send(ctx context.Context, subject, to string, content []byte) 
 			return err
 		}
 		//开始重试
-		timeInterval, try := retry.Next()
+		timeInterval, try := retryFunc.Next()
 		if !try {
 			return overRetryTimes
 		}
 		if retryTimer == nil {
 			retryTimer = time.NewTimer(timeInterval)
 		} else {
-			retryTimer.Stop()
+			//retryTimer.Stop()
 			retryTimer.Reset(timeInterval)
 		}
 
@@ -85,7 +87,7 @@ type EmailRetryStrategy struct {
 	currentCnt int64
 }
 
-func NewEmailRetryStrategy() Strategy {
+func NewEmailRetryStrategy() retry.Strategy {
 	return &EmailRetryStrategy{
 		Interval:   time.Millisecond * 200,
 		MaxCnt:     3,
@@ -93,7 +95,7 @@ func NewEmailRetryStrategy() Strategy {
 	}
 }
 
-func NewEmailRetryStrategyV1(duration time.Duration, maxCnt, curCnt int64) Strategy {
+func NewEmailRetryStrategyV1(duration time.Duration, maxCnt, curCnt int64) retry.Strategy {
 	return &EmailRetryStrategy{
 		Interval:   duration,
 		MaxCnt:     maxCnt,
