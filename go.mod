@@ -5,6 +5,7 @@ go 1.21
 require (
 	github.com/DATA-DOG/go-sqlmock v1.5.0
 	github.com/dlclark/regexp2 v1.10.0
+	github.com/ecodeclub/ekit v0.0.7
 	github.com/gin-gonic/gin v1.9.1
 	github.com/go-gomail/gomail v0.0.0-20160411212932-81ebce5c23df
 	github.com/go-sql-driver/mysql v1.7.1
