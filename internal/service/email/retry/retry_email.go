@@ -19,13 +19,6 @@ type Service struct {
 	retryFunc func() retry.Strategy
 }
 
-//func NewService(svc email.Service, retryStrategy Strategy) email.Service {
-//	return &Service{
-//		svc:           svc,
-//		retryStrategy: retryStrategy,
-//	}
-//}
-
 func NewRetryEmailService(svc email.Service, fac func() retry.Strategy) *Service {
 	return &Service{
 		svc:       svc,
@@ -77,38 +70,3 @@ func (s *Service) Send(ctx context.Context, subject, to string, content []byte) 
 
 	}
 }
-
-//用户的自定义实现
-
-//type EmailRetryStrategy struct {
-//	//时间间隔
-//	Interval time.Duration
-//	//最大重试次数
-//	MaxCnt int64
-//	//当前重试次数
-//	currentCnt int64
-//}
-
-//func NewEmailRetryStrategy() retry.Strategy {
-//	return &EmailRetryStrategy{
-//		Interval:   time.Millisecond * 200,
-//		MaxCnt:     3,
-//		currentCnt: 0,
-//	}
-//}
-
-//func NewEmailRetryStrategyV1(duration time.Duration, maxCnt, curCnt int64) retry.Strategy {
-//	return &EmailRetryStrategy{
-//		Interval:   duration,
-//		MaxCnt:     maxCnt,
-//		currentCnt: curCnt,
-//	}
-//}
-//
-//func (e *EmailRetryStrategy) Next() (time.Duration, bool) {
-//	if e.currentCnt >= e.MaxCnt {
-//		return 0, false
-//	}
-//	e.currentCnt++
-//	return e.Interval, true
-//}

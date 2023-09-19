@@ -66,18 +66,7 @@ func TestService_Send(t *testing.T) {
 				//time.Sleep(time.Second * 2)
 				//法1
 				svc.EXPECT().Send(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(context.DeadlineExceeded)
-				//法2  本地测试能过 但是在github 提交有异常
-				/*
-					Got: context.Background.WithDeadline(2023-09-18 01:15:18.983456296 +0000 UTC m=+1.000517412 [-1.000415033s]) (*context.timerCtx)
-					            Want: is equal to context.Background.WithDeadline(2023-09-18 01:15:18.983457096 +0000 UTC m=+1.000518212 [-1.000428533s]) (*context.timerCtx)
-					        controller.go:251: missing call(s) to *evcmocks.MockService.Send(is equal to context.Background.WithDeadline(2023-09-18 01:15:18.983457096 +0000 UTC m=+1.000518212 [-1.000510435s])
-				*/
-				//ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-				//defer cancel()
-				//time.Sleep(time.Second * 2)
-				//svc.EXPECT().Send(ctx, gomock.Any(), gomock.Any(), gomock.Any()).Return(ctx.Err())
 
-				//写个延时 保证contex 必定超时
 				return svc
 			},
 			wantErr: context.DeadlineExceeded,
@@ -100,12 +89,6 @@ func TestService_Send(t *testing.T) {
 				//法1
 				svc.EXPECT().Send(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(context.Canceled)
 
-				//这里直接调用cancel 有问题
-				//missing call(s) to *evcmocks.MockService.Send(is equal to context.Background.WithDeadline(2023-09-18 08:33:39.7659259 +0800 +08 m=+3.016250601 [849.5447ms]) (*context.timerCtx)
-				//
-				//ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-				//cancel()
-				//svc.EXPECT().Send(ctx, gomock.Any(), gomock.Any(), gomock.Any()).Return(ctx.Err())
 				return svc
 			},
 			wantErr: context.Canceled,
@@ -129,8 +112,7 @@ func TestService_Send(t *testing.T) {
 				svc := evcmocks.NewMockService(ctrl)
 
 				svc.EXPECT().Send(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(errors.New("未知错误"))
-				//写个延时 保证contex 必定超时
-				//time.Sleep(time.Second * 2)
+
 				return svc
 			},
 
