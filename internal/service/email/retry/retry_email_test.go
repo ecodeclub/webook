@@ -38,7 +38,12 @@ func TestService_Send(t *testing.T) {
 				return svc
 			},
 			retry: func() retry.Strategy {
-				return NewEmailRetryStrategy()
+				//使用ekit retry 包 已经定义好的实现
+				strategy, err := retry.NewFixedIntervalRetryStrategy(time.Second, 3)
+				if err != nil {
+					panic(err)
+				}
+				return strategy
 			},
 			wantErr: nil,
 		},
@@ -50,7 +55,11 @@ func TestService_Send(t *testing.T) {
 				return ctx, cancel
 			},
 			retry: func() retry.Strategy {
-				return NewEmailRetryStrategy()
+				strategy, err := retry.NewFixedIntervalRetryStrategy(time.Second, 3)
+				if err != nil {
+					panic(err)
+				}
+				return strategy
 			},
 			mocksEmail: func(ctrl *gomock.Controller) email.Service {
 				svc := evcmocks.NewMockService(ctrl)
@@ -80,7 +89,11 @@ func TestService_Send(t *testing.T) {
 				return ctx, cancel
 			},
 			retry: func() retry.Strategy {
-				return NewEmailRetryStrategy()
+				strategy, err := retry.NewFixedIntervalRetryStrategy(time.Second, 3)
+				if err != nil {
+					panic(err)
+				}
+				return strategy
 			},
 			mocksEmail: func(ctrl *gomock.Controller) email.Service {
 				svc := evcmocks.NewMockService(ctrl)
@@ -106,7 +119,11 @@ func TestService_Send(t *testing.T) {
 				return ctx, cancel
 			},
 			retry: func() retry.Strategy {
-				return NewEmailRetryStrategy()
+				strategy, err := retry.NewFixedIntervalRetryStrategy(time.Second, 3)
+				if err != nil {
+					panic(err)
+				}
+				return strategy
 			},
 			mocksEmail: func(ctrl *gomock.Controller) email.Service {
 				svc := evcmocks.NewMockService(ctrl)
@@ -126,7 +143,11 @@ func TestService_Send(t *testing.T) {
 				return ctx, cancel
 			},
 			retry: func() retry.Strategy {
-				return NewEmailRetryStrategy()
+				strategy, err := retry.NewFixedIntervalRetryStrategy(time.Millisecond*100, 3)
+				if err != nil {
+					panic(err)
+				}
+				return strategy
 			},
 			mocksEmail: func(ctrl *gomock.Controller) email.Service {
 				svc := evcmocks.NewMockService(ctrl)
