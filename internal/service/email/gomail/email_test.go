@@ -1,6 +1,6 @@
 //go:build manual
 
-package email
+package gomail
 
 import (
 	"context"

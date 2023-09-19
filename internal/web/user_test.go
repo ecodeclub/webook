@@ -138,7 +138,7 @@ func TestUserHandler_SignUp(t *testing.T) {
 			wantBody: "注册成功！",
 		},
 	}
-	gin.SetMode(gin.ReleaseMode)
+	//gin.SetMode(gin.ReleaseMode)
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
@@ -196,7 +196,7 @@ func TestUserHandler_EmailVerify(t *testing.T) {
 			wantBody: "验证失败!",
 		},
 	}
-	gin.SetMode(gin.ReleaseMode)
+	//gin.SetMode(gin.ReleaseMode)
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
@@ -256,7 +256,7 @@ func TestUserHandle_TokenLogin(t *testing.T) {
 			fingerprint: "for-test",
 		},
 	}
-
+	//gin.SetMode(gin.ReleaseMode)
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)

@@ -9,7 +9,7 @@ import (
 	"github.com/ecodeclub/webook/internal/repository"
 	repomocks "github.com/ecodeclub/webook/internal/repository/mocks"
 	"github.com/ecodeclub/webook/internal/service/email"
-	evcmocks "github.com/ecodeclub/webook/internal/service/email/mocks"
+	evcmocks "github.com/ecodeclub/webook/internal/service/email/gomail/mocks"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
