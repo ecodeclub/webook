@@ -4,12 +4,16 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/ecodeclub/webook/internal/repository"
+	"github.com/ecodeclub/webook/internal/repository/dao"
+
 	regexp "github.com/dlclark/regexp2"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 
 	"github.com/ecodeclub/webook/internal/domain"
 	"github.com/ecodeclub/webook/internal/service"
+	"github.com/google/wire"
 )
 
 const (
@@ -17,6 +21,10 @@ const (
 	passwordRegexPattern = `^.{6,}$`
 	AccessSecret         = "95osj3fUD7fo0mlYdDbncXz4VD2igvf0"
 	RefreshSecret        = "95osj3fUD7fo0m123DbncXz4VD2igvf0"
+)
+
+var (
+	UserWireSet = wire.NewSet(NewUserHandler, service.NewUserService, repository.NewUserInfoRepository, dao.NewUserInfoDAO)
 )
 
 type UserHandler struct {
