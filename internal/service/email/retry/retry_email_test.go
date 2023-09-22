@@ -12,7 +12,7 @@ import (
 	"github.com/ecodeclub/ekit/retry"
 
 	"github.com/ecodeclub/webook/internal/service/email"
-	evcmocks "github.com/ecodeclub/webook/internal/service/mocks"
+	evcmocks "github.com/ecodeclub/webook/internal/service/email/gomail/mocks"
 )
 
 func TestService_Send(t *testing.T) {
