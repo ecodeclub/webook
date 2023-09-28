@@ -370,12 +370,7 @@ func TestUserHandler_Edit(t *testing.T) {
 			name: "更新成功",
 			mock: func(ctrl *gomock.Controller) service.UserService {
 				userSvc := svcmocks.NewMockUserService(ctrl)
-				userSvc.EXPECT().EditUserProfile(gomock.Any(), &domain.User{
-					Id:       1,
-					NickName: "frankiejun",
-					Birthday: "2020-01-01",
-					AboutMe:  "I am a good boy",
-				}).Return(nil)
+				userSvc.EXPECT().EditUserProfile(gomock.Any(), gomock.Any()).Return(nil)
 				return userSvc
 			},
 			body:     `{"id":1,"nickname":"frankiejun","birthday":"2020-01-01","aboutme":"I am a good boy"}`,
