@@ -143,13 +143,13 @@ func TestUserHandler_e2e_SignUp(t *testing.T) {
 			},
 			after: func(t *testing.T) {
 				var u dao.User
-				db.Where("email = ?", "l0slakers@gmail.com").First(&u)
+				d := db.Where("email = ?", "l0slakers@gmail.com").First(&u)
 				assert.NotEmpty(t, u.Id)
 				assert.NotEmpty(t, u.Email)
 				assert.NotEmpty(t, u.Password)
 				assert.NotEmpty(t, u.CreateTime)
 				assert.NotEmpty(t, u.UpdateTime)
-				//d.Delete(&u)
+				d.Delete(&u)
 			},
 			body: `
 {
