@@ -4,6 +4,8 @@ import (
 	"net/http"
 	"time"
 
+	"go.uber.org/zap"
+
 	regexp "github.com/dlclark/regexp2"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
@@ -17,11 +19,15 @@ const (
 	passwordRegexPattern = `^.{6,}$`
 	AccessSecret         = "95osj3fUD7fo0mlYdDbncXz4VD2igvf0"
 	RefreshSecret        = "95osj3fUD7fo0m123DbncXz4VD2igvf0"
+	birthdayRegexPatten  = `^(19|20)\d\d[-](0[1-9]|1[012])[-](0[1-9]|[12][0-9]|3[01])$`
+	aboutMeMaxLen        = 1024
+	nickNameMaxLen       = 128
 )
 
 type UserHandler struct {
-	svc              service.UserService
-	passwordRegexExp *regexp.Regexp
+	svc                 service.UserService
+	passwordRegexExp    *regexp.Regexp
+	birthdayRegexPatten *regexp.Regexp
 }
 
 type TokenClaims struct {
@@ -34,8 +40,9 @@ type TokenClaims struct {
 
 func NewUserHandler(svc service.UserService) *UserHandler {
 	return &UserHandler{
-		svc:              svc,
-		passwordRegexExp: regexp.MustCompile(passwordRegexPattern, regexp.None),
+		svc:                 svc,
+		passwordRegexExp:    regexp.MustCompile(passwordRegexPattern, regexp.None),
+		birthdayRegexPatten: regexp.MustCompile(birthdayRegexPatten, regexp.None),
 	}
 }
 
@@ -156,4 +163,53 @@ func (u *UserHandler) setAccessToken(ctx *gin.Context, fingerprint string, uid i
 	ctx.Header("x-refresh-token", refreshToken)
 
 	return nil
+}
+
+// Edit 用户编译信息
+func (c *UserHandler) Edit(ctx *gin.Context) {
+	type UserEditReq struct {
+		Id       int64
+		NickName string
+		Birthday string
+		AboutMe  string
+	}
+	var req UserEditReq
+
+	if err := ctx.Bind(&req); err != nil {
+		return
+	}
+
+	if len(req.NickName) > nickNameMaxLen {
+		ctx.String(http.StatusOK, "昵称超过长度限制！")
+		return
+	}
+
+	//校验生日格式是否合法
+	isBirthday, err := c.birthdayRegexPatten.MatchString(req.Birthday)
+	if err != nil {
+		ctx.String(http.StatusOK, "系统错误")
+		return
+	}
+	if !isBirthday {
+		ctx.String(http.StatusOK,
+			"非法的生日日期，标准样式为：yyyy-mm-dd")
+		return
+	}
+	//校验简介长度
+	if len(req.AboutMe) > aboutMeMaxLen {
+		ctx.String(http.StatusOK, "简介超过长度限制！")
+		return
+	}
+	err = c.svc.EditUserProfile(ctx, domain.User{
+		Id:       req.Id,
+		Birthday: req.Birthday,
+		NickName: req.NickName,
+		AboutMe:  req.AboutMe,
+	})
+	if err != nil {
+		ctx.String(http.StatusOK, "更新失败!")
+		zap.L().Error("用户信息更新失败:", zap.Error(err))
+		return
+	}
+	ctx.String(http.StatusOK, "更新成功")
 }

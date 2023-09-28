@@ -35,6 +35,20 @@ func (m *MockUserService) EXPECT() *MockUserServiceMockRecorder {
 	return m.recorder
 }
 
+// EditUserProfile mocks base method.
+func (m *MockUserService) EditUserProfile(ctx context.Context, u domain.User) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "EditUserProfile", ctx, u)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// EditUserProfile indicates an expected call of EditUserProfile.
+func (mr *MockUserServiceMockRecorder) EditUserProfile(ctx, u interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EditUserProfile", reflect.TypeOf((*MockUserService)(nil).EditUserProfile), ctx, u)
+}
+
 // SendVerifyEmail mocks base method.
 func (m *MockUserService) SendVerifyEmail(ctx context.Context, email string) error {
 	m.ctrl.T.Helper()

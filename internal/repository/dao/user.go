@@ -2,6 +2,7 @@ package dao
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"time"
 
@@ -16,6 +17,7 @@ var (
 type UserDAO interface {
 	Insert(ctx context.Context, u User) error
 	UpdateEmailVerified(ctx context.Context, email string) error
+	UpdateUserProfile(ctx context.Context, u User) error
 	FindByEmail(ctx context.Context, email string) (User, error)
 }
 
@@ -24,8 +26,13 @@ type User struct {
 	Email         string `gorm:"unique"`
 	EmailVerified bool
 	Password      string
-	CreateTime    int64
-	UpdateTime    int64
+
+	NickName sql.NullString
+	Birthday sql.NullString
+	AboutMe  sql.NullString
+
+	CreateTime int64
+	UpdateTime int64
 }
 
 type GormUserDAO struct {
@@ -67,4 +74,14 @@ func (dao *GormUserDAO) FindByEmail(ctx context.Context, email string) (User, er
 	var u User
 	err := dao.db.WithContext(ctx).First(&u, "email = ?", email).Error
 	return u, err
+}
+
+func (dao *GormUserDAO) UpdateUserProfile(ctx context.Context, u User) error {
+	now := time.Now().UnixMilli()
+	return dao.db.WithContext(ctx).Model(&User{}).Where("id=?", u.Id).Updates(map[string]interface{}{
+		"nick_name":   u.NickName,
+		"birthday":    u.Birthday,
+		"about_me":    u.AboutMe,
+		"update_time": now}).Error
+
 }

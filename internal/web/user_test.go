@@ -357,3 +357,115 @@ func Decrypt(encryptString string, secret string) (interface{}, error) {
 	}
 	return claims, nil
 }
+
+func TestUserHandler_Edit(t *testing.T) {
+	testCases := []struct {
+		name     string
+		mock     func(ctrl *gomock.Controller) service.UserService
+		body     string
+		wantCode int
+		wantBody string
+	}{
+		{
+			name: "更新成功",
+			mock: func(ctrl *gomock.Controller) service.UserService {
+				userSvc := svcmocks.NewMockUserService(ctrl)
+				userSvc.EXPECT().EditUserProfile(gomock.Any(), &domain.User{
+					Id:       1,
+					NickName: "frankiejun",
+					Birthday: "2020-01-01",
+					AboutMe:  "I am a good boy",
+				}).Return(nil)
+				return userSvc
+			},
+			body:     `{"id":1,"nickname":"frankiejun","birthday":"2020-01-01","aboutme":"I am a good boy"}`,
+			wantCode: http.StatusOK,
+			wantBody: "更新成功",
+		},
+		{
+			name: "数据绑定有问题",
+			mock: func(ctrl *gomock.Controller) service.UserService {
+				userSvc := svcmocks.NewMockUserService(ctrl)
+				return userSvc
+			},
+			body:     `{"id":1,"nickname":"frankiejun","birthday":"2020-01-01","aboutme":"I am a good boy"`,
+			wantCode: http.StatusBadRequest,
+		},
+		{
+			name: "昵称超长",
+			mock: func(ctrl *gomock.Controller) service.UserService {
+				userSvc := svcmocks.NewMockUserService(ctrl)
+				return userSvc
+			},
+			body: `
+{"id":1,
+"nickname":"frankiejun11111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111112222222222222222222222222222222222222222222222222222222222222",
+"birthday":"2020-01-01",
+"about_me":"I am a good boy"}
+`,
+			wantCode: http.StatusOK,
+			wantBody: "昵称超过长度限制！",
+		},
+		{
+			name: "个人介绍超长",
+			mock: func(ctrl *gomock.Controller) service.UserService {
+				userSvc := svcmocks.NewMockUserService(ctrl)
+				return userSvc
+			},
+			body: `
+{"id":1,
+"nickname":"frankiejun",
+"birthday":"2020-01-01",
+"aboutme":"I am a good boy5555555555556666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666"}
+`,
+			wantCode: http.StatusOK,
+			wantBody: "简介超过长度限制！",
+		},
+		{
+			name: "生日日期非法",
+			mock: func(ctrl *gomock.Controller) service.UserService {
+				userSvc := svcmocks.NewMockUserService(ctrl)
+				return userSvc
+			},
+			body:     `{"id":1,"nickname":"frankiejun","birthday":"2020.01.01","aboutme":"I am a good boy"}`,
+			wantCode: http.StatusOK,
+			wantBody: "非法的生日日期，标准样式为：yyyy-mm-dd",
+		},
+		{
+			name: "更新失败！",
+			mock: func(ctrl *gomock.Controller) service.UserService {
+				userSvc := svcmocks.NewMockUserService(ctrl)
+				userSvc.EXPECT().EditUserProfile(gomock.Any(), domain.User{
+					Id:       1,
+					NickName: "frankiejun",
+					Birthday: "2020-01-01",
+					AboutMe:  "I am a good boy",
+				}).Return(errors.New("更新失败"))
+				return userSvc
+			},
+			body:     `{"id":1,"nickname":"frankiejun","birthday":"2020-01-01","aboutme":"I am a good boy"}`,
+			wantCode: http.StatusOK,
+			wantBody: "更新失败!",
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			r := gin.Default()
+			h := NewUserHandler(tc.mock(ctrl))
+			h.RegisterRoutes(r)
+
+			req, err := http.NewRequest(http.MethodPost, "/users/edit", bytes.NewBuffer([]byte(tc.body)))
+
+			require.NoError(t, err)
+			req.Header.Set("Content-Type", "application/json")
+			resp := httptest.NewRecorder()
+			r.ServeHTTP(resp, req)
+
+			assert.Equal(t, tc.wantCode, resp.Code)
+			assert.Equal(t, tc.wantBody, resp.Body.String())
+		})
+	}
+}
