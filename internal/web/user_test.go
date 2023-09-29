@@ -450,6 +450,7 @@ func TestUserHandler_Edit(t *testing.T) {
 
 			r := gin.Default()
 			h := NewUserHandler(tc.mock(ctrl))
+
 			h.RegisterRoutes(r)
 
 			req, err := http.NewRequest(http.MethodPost, "/users/edit", bytes.NewBuffer([]byte(tc.body)))

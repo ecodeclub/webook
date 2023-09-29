@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -127,6 +128,59 @@ func TestUserInfoRepository_FindByEmail(t *testing.T) {
 
 			repo := NewUserInfoRepository(tc.mock(ctrl))
 			_, err := repo.FindByEmail(tc.ctx, tc.email)
+			assert.Equal(t, tc.wantErr, err)
+		})
+	}
+}
+
+func TestUserInfoRepository_UpdateUserProfile(t *testing.T) {
+	testCases := []struct {
+		name    string
+		mock    func(*gomock.Controller) dao.UserDAO
+		ctx     context.Context
+		user    domain.User
+		wantErr error
+	}{
+		{
+			name: "更新失败",
+			mock: func(ctrl *gomock.Controller) dao.UserDAO {
+				d := daomocks.NewMockUserDAO(ctrl)
+				d.EXPECT().UpdateUserProfile(gomock.Any(), gomock.Any()).Return(errors.New("更新失败"))
+				return d
+			},
+			ctx: context.Background(),
+			user: domain.User{
+				Id:       1,
+				NickName: "frankiejun",
+				AboutMe:  "I am a good boy",
+				Birthday: "1999-01-01",
+			},
+			wantErr: errors.New("更新失败"),
+		},
+		{
+			name: "更新成功",
+			mock: func(ctrl *gomock.Controller) dao.UserDAO {
+				d := daomocks.NewMockUserDAO(ctrl)
+				d.EXPECT().UpdateUserProfile(gomock.Any(), gomock.Any()).Return(nil)
+				return d
+			},
+			ctx: context.Background(),
+			user: domain.User{
+				Id:       1,
+				NickName: "frankiejun",
+				AboutMe:  "I am a good boy",
+				Birthday: "1999-01-01",
+			},
+			wantErr: nil,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			repo := NewUserInfoRepository(tc.mock(ctrl))
+			err := repo.UpdateUserProfile(tc.ctx, tc.user)
 			assert.Equal(t, tc.wantErr, err)
 		})
 	}
