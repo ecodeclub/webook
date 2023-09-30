@@ -21,6 +21,9 @@ type User struct {
 	Email         string
 	EmailVerified bool
 	Password      string
+	NickName      string
+	Birthday      string
+	AboutMe       string
 	CreateTime    time.Time
 	UpdateTime    time.Time
 }

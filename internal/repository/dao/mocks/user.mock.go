@@ -77,3 +77,17 @@ func (mr *MockUserDAOMockRecorder) UpdateEmailVerified(ctx, email interface{}) *
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateEmailVerified", reflect.TypeOf((*MockUserDAO)(nil).UpdateEmailVerified), ctx, email)
 }
+
+// UpdateUserProfile mocks base method.
+func (m *MockUserDAO) UpdateUserProfile(ctx context.Context, u dao.User) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateUserProfile", ctx, u)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateUserProfile indicates an expected call of UpdateUserProfile.
+func (mr *MockUserDAOMockRecorder) UpdateUserProfile(ctx, u interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateUserProfile", reflect.TypeOf((*MockUserDAO)(nil).UpdateUserProfile), ctx, u)
+}

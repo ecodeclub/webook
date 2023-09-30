@@ -136,3 +136,40 @@ func genToken(emailAddr string, timeout int) string {
 	tokenStr, _ := token.SignedString([]byte(EmailJWTKey))
 	return tokenStr
 }
+
+func Test_userService_EditUserProfile(t *testing.T) {
+	testCases := []struct {
+		name    string
+		ctx     context.Context
+		mock    func(*gomock.Controller) repository.UserRepository
+		user    domain.User
+		wantErr error
+	}{
+		{
+			name: "修改成功",
+			ctx:  context.Background(),
+			mock: func(ctrl *gomock.Controller) repository.UserRepository {
+				mock := repomocks.NewMockUserRepository(ctrl)
+				mock.EXPECT().UpdateUserProfile(gomock.Any(), gomock.Any()).Return(nil)
+				return mock
+			},
+			user: domain.User{
+				Id:       1,
+				NickName: "frankiejun",
+				Birthday: "2020-01-01",
+				AboutMe:  "I am a good boy",
+			},
+			wantErr: nil,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			svc := NewUserService(tc.mock(ctrl), nil)
+			err := svc.EditUserProfile(tc.ctx, tc.user)
+			assert.Equal(t, tc.wantErr, err)
+		})
+	}
+}

@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"database/sql"
 
 	"github.com/ecodeclub/webook/internal/domain"
 	"github.com/ecodeclub/webook/internal/repository/dao"
@@ -15,6 +16,7 @@ type UserRepository interface {
 	Create(ctx context.Context, u *domain.User) error
 	UpdateEmailVerified(ctx context.Context, email string) error
 	FindByEmail(ctx context.Context, email string) (domain.User, error)
+	UpdateUserProfile(ctx context.Context, u domain.User) error
 }
 
 type UserInfoRepository struct {
@@ -56,4 +58,22 @@ func (ur *UserInfoRepository) FindByEmail(ctx context.Context, email string) (do
 		return domain.User{}, err
 	}
 	return ur.userToDomain(user), err
+}
+
+func (ur *UserInfoRepository) UpdateUserProfile(ctx context.Context, u domain.User) error {
+	return ur.dao.UpdateUserProfile(ctx, dao.User{
+		Id: u.Id,
+		NickName: sql.NullString{
+			String: u.NickName,
+			Valid:  len(u.NickName) > 0,
+		},
+		Birthday: sql.NullString{
+			String: u.Birthday,
+			Valid:  len(u.Birthday) > 0,
+		},
+		AboutMe: sql.NullString{
+			String: u.AboutMe,
+			Valid:  len(u.AboutMe) > 0,
+		},
+	})
 }

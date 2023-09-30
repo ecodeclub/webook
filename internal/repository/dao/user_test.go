@@ -197,3 +197,81 @@ func TestGormUserDAO_UpdateEmailVerified(t *testing.T) {
 		})
 	}
 }
+
+func TestGormUserDAO_UpdateUserProfile(t *testing.T) {
+	testCases := []struct {
+		name    string
+		ctx     context.Context
+		user    User
+		mock    func(t *testing.T) *sql.DB
+		wantErr error
+	}{
+		{
+			name: "更新成功",
+			ctx:  context.Background(),
+			user: User{
+				Id: 1,
+				NickName: sql.NullString{
+					String: "frankiejun",
+					Valid:  true,
+				},
+				Birthday: sql.NullString{
+					String: "2000-01-01",
+					Valid:  true,
+				},
+				AboutMe: sql.NullString{
+					String: "I am a programmer",
+					Valid:  true,
+				},
+			},
+			mock: func(t *testing.T) *sql.DB {
+				mockDB, mock, err := sqlmock.New()
+				require.NoError(t, err)
+				mock.ExpectExec("UPDATE `users` .*").WillReturnResult(sqlmock.NewResult(1, 1))
+				return mockDB
+			},
+			wantErr: nil,
+		},
+		{
+			name: "更新失败",
+			ctx:  context.Background(),
+			user: User{
+				Id: 1,
+				NickName: sql.NullString{
+					String: "frankiejun",
+					Valid:  true,
+				},
+				Birthday: sql.NullString{
+					String: "2000-01-01",
+					Valid:  true,
+				},
+				AboutMe: sql.NullString{
+					String: "I am a programmer",
+					Valid:  true,
+				},
+			},
+			mock: func(t *testing.T) *sql.DB {
+				mockDB, mock, err := sqlmock.New()
+				require.NoError(t, err)
+				mock.ExpectExec("UPDATE `users` .*").WillReturnError(errors.New("update failed"))
+				return mockDB
+			},
+			wantErr: errors.New("update failed"),
+		},
+	}
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			db, err := gorm.Open(gormMysql.New(gormMysql.Config{
+				Conn:                      tt.mock(t),
+				SkipInitializeWithVersion: true,
+			}), &gorm.Config{
+				DisableAutomaticPing:   true,
+				SkipDefaultTransaction: true,
+			})
+			assert.NoError(t, err)
+			dao := NewUserInfoDAO(db)
+			err = dao.UpdateUserProfile(tt.ctx, tt.user)
+			assert.Equal(t, tt.wantErr, err)
+		})
+	}
+}
