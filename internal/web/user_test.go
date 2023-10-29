@@ -465,3 +465,68 @@ func TestUserHandler_Edit(t *testing.T) {
 		})
 	}
 }
+
+func TestUserHandler_Profile(t *testing.T) {
+	testCases := []struct {
+		name     string
+		ctx      gin.Context
+		mock     func(ctrl *gomock.Controller) service.UserService
+		body     string
+		wantCode int
+		wantBody string
+	}{
+		{
+			name: "查看详细资料",
+			mock: func(ctrl *gomock.Controller) service.UserService {
+				userSvc := svcmocks.NewMockUserService(ctrl)
+				userSvc.EXPECT().Profile(gomock.Any(), gomock.Any()).Return(domain.User{
+					Email:    "abc@qq.com",
+					NickName: "abc",
+					Birthday: "2020-01-01",
+					AboutMe:  "i am a good boy",
+				}, nil)
+				return userSvc
+			},
+			wantCode: http.StatusOK,
+			wantBody: `{"Email":"abc@qq.com","NickName":"abc","Birthday":"2020-01-01","AboutMe":"i am a good boy"}`,
+		},
+		{
+			name: "查不到资料",
+			mock: func(ctrl *gomock.Controller) service.UserService {
+				userSvc := svcmocks.NewMockUserService(ctrl)
+				userSvc.EXPECT().Profile(gomock.Any(), gomock.Any()).Return(domain.User{}, errors.New("data not found"))
+				return userSvc
+			},
+			wantCode: http.StatusOK,
+			wantBody: "系统错误",
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			r := gin.Default()
+			h := NewUserHandler(tc.mock(ctrl))
+
+			// 添加一个 路由
+			r.POST("/users/profile", func(ctx *gin.Context) {
+				ctx.Set("userid", int64(1)) // 模拟设置用户ID
+				h.Profile(ctx)
+			})
+
+			req, err := http.NewRequest(http.MethodPost, "/users/profile", nil)
+
+			require.NoError(t, err)
+
+			req.Header.Set("Content-Type", "application/json")
+			resp := httptest.NewRecorder()
+
+			r.ServeHTTP(resp, req)
+
+			//body, err := json.Marshal(resp.Body)
+			assert.Equal(t, tc.wantCode, resp.Code)
+			assert.Equal(t, tc.wantBody, resp.Body.String())
+		})
+	}
+}

@@ -173,3 +173,40 @@ func Test_userService_EditUserProfile(t *testing.T) {
 		})
 	}
 }
+
+func Test_userService_Profile(t *testing.T) {
+	testCases := []struct {
+		name    string
+		ctx     context.Context
+		mock    func(*gomock.Controller) repository.UserRepository
+		id      int64
+		wantErr error
+	}{
+		{
+			name: "查找成功",
+			ctx:  context.Background(),
+			mock: func(ctrl *gomock.Controller) repository.UserRepository {
+				mock := repomocks.NewMockUserRepository(ctrl)
+				mock.EXPECT().FindById(gomock.Any(), gomock.Any()).Return(domain.User{
+					Id:       1,
+					NickName: "frankiejun",
+					Birthday: "2020-01-01",
+					AboutMe:  "I am a good boy",
+				}, nil)
+				return mock
+			},
+			id:      1,
+			wantErr: nil,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			svc := NewUserService(tc.mock(ctrl), nil)
+			_, err := svc.Profile(tc.ctx, tc.id)
+			assert.Equal(t, tc.wantErr, err)
+		})
+	}
+}

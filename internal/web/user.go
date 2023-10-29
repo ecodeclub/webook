@@ -128,6 +128,7 @@ func (u *UserHandler) Login(ctx *gin.Context) {
 		ctx.String(http.StatusBadRequest, "系统错误")
 		return
 	}
+	ctx.Set("userid", uid)
 
 	ctx.String(http.StatusOK, "登陆成功")
 }
@@ -212,4 +213,26 @@ func (c *UserHandler) Edit(ctx *gin.Context) {
 		return
 	}
 	ctx.String(http.StatusOK, "更新成功")
+}
+
+func (c *UserHandler) Profile(ctx *gin.Context) {
+	type Profile struct {
+		Email    string
+		NickName string
+		Birthday string
+		AboutMe  string
+	}
+
+	id := ctx.MustGet("userid").(int64)
+	u, err := c.svc.Profile(ctx, id)
+	if err != nil {
+		ctx.String(http.StatusOK, "系统错误")
+		return
+	}
+	ctx.JSON(http.StatusOK, Profile{
+		Email:    u.Email,
+		NickName: u.NickName,
+		Birthday: u.Birthday,
+		AboutMe:  u.AboutMe,
+	})
 }

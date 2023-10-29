@@ -17,6 +17,7 @@ type UserRepository interface {
 	UpdateEmailVerified(ctx context.Context, email string) error
 	FindByEmail(ctx context.Context, email string) (domain.User, error)
 	UpdateUserProfile(ctx context.Context, u domain.User) error
+	FindById(ctx context.Context, id int64) (domain.User, error)
 }
 
 type UserInfoRepository struct {
@@ -35,6 +36,9 @@ func (ur *UserInfoRepository) userToDomain(u dao.User) domain.User {
 		EmailVerified: u.EmailVerified,
 		Email:         u.Email,
 		Password:      u.Password,
+		AboutMe:       u.AboutMe.String,
+		Birthday:      u.Birthday.String,
+		NickName:      u.NickName.String,
 	}
 }
 
@@ -76,4 +80,12 @@ func (ur *UserInfoRepository) UpdateUserProfile(ctx context.Context, u domain.Us
 			Valid:  len(u.AboutMe) > 0,
 		},
 	})
+}
+
+func (ur *UserInfoRepository) FindById(ctx context.Context, id int64) (domain.User, error) {
+	user, err := ur.dao.FindById(ctx, id)
+	if err != nil {
+		return domain.User{}, err
+	}
+	return ur.userToDomain(user), err
 }

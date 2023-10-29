@@ -49,6 +49,21 @@ func (mr *MockUserServiceMockRecorder) EditUserProfile(ctx, u interface{}) *gomo
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EditUserProfile", reflect.TypeOf((*MockUserService)(nil).EditUserProfile), ctx, u)
 }
 
+// Profile mocks base method.
+func (m *MockUserService) Profile(ctx context.Context, id int64) (domain.User, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Profile", ctx, id)
+	ret0, _ := ret[0].(domain.User)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Profile indicates an expected call of Profile.
+func (mr *MockUserServiceMockRecorder) Profile(ctx, id interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Profile", reflect.TypeOf((*MockUserService)(nil).Profile), ctx, id)
+}
+
 // SendVerifyEmail mocks base method.
 func (m *MockUserService) SendVerifyEmail(ctx context.Context, email string) error {
 	m.ctrl.T.Helper()
