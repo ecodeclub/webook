@@ -469,7 +469,6 @@ func TestUserHandler_Edit(t *testing.T) {
 func TestUserHandler_Profile(t *testing.T) {
 	testCases := []struct {
 		name     string
-		ctx      gin.Context
 		mock     func(ctrl *gomock.Controller) service.UserService
 		body     string
 		wantCode int
