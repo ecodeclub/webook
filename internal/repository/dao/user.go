@@ -19,6 +19,7 @@ type UserDAO interface {
 	UpdateEmailVerified(ctx context.Context, email string) error
 	UpdateUserProfile(ctx context.Context, u User) error
 	FindByEmail(ctx context.Context, email string) (User, error)
+	FindById(ctx context.Context, id int64) (User, error)
 }
 
 type User struct {
@@ -84,4 +85,10 @@ func (dao *GormUserDAO) UpdateUserProfile(ctx context.Context, u User) error {
 		"about_me":    u.AboutMe,
 		"update_time": now}).Error
 
+}
+
+func (dao *GormUserDAO) FindById(ctx context.Context, id int64) (User, error) {
+	var u User
+	err := dao.db.WithContext(ctx).First(&u, "id = ?", id).Error
+	return u, err
 }

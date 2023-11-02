@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"testing"
 	"time"
@@ -181,6 +182,53 @@ func TestUserInfoRepository_UpdateUserProfile(t *testing.T) {
 
 			repo := NewUserInfoRepository(tc.mock(ctrl))
 			err := repo.UpdateUserProfile(tc.ctx, tc.user)
+			assert.Equal(t, tc.wantErr, err)
+		})
+	}
+}
+
+func TestUserInfoRepository_FindById(t *testing.T) {
+	testCases := []struct {
+		name    string
+		mock    func(*gomock.Controller) dao.UserDAO
+		ctx     context.Context
+		id      int64
+		wantErr error
+	}{
+		{
+			name: "查找成功！",
+			ctx:  context.Background(),
+			mock: func(ctrl *gomock.Controller) dao.UserDAO {
+				d := daomocks.NewMockUserDAO(ctrl)
+				d.EXPECT().FindById(gomock.Any(), gomock.Any()).Return(dao.User{
+					Id:    1,
+					Email: "abc@qq.com",
+					NickName: sql.NullString{
+						String: "frankiejun",
+						Valid:  true,
+					},
+					Birthday: sql.NullString{
+						String: "1999-01-01",
+						Valid:  true,
+					},
+					AboutMe: sql.NullString{
+						String: "I am a good boy",
+						Valid:  true,
+					},
+				}, nil)
+				return d
+			},
+			id:      1,
+			wantErr: nil,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			repo := NewUserInfoRepository(tc.mock(ctrl))
+			_, err := repo.FindById(tc.ctx, tc.id)
 			assert.Equal(t, tc.wantErr, err)
 		})
 	}

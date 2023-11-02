@@ -275,3 +275,47 @@ func TestGormUserDAO_UpdateUserProfile(t *testing.T) {
 		})
 	}
 }
+
+func TestGormUserDAO_FindById(t *testing.T) {
+	testCases := []struct {
+		name    string
+		ctx     context.Context
+		id      int64
+		mock    func(t *testing.T) *sql.DB
+		wantErr error
+	}{
+		{
+			name: "查找成功",
+			ctx:  context.Background(),
+			id:   1,
+			mock: func(t *testing.T) *sql.DB {
+				mockDB, mock, err := sqlmock.New()
+				require.NoError(t, err)
+				rows := sqlmock.NewRows([]string{"id", "email", "about_me", "nick_name", "birthday"})
+				rows.AddRow(1, "abc@qq.com", "nice man", "abc", "2000-01-01")
+				mock.ExpectQuery("^SELECT \\* FROM `users` WHERE id = \\?").WillReturnRows(rows)
+				return mockDB
+			},
+			wantErr: nil,
+		},
+	}
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			db, err := gorm.Open(gormMysql.New(gormMysql.Config{
+				Conn: tt.mock(t),
+				// 如果为 false ，则GORM在初始化时，会先调用 show version
+				SkipInitializeWithVersion: true,
+			}), &gorm.Config{
+				// 如果为 true ，则不允许 Ping数据库
+				DisableAutomaticPing: true,
+				// 如果为 false ，则即使是单一语句，也会开启事务
+				SkipDefaultTransaction: true,
+			})
+			require.NoError(t, err)
+			dao := NewUserInfoDAO(db)
+			_, err = dao.FindById(tt.ctx, tt.id)
+			assert.Equal(t, tt.wantErr, err)
+		})
+	}
+
+}

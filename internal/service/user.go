@@ -26,6 +26,7 @@ type UserService interface {
 	SendVerifyEmail(ctx context.Context, email string) error
 	VerifyEmail(ctx context.Context, tokenStr string) error
 	EditUserProfile(ctx context.Context, u domain.User) error
+	Profile(ctx context.Context, id int64) (domain.User, error)
 }
 
 type userService struct {
@@ -83,4 +84,8 @@ func (svc *userService) VerifyEmail(ctx context.Context, tokenStr string) error 
 
 func (svc *userService) EditUserProfile(ctx context.Context, u domain.User) error {
 	return svc.r.UpdateUserProfile(ctx, u)
+}
+
+func (svc *userService) Profile(ctx context.Context, id int64) (domain.User, error) {
+	return svc.r.FindById(ctx, id)
 }

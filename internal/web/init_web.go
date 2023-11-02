@@ -7,4 +7,5 @@ func (u *UserHandler) RegisterRoutes(server *gin.Engine) {
 	server.POST("/users/email/verify/:token", u.EmailVerify)
 	server.POST("/users/login", u.Login)
 	server.POST("/users/edit", u.Edit)
+	server.POST("/users/profile", u.Profile)
 }
