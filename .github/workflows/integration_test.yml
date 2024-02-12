@@ -31,4 +31,4 @@ jobs:
           go-version: '1.21'
 
       - name: Test
-        run: sudo sh ./script/integrate_test.sh
+        run: make e2e
