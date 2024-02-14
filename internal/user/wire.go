@@ -16,7 +16,7 @@ import (
 
 var ProviderSet = wire.NewSet(web.NewHandler,
 	cache.NewUserECache,
-	dao.NewGORMUserDAO,
+	InitDAO,
 	InitWechatService,
 	service.NewUserService,
 	repository.NewCachedUserRepository)
@@ -31,13 +31,20 @@ func InitWechatService() service.OAuth2Service {
 		AppSecretID  string `yaml:"appSecretID"`
 		AppSecretKey string `yaml:"appSecretKey"`
 	}
-
 	var cfg Config
 	err := econf.UnmarshalKey("wechat", &cfg)
 	if err != nil {
 		panic(err)
 	}
 	return service.NewWechatService(cfg.AppSecretID, cfg.AppSecretKey)
+}
+
+func InitDAO(db *egorm.Component) dao.UserDAO {
+	err := dao.InitTables(db)
+	if err != nil {
+		panic(err)
+	}
+	return dao.NewGORMUserDAO(db)
 }
 
 // Handler 暴露出去给 ioc 使用

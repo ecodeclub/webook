@@ -31,7 +31,8 @@ type HandleTestSuite struct {
 func (s *HandleTestSuite) SetupSuite() {
 	econf.Set("http_users", map[string]any{})
 	s.db = testioc.InitDB()
-	dao.InitTables(s.db)
+	err := dao.InitTables(s.db)
+	require.NoError(s.T(), err)
 	econf.Set("server", map[string]string{})
 	server := egin.Load("server").Build()
 	hdl := startup.InitHandler(nil)
