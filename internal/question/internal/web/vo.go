@@ -20,12 +20,12 @@ type SaveReq struct {
 }
 
 type Question struct {
-	Id int64
+	Id int64 `json:"id,omitempty"`
 	// 面试标题
-	Title string
+	Title string `json:"title,omitempty"`
 	// 面试题目内容
-	Content string
-	Utime   string
+	Content string `json:"content,omitempty"`
+	Utime   string `json:"utime,omitempty"`
 
 	Answer Answer `json:"answer,omitempty"`
 }
@@ -41,17 +41,31 @@ type Answer struct {
 }
 
 type AnswerElement struct {
-	Id int64
+	Id int64 `json:"id,omitempty"`
 
-	Content string
+	Content string `json:"content,omitempty"`
 	// 关键字，辅助记忆，提取重点
-	Keywords string
+	Keywords string `json:"keywords,omitempty"`
 	// 速记，口诀
-	Shorthand string
+	Shorthand string `json:"shorthand,omitempty"`
 
 	// 亮点
-	Highlight string
+	Highlight string `json:"highlight,omitempty"`
 
 	// 引导点
-	Guidance string
+	Guidance string `json:"guidance,omitempty"`
+}
+
+type Page struct {
+	Offset int `json:"offset,omitempty"`
+	Limit  int `json:"limit,omitempty"`
+}
+
+type Qid struct {
+	Qid int64 `json:"qid"`
+}
+
+type QuestionList struct {
+	Questions []Question `json:"questions,omitempty"`
+	Total     int64      `json:"total,omitempty"`
 }

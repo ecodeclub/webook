@@ -16,7 +16,8 @@ import (
 
 func InitHandler() (*web.Handler, error) {
 	db := testioc.InitDB()
-	handler, err := baguwen.InitHandler(db)
+	cache := testioc.InitCache()
+	handler, err := baguwen.InitHandler(db, cache)
 	if err != nil {
 		return nil, err
 	}

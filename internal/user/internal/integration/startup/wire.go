@@ -9,11 +9,12 @@ import (
 	"github.com/ecodeclub/webook/internal/user/internal/repository/cache"
 	"github.com/ecodeclub/webook/internal/user/internal/repository/dao"
 	"github.com/ecodeclub/webook/internal/user/internal/service"
+	"github.com/ecodeclub/webook/internal/user/internal/web"
 	"github.com/google/wire"
 )
 
 func InitHandler(weSvc service.OAuth2Service) *user.Handler {
-	wire.Build(user.NewHandler,
+	wire.Build(web.NewHandler,
 		testioc.BaseSet,
 		service.NewUserService,
 		dao.NewGORMUserDAO,

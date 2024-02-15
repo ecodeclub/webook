@@ -7,7 +7,9 @@
 package baguwen
 
 import (
+	"github.com/ecodeclub/ecache"
 	"github.com/ecodeclub/webook/internal/question/internal/repository"
+	"github.com/ecodeclub/webook/internal/question/internal/repository/cache"
 	"github.com/ecodeclub/webook/internal/question/internal/repository/dao"
 	"github.com/ecodeclub/webook/internal/question/internal/service"
 	"github.com/ecodeclub/webook/internal/question/internal/web"
@@ -16,9 +18,10 @@ import (
 
 // Injectors from wire.go:
 
-func InitHandler(db *gorm.DB) (*web.Handler, error) {
+func InitHandler(db *gorm.DB, ec ecache.Cache) (*web.Handler, error) {
 	questionDAO := dao.NewGORMQuestionDAO(db)
-	repositoryRepository := repository.NewCacheRepository(questionDAO)
+	questionCache := cache.NewQuestionECache(ec)
+	repositoryRepository := repository.NewCacheRepository(questionDAO, questionCache)
 	serviceService := service.NewService(repositoryRepository)
 	handler, err := web.NewHandler(serviceService)
 	if err != nil {

@@ -24,8 +24,12 @@ type Question struct {
 	Content string
 
 	Ctime int64
-	Utime int64
+	Utime int64 `gorm:"index"`
 }
+
+type PublishQuestion Question
+
+type PublishAnswerElement AnswerElement
 
 // AnswerElement 回答，对于一个问题来说，回答分成好几个部分
 // 这个就是代表一个部分

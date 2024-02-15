@@ -21,6 +21,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ecodeclub/ecache"
+
 	"github.com/ecodeclub/ekit/iox"
 	"github.com/ecodeclub/ginx/session"
 	"github.com/ecodeclub/webook/internal/question/internal/integration/startup"
@@ -41,6 +43,7 @@ type HandlerTestSuite struct {
 	suite.Suite
 	server *egin.Component
 	db     *egorm.Component
+	rdb    ecache.Cache
 	dao    dao.QuestionDAO
 }
 
@@ -48,6 +51,23 @@ func (s *HandlerTestSuite) TearDownSuite() {
 	err := s.db.Exec("DROP TABLE `answer_elements`").Error
 	require.NoError(s.T(), err)
 	err = s.db.Exec("DROP TABLE `questions`").Error
+	require.NoError(s.T(), err)
+
+	err = s.db.Exec("DROP TABLE `publish_answer_elements`").Error
+	require.NoError(s.T(), err)
+	err = s.db.Exec("DROP TABLE `publish_questions`").Error
+	require.NoError(s.T(), err)
+}
+
+func (s *HandlerTestSuite) TearDownTest() {
+	err := s.db.Exec("TRUNCATE TABLE `answer_elements`").Error
+	require.NoError(s.T(), err)
+	err = s.db.Exec("TRUNCATE TABLE `questions`").Error
+	require.NoError(s.T(), err)
+
+	err = s.db.Exec("TRUNCATE TABLE `publish_answer_elements`").Error
+	require.NoError(s.T(), err)
+	err = s.db.Exec("TRUNCATE TABLE `publish_questions`").Error
 	require.NoError(s.T(), err)
 }
 
@@ -67,6 +87,7 @@ func (s *HandlerTestSuite) SetupSuite() {
 	err = dao.InitTables(s.db)
 	require.NoError(s.T(), err)
 	s.dao = dao.NewGORMQuestionDAO(s.db)
+	s.rdb = testioc.InitCache()
 }
 
 func (s *HandlerTestSuite) TestSave() {
@@ -128,6 +149,7 @@ func (s *HandlerTestSuite) TestSave() {
 					Ctime:   123,
 					Utime:   234,
 				}).Error
+				require.NoError(t, err)
 				err = s.db.Create(&dao.AnswerElement{
 					Id:        1,
 					Qid:       2,
@@ -192,13 +214,68 @@ func (s *HandlerTestSuite) TestSave() {
 				Data: 2,
 			},
 		},
+		{
+			name: "非法访问",
+			before: func(t *testing.T) {
+				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+				defer cancel()
+				err := s.db.WithContext(ctx).Create(&dao.Question{
+					Id:      3,
+					Uid:     234,
+					Title:   "老的标题",
+					Content: "老的内容",
+					Ctime:   123,
+					Utime:   234,
+				}).Error
+				require.NoError(t, err)
+			},
+			after: func(t *testing.T) {
+				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+				defer cancel()
+				q, _, err := s.dao.GetByID(ctx, 3)
+				require.NoError(t, err)
+				s.assertQuestion(t, dao.Question{
+					Uid:     234,
+					Title:   "老的标题",
+					Content: "老的内容",
+				}, q)
+			},
+			req: func() web.SaveReq {
+				analysis := web.AnswerElement{
+					Id:        1,
+					Content:   "新的分析",
+					Keywords:  "新的 keyword",
+					Shorthand: "新的速记",
+					Highlight: "新的亮点",
+					Guidance:  "新的引导点",
+				}
+				return web.SaveReq{
+					Question: web.Question{
+						Id:      3,
+						Title:   "面试题1",
+						Content: "新的内容",
+						Answer: web.Answer{
+							Analysis:     analysis,
+							Basic:        s.buildAnswerEle(1),
+							Intermediate: s.buildAnswerEle(2),
+							Advanced:     s.buildAnswerEle(3),
+						},
+					},
+				}
+			}(),
+			wantCode: 500,
+			wantResp: test.Result[int64]{
+				Code: 502001,
+				Msg:  "系统错误",
+			},
+		},
 	}
 
 	for _, tc := range testCases {
 		s.T().Run(tc.name, func(t *testing.T) {
 			tc.before(t)
 			req, err := http.NewRequest(http.MethodPost,
-				"/question", iox.NewJSONReader(tc.req))
+				"/question/save", iox.NewJSONReader(tc.req))
 			req.Header.Set("content-type", "application/json")
 			require.NoError(t, err)
 			recorder := test.NewJSONResponseRecorder[int64]()
@@ -211,6 +288,345 @@ func (s *HandlerTestSuite) TestSave() {
 			require.NoError(t, err)
 			err = s.db.Exec("TRUNCATE table `answer_elements`").Error
 			require.NoError(t, err)
+		})
+	}
+}
+
+func (s *HandlerTestSuite) TestList() {
+	// 插入一百条
+	data := make([]dao.PublishQuestion, 0, 100)
+	for idx := 0; idx < 100; idx++ {
+		data = append(data, dao.PublishQuestion{
+			Uid:     123,
+			Title:   fmt.Sprintf("这是标题 %d", idx),
+			Content: fmt.Sprintf("这是解析 %d", idx),
+		})
+	}
+	err := s.db.Create(&data).Error
+	require.NoError(s.T(), err)
+	testCases := []struct {
+		name string
+		req  web.Page
+
+		wantCode int
+		wantResp test.Result[web.QuestionList]
+	}{
+		{
+			name: "获取成功",
+			req: web.Page{
+				Limit:  2,
+				Offset: 0,
+			},
+			wantCode: 200,
+			wantResp: test.Result[web.QuestionList]{
+				Data: web.QuestionList{
+					Total: 100,
+					Questions: []web.Question{
+						{
+							Id:      100,
+							Title:   "这是标题 99",
+							Content: "这是解析 99",
+							Utime:   time.UnixMilli(0).Format(time.DateTime),
+						},
+						{
+							Id:      99,
+							Title:   "这是标题 98",
+							Content: "这是解析 98",
+							Utime:   time.UnixMilli(0).Format(time.DateTime),
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "获取部分",
+			req: web.Page{
+				Limit:  2,
+				Offset: 99,
+			},
+			wantCode: 200,
+			wantResp: test.Result[web.QuestionList]{
+				Data: web.QuestionList{
+					Total: 100,
+					Questions: []web.Question{
+						{
+							Id:      1,
+							Title:   "这是标题 0",
+							Content: "这是解析 0",
+							Utime:   time.UnixMilli(0).Format(time.DateTime),
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		s.T().Run(tc.name, func(t *testing.T) {
+			req, err := http.NewRequest(http.MethodPost,
+				"/question/pub/list", iox.NewJSONReader(tc.req))
+			req.Header.Set("content-type", "application/json")
+			require.NoError(t, err)
+			recorder := test.NewJSONResponseRecorder[web.QuestionList]()
+			s.server.ServeHTTP(recorder, req)
+			require.Equal(t, tc.wantCode, recorder.Code)
+			assert.Equal(t, tc.wantResp, recorder.MustScan())
+		})
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	_, err = s.rdb.Delete(ctx, "webook:question:total")
+	require.NoError(s.T(), err)
+}
+
+func (s *HandlerTestSuite) TestSync() {
+	testCases := []struct {
+		name   string
+		before func(t *testing.T)
+		after  func(t *testing.T)
+		req    web.SaveReq
+
+		wantCode int
+		wantResp test.Result[int64]
+	}{
+		{
+			//
+			name: "全部新建",
+			before: func(t *testing.T) {
+
+			},
+			after: func(t *testing.T) {
+				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+				defer cancel()
+				q, eles, err := s.dao.GetPubByID(ctx, 1)
+				require.NoError(t, err)
+				s.assertQuestion(t, dao.Question{
+					Uid:     123,
+					Title:   "面试题1",
+					Content: "面试题内容",
+				}, dao.Question(q))
+				assert.Equal(t, 4, len(eles))
+			},
+			req: web.SaveReq{
+				Question: web.Question{
+					Title:   "面试题1",
+					Content: "面试题内容",
+					Answer: web.Answer{
+						Analysis:     s.buildAnswerEle(0),
+						Basic:        s.buildAnswerEle(1),
+						Intermediate: s.buildAnswerEle(2),
+						Advanced:     s.buildAnswerEle(3),
+					},
+				},
+			},
+			wantCode: 200,
+			wantResp: test.Result[int64]{
+				Data: 1,
+			},
+		},
+		{
+			//
+			name: "部分更新",
+			before: func(t *testing.T) {
+				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+				defer cancel()
+				err := s.db.WithContext(ctx).Create(&dao.Question{
+					Id:      2,
+					Uid:     123,
+					Title:   "老的标题",
+					Content: "老的内容",
+					Ctime:   123,
+					Utime:   234,
+				}).Error
+				require.NoError(t, err)
+				err = s.db.Create(&dao.AnswerElement{
+					Id:        1,
+					Qid:       2,
+					Type:      dao.AnswerElementTypeAnalysis,
+					Content:   "老的分析",
+					Keywords:  "老的 keyword",
+					Shorthand: "老的速记",
+					Highlight: "老的亮点",
+					Guidance:  "老的引导点",
+					Ctime:     123,
+					Utime:     123,
+				}).Error
+				require.NoError(t, err)
+			},
+			after: func(t *testing.T) {
+				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+				defer cancel()
+				q, eles, err := s.dao.GetByID(ctx, 2)
+				require.NoError(t, err)
+				s.assertQuestion(t, dao.Question{
+					Uid:     123,
+					Title:   "面试题1",
+					Content: "新的内容",
+				}, q)
+				assert.Equal(t, 4, len(eles))
+				analysis := eles[0]
+				s.assertAnswerElement(t, dao.AnswerElement{
+					Content:   "新的分析",
+					Type:      dao.AnswerElementTypeAnalysis,
+					Qid:       2,
+					Keywords:  "新的 keyword",
+					Shorthand: "新的速记",
+					Highlight: "新的亮点",
+					Guidance:  "新的引导点",
+				}, analysis)
+			},
+			req: func() web.SaveReq {
+				analysis := web.AnswerElement{
+					Id:        1,
+					Content:   "新的分析",
+					Keywords:  "新的 keyword",
+					Shorthand: "新的速记",
+					Highlight: "新的亮点",
+					Guidance:  "新的引导点",
+				}
+				return web.SaveReq{
+					Question: web.Question{
+						Id:      2,
+						Title:   "面试题1",
+						Content: "新的内容",
+						Answer: web.Answer{
+							Analysis:     analysis,
+							Basic:        s.buildAnswerEle(1),
+							Intermediate: s.buildAnswerEle(2),
+							Advanced:     s.buildAnswerEle(3),
+						},
+					},
+				}
+			}(),
+			wantCode: 200,
+			wantResp: test.Result[int64]{
+				Data: 2,
+			},
+		},
+		{
+			name: "非法访问",
+			before: func(t *testing.T) {
+				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+				defer cancel()
+				err := s.db.WithContext(ctx).Create(&dao.Question{
+					Id:      3,
+					Uid:     234,
+					Title:   "老的标题",
+					Content: "老的内容",
+					Ctime:   123,
+					Utime:   234,
+				}).Error
+				require.NoError(t, err)
+			},
+			after: func(t *testing.T) {
+				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+				defer cancel()
+				q, _, err := s.dao.GetByID(ctx, 3)
+				require.NoError(t, err)
+				s.assertQuestion(t, dao.Question{
+					Uid:     234,
+					Title:   "老的标题",
+					Content: "老的内容",
+				}, q)
+			},
+			req: func() web.SaveReq {
+				analysis := web.AnswerElement{
+					Id:        1,
+					Content:   "新的分析",
+					Keywords:  "新的 keyword",
+					Shorthand: "新的速记",
+					Highlight: "新的亮点",
+					Guidance:  "新的引导点",
+				}
+				return web.SaveReq{
+					Question: web.Question{
+						Id:      3,
+						Title:   "面试题1",
+						Content: "新的内容",
+						Answer: web.Answer{
+							Analysis:     analysis,
+							Basic:        s.buildAnswerEle(1),
+							Intermediate: s.buildAnswerEle(2),
+							Advanced:     s.buildAnswerEle(3),
+						},
+					},
+				}
+			}(),
+			wantCode: 500,
+			wantResp: test.Result[int64]{
+				Code: 502001,
+				Msg:  "系统错误",
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		s.T().Run(tc.name, func(t *testing.T) {
+			tc.before(t)
+			req, err := http.NewRequest(http.MethodPost,
+				"/question/publish", iox.NewJSONReader(tc.req))
+			req.Header.Set("content-type", "application/json")
+			require.NoError(t, err)
+			recorder := test.NewJSONResponseRecorder[int64]()
+			s.server.ServeHTTP(recorder, req)
+			require.Equal(t, tc.wantCode, recorder.Code)
+			assert.Equal(t, tc.wantResp, recorder.MustScan())
+			tc.after(t)
+			// 清理掉 123 的数据
+			err = s.db.Exec("TRUNCATE table `questions`").Error
+			require.NoError(t, err)
+			err = s.db.Exec("TRUNCATE table `answer_elements`").Error
+			require.NoError(t, err)
+		})
+	}
+}
+
+func (s *HandlerTestSuite) TestPubDetail() {
+	// 插入一百条
+	data := make([]dao.PublishQuestion, 0, 2)
+	for idx := 0; idx < 2; idx++ {
+		data = append(data, dao.PublishQuestion{
+			Id:      int64(idx + 1),
+			Uid:     123,
+			Title:   fmt.Sprintf("这是标题 %d", idx),
+			Content: fmt.Sprintf("这是解析 %d", idx),
+		})
+	}
+	err := s.db.Create(&data).Error
+	require.NoError(s.T(), err)
+	testCases := []struct {
+		name string
+
+		req      web.Qid
+		wantCode int
+		wantResp test.Result[web.Question]
+	}{
+		{
+			name: "查询到了数据",
+			req: web.Qid{
+				Qid: 2,
+			},
+			wantCode: 200,
+			wantResp: test.Result[web.Question]{
+				Data: web.Question{
+					Id:      2,
+					Title:   "这是标题 1",
+					Content: "这是解析 1",
+					Utime:   time.UnixMilli(0).Format(time.DateTime),
+				},
+			},
+		},
+	}
+	for _, tc := range testCases {
+		s.T().Run(tc.name, func(t *testing.T) {
+			req, err := http.NewRequest(http.MethodPost,
+				"/question/pub/detail", iox.NewJSONReader(tc.req))
+			req.Header.Set("content-type", "application/json")
+			require.NoError(t, err)
+			recorder := test.NewJSONResponseRecorder[web.Question]()
+			s.server.ServeHTTP(recorder, req)
+			require.Equal(t, tc.wantCode, recorder.Code)
+			assert.Equal(t, tc.wantResp, recorder.MustScan())
 		})
 	}
 }

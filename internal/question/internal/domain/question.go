@@ -38,8 +38,7 @@ type Answer struct {
 }
 
 type AnswerElement struct {
-	Id int64
-
+	Id      int64
 	Content string
 	// 关键字，辅助记忆，提取重点
 	Keywords string

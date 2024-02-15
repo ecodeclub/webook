@@ -12,28 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package service
+package cache
 
-import (
-	"context"
+import "context"
 
-	"github.com/ecodeclub/webook/internal/question/internal/domain"
-	"github.com/ecodeclub/webook/internal/question/internal/repository"
-)
-
-type Service interface {
-	// Save 保存数据，question 绝对不会为 nil
-	Save(ctx context.Context, question *domain.Question) (int64, error)
-}
-
-type service struct {
-	repo repository.Repository
-}
-
-func NewService(repo repository.Repository) Service {
-	return &service{repo: repo}
-}
-
-func (s *service) Save(ctx context.Context, question *domain.Question) (int64, error) {
-	return s.repo.Save(ctx, question)
+type QuestionCache interface {
+	GetTotal(ctx context.Context) (int64, error)
+	SetTotal(ctx context.Context, total int64) error
 }

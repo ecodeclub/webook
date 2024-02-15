@@ -17,7 +17,9 @@
 package baguwen
 
 import (
+	"github.com/ecodeclub/ecache"
 	"github.com/ecodeclub/webook/internal/question/internal/repository"
+	"github.com/ecodeclub/webook/internal/question/internal/repository/cache"
 	"github.com/ecodeclub/webook/internal/question/internal/repository/dao"
 	"github.com/ecodeclub/webook/internal/question/internal/service"
 	"github.com/ecodeclub/webook/internal/question/internal/web"
@@ -25,8 +27,9 @@ import (
 	"github.com/google/wire"
 )
 
-func InitHandler(db *egorm.Component) (*web.Handler, error) {
+func InitHandler(db *egorm.Component, ec ecache.Cache) (*web.Handler, error) {
 	wire.Build(dao.NewGORMQuestionDAO,
+		cache.NewQuestionECache,
 		repository.NewCacheRepository,
 		service.NewService,
 		web.NewHandler,
