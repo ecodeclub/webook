@@ -13,6 +13,7 @@ import (
 	"github.com/ecodeclub/webook/internal/user/internal/repository/dao"
 	"github.com/ecodeclub/webook/internal/user/internal/service"
 	"github.com/ecodeclub/webook/internal/user/internal/web"
+	"github.com/ego-component/egorm"
 	"github.com/google/wire"
 	"github.com/gotomicro/ego/core/econf"
 	"gorm.io/gorm"
@@ -22,7 +23,7 @@ import (
 
 func InitHandler(db *gorm.DB, cache2 ecache.Cache) *web.Handler {
 	oAuth2Service := InitWechatService()
-	userDAO := dao.NewGORMUserDAO(db)
+	userDAO := InitDAO(db)
 	userCache := cache.NewUserECache(cache2)
 	userRepository := repository.NewCachedUserRepository(userDAO, userCache)
 	userService := service.NewUserService(userRepository)
@@ -32,20 +33,29 @@ func InitHandler(db *gorm.DB, cache2 ecache.Cache) *web.Handler {
 
 // wire.go:
 
-var ProviderSet = wire.NewSet(web.NewHandler, cache.NewUserECache, dao.NewGORMUserDAO, InitWechatService, service.NewUserService, repository.NewCachedUserRepository)
+var ProviderSet = wire.NewSet(web.NewHandler, cache.NewUserECache, InitDAO,
+	InitWechatService, service.NewUserService, repository.NewCachedUserRepository,
+)
 
 func InitWechatService() service.OAuth2Service {
 	type Config struct {
 		AppSecretID  string `yaml:"appSecretID"`
 		AppSecretKey string `yaml:"appSecretKey"`
 	}
-
 	var cfg Config
 	err := econf.UnmarshalKey("wechat", &cfg)
 	if err != nil {
 		panic(err)
 	}
 	return service.NewWechatService(cfg.AppSecretID, cfg.AppSecretKey)
+}
+
+func InitDAO(db *egorm.Component) dao.UserDAO {
+	err := dao.InitTables(db)
+	if err != nil {
+		panic(err)
+	}
+	return dao.NewGORMUserDAO(db)
 }
 
 // Handler 暴露出去给 ioc 使用
