@@ -69,3 +69,22 @@ type QuestionList struct {
 	Questions []Question `json:"questions,omitempty"`
 	Total     int64      `json:"total,omitempty"`
 }
+
+type CreateQuestionSetReq struct {
+	Title       string `json:"title,omitempty"`
+	Description string `json:"description,omitempty"`
+}
+
+type AddQuestionsToQuestionSetReq struct {
+	QSID      int64      `json:"qsid"`
+	Questions []Question `json:"questions,omitempty"`
+}
+
+type DeleteQuestionsFromQuestionSetReq struct {
+	QSID      int64      `json:"qsid"`
+	Questions []Question `json:"questions,omitempty"`
+}
+
+type QuestionSetID struct {
+	QuestionSetID int64 `json:"qsid"`
+}

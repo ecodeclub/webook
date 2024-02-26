@@ -22,5 +22,7 @@ func InitTables(db *egorm.Component) error {
 		&PublishQuestion{},
 		&AnswerElement{},
 		&PublishAnswerElement{},
+		&QuestionSet{},
+		&QuestionSetQuestion{},
 	)
 }
