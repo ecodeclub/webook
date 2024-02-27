@@ -10,6 +10,7 @@ import (
 type QuestionSetService interface {
 	Create(ctx context.Context, set domain.QuestionSet) (int64, error)
 	UpdateQuestions(ctx context.Context, set domain.QuestionSet) error
+	Detail(ctx context.Context, id, uid int64) (domain.QuestionSet, error)
 }
 
 type questionSetService struct {
@@ -26,4 +27,8 @@ func (q *questionSetService) Create(ctx context.Context, set domain.QuestionSet)
 
 func (q *questionSetService) UpdateQuestions(ctx context.Context, set domain.QuestionSet) error {
 	return q.repo.UpdateQuestions(ctx, set)
+}
+
+func (q *questionSetService) Detail(ctx context.Context, id, uid int64) (domain.QuestionSet, error) {
+	return q.repo.GetByIDAndUID(ctx, id, uid)
 }

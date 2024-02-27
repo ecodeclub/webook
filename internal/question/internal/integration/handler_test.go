@@ -22,7 +22,6 @@ import (
 	"time"
 
 	"github.com/ecodeclub/ecache"
-
 	"github.com/ecodeclub/ekit/iox"
 	"github.com/ecodeclub/ginx/session"
 	"github.com/ecodeclub/webook/internal/question/internal/integration/startup"
@@ -799,8 +798,8 @@ func (s *HandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 					Title:       "oss",
 					Description: "oss题集",
 				})
-				require.Equal(t, int64(5), id)
 				require.NoError(t, err)
+				require.Equal(t, int64(5), id)
 
 				// 创建问题
 				questions := []dao.Question{
@@ -880,8 +879,8 @@ func (s *HandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 					Title:       "Go",
 					Description: "Go题集",
 				})
-				require.Equal(t, int64(7), id)
 				require.NoError(t, err)
+				require.Equal(t, int64(7), id)
 
 				// 创建问题
 				questions := []dao.Question{
@@ -914,7 +913,7 @@ func (s *HandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 					require.NoError(t, s.db.WithContext(ctx).Create(q).Error)
 				}
 
-				require.NoError(t, s.questionSetDAO.UpdateQuestionsByID(ctx, id, []int64{14}))
+				require.NoError(t, s.questionSetDAO.UpdateQuestionsByIDAndUID(ctx, id, uid, []int64{14}))
 
 				// 题集中题目为1
 				qs, err := s.questionSetDAO.GetQuestionsByID(ctx, id)
@@ -1010,7 +1009,7 @@ func (s *HandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 					require.NoError(t, s.db.WithContext(ctx).Create(q).Error)
 				}
 
-				require.NoError(t, s.questionSetDAO.UpdateQuestionsByID(ctx, id, []int64{214, 215, 216}))
+				require.NoError(t, s.questionSetDAO.UpdateQuestionsByIDAndUID(ctx, id, uid, []int64{214, 215, 216}))
 
 				qs, err := s.questionSetDAO.GetQuestionsByID(ctx, id)
 				require.NoError(t, err)
@@ -1082,7 +1081,7 @@ func (s *HandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 					require.NoError(t, s.db.WithContext(ctx).Create(q).Error)
 				}
 
-				require.NoError(t, s.questionSetDAO.UpdateQuestionsByID(ctx, id, []int64{314, 315, 316}))
+				require.NoError(t, s.questionSetDAO.UpdateQuestionsByIDAndUID(ctx, id, uid, []int64{314, 315, 316}))
 
 				qs, err := s.questionSetDAO.GetQuestionsByID(ctx, id)
 				require.NoError(t, err)
@@ -1110,48 +1109,182 @@ func (s *HandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 			wantCode: 200,
 			wantResp: test.Result[int64]{},
 		},
-		// {
-		// 	name: "题集不存在",
-		// 	before: func(t *testing.T) {
-		// 		t.Helper()
-		//
-		// 	},
-		// 	after: func(t *testing.T) {
-		// 		t.Helper()
-		// 	},
-		// 	req:      web.AddQuestionsToQuestionSetReq{},
-		// 	wantCode: 500,
-		// 	wantResp: test.Result[int64]{},
-		// },
-		// {
-		// 	name: "当前用户并非题集的创建者",
-		// 	before: func(t *testing.T) {
-		// 		t.Helper()
-		//
-		// 	},
-		// 	after: func(t *testing.T) {
-		// 		t.Helper()
-		// 	},
-		// 	req:      web.AddQuestionsToQuestionSetReq{},
-		// 	wantCode: 200,
-		// 	wantResp: test.Result[int64]{},
-		// },
-		// {
-		// 	name: "待添加/删除的问题不存在",
-		// 	before: func(t *testing.T) {
-		// 		t.Helper()
-		//
-		// 	},
-		// 	after: func(t *testing.T) {
-		// 		t.Helper()
-		// 	},
-		// 	req:      web.AddQuestionsToQuestionSetReq{},
-		// 	wantCode: 500,
-		// 	wantResp: test.Result[int64]{
-		// 		Code: 502001,
-		// 		Msg:  "系统错误",
-		// 	},
-		// },
+		{
+			name: "同时添加/删除部分问题",
+			before: func(t *testing.T) {
+				t.Helper()
+
+				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+				defer cancel()
+
+				// 创建一个空题集
+				id, err := s.questionSetDAO.Create(ctx, dao.QuestionSet{
+					Id:          219,
+					Uid:         uid,
+					Title:       "Go",
+					Description: "Go题集",
+				})
+				require.Equal(t, int64(219), id)
+				require.NoError(t, err)
+
+				// 创建问题
+				questions := []dao.Question{
+					{
+						Id:      414,
+						Uid:     uid + 1,
+						Title:   "Go问题1",
+						Content: "Go问题1",
+						Ctime:   123,
+						Utime:   234,
+					},
+					{
+						Id:      415,
+						Uid:     uid + 2,
+						Title:   "Go问题2",
+						Content: "Go问题2",
+						Ctime:   1234,
+						Utime:   2345,
+					},
+					{
+						Id:      416,
+						Uid:     uid + 3,
+						Title:   "Go问题3",
+						Content: "Go问题3",
+						Ctime:   1234,
+						Utime:   2345,
+					},
+					{
+						Id:      417,
+						Uid:     uid + 4,
+						Title:   "Go问题4",
+						Content: "Go问题4",
+						Ctime:   1234,
+						Utime:   2345,
+					},
+				}
+				for _, q := range questions {
+					require.NoError(t, s.db.WithContext(ctx).Create(q).Error)
+				}
+
+				qids := []int64{414, 415}
+				require.NoError(t, s.questionSetDAO.UpdateQuestionsByIDAndUID(ctx, id, uid, qids))
+
+				qs, err := s.questionSetDAO.GetQuestionsByID(ctx, id)
+				require.NoError(t, err)
+				require.Equal(t, len(qids), len(qs))
+			},
+			after: func(t *testing.T) {
+				t.Helper()
+				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+				defer cancel()
+
+				expected := []dao.Question{
+					{
+						Uid:     uid + 2,
+						Title:   "Go问题2",
+						Content: "Go问题2",
+					},
+					{
+						Uid:     uid + 3,
+						Title:   "Go问题3",
+						Content: "Go问题3",
+					},
+					{
+						Uid:     uid + 4,
+						Title:   "Go问题4",
+						Content: "Go问题4",
+					},
+				}
+
+				qs, err := s.questionSetDAO.GetQuestionsByID(ctx, 219)
+				require.NoError(t, err)
+
+				require.Equal(t, len(expected), len(qs))
+
+				for i, e := range expected {
+					s.assertQuestion(t, e, qs[i])
+				}
+			},
+			req: web.UpdateQuestionsOfQuestionSetReq{
+				QSID: 219,
+				QIDs: []int64{415, 416, 417},
+			},
+			wantCode: 200,
+			wantResp: test.Result[int64]{},
+		},
+		{
+			name: "题集不存在",
+			before: func(t *testing.T) {
+				t.Helper()
+			},
+			after: func(t *testing.T) {
+				t.Helper()
+			},
+			req: web.UpdateQuestionsOfQuestionSetReq{
+				QSID: 10000,
+				QIDs: []int64{},
+			},
+			wantCode: 500,
+			wantResp: test.Result[int64]{Code: 502001, Msg: "系统错误"},
+		},
+		{
+			name: "当前用户并非题集的创建者",
+			before: func(t *testing.T) {
+				t.Helper()
+
+				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+				defer cancel()
+
+				// 创建一个空题集
+				id, err := s.questionSetDAO.Create(ctx, dao.QuestionSet{
+					Id:          220,
+					Uid:         uid + 100,
+					Title:       "Go",
+					Description: "Go题集",
+				})
+				require.Equal(t, int64(220), id)
+				require.NoError(t, err)
+			},
+			after: func(t *testing.T) {
+				t.Helper()
+			},
+			req: web.UpdateQuestionsOfQuestionSetReq{
+				QSID: 220,
+				QIDs: []int64{},
+			},
+			wantCode: 500,
+			wantResp: test.Result[int64]{Code: 502001, Msg: "系统错误"},
+		},
+		{
+			name: "待添加/删除的问题ID不存在",
+			before: func(t *testing.T) {
+				t.Helper()
+				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+				defer cancel()
+
+				// 创建一个空题集
+				id, err := s.questionSetDAO.Create(ctx, dao.QuestionSet{
+					Id:          221,
+					Uid:         uid,
+					Title:       "Go",
+					Description: "Go题集",
+				})
+				require.Equal(t, int64(221), id)
+				require.NoError(t, err)
+			},
+			after: func(t *testing.T) {
+				t.Helper()
+			},
+			req: web.UpdateQuestionsOfQuestionSetReq{
+				QSID: 221,
+				QIDs: []int64{1000, 1001, 1002},
+			},
+			wantCode: 500,
+			wantResp: test.Result[int64]{
+				Code: 502001,
+				Msg:  "系统错误",
+			},
+		},
 	}
 
 	for _, tc := range testCases {
@@ -1159,6 +1292,235 @@ func (s *HandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 			tc.before(t)
 			req, err := http.NewRequest(http.MethodPost,
 				"/question-sets/update", iox.NewJSONReader(tc.req))
+			req.Header.Set("content-type", "application/json")
+			require.NoError(t, err)
+			recorder := test.NewJSONResponseRecorder[int64]()
+			s.server.ServeHTTP(recorder, req)
+			require.Equal(t, tc.wantCode, recorder.Code)
+			assert.Equal(t, tc.wantResp, recorder.MustScan())
+			tc.after(t)
+		})
+	}
+}
+
+func (s *HandlerTestSuite) TestQuestionSet_RetrieveQuestionSetDetail() {
+
+	now := time.Now().UnixMilli()
+	formattedUtime := time.Unix(0, now*int64(time.Millisecond)).Format(time.DateTime)
+
+	testCases := []struct {
+		name   string
+		before func(t *testing.T)
+		after  func(t *testing.T)
+		req    web.QuestionSetID
+
+		wantCode int
+		wantResp test.Result[web.QuestionSet]
+	}{
+		{
+			name: "空题集",
+			before: func(t *testing.T) {
+				t.Helper()
+
+				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+				defer cancel()
+
+				// 创建一个空题集
+				id, err := s.questionSetDAO.Create(ctx, dao.QuestionSet{
+					Id:          321,
+					Uid:         uid,
+					Title:       "Go",
+					Description: "Go题集",
+					Utime:       now,
+				})
+				require.NoError(t, err)
+				require.Equal(t, int64(321), id)
+			},
+			after: func(t *testing.T) {
+				t.Helper()
+			},
+			req: web.QuestionSetID{
+				QSID: 321,
+			},
+			wantCode: 200,
+			wantResp: test.Result[web.QuestionSet]{
+				Data: web.QuestionSet{
+					Id:          321,
+					Title:       "Go",
+					Description: "Go题集",
+					Utime:       formattedUtime,
+				},
+			},
+		},
+		{
+			name: "非空题集",
+			before: func(t *testing.T) {
+				t.Helper()
+
+				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+				defer cancel()
+
+				// 创建一个空题集
+				id, err := s.questionSetDAO.Create(ctx, dao.QuestionSet{
+					Id:          322,
+					Uid:         uid,
+					Title:       "Go",
+					Description: "Go题集",
+					Utime:       now,
+				})
+				require.NoError(t, err)
+				require.Equal(t, int64(322), id)
+
+				// 添加问题
+				questions := []dao.Question{
+					{
+						Id:      614,
+						Uid:     uid + 1,
+						Title:   "Go问题1",
+						Content: "Go问题1",
+						Ctime:   now,
+						Utime:   now,
+					},
+					{
+						Id:      615,
+						Uid:     uid + 2,
+						Title:   "Go问题2",
+						Content: "Go问题2",
+						Ctime:   now,
+						Utime:   now,
+					},
+					{
+						Id:      616,
+						Uid:     uid + 3,
+						Title:   "Go问题3",
+						Content: "Go问题3",
+						Ctime:   now,
+						Utime:   now,
+					},
+				}
+				for _, q := range questions {
+					require.NoError(t, s.db.WithContext(ctx).Create(q).Error)
+				}
+
+				qids := []int64{614, 615, 616}
+				require.NoError(t, s.questionSetDAO.UpdateQuestionsByIDAndUID(ctx, id, uid, qids))
+
+				// 题集中题目为1
+				qs, err := s.questionSetDAO.GetQuestionsByID(ctx, id)
+				require.NoError(t, err)
+				require.Equal(t, len(qids), len(qs))
+			},
+			after: func(t *testing.T) {
+				t.Helper()
+			},
+			req: web.QuestionSetID{
+				QSID: 322,
+			},
+			wantCode: 200,
+			wantResp: test.Result[web.QuestionSet]{
+				Data: web.QuestionSet{
+					Id:          322,
+					Title:       "Go",
+					Description: "Go题集",
+					Questions: []web.Question{
+						{
+							Id:      614,
+							Title:   "Go问题1",
+							Content: "Go问题1",
+							Utime:   formattedUtime,
+						},
+						{
+							Id:      615,
+							Title:   "Go问题2",
+							Content: "Go问题2",
+							Utime:   formattedUtime,
+						},
+						{
+							Id:      616,
+							Title:   "Go问题3",
+							Content: "Go问题3",
+							Utime:   formattedUtime,
+						},
+					},
+					Utime: formattedUtime,
+				},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		s.T().Run(tc.name, func(t *testing.T) {
+			tc.before(t)
+			req, err := http.NewRequest(http.MethodPost,
+				"/question-sets/detail", iox.NewJSONReader(tc.req))
+			req.Header.Set("content-type", "application/json")
+			require.NoError(t, err)
+			recorder := test.NewJSONResponseRecorder[web.QuestionSet]()
+			s.server.ServeHTTP(recorder, req)
+			require.Equal(t, tc.wantCode, recorder.Code)
+			assert.Equal(t, tc.wantResp, recorder.MustScan())
+			tc.after(t)
+		})
+	}
+}
+
+func (s *HandlerTestSuite) TestQuestionSet_RetrieveQuestionSetDetail_Failed() {
+	testCases := []struct {
+		name   string
+		before func(t *testing.T)
+		after  func(t *testing.T)
+		req    web.QuestionSetID
+
+		wantCode int
+		wantResp test.Result[int64]
+	}{
+		{
+			name: "题集ID非法_题集ID不存在",
+			before: func(t *testing.T) {
+				t.Helper()
+			},
+			after: func(t *testing.T) {
+				t.Helper()
+			},
+			req: web.QuestionSetID{
+				QSID: 10000,
+			},
+			wantCode: 500,
+			wantResp: test.Result[int64]{Code: 502001, Msg: "系统错误"},
+		},
+		{
+			name: "题集ID非法_题集ID与UID不匹配",
+			before: func(t *testing.T) {
+				t.Helper()
+
+				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+				defer cancel()
+
+				// 创建一个空题集
+				id, err := s.questionSetDAO.Create(ctx, dao.QuestionSet{
+					Id:          320,
+					Uid:         uid + 100,
+					Title:       "Go",
+					Description: "Go题集",
+				})
+				require.Equal(t, int64(320), id)
+				require.NoError(t, err)
+			},
+			after: func(t *testing.T) {
+				t.Helper()
+			},
+			req: web.QuestionSetID{
+				QSID: 320,
+			},
+			wantCode: 500,
+			wantResp: test.Result[int64]{Code: 502001, Msg: "系统错误"},
+		},
+	}
+	for _, tc := range testCases {
+		s.T().Run(tc.name, func(t *testing.T) {
+			tc.before(t)
+			req, err := http.NewRequest(http.MethodPost,
+				"/question-sets/detail", iox.NewJSONReader(tc.req))
 			req.Header.Set("content-type", "application/json")
 			require.NoError(t, err)
 			recorder := test.NewJSONResponseRecorder[int64]()

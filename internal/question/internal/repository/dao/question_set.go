@@ -2,6 +2,7 @@ package dao
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -9,13 +10,19 @@ import (
 	"gorm.io/gorm"
 )
 
+var (
+	ErrInvalidQuestionSetID = errors.New("题集ID非法")
+	ErrInvalidQuestionID    = errors.New("问题ID非法")
+)
+
 type QuestionSetDAO interface {
 	Create(ctx context.Context, qs QuestionSet) (int64, error)
 	GetByID(ctx context.Context, id int64) (QuestionSet, error)
+	GetByIDAndUID(ctx context.Context, id, uid int64) (QuestionSet, error)
 	// List(ctx context.Context, offset int, limit int, uid int64) ([]Question, error)
 
 	GetQuestionsByID(ctx context.Context, id int64) ([]Question, error)
-	UpdateQuestionsByID(ctx context.Context, id int64, qids []int64) error
+	UpdateQuestionsByIDAndUID(ctx context.Context, id, uid int64, qids []int64) error
 
 	// Count(ctx context.Context, uid int64) (int64, error)
 	//
@@ -36,16 +43,34 @@ func NewGORMQuestionSetDAO(db *egorm.Component) QuestionSetDAO {
 }
 
 func (g *GORMQuestionSetDAO) Create(ctx context.Context, qs QuestionSet) (int64, error) {
-	now := time.Now().UnixMilli()
-	qs.Ctime, qs.Utime = now, now
+	qs.Ctime = qs.Utime
 	err := g.db.WithContext(ctx).Create(&qs).Error
+	if err != nil {
+		return 0, err
+	}
 	return qs.Id, err
 }
 
 func (g *GORMQuestionSetDAO) GetByID(ctx context.Context, id int64) (QuestionSet, error) {
 	var qs QuestionSet
-	err := g.db.WithContext(ctx).First(&qs, "id = ?", id).Error
-	return qs, err
+	if err := g.db.WithContext(ctx).Find(&qs, "id = ?", id).Error; err != nil {
+		return QuestionSet{}, err
+	}
+	if qs.Id == 0 {
+		return QuestionSet{}, fmt.Errorf("%w", ErrInvalidQuestionSetID)
+	}
+	return qs, nil
+}
+
+func (g *GORMQuestionSetDAO) GetByIDAndUID(ctx context.Context, id, uid int64) (QuestionSet, error) {
+	var qs QuestionSet
+	if err := g.db.WithContext(ctx).Find(&qs, "id = ? AND uid = ?", id, uid).Error; err != nil {
+		return QuestionSet{}, err
+	}
+	if qs.Id == 0 {
+		return QuestionSet{}, fmt.Errorf("%w", ErrInvalidQuestionSetID)
+	}
+	return qs, nil
 }
 
 func (g *GORMQuestionSetDAO) GetQuestionsByID(ctx context.Context, id int64) ([]Question, error) {
@@ -64,8 +89,15 @@ func (g *GORMQuestionSetDAO) GetQuestionsByID(ctx context.Context, id int64) ([]
 	return q, err
 }
 
-func (g *GORMQuestionSetDAO) UpdateQuestionsByID(ctx context.Context, id int64, qids []int64) error {
+func (g *GORMQuestionSetDAO) UpdateQuestionsByIDAndUID(ctx context.Context, id, uid int64, qids []int64) error {
 	return g.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var qs QuestionSet
+		if err := tx.WithContext(ctx).Find(&qs, "id = ? AND uid = ?", id, uid).Error; err != nil {
+			return err
+		}
+		if qs.Id == 0 {
+			return fmt.Errorf("%w", ErrInvalidQuestionSetID)
+		}
 
 		// 全部删除
 		if err := tx.WithContext(ctx).Where("qs_id = ?", id).Delete(&QuestionSetQuestion{}).Error; err != nil {
@@ -82,7 +114,7 @@ func (g *GORMQuestionSetDAO) UpdateQuestionsByID(ctx context.Context, id int64, 
 			return err
 		}
 		if int64(len(qids)) != count {
-			return fmt.Errorf("问题ID非法")
+			return fmt.Errorf("%w", ErrInvalidQuestionID)
 		}
 
 		// 重新创建
