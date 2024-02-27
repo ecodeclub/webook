@@ -59,7 +59,7 @@ func (h *QuestionSetHandler) PrivateRoutes(server *gin.Engine) {
 
 // CreateQuestionSet 创建题集
 func (h *QuestionSetHandler) CreateQuestionSet(ctx *ginx.Context, req CreateQuestionSetReq, sess session.Session) (ginx.Result, error) {
-	id, err := h.svc.Create(ctx, domain.QuestionSet{
+	id, err := h.svc.Create(ctx.Request.Context(), domain.QuestionSet{
 		Uid:         sess.Claims().Uid,
 		Title:       req.Title,
 		Description: req.Description,
@@ -104,7 +104,7 @@ func (h *QuestionSetHandler) ListQuestionSet(ctx *ginx.Context, req Page, sess s
 
 // RetrieveQuestionSetDetail 题集详情
 func (h *QuestionSetHandler) RetrieveQuestionSetDetail(ctx *ginx.Context, req QuestionSetID, sess session.Session) (ginx.Result, error) {
-	data, err := h.svc.Detail(ctx, req.QSID, sess.Claims().Uid)
+	data, err := h.svc.Detail(ctx.Request.Context(), req.QSID, sess.Claims().Uid)
 	if err != nil {
 		return systemErrorResult, err
 	}
