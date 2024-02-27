@@ -27,3 +27,8 @@ func InitHandler() (*web.Handler, error) {
 	wire.Build(testioc.BaseSet, baguwen.InitHandler)
 	return new(web.Handler), nil
 }
+
+func InitQuestionSetHandler() (*web.QuestionSetHandler, error) {
+	wire.Build(testioc.BaseSet, baguwen.InitQuestionSetHandler)
+	return new(web.QuestionSetHandler), nil
+}

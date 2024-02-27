@@ -11,16 +11,9 @@ import (
 	"github.com/gotomicro/ego/core/elog"
 )
 
-var (
-	ErrDuplicatedQuestionID = dao.ErrDuplicatedQuestionID
-)
-
 type QuestionSetRepository interface {
 	Create(ctx context.Context, set domain.QuestionSet) (int64, error)
-
 	UpdateQuestions(ctx context.Context, set domain.QuestionSet) error
-	AddQuestions(ctx context.Context, set domain.QuestionSet) error
-	DeleteQuestions(ctx context.Context, set domain.QuestionSet) error
 }
 
 type questionSetRepository struct {
@@ -64,28 +57,9 @@ func (q *questionSetRepository) Create(ctx context.Context, set domain.QuestionS
 }
 
 func (q *questionSetRepository) UpdateQuestions(ctx context.Context, set domain.QuestionSet) error {
-	questions := make([]dao.Question, len(set.Questions))
+	qids := make([]int64, len(set.Questions))
 	for i := range set.Questions {
-		d, _ := q.questionD2E.Copy(&set.Questions[i])
-		questions[i] = *d
+		qids[i] = set.Questions[i].Id
 	}
-	return q.dao.UpdateQuestionsByID(ctx, set.Id, questions)
-}
-
-func (q *questionSetRepository) AddQuestions(ctx context.Context, set domain.QuestionSet) error {
-	questions := make([]dao.Question, len(set.Questions))
-	for i := range set.Questions {
-		d, _ := q.questionD2E.Copy(&set.Questions[i])
-		questions[i] = *d
-	}
-	return q.dao.AddQuestionsByID(ctx, set.Id, questions)
-}
-
-func (q *questionSetRepository) DeleteQuestions(ctx context.Context, set domain.QuestionSet) error {
-	questions := make([]dao.Question, len(set.Questions))
-	for i := range set.Questions {
-		d, _ := q.questionD2E.Copy(&set.Questions[i])
-		questions[i] = *d
-	}
-	return q.dao.DeleteQuestionsByID(ctx, set.Id, questions)
+	return q.dao.UpdateQuestionsByID(ctx, set.Id, qids)
 }
