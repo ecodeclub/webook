@@ -29,13 +29,20 @@ import (
 
 func InitHandler(db *egorm.Component, ec ecache.Cache) (*web.Handler, error) {
 	wire.Build(dao.NewGORMQuestionDAO,
-		dao.NewGORMQuestionSetDAO,
 		cache.NewQuestionECache,
 		repository.NewCacheRepository,
-		repository.NewQuestionSetRepository,
 		service.NewService,
-		service.NewQuestionSetService,
 		web.NewHandler,
 	)
 	return new(web.Handler), nil
+}
+
+func InitQuestionSetHandler(db *egorm.Component, ec ecache.Cache) (*web.QuestionSetHandler, error) {
+	wire.Build(
+		dao.NewGORMQuestionSetDAO,
+		repository.NewQuestionSetRepository,
+		service.NewQuestionSetService,
+		web.NewQuestionSetHandler,
+	)
+	return new(web.QuestionSetHandler), nil
 }

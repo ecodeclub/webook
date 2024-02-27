@@ -76,13 +76,9 @@ type QuestionSet struct {
 
 // QuestionSetQuestion 题集问题 —— 题集与题目的关联关系
 type QuestionSetQuestion struct {
-	Id            int64 `gorm:"primaryKey,autoIncrement"`
-	QuestionSetID int64 `gorm:"uniqueIndex:qsid_qid"`
-	QuestionID    int64 `gorm:"uniqueIndex:qsid_qid"`
-	// // 题目标题
-	// Title string
-	// // 题目内容
-	// Content string
+	Id    int64 `gorm:"primaryKey,autoIncrement"`
+	QSID  int64 `gorm:"uniqueIndex:qsid_qid"`
+	QID   int64 `gorm:"uniqueIndex:qsid_qid"`
 	Ctime int64
 	Utime int64 `gorm:"index"`
 }

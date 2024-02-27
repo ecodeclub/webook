@@ -15,8 +15,6 @@
 package web
 
 import (
-	"errors"
-	"log"
 	"time"
 
 	"github.com/ecodeclub/ekit/slice"
@@ -32,14 +30,13 @@ import (
 )
 
 type Handler struct {
-	vo2dm          copier.Copier[Question, domain.Question]
-	dm2vo          copier.Copier[domain.Question, Question]
-	svc            service.Service
-	questionSetSvc service.QuestionSetService
-	logger         *elog.Component
+	vo2dm  copier.Copier[Question, domain.Question]
+	dm2vo  copier.Copier[domain.Question, Question]
+	svc    service.Service
+	logger *elog.Component
 }
 
-func NewHandler(svc service.Service, qss service.QuestionSetService) (*Handler, error) {
+func NewHandler(svc service.Service) (*Handler, error) {
 	vo2dm, err := copier.NewReflectCopier[Question, domain.Question](
 		copier.IgnoreFields("Utime"),
 	)
@@ -56,11 +53,10 @@ func NewHandler(svc service.Service, qss service.QuestionSetService) (*Handler, 
 		return nil, err
 	}
 	return &Handler{
-		vo2dm:          vo2dm,
-		dm2vo:          dm2vo,
-		svc:            svc,
-		questionSetSvc: qss,
-		logger:         elog.DefaultLogger,
+		vo2dm:  vo2dm,
+		dm2vo:  dm2vo,
+		svc:    svc,
+		logger: elog.DefaultLogger,
 	}, nil
 }
 
@@ -71,15 +67,6 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	server.POST("/question/publish", ginx.BS[SaveReq](h.Publish))
 	server.POST("/question/pub/list", ginx.B[Page](h.PubList))
 	server.POST("/question/pub/detail", ginx.B[Qid](h.PubDetail))
-
-	server.POST("/question-sets/create", ginx.BS[CreateQuestionSetReq](h.CreateQuestionSet))
-	// 添加/删除题目进去题集 - 批量接口
-	server.POST("/question-sets/add", ginx.BS[AddQuestionsToQuestionSetReq](h.AddQuestionsToQuestionSet))
-	server.POST("/question-sets/delete", ginx.BS[DeleteQuestionsFromQuestionSetReq](h.DeleteQuestionsFromQuestionSet))
-	// 查找题集，分页接口，只有分页参数，不需要传递 UserID
-	server.POST("/question-sets/list", ginx.BS[Page](h.ListQuestionSet))
-	// 题集详情：标题，描述，题目（题目暂时不分页，一个题集不会有很多）。题目包含适合展示在列表上的字段
-	server.POST("/question-sets/detail", ginx.BS[QuestionSetID](h.RetrieveQuestionSetDetail))
 }
 
 func (h *Handler) PublicRoutes(server *gin.Engine) {}
@@ -172,93 +159,6 @@ func (h *Handler) Detail(ctx *ginx.Context, req Qid, sess session.Session) (ginx
 
 func (h *Handler) PubDetail(ctx *ginx.Context, req Qid) (ginx.Result, error) {
 	detail, err := h.svc.PubDetail(ctx, req.Qid)
-	if err != nil {
-		return systemErrorResult, err
-	}
-	vo, err := h.dm2vo.Copy(&detail)
-	return ginx.Result{
-		Data: vo,
-	}, err
-}
-
-// CreateQuestionSet 创建题集
-func (h *Handler) CreateQuestionSet(ctx *ginx.Context, req CreateQuestionSetReq, sess session.Session) (ginx.Result, error) {
-	id, err := h.questionSetSvc.Create(ctx, domain.QuestionSet{Uid: sess.Claims().Uid, Title: req.Title, Description: req.Description})
-	if err != nil {
-		return systemErrorResult, err
-	}
-	return ginx.Result{
-		Data: id,
-	}, nil
-}
-
-// AddQuestionsToQuestionSet 批量更新题集中的问题
-func (h *Handler) AddQuestionsToQuestionSet(ctx *ginx.Context, req AddQuestionsToQuestionSetReq, sess session.Session) (ginx.Result, error) {
-	log.Printf("req = %#v\n", req)
-	questions := make([]domain.Question, len(req.Questions))
-	for i := range req.Questions {
-		d, _ := h.vo2dm.Copy(&req.Questions[i])
-		questions[i] = *d
-	}
-	log.Printf("questions = %#v\n", questions)
-	// todo: 验证题集ID是否属于当前用户
-
-	err := h.questionSetSvc.AddQuestions(ctx.Request.Context(), domain.QuestionSet{
-		Id:        req.QSID,
-		Questions: questions,
-	})
-	if errors.Is(err, service.ErrDuplicatedQuestionID) {
-		return ginx.Result{
-			Code: 402001,
-			Msg:  "部分题目已添加",
-		}, err
-	}
-	if err != nil {
-		log.Printf("err = %#v\n", err)
-		h.logger.Error("AddQuestionsToQuestionSet", elog.FieldErr(err))
-		return systemErrorResult, err
-	}
-	return ginx.Result{}, nil
-}
-
-// DeleteQuestionsFromQuestionSet 批量更新题集中的问题
-func (h *Handler) DeleteQuestionsFromQuestionSet(ctx *ginx.Context, req DeleteQuestionsFromQuestionSetReq, sess session.Session) (ginx.Result, error) {
-	log.Printf("req = %#v\n", req)
-	questions := make([]domain.Question, len(req.Questions))
-	for i := range req.Questions {
-		d, _ := h.vo2dm.Copy(&req.Questions[i])
-		questions[i] = *d
-	}
-	log.Printf("questions = %#v\n", questions)
-	// todo: 验证题集ID是否属于当前用户
-
-	err := h.questionSetSvc.DeleteQuestions(ctx.Request.Context(), domain.QuestionSet{
-		Id:        req.QSID,
-		Questions: questions,
-	})
-	if err != nil {
-		log.Printf("err = %#v\n", err)
-		h.logger.Error("DeleteQuestionsFromQuestionSet", elog.FieldErr(err))
-		return systemErrorResult, err
-	}
-	return ginx.Result{}, nil
-}
-
-func (h *Handler) ListQuestionSet(ctx *ginx.Context, req Page, sess session.Session) (ginx.Result, error) {
-	// todo: 未实现
-	// 制作库不需要统计总数
-	data, cnt, err := h.svc.List(ctx, req.Offset, req.Limit, sess.Claims().Uid)
-	if err != nil {
-		return systemErrorResult, err
-	}
-	return ginx.Result{
-		Data: h.toQuestionList(data, cnt),
-	}, nil
-}
-
-func (h *Handler) RetrieveQuestionSetDetail(ctx *ginx.Context, req QuestionSetID, sess session.Session) (ginx.Result, error) {
-	// todo: 未实现
-	detail, err := h.svc.PubDetail(ctx, req.QuestionSetID)
 	if err != nil {
 		return systemErrorResult, err
 	}
