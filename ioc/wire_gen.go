@@ -14,15 +14,14 @@ import (
 // Injectors from wire.go:
 
 func InitApp() *App {
-	db := InitDB()
 	cmdable := InitRedis()
+	provider := InitSession(cmdable)
+	db := InitDB()
 	cache := InitCache(cmdable)
 	handler := user.InitHandler(db, cache)
-	component := initGinxServer(handler)
-	provider := InitSession(cmdable)
+	component := initGinxServer(provider, handler)
 	app := &App{
 		Web: component,
-		Sp:  provider,
 	}
 	return app
 }
