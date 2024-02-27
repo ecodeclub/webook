@@ -82,7 +82,7 @@ func (q *questionSetRepository) GetByID(ctx context.Context, id int64) (domain.Q
 		Title:       set.Title,
 		Description: set.Description,
 		Questions:   questions,
-		Utime:       time.Unix(set.Utime, 0),
+		Utime:       time.Unix(0, set.Utime*int64(time.Millisecond)),
 	}, nil
 }
 
