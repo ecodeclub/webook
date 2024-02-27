@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:build e2e
+
 package integration
 
 import (
@@ -701,7 +703,7 @@ func (s *HandlerTestSuite) TestQuestionSet_Create() {
 				t.Helper()
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 				defer cancel()
-				qs, err := s.questionSetDAO.GetByID(ctx, 1)
+				qs, err := s.questionSetDAO.GetByIDAndUID(ctx, 1, uid)
 				assert.NoError(t, err)
 
 				s.assertQuestionSetEqual(t, dao.QuestionSet{
@@ -725,7 +727,7 @@ func (s *HandlerTestSuite) TestQuestionSet_Create() {
 				t.Helper()
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 				defer cancel()
-				qs, err := s.questionSetDAO.GetByID(ctx, 2)
+				qs, err := s.questionSetDAO.GetByIDAndUID(ctx, 2, uid)
 				assert.NoError(t, err)
 
 				s.assertQuestionSetEqual(t, dao.QuestionSet{
@@ -1528,6 +1530,180 @@ func (s *HandlerTestSuite) TestQuestionSet_RetrieveQuestionSetDetail_Failed() {
 			require.Equal(t, tc.wantCode, recorder.Code)
 			assert.Equal(t, tc.wantResp, recorder.MustScan())
 			tc.after(t)
+		})
+	}
+}
+
+func (s *HandlerTestSuite) TestQuestionSet_ListPrivateQuestionSets() {
+	// 插入一百条
+	total := 100
+	data := make([]dao.QuestionSet, 0, total)
+
+	for idx := 0; idx < total; idx++ {
+		// 空题集
+		data = append(data, dao.QuestionSet{
+			Uid:         uid,
+			Title:       fmt.Sprintf("题集标题 %d", idx),
+			Description: fmt.Sprintf("题集简介 %d", idx),
+		})
+	}
+	err := s.db.Create(&data).Error
+	require.NoError(s.T(), err)
+
+	testCases := []struct {
+		name string
+		req  web.Page
+
+		wantCode int
+		wantResp test.Result[web.QuestionSetList]
+	}{
+		{
+			name: "获取成功",
+			req: web.Page{
+				Limit:  2,
+				Offset: 0,
+			},
+			wantCode: 200,
+			wantResp: test.Result[web.QuestionSetList]{
+				Data: web.QuestionSetList{
+					Total: int64(total),
+					QuestionSets: []web.QuestionSet{
+						{
+							Id:          100,
+							Title:       "题集标题 99",
+							Description: "题集简介 99",
+							Utime:       time.UnixMilli(0).Format(time.DateTime),
+						},
+						{
+							Id:          99,
+							Title:       "题集标题 98",
+							Description: "题集简介 98",
+							Utime:       time.UnixMilli(0).Format(time.DateTime),
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "获取部分",
+			req: web.Page{
+				Limit:  2,
+				Offset: 99,
+			},
+			wantCode: 200,
+			wantResp: test.Result[web.QuestionSetList]{
+				Data: web.QuestionSetList{
+					Total: int64(total),
+					QuestionSets: []web.QuestionSet{
+						{
+							Id:          1,
+							Title:       "题集标题 0",
+							Description: "题集简介 0",
+							Utime:       time.UnixMilli(0).Format(time.DateTime),
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		s.T().Run(tc.name, func(t *testing.T) {
+			req, err := http.NewRequest(http.MethodPost,
+				"/question-sets/list", iox.NewJSONReader(tc.req))
+			req.Header.Set("content-type", "application/json")
+			require.NoError(t, err)
+			recorder := test.NewJSONResponseRecorder[web.QuestionSetList]()
+			s.server.ServeHTTP(recorder, req)
+			require.Equal(t, tc.wantCode, recorder.Code)
+			assert.Equal(t, tc.wantResp, recorder.MustScan())
+		})
+	}
+}
+
+func (s *HandlerTestSuite) TestQuestionSet_ListAllQuestionSets() {
+	// 插入一百条
+	total := 100
+	data := make([]dao.QuestionSet, 0, total)
+
+	for idx := 0; idx < total; idx++ {
+		// 空题集
+		data = append(data, dao.QuestionSet{
+			Uid:         int64(uid + idx),
+			Title:       fmt.Sprintf("题集标题 %d", idx),
+			Description: fmt.Sprintf("题集简介 %d", idx),
+		})
+	}
+	err := s.db.Create(&data).Error
+	require.NoError(s.T(), err)
+
+	testCases := []struct {
+		name string
+		req  web.Page
+
+		wantCode int
+		wantResp test.Result[web.QuestionSetList]
+	}{
+		{
+			name: "获取成功",
+			req: web.Page{
+				Limit:  2,
+				Offset: 0,
+			},
+			wantCode: 200,
+			wantResp: test.Result[web.QuestionSetList]{
+				Data: web.QuestionSetList{
+					Total: int64(total),
+					QuestionSets: []web.QuestionSet{
+						{
+							Id:          100,
+							Title:       "题集标题 99",
+							Description: "题集简介 99",
+							Utime:       time.UnixMilli(0).Format(time.DateTime),
+						},
+						{
+							Id:          99,
+							Title:       "题集标题 98",
+							Description: "题集简介 98",
+							Utime:       time.UnixMilli(0).Format(time.DateTime),
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "获取部分",
+			req: web.Page{
+				Limit:  2,
+				Offset: 99,
+			},
+			wantCode: 200,
+			wantResp: test.Result[web.QuestionSetList]{
+				Data: web.QuestionSetList{
+					Total: int64(total),
+					QuestionSets: []web.QuestionSet{
+						{
+							Id:          1,
+							Title:       "题集标题 0",
+							Description: "题集简介 0",
+							Utime:       time.UnixMilli(0).Format(time.DateTime),
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		s.T().Run(tc.name, func(t *testing.T) {
+			req, err := http.NewRequest(http.MethodPost,
+				"/question-sets/pub/list", iox.NewJSONReader(tc.req))
+			req.Header.Set("content-type", "application/json")
+			require.NoError(t, err)
+			recorder := test.NewJSONResponseRecorder[web.QuestionSetList]()
+			s.server.ServeHTTP(recorder, req)
+			require.Equal(t, tc.wantCode, recorder.Code)
+			assert.Equal(t, tc.wantResp, recorder.MustScan())
 		})
 	}
 }

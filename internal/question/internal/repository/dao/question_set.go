@@ -1,3 +1,17 @@
+// Copyright 2023 ecodeclub
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package dao
 
 import (
@@ -17,21 +31,13 @@ var (
 
 type QuestionSetDAO interface {
 	Create(ctx context.Context, qs QuestionSet) (int64, error)
-	GetByID(ctx context.Context, id int64) (QuestionSet, error)
 	GetByIDAndUID(ctx context.Context, id, uid int64) (QuestionSet, error)
-	// List(ctx context.Context, offset int, limit int, uid int64) ([]Question, error)
 
 	GetQuestionsByID(ctx context.Context, id int64) ([]Question, error)
 	UpdateQuestionsByIDAndUID(ctx context.Context, id, uid int64, qids []int64) error
 
-	// Count(ctx context.Context, uid int64) (int64, error)
-	//
-	// Sync(ctx context.Context, que Question, eles []AnswerElement) (int64, error)
-	//
-	// // 线上库 API
-	// PubList(ctx context.Context, offset int, limit int) ([]PublishQuestion, error)
-	// PubCount(ctx context.Context) (int64, error)
-	// GetPubByID(ctx context.Context, qid int64) (PublishQuestion, []PublishAnswerElement, error)
+	Count(ctx context.Context, uid int64) (int64, error)
+	List(ctx context.Context, offset, limit int, uid int64) ([]QuestionSet, error)
 }
 
 type GORMQuestionSetDAO struct {
@@ -49,17 +55,6 @@ func (g *GORMQuestionSetDAO) Create(ctx context.Context, qs QuestionSet) (int64,
 		return 0, err
 	}
 	return qs.Id, err
-}
-
-func (g *GORMQuestionSetDAO) GetByID(ctx context.Context, id int64) (QuestionSet, error) {
-	var qs QuestionSet
-	if err := g.db.WithContext(ctx).Find(&qs, "id = ?", id).Error; err != nil {
-		return QuestionSet{}, err
-	}
-	if qs.Id == 0 {
-		return QuestionSet{}, fmt.Errorf("%w", ErrInvalidQuestionSetID)
-	}
-	return qs, nil
 }
 
 func (g *GORMQuestionSetDAO) GetByIDAndUID(ctx context.Context, id, uid int64) (QuestionSet, error) {
@@ -133,4 +128,24 @@ func (g *GORMQuestionSetDAO) UpdateQuestionsByIDAndUID(ctx context.Context, id, 
 		}
 		return nil
 	})
+}
+
+func (g *GORMQuestionSetDAO) Count(ctx context.Context, uid int64) (int64, error) {
+	var res int64
+	db := g.db.WithContext(ctx).Model(&QuestionSet{})
+	if uid != 0 {
+		db = db.Where("uid = ?", uid)
+	}
+	err := db.Select("COUNT(id)").Count(&res).Error
+	return res, err
+}
+
+func (g *GORMQuestionSetDAO) List(ctx context.Context, offset, limit int, uid int64) ([]QuestionSet, error) {
+	var res []QuestionSet
+	db := g.db.WithContext(ctx)
+	if uid != 0 {
+		db = db.Where("uid = ?", uid)
+	}
+	err := db.Offset(offset).Limit(limit).Order("id DESC").Find(&res).Error
+	return res, err
 }

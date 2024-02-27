@@ -1,11 +1,24 @@
+// Copyright 2023 ecodeclub
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package repository
 
 import (
 	"context"
 	"time"
 
-	"github.com/ecodeclub/ekit/bean/copier"
-	"github.com/ecodeclub/ekit/bean/copier/converter"
+	"github.com/ecodeclub/ekit/slice"
 	"github.com/ecodeclub/webook/internal/question/internal/domain"
 	"github.com/ecodeclub/webook/internal/question/internal/repository/dao"
 	"github.com/gotomicro/ego/core/elog"
@@ -14,48 +27,34 @@ import (
 type QuestionSetRepository interface {
 	Create(ctx context.Context, set domain.QuestionSet) (int64, error)
 	UpdateQuestions(ctx context.Context, set domain.QuestionSet) error
-	GetByID(ctx context.Context, id int64) (domain.QuestionSet, error)
 	GetByIDAndUID(ctx context.Context, id, uid int64) (domain.QuestionSet, error)
+	Total(ctx context.Context, uid int64) (int64, error)
+	List(ctx context.Context, offset int, limit int, uid int64) ([]domain.QuestionSet, error)
 }
 
 type questionSetRepository struct {
-	dao            dao.QuestionSetDAO
-	questionSetD2E copier.Copier[domain.QuestionSet, dao.QuestionSet]
-	questionD2E    copier.Copier[domain.Question, dao.Question]
-	logger         *elog.Component
+	dao    dao.QuestionSetDAO
+	logger *elog.Component
 }
 
 func NewQuestionSetRepository(d dao.QuestionSetDAO) QuestionSetRepository {
-	fieldConverter := converter.ConverterFunc[time.Time, int64](func(src time.Time) (int64, error) {
-		return src.UnixMilli(), nil
-	})
-	questionSetD2E, err := copier.NewReflectCopier[domain.QuestionSet, dao.QuestionSet](
-		copier.IgnoreFields("Questions"),
-		copier.ConvertField[time.Time, int64]("Utime", fieldConverter),
-	)
-	if err != nil {
-		panic(err)
-	}
-
-	questionD2E, err := copier.NewReflectCopier[domain.Question, dao.Question](
-		copier.ConvertField[time.Time, int64]("Utime", fieldConverter),
-	)
-	if err != nil {
-		panic(err)
-	}
 	return &questionSetRepository{
-		dao:            d,
-		questionSetD2E: questionSetD2E,
-		questionD2E:    questionD2E,
-		logger:         elog.DefaultLogger}
+		dao:    d,
+		logger: elog.DefaultLogger}
 }
 
 func (q *questionSetRepository) Create(ctx context.Context, set domain.QuestionSet) (int64, error) {
-	d, err := q.questionSetD2E.Copy(&set)
-	if err != nil {
-		return 0, err
+	return q.dao.Create(ctx, q.toEntityQuestionSet(set))
+}
+
+func (q *questionSetRepository) toEntityQuestionSet(d domain.QuestionSet) dao.QuestionSet {
+	return dao.QuestionSet{
+		Id:          d.Id,
+		Uid:         d.Uid,
+		Title:       d.Title,
+		Description: d.Description,
+		Utime:       d.Utime.UnixMilli(),
 	}
-	return q.dao.Create(ctx, *d)
 }
 
 func (q *questionSetRepository) UpdateQuestions(ctx context.Context, set domain.QuestionSet) error {
@@ -66,43 +65,25 @@ func (q *questionSetRepository) UpdateQuestions(ctx context.Context, set domain.
 	return q.dao.UpdateQuestionsByIDAndUID(ctx, set.Id, set.Uid, qids)
 }
 
-func (q *questionSetRepository) GetByID(ctx context.Context, id int64) (domain.QuestionSet, error) {
-	set, err := q.dao.GetByID(ctx, id)
-	if err != nil {
-		return domain.QuestionSet{}, err
-	}
-	questions, err := q.getDomainQuestions(ctx, id)
-	if err != nil {
-		return domain.QuestionSet{}, err
-	}
-
-	return domain.QuestionSet{
-		Id:          set.Id,
-		Uid:         set.Uid,
-		Title:       set.Title,
-		Description: set.Description,
-		Questions:   questions,
-		Utime:       time.Unix(0, set.Utime*int64(time.Millisecond)),
-	}, nil
-}
-
 func (q *questionSetRepository) getDomainQuestions(ctx context.Context, id int64) ([]domain.Question, error) {
-	questionDAOs, err := q.dao.GetQuestionsByID(ctx, id)
+	questions, err := q.dao.GetQuestionsByID(ctx, id)
 	if err != nil {
 		return nil, err
 	}
-	questionE2D, _ := copier.NewReflectCopier[dao.Question, domain.Question](
-		copier.IgnoreFields("Ctime"),
-		copier.ConvertField[int64, time.Time]("Utime", converter.ConverterFunc[int64, time.Time](func(src int64) (time.Time, error) {
-			return time.Unix(0, src*int64(time.Millisecond)), nil
-		})),
-	)
-	questions := make([]domain.Question, len(questionDAOs))
-	for i, question := range questionDAOs {
-		d, _ := questionE2D.Copy(&question)
-		questions[i] = *d
+	return slice.Map(questions, func(idx int, src dao.Question) domain.Question {
+		return q.toDomainQuestion(src)
+	}), err
+}
+
+func (q *questionSetRepository) toDomainQuestion(que dao.Question) domain.Question {
+	return domain.Question{
+		Id:      que.Id,
+		Uid:     que.Uid,
+		Title:   que.Title,
+		Content: que.Content,
+		Answer:  domain.Answer{},
+		Utime:   time.UnixMilli(que.Utime),
 	}
-	return questions, nil
 }
 
 func (q *questionSetRepository) GetByIDAndUID(ctx context.Context, id, uid int64) (domain.QuestionSet, error) {
@@ -121,6 +102,31 @@ func (q *questionSetRepository) GetByIDAndUID(ctx context.Context, id, uid int64
 		Title:       set.Title,
 		Description: set.Description,
 		Questions:   questions,
-		Utime:       time.Unix(0, set.Utime*int64(time.Millisecond)),
+		Utime:       time.UnixMilli(set.Utime),
 	}, nil
+}
+
+func (q *questionSetRepository) Total(ctx context.Context, uid int64) (int64, error) {
+	return q.dao.Count(ctx, uid)
+}
+
+func (q *questionSetRepository) List(ctx context.Context, offset int, limit int, uid int64) ([]domain.QuestionSet, error) {
+	qs, err := q.dao.List(ctx, offset, limit, uid)
+	if err != nil {
+		return nil, err
+	}
+	return slice.Map(qs, func(idx int, src dao.QuestionSet) domain.QuestionSet {
+		return q.toDomainQuestionSet(src)
+	}), err
+}
+
+func (q *questionSetRepository) toDomainQuestionSet(qs dao.QuestionSet) domain.QuestionSet {
+	return domain.QuestionSet{
+		Id:          qs.Id,
+		Uid:         qs.Uid,
+		Title:       qs.Title,
+		Description: qs.Description,
+		// Questions:   q.getDomainQuestions(),
+		Utime: time.UnixMilli(qs.Utime),
+	}
 }
