@@ -1,3 +1,17 @@
+// Copyright 2023 ecodeclub
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package web
 
 import (
@@ -5,6 +19,7 @@ import (
 
 	"github.com/ecodeclub/ekit/bean/copier"
 	"github.com/ecodeclub/ekit/bean/copier/converter"
+	"github.com/ecodeclub/ekit/slice"
 	"github.com/ecodeclub/ginx"
 	"github.com/ecodeclub/ginx/session"
 	"github.com/ecodeclub/webook/internal/question/internal/domain"
@@ -14,30 +29,21 @@ import (
 )
 
 type QuestionSetHandler struct {
-	vo2dm  copier.Copier[Question, domain.Question]
-	dm2vo  copier.Copier[domain.Question, Question]
+	dm2vo  copier.Copier[domain.QuestionSet, QuestionSet]
 	svc    service.QuestionSetService
 	logger *elog.Component
 }
 
 func NewQuestionSetHandler(svc service.QuestionSetService) (*QuestionSetHandler, error) {
-	vo2dm, err := copier.NewReflectCopier[Question, domain.Question](
-		copier.IgnoreFields("Utime"),
-	)
-	if err != nil {
-		return nil, err
-	}
-	cnvter := converter.ConverterFunc[time.Time, string](func(src time.Time) (string, error) {
-		return src.Format(time.DateTime), nil
-	})
-	dm2vo, err := copier.NewReflectCopier[domain.Question, Question](
-		copier.ConvertField[time.Time, string]("Utime", cnvter),
+	dm2vo, err := copier.NewReflectCopier[domain.QuestionSet, QuestionSet](
+		copier.ConvertField[time.Time, string]("Utime", converter.ConverterFunc[time.Time, string](func(src time.Time) (string, error) {
+			return src.Format(time.DateTime), nil
+		})),
 	)
 	if err != nil {
 		return nil, err
 	}
 	return &QuestionSetHandler{
-		vo2dm:  vo2dm,
 		dm2vo:  dm2vo,
 		svc:    svc,
 		logger: elog.DefaultLogger,
@@ -45,15 +51,10 @@ func NewQuestionSetHandler(svc service.QuestionSetService) (*QuestionSetHandler,
 }
 
 func (h *QuestionSetHandler) PrivateRoutes(server *gin.Engine) {
-
 	server.POST("/question-sets/create", ginx.BS[CreateQuestionSetReq](h.CreateQuestionSet))
-	// 题集更新接口 覆盖式的 前端传递题集中最终的问题集合
 	server.POST("/question-sets/update", ginx.BS[UpdateQuestionsOfQuestionSetReq](h.UpdateQuestionsOfQuestionSet))
-
-	// 查找题集，分页接口，只有分页参数，不需要传递 UserID
-	server.POST("/question-sets/list", ginx.BS[Page](h.ListQuestionSet))
-
-	// 题集详情：标题，描述，题目（题目暂时不分页，一个题集不会有很多）。题目包含适合展示在列表上的字段
+	server.POST("/question-sets/list", ginx.BS[Page](h.ListPrivateQuestionSets))
+	server.POST("/question-sets/pub/list", ginx.B[Page](h.ListAllQuestionSets))
 	server.POST("/question-sets/detail", ginx.BS[QuestionSetID](h.RetrieveQuestionSetDetail))
 }
 
@@ -73,7 +74,7 @@ func (h *QuestionSetHandler) CreateQuestionSet(ctx *ginx.Context, req CreateQues
 	}, nil
 }
 
-// UpdateQuestionsOfQuestionSet 整体更新题集中的问题 覆盖式
+// UpdateQuestionsOfQuestionSet 整体更新题集中的所有问题 覆盖式的 前端传递过来的问题集合就是题集中最终的问题集合
 func (h *QuestionSetHandler) UpdateQuestionsOfQuestionSet(ctx *ginx.Context, req UpdateQuestionsOfQuestionSetReq, sess session.Session) (ginx.Result, error) {
 	questions := make([]domain.Question, len(req.QIDs))
 	for i := range req.QIDs {
@@ -90,15 +91,46 @@ func (h *QuestionSetHandler) UpdateQuestionsOfQuestionSet(ctx *ginx.Context, req
 	return ginx.Result{}, nil
 }
 
-func (h *QuestionSetHandler) ListQuestionSet(ctx *ginx.Context, req Page, sess session.Session) (ginx.Result, error) {
-	// todo: 未实现
-	// 制作库不需要统计总数
-	// data, cnt, err := h.svc.List(ctx, req.Offset, req.Limit, sess.Claims().Uid)
-	// if err != nil {
-	// 	return systemErrorResult, err
-	// }
+// ListPrivateQuestionSets 展示个人题集
+func (h *QuestionSetHandler) ListPrivateQuestionSets(ctx *ginx.Context, req Page, sess session.Session) (ginx.Result, error) {
+	data, total, err := h.svc.List(ctx, req.Offset, req.Limit, sess.Claims().Uid)
+	if err != nil {
+		return systemErrorResult, err
+	}
 	return ginx.Result{
-		// Data: data,
+		Data: h.toQuestionSetList(data, total),
+	}, nil
+}
+
+func (h *QuestionSetHandler) toQuestionSetList(data []domain.QuestionSet, total int64) QuestionSetList {
+	return QuestionSetList{
+		Total: total,
+		QuestionSets: slice.Map(data, func(idx int, src domain.QuestionSet) QuestionSet {
+			dm2vo, _ := copier.NewReflectCopier[domain.QuestionSet, QuestionSet](
+				// 忽略题集中的问题列表
+				copier.IgnoreFields("Questions"),
+				copier.ConvertField[time.Time, string]("Utime", converter.ConverterFunc[time.Time, string](func(src time.Time) (string, error) {
+					return src.Format(time.DateTime), nil
+				})),
+			)
+			dst, err := dm2vo.Copy(&src)
+			if err != nil {
+				h.logger.Error("转化为 vo 失败", elog.FieldErr(err))
+				return QuestionSet{}
+			}
+			return *dst
+		}),
+	}
+}
+
+// ListAllQuestionSets 展示所有题集
+func (h *QuestionSetHandler) ListAllQuestionSets(ctx *ginx.Context, req Page) (ginx.Result, error) {
+	data, total, err := h.svc.List(ctx, req.Offset, req.Limit, 0)
+	if err != nil {
+		return systemErrorResult, err
+	}
+	return ginx.Result{
+		Data: h.toQuestionSetList(data, total),
 	}, nil
 }
 
