@@ -1,8 +1,6 @@
 package web
 
 import (
-	"fmt"
-	"log"
 	"time"
 
 	"github.com/ecodeclub/ekit/bean/copier"
@@ -16,14 +14,13 @@ import (
 )
 
 type QuestionSetHandler struct {
-	vo2dm          copier.Copier[Question, domain.Question]
-	dm2vo          copier.Copier[domain.Question, Question]
-	svc            service.Service
-	questionSetSvc service.QuestionSetService
-	logger         *elog.Component
+	vo2dm  copier.Copier[Question, domain.Question]
+	dm2vo  copier.Copier[domain.Question, Question]
+	svc    service.QuestionSetService
+	logger *elog.Component
 }
 
-func NewQuestionSetHandler(qss service.QuestionSetService) (*QuestionSetHandler, error) {
+func NewQuestionSetHandler(svc service.QuestionSetService) (*QuestionSetHandler, error) {
 	vo2dm, err := copier.NewReflectCopier[Question, domain.Question](
 		copier.IgnoreFields("Utime"),
 	)
@@ -40,10 +37,10 @@ func NewQuestionSetHandler(qss service.QuestionSetService) (*QuestionSetHandler,
 		return nil, err
 	}
 	return &QuestionSetHandler{
-		vo2dm:          vo2dm,
-		dm2vo:          dm2vo,
-		questionSetSvc: qss,
-		logger:         elog.DefaultLogger,
+		vo2dm:  vo2dm,
+		dm2vo:  dm2vo,
+		svc:    svc,
+		logger: elog.DefaultLogger,
 	}, nil
 }
 
@@ -62,7 +59,12 @@ func (h *QuestionSetHandler) PrivateRoutes(server *gin.Engine) {
 
 // CreateQuestionSet 创建题集
 func (h *QuestionSetHandler) CreateQuestionSet(ctx *ginx.Context, req CreateQuestionSetReq, sess session.Session) (ginx.Result, error) {
-	id, err := h.questionSetSvc.Create(ctx, domain.QuestionSet{Uid: sess.Claims().Uid, Title: req.Title, Description: req.Description})
+	id, err := h.svc.Create(ctx, domain.QuestionSet{
+		Uid:         sess.Claims().Uid,
+		Title:       req.Title,
+		Description: req.Description,
+		Utime:       time.Now(),
+	})
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -71,17 +73,15 @@ func (h *QuestionSetHandler) CreateQuestionSet(ctx *ginx.Context, req CreateQues
 	}, nil
 }
 
+// UpdateQuestionsOfQuestionSet 整体更新题集中的问题 覆盖式
 func (h *QuestionSetHandler) UpdateQuestionsOfQuestionSet(ctx *ginx.Context, req UpdateQuestionsOfQuestionSetReq, sess session.Session) (ginx.Result, error) {
 	questions := make([]domain.Question, len(req.QIDs))
 	for i := range req.QIDs {
 		questions[i] = domain.Question{Id: req.QIDs[i]}
 	}
-	log.Printf("questions = %#v\n", questions)
-
-	// todo: 验证题集ID是否属于当前用户
-
-	err := h.questionSetSvc.UpdateQuestions(ctx.Request.Context(), domain.QuestionSet{
+	err := h.svc.UpdateQuestions(ctx.Request.Context(), domain.QuestionSet{
 		Id:        req.QSID,
+		Uid:       sess.Claims().Uid,
 		Questions: questions,
 	})
 	if err != nil {
@@ -93,24 +93,46 @@ func (h *QuestionSetHandler) UpdateQuestionsOfQuestionSet(ctx *ginx.Context, req
 func (h *QuestionSetHandler) ListQuestionSet(ctx *ginx.Context, req Page, sess session.Session) (ginx.Result, error) {
 	// todo: 未实现
 	// 制作库不需要统计总数
-	data, cnt, err := h.svc.List(ctx, req.Offset, req.Limit, sess.Claims().Uid)
-	if err != nil {
-		return systemErrorResult, err
-	}
-	fmt.Println(cnt)
+	// data, cnt, err := h.svc.List(ctx, req.Offset, req.Limit, sess.Claims().Uid)
+	// if err != nil {
+	// 	return systemErrorResult, err
+	// }
 	return ginx.Result{
-		Data: data,
+		// Data: data,
 	}, nil
 }
 
+// RetrieveQuestionSetDetail 题集详情
 func (h *QuestionSetHandler) RetrieveQuestionSetDetail(ctx *ginx.Context, req QuestionSetID, sess session.Session) (ginx.Result, error) {
-	// todo: 未实现
-	detail, err := h.svc.PubDetail(ctx, req.QuestionSetID)
+	data, err := h.svc.Detail(ctx, req.QSID, sess.Claims().Uid)
 	if err != nil {
 		return systemErrorResult, err
 	}
-	vo, err := h.dm2vo.Copy(&detail)
 	return ginx.Result{
-		Data: vo,
-	}, err
+		Data: h.toQuestionSetVO(data),
+	}, nil
+}
+
+func (h *QuestionSetHandler) toQuestionSetVO(set domain.QuestionSet) QuestionSet {
+	return QuestionSet{
+		Id:          set.Id,
+		Title:       set.Title,
+		Description: set.Description,
+		Questions:   h.toQuestionVO(set.Questions),
+		Utime:       set.Utime.Format(time.DateTime),
+	}
+}
+
+func (h *QuestionSetHandler) toQuestionVO(questions []domain.Question) []Question {
+	dm2vo, _ := copier.NewReflectCopier[domain.Question, Question](
+		copier.ConvertField[time.Time, string]("Utime", converter.ConverterFunc[time.Time, string](func(src time.Time) (string, error) {
+			return src.Format(time.DateTime), nil
+		})),
+	)
+	vos := make([]Question, len(questions))
+	for i, question := range questions {
+		vo, _ := dm2vo.Copy(&question)
+		vos[i] = *vo
+	}
+	return vos
 }

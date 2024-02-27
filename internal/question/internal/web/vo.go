@@ -81,7 +81,7 @@ type UpdateQuestionsOfQuestionSetReq struct {
 }
 
 type QuestionSetID struct {
-	QuestionSetID int64 `json:"qsid"`
+	QSID int64 `json:"qsid"`
 }
 
 type QuestionSet struct {
