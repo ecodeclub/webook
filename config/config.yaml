@@ -3,10 +3,10 @@ wechat:
   appSecretKey: abc
 
 mysql:
-  dsn: "root:root@tcp(localhost:13316)/mysql"
+  dsn: "root:root@tcp(mysql8:13316)/mysql"
 
 redis:
-  addr: "localhost:6379"
+  addr: "redis:6379"
 
 web:
   port: 8080
@@ -14,3 +14,4 @@ web:
 
 session:
   sessionEncryptedKey: "abcd"
+
