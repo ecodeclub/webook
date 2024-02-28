@@ -23,3 +23,13 @@ func InitHandler() (*web.Handler, error) {
 	}
 	return handler, nil
 }
+
+func InitQuestionSetHandler() (*web.QuestionSetHandler, error) {
+	db := testioc.InitDB()
+	cache := testioc.InitCache()
+	questionSetHandler, err := baguwen.InitQuestionSetHandler(db, cache)
+	if err != nil {
+		return nil, err
+	}
+	return questionSetHandler, nil
+}

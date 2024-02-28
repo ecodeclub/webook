@@ -36,12 +36,12 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 }
 
 func (h *Handler) PublicRoutes(server *gin.Engine) {
-	//TODO implement me
+	// TODO implement me
 	panic("implement me")
 }
 
 func (h *Handler) Collect(ctx *ginx.Context, req CollectReq, sess session.Session) (ginx.Result, error) {
-	return ginx.Result{Msg: "OK"}, nil
+	return systemErrorResult, nil
 }
 
 func (h *Handler) GetCnt(ctx *ginx.Context, req GetCntReq, sess session.Session) (ginx.Result, error) {

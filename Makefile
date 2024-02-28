@@ -35,9 +35,8 @@ e2e_up:
 
 .PHONY: e2e_down
 e2e_down:
-	docker compose -f .script/integration_test_compose.yml down
+	docker compose -f .script/integration_test_compose.yml down -v
 
 .PHONY: mock
-
 mock:
 	mockgen -destination=test/mocks/session.mock.go -package=mocks github.com/ecodeclub/ginx/session Session

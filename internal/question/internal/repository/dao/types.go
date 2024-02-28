@@ -60,6 +60,29 @@ type AnswerElement struct {
 	Utime int64
 }
 
+// QuestionSet 题集 属于个人
+type QuestionSet struct {
+	Id int64 `gorm:"primaryKey,autoIncrement"`
+	// 所有者
+	Uid int64 `gorm:"index"`
+	// 题集标题
+	Title string
+	// 题集描述
+	Description string
+
+	Ctime int64
+	Utime int64 `gorm:"index"`
+}
+
+// QuestionSetQuestion 题集问题 —— 题集与题目的关联关系
+type QuestionSetQuestion struct {
+	Id    int64 `gorm:"primaryKey,autoIncrement"`
+	QSID  int64 `gorm:"uniqueIndex:qsid_qid"`
+	QID   int64 `gorm:"uniqueIndex:qsid_qid"`
+	Ctime int64
+	Utime int64 `gorm:"index"`
+}
+
 const (
 	AnswerElementTypeUnknown = iota
 	AnswerElementTypeAnalysis

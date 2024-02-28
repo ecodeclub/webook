@@ -12,23 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:build wireinject
+package domain
 
-package startup
+import "time"
 
-import (
-	baguwen "github.com/ecodeclub/webook/internal/question"
-	"github.com/ecodeclub/webook/internal/question/internal/web"
-	testioc "github.com/ecodeclub/webook/internal/test/ioc"
-	"github.com/google/wire"
-)
+// QuestionSet 题集实体
+type QuestionSet struct {
+	Id  int64
+	Uid int64
+	// 标题
+	Title string
+	// 描述
+	Description string
 
-func InitHandler() (*web.Handler, error) {
-	wire.Build(testioc.BaseSet, baguwen.InitHandler)
-	return new(web.Handler), nil
-}
+	// 题集中引用的题目,
+	Questions []Question
 
-func InitQuestionSetHandler() (*web.QuestionSetHandler, error) {
-	wire.Build(testioc.BaseSet, baguwen.InitQuestionSetHandler)
-	return new(web.QuestionSetHandler), nil
+	Utime time.Time
 }

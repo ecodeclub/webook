@@ -29,3 +29,14 @@ func InitHandler(db *gorm.DB, ec ecache.Cache) (*web.Handler, error) {
 	}
 	return handler, nil
 }
+
+func InitQuestionSetHandler(db *gorm.DB, ec ecache.Cache) (*web.QuestionSetHandler, error) {
+	questionSetDAO := dao.NewGORMQuestionSetDAO(db)
+	questionSetRepository := repository.NewQuestionSetRepository(questionSetDAO)
+	questionSetService := service.NewQuestionSetService(questionSetRepository)
+	questionSetHandler, err := web.NewQuestionSetHandler(questionSetService)
+	if err != nil {
+		return nil, err
+	}
+	return questionSetHandler, nil
+}

@@ -36,3 +36,13 @@ func InitHandler(db *egorm.Component, ec ecache.Cache) (*web.Handler, error) {
 	)
 	return new(web.Handler), nil
 }
+
+func InitQuestionSetHandler(db *egorm.Component, ec ecache.Cache) (*web.QuestionSetHandler, error) {
+	wire.Build(
+		dao.NewGORMQuestionSetDAO,
+		repository.NewQuestionSetRepository,
+		service.NewQuestionSetService,
+		web.NewQuestionSetHandler,
+	)
+	return new(web.QuestionSetHandler), nil
+}
