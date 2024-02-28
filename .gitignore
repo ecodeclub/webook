@@ -22,5 +22,9 @@ go.work
 
 .idea
 /go.work.sum
-logs
+/internal/user/internal/integration/logs/
 config/local.yaml
+
+/internal/baguwen/internal/integration/logs/
+/logs/
+/internal/question/internal/integration/logs/

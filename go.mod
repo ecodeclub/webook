@@ -7,6 +7,7 @@ require (
 	github.com/ecodeclub/ekit v0.0.9-0.20240211145635-ea42c17ffeb0
 	github.com/ecodeclub/ginx v0.0.0-20240211155343-ac85f710fe51
 	github.com/ego-component/egorm v1.1.1
+	github.com/gin-contrib/cors v1.5.0
 	github.com/gin-gonic/gin v1.9.1
 	github.com/go-playground/assert/v2 v2.2.0
 	github.com/go-sql-driver/mysql v1.6.0

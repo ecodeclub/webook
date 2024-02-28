@@ -1,0 +1,16 @@
+wechat:
+  appSecretID: abc
+  appSecretKey: abc
+
+mysql:
+  dsn: "root:root@tcp(localhost:13316)/mysql"
+
+redis:
+  addr: "localhost:6379"
+
+web:
+  port: 8080
+  mode: debug
+
+session:
+  sessionEncryptedKey: "abcd"
