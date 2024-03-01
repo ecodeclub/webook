@@ -16,9 +16,9 @@ func initGinxServer(sp session.Provider, user *user.Handler) *egin.Component {
 	session.SetDefaultProvider(sp)
 	res := egin.Load("web").Build()
 	res.Use(cors.New(cors.Config{
-		ExposeHeaders:    []string{"x-refresh-token", "x-access-token"},
+		ExposeHeaders:    []string{"X-Refresh-Token", "X-Access-Token"},
 		AllowCredentials: true,
-		AllowHeaders:     []string{"Authorization"},
+		AllowHeaders:     []string{"Authorization", "Content-Type"},
 		AllowOriginFunc: func(origin string) bool {
 			if strings.HasPrefix(origin, "http://localhost") {
 				return true
