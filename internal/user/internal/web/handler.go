@@ -33,7 +33,7 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 func (h *Handler) PublicRoutes(server *gin.Engine) {
 	oauth2 := server.Group("/oauth2")
 	oauth2.GET("/wechat/auth_url", ginx.W(h.WechatAuthURL))
-	oauth2.Any("/wechat/callback", ginx.W(h.Callback))
+	oauth2.Any("/wechat/callback", ginx.B[WechatCallback](h.Callback))
 }
 
 func (h *Handler) WechatAuthURL(ctx *ginx.Context) (ginx.Result, error) {
@@ -46,25 +46,6 @@ func (h *Handler) WechatAuthURL(ctx *ginx.Context) (ginx.Result, error) {
 	}
 	return ginx.Result{
 		Data: res,
-	}, nil
-}
-
-func (h *Handler) Callback(ctx *ginx.Context) (ginx.Result, error) {
-	code, _ := ctx.Query("code").String()
-	info, err := h.weSvc.VerifyCode(ctx, code)
-	if err != nil {
-		return systemErrorResult, err
-	}
-	user, err := h.userSvc.FindOrCreateByWechat(ctx, info)
-	if err != nil {
-		return systemErrorResult, err
-	}
-	_, err = session.NewSessionBuilder(ctx, user.Id).Build()
-	if err != nil {
-		return systemErrorResult, err
-	}
-	return ginx.Result{
-		Data: user,
 	}, nil
 }
 
@@ -99,5 +80,27 @@ func (h *Handler) Edit(ctx *ginx.Context, req EditReq, sess session.Session) (gi
 	}
 	return ginx.Result{
 		Msg: "OK",
+	}, nil
+}
+
+func (h *Handler) Callback(ctx *ginx.Context, req WechatCallback) (ginx.Result, error) {
+	info, err := h.weSvc.VerifyCode(ctx, req.Code)
+	if err != nil {
+		return systemErrorResult, err
+	}
+	user, err := h.userSvc.FindOrCreateByWechat(ctx, info)
+	if err != nil {
+		return systemErrorResult, err
+	}
+	_, err = session.NewSessionBuilder(ctx, user.Id).Build()
+	if err != nil {
+		return systemErrorResult, err
+	}
+	return ginx.Result{
+		Data: Profile{
+			Id:       user.Id,
+			Nickname: user.Nickname,
+			Avatar:   user.Avatar,
+		},
 	}, nil
 }
