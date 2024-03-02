@@ -2,7 +2,6 @@ package testioc
 
 import (
 	"bytes"
-	"log"
 	"os"
 	"path/filepath"
 
@@ -32,7 +31,6 @@ func loadConfig() error {
 		return err
 	}
 	path := filepath.Clean(dir + "../../../../../config/local.yaml")
-	log.Printf("config path =%#v\n", path)
 	content, err := os.ReadFile(path)
 	if err != nil {
 		return err
