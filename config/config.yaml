@@ -3,7 +3,7 @@ wechat:
   appSecretKey: abc
 
 mysql:
-  dsn: "root:root@tcp(mysql8:13316)/mysql"
+  dsn: "webook:webook@tcp(mysql8:3306)/webook?charset=utf8mb4&collation=utf8mb4_general_ci&parseTime=True&loc=Local&timeout=1s&readTimeout=3s&writeTimeout=3s"
 
 redis:
   addr: "redis:6379"
