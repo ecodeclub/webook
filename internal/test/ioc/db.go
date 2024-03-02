@@ -1,9 +1,15 @@
 package testioc
 
 import (
+	"bytes"
+	"log"
+	"os"
+	"path/filepath"
+
 	"github.com/ecodeclub/webook/ioc"
 	"github.com/ego-component/egorm"
 	"github.com/gotomicro/ego/core/econf"
+	"gopkg.in/yaml.v3"
 )
 
 var db *egorm.Component
@@ -12,8 +18,24 @@ func InitDB() *egorm.Component {
 	if db != nil {
 		return db
 	}
-	econf.Set("mysql.user", map[string]string{"dsn": "root:root@tcp(localhost:13316)/webook"})
-	ioc.WaitForDBSetup(econf.GetStringMapString("mysql.user")["dsn"])
-	db = egorm.Load("mysql.user").Build()
+	if err := loadConfig(); err != nil {
+		panic(err)
+	}
+	ioc.WaitForDBSetup(econf.GetStringMapString("mysql")["dsn"])
+	db = egorm.Load("mysql").Build()
 	return db
+}
+
+func loadConfig() error {
+	dir, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+	path := filepath.Clean(dir + "../../../../../config/local.yaml")
+	log.Printf("config path =%#v\n", path)
+	content, err := os.ReadFile(path)
+	if err != nil {
+		return err
+	}
+	return econf.LoadFromReader(bytes.NewReader(content), yaml.Unmarshal)
 }
