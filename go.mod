@@ -17,7 +17,6 @@ require (
 	github.com/redis/go-redis/v9 v9.4.0
 	github.com/stretchr/testify v1.8.4
 	golang.org/x/sync v0.5.0
-	gopkg.in/yaml.v3 v3.0.1
 	gorm.io/gorm v1.25.1
 )
 
@@ -121,6 +120,7 @@ require (
 	google.golang.org/grpc v1.58.1 // indirect
 	google.golang.org/protobuf v1.32.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 	gorm.io/driver/clickhouse v0.3.2 // indirect
 	gorm.io/driver/mysql v1.3.3 // indirect
 	gorm.io/driver/postgres v1.3.5 // indirect
