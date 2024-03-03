@@ -6,6 +6,9 @@ services:
     command: --default-authentication-plugin=mysql_native_password
     environment:
       MYSQL_ROOT_PASSWORD: root
+    volumes:
+      #      设置初始化脚本
+      - .script/mysql/:/docker-entrypoint-initdb.d/
     ports:
       #      注意这里我映射为了 13316 端口
       - "13316:3306"
