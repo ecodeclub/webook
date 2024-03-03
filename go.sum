@@ -142,8 +142,8 @@ github.com/ecodeclub/ecache v0.0.0-20240111145855-75679834beca h1:qksXJxULYYX+3Z
 github.com/ecodeclub/ecache v0.0.0-20240111145855-75679834beca/go.mod h1:faDaVWB0J1EfgyY6e7Z40EWv65Asu4FrtlWVDAOBRiM=
 github.com/ecodeclub/ekit v0.0.9-0.20240211145635-ea42c17ffeb0 h1:z10DfuwTEQusqNbUY04KWv1BNpaEniHToLXNU4mGGJ0=
 github.com/ecodeclub/ekit v0.0.9-0.20240211145635-ea42c17ffeb0/go.mod h1:rEGubThvxoIQT/qnbVBkZgSvYwgKrY/dtwEWKRTmgeY=
-github.com/ecodeclub/ginx v0.0.0-20240301130218-f43be2d0f049 h1:oZFinNWTM68057af6Y7o6yw7cL1ZRWKwkm0149I9Y4M=
-github.com/ecodeclub/ginx v0.0.0-20240301130218-f43be2d0f049/go.mod h1:PCGcpNNuknwamOKIEkRwfwKngqg4syGydrONSIxb08w=
+github.com/ecodeclub/ginx v0.0.0-20240303052149-e5e81e866687 h1:/8+1ipzKpED7CDx0zA7RGfoVfQtpHZA2RriPJef9USw=
+github.com/ecodeclub/ginx v0.0.0-20240303052149-e5e81e866687/go.mod h1:PCGcpNNuknwamOKIEkRwfwKngqg4syGydrONSIxb08w=
 github.com/edsrzf/mmap-go v1.0.0/go.mod h1:YO35OhQPt3KJa3ryjFM5Bs14WD66h8eGKpfaBNrHW5M=
 github.com/ego-component/egorm v1.1.1 h1:0jcaEY1MwTZMzX4GOsXpzox5VafuMFjlMbX8Opqndu4=
 github.com/ego-component/egorm v1.1.1/go.mod h1:BqF8f0GsWpV2DFAKL/vFiSfrocX+t3KCYzz3GnoJnrY=
@@ -195,8 +195,8 @@ github.com/go-playground/locales v0.14.1 h1:EWaQ/wswjilfKLTECiXz7Rh+3BjFhfDFKv/o
 github.com/go-playground/locales v0.14.1/go.mod h1:hxrqLVvrK65+Rwrd5Fc6F2O76J/NuW9t0sjnWqG1slY=
 github.com/go-playground/universal-translator v0.18.1 h1:Bcnm0ZwsGyWbCzImXv+pAJnYK9S473LQFuzCbDbfSFY=
 github.com/go-playground/universal-translator v0.18.1/go.mod h1:xekY+UJKNuX9WP91TpwSH2VMlDf28Uj24BCp08ZFTUY=
-github.com/go-playground/validator/v10 v10.18.0 h1:BvolUXjp4zuvkZ5YN5t7ebzbhlUtPsPm2S9NAZ5nl9U=
-github.com/go-playground/validator/v10 v10.18.0/go.mod h1:dbuPbCMFw/DrkbEynArYaCwl3amGuJotoKCe95atGMM=
+github.com/go-playground/validator/v10 v10.19.0 h1:ol+5Fu+cSq9JD7SoSqe04GMI92cbn0+wvQ3bZ8b/AU4=
+github.com/go-playground/validator/v10 v10.19.0/go.mod h1:dbuPbCMFw/DrkbEynArYaCwl3amGuJotoKCe95atGMM=
 github.com/go-resty/resty/v2 v2.7.0 h1:me+K9p3uhSmXtrBZ4k9jcEAfJmuC8IivWHwaLZwPrFY=
 github.com/go-resty/resty/v2 v2.7.0/go.mod h1:9PWDzw47qPphMRFfhsyk0NnSgvluHcljSMVIq3w7q0I=
 github.com/go-sql-driver/mysql v1.4.0/go.mod h1:zAC/RDZ24gD3HViQzih4MyKcchzm+sOG5ZlKdlhCg5w=
