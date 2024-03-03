@@ -7,23 +7,28 @@
 package ioc
 
 import (
+	baguwen "github.com/ecodeclub/webook/internal/question"
 	"github.com/ecodeclub/webook/internal/user"
 	"github.com/google/wire"
 )
 
 // Injectors from wire.go:
 
-func InitApp() *App {
+func InitApp() (*App, error) {
 	cmdable := InitRedis()
 	provider := InitSession(cmdable)
 	db := InitDB()
 	cache := InitCache(cmdable)
-	handler := user.InitHandler(db, cache)
-	component := initGinxServer(provider, handler)
+	handler, err := baguwen.InitHandler(db, cache)
+	if err != nil {
+		return nil, err
+	}
+	webHandler := user.InitHandler(db, cache)
+	component := initGinxServer(provider, handler, webHandler)
 	app := &App{
 		Web: component,
 	}
-	return app
+	return app, nil
 }
 
 // wire.go:

@@ -4,6 +4,8 @@ import (
 	"net/http"
 	"strings"
 
+	baguwen "github.com/ecodeclub/webook/internal/question"
+
 	"github.com/gin-gonic/gin"
 
 	"github.com/ecodeclub/ginx/session"
@@ -12,7 +14,9 @@ import (
 	"github.com/gotomicro/ego/server/egin"
 )
 
-func initGinxServer(sp session.Provider, user *user.Handler) *egin.Component {
+func initGinxServer(sp session.Provider,
+	qh *baguwen.Handler,
+	user *user.Handler) *egin.Component {
 	session.SetDefaultProvider(sp)
 	res := egin.Load("web").Build()
 	res.Use(cors.New(cors.Config{
@@ -31,8 +35,10 @@ func initGinxServer(sp session.Provider, user *user.Handler) *egin.Component {
 		ctx.String(http.StatusOK, "hello, world!")
 	})
 	user.PublicRoutes(res.Engine)
+	qh.PublicRoutes(res.Engine)
 	// 登录校验
 	res.Use(session.CheckLoginMiddleware())
 	user.PrivateRoutes(res.Engine)
+	qh.PrivateRoutes(res.Engine)
 	return res
 }

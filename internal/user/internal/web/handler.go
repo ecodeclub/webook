@@ -1,6 +1,8 @@
 package web
 
 import (
+	"net/http"
+
 	"github.com/ecodeclub/ginx"
 	"github.com/ecodeclub/ginx/session"
 	"github.com/ecodeclub/webook/internal/user/internal/domain"
@@ -28,12 +30,16 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	users := server.Group("/users")
 	users.GET("/profile", ginx.S(h.Profile))
 	users.POST("/profile", ginx.BS[EditReq](h.Edit))
+	users.GET("/401", func(ctx *gin.Context) {
+		ctx.String(http.StatusUnauthorized, "test")
+	})
 }
 
 func (h *Handler) PublicRoutes(server *gin.Engine) {
 	oauth2 := server.Group("/oauth2")
 	oauth2.GET("/wechat/auth_url", ginx.W(h.WechatAuthURL))
 	oauth2.Any("/wechat/callback", ginx.B[WechatCallback](h.Callback))
+	oauth2.Any("/wechat/token/refresh", ginx.W(h.RefreshAccessToken))
 }
 
 func (h *Handler) WechatAuthURL(ctx *ginx.Context) (ginx.Result, error) {
@@ -47,6 +53,14 @@ func (h *Handler) WechatAuthURL(ctx *ginx.Context) (ginx.Result, error) {
 	return ginx.Result{
 		Data: res,
 	}, nil
+}
+
+func (h *Handler) RefreshAccessToken(ctx *ginx.Context) (ginx.Result, error) {
+	err := session.RenewAccessToken(ctx)
+	if err != nil {
+		return systemErrorResult, err
+	}
+	return ginx.Result{Msg: "OK"}, nil
 }
 
 func (h *Handler) Profile(ctx *ginx.Context, sess session.Session) (ginx.Result, error) {

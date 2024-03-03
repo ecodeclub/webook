@@ -17,6 +17,8 @@
 package baguwen
 
 import (
+	"sync"
+
 	"github.com/ecodeclub/ecache"
 	"github.com/ecodeclub/webook/internal/question/internal/repository"
 	"github.com/ecodeclub/webook/internal/question/internal/repository/cache"
@@ -25,24 +27,49 @@ import (
 	"github.com/ecodeclub/webook/internal/question/internal/web"
 	"github.com/ego-component/egorm"
 	"github.com/google/wire"
+	"gorm.io/gorm"
 )
 
-func InitHandler(db *egorm.Component, ec ecache.Cache) (*web.Handler, error) {
-	wire.Build(dao.NewGORMQuestionDAO,
+func InitHandler(db *egorm.Component, ec ecache.Cache) (*Handler, error) {
+	wire.Build(InitQuestionDAO,
 		cache.NewQuestionECache,
 		repository.NewCacheRepository,
 		service.NewService,
 		web.NewHandler,
 	)
-	return new(web.Handler), nil
+	return new(Handler), nil
 }
 
-func InitQuestionSetHandler(db *egorm.Component, ec ecache.Cache) (*web.QuestionSetHandler, error) {
+func InitQuestionSetHandler(db *egorm.Component, ec ecache.Cache) (*QuestionSetHandler, error) {
 	wire.Build(
-		dao.NewGORMQuestionSetDAO,
+		InitQuestionSetDAO,
 		repository.NewQuestionSetRepository,
 		service.NewQuestionSetService,
 		web.NewQuestionSetHandler,
 	)
-	return new(web.QuestionSetHandler), nil
+	return new(QuestionSetHandler), nil
 }
+
+var daoOnce = sync.Once{}
+
+func InitTableOnce(db *gorm.DB) {
+	daoOnce.Do(func() {
+		err := dao.InitTables(db)
+		if err != nil {
+			panic(err)
+		}
+	})
+}
+
+func InitQuestionDAO(db *egorm.Component) dao.QuestionDAO {
+	InitTableOnce(db)
+	return dao.NewGORMQuestionDAO(db)
+}
+
+func InitQuestionSetDAO(db *egorm.Component) dao.QuestionSetDAO {
+	InitTableOnce(db)
+	return dao.NewGORMQuestionSetDAO(db)
+}
+
+type Handler = web.Handler
+type QuestionSetHandler = web.QuestionSetHandler

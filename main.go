@@ -11,8 +11,11 @@ import (
 func main() {
 	// 先触发初始化
 	egoApp := ego.New()
-	app := ioc.InitApp()
-	err := egoApp.
+	app, err := ioc.InitApp()
+	if err != nil {
+		panic(err)
+	}
+	err = egoApp.
 		// Invoker 在 Ego 里面，应该叫做初始化函数
 		Invoker().
 		Serve(app.Web).

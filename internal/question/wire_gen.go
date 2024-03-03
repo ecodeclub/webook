@@ -7,19 +7,22 @@
 package baguwen
 
 import (
+	"sync"
+
 	"github.com/ecodeclub/ecache"
 	"github.com/ecodeclub/webook/internal/question/internal/repository"
 	"github.com/ecodeclub/webook/internal/question/internal/repository/cache"
 	"github.com/ecodeclub/webook/internal/question/internal/repository/dao"
 	"github.com/ecodeclub/webook/internal/question/internal/service"
 	"github.com/ecodeclub/webook/internal/question/internal/web"
+	"github.com/ego-component/egorm"
 	"gorm.io/gorm"
 )
 
 // Injectors from wire.go:
 
 func InitHandler(db *gorm.DB, ec ecache.Cache) (*web.Handler, error) {
-	questionDAO := dao.NewGORMQuestionDAO(db)
+	questionDAO := InitQuestionDAO(db)
 	questionCache := cache.NewQuestionECache(ec)
 	repositoryRepository := repository.NewCacheRepository(questionDAO, questionCache)
 	serviceService := service.NewService(repositoryRepository)
@@ -31,7 +34,7 @@ func InitHandler(db *gorm.DB, ec ecache.Cache) (*web.Handler, error) {
 }
 
 func InitQuestionSetHandler(db *gorm.DB, ec ecache.Cache) (*web.QuestionSetHandler, error) {
-	questionSetDAO := dao.NewGORMQuestionSetDAO(db)
+	questionSetDAO := InitQuestionSetDAO(db)
 	questionSetRepository := repository.NewQuestionSetRepository(questionSetDAO)
 	questionSetService := service.NewQuestionSetService(questionSetRepository)
 	questionSetHandler, err := web.NewQuestionSetHandler(questionSetService)
@@ -40,3 +43,30 @@ func InitQuestionSetHandler(db *gorm.DB, ec ecache.Cache) (*web.QuestionSetHandl
 	}
 	return questionSetHandler, nil
 }
+
+// wire.go:
+
+var daoOnce = sync.Once{}
+
+func InitTableOnce(db *gorm.DB) {
+	daoOnce.Do(func() {
+		err := dao.InitTables(db)
+		if err != nil {
+			panic(err)
+		}
+	})
+}
+
+func InitQuestionDAO(db *egorm.Component) dao.QuestionDAO {
+	InitTableOnce(db)
+	return dao.NewGORMQuestionDAO(db)
+}
+
+func InitQuestionSetDAO(db *egorm.Component) dao.QuestionSetDAO {
+	InitTableOnce(db)
+	return dao.NewGORMQuestionSetDAO(db)
+}
+
+type Handler = web.Handler
+
+type QuestionSetHandler = web.QuestionSetHandler
