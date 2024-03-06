@@ -11,11 +11,13 @@ require (
 	github.com/gin-gonic/gin v1.9.1
 	github.com/go-playground/assert/v2 v2.2.0
 	github.com/go-sql-driver/mysql v1.6.0
+	github.com/google/uuid v1.6.0
 	github.com/google/wire v0.5.0
 	github.com/gotomicro/ego v1.1.19
 	github.com/lithammer/shortuuid/v4 v4.0.0
 	github.com/redis/go-redis/v9 v9.4.0
 	github.com/stretchr/testify v1.8.4
+	github.com/tencentyun/qcloud-cos-sts-sdk v0.0.0-20231121073521-dd65d8941a16
 	golang.org/x/sync v0.5.0
 	gorm.io/gorm v1.25.1
 )
@@ -57,7 +59,6 @@ require (
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/google/cel-go v0.11.3 // indirect
 	github.com/google/pprof v0.0.0-20211214055906-6f57359322fd // indirect
-	github.com/google/uuid v1.6.0 // indirect
 	github.com/gotomicro/logrotate v0.0.0-20211108034117-46d53eedc960 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.16.0 // indirect
 	github.com/hashicorp/go-version v1.4.0 // indirect

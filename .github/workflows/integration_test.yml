@@ -29,6 +29,5 @@ jobs:
         uses: actions/setup-go@v2
         with:
           go-version: '1.21'
-
       - name: Test
         run: make e2e
