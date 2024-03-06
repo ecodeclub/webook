@@ -28,3 +28,4 @@ config/local.yaml
 /internal/baguwen/internal/integration/logs/
 /logs/
 /internal/question/internal/integration/logs/
+cover.out

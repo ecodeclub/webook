@@ -29,6 +29,12 @@ jobs:
         uses: actions/setup-go@v2
         with:
           go-version: '1.21'
-
       - name: Test
         run: make e2e
+        env:
+          COS_APP_ID: ${{ secrets.COS_APP_ID }}
+          COS_BUCKET: ${{ secrets.COS_BUCKET }}
+          COS_SECRET_KEY: ${{ secrets.COS_SECRET_KEY }}
+          COS_SECRET_ID: ${{ secrets.COS_SECRET_ID }}
+      - name: Post Coverage
+        uses: codecov/codecov-action@v2
