@@ -12,20 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package web
+package ioc
 
-type TmpAuthCodeReq struct {
-	Key string `json:"key"`
-	// Content-Type 的值
-	Type string `json:"type"`
-}
+import (
+	"github.com/ecodeclub/webook/internal/cos"
+	"github.com/gotomicro/ego/core/econf"
+)
 
-type COSTmpAuthCode struct {
-	SecretId     string `json:"secretId"`
-	SecretKey    string `json:"secretKey"`
-	SessionToken string `json:"sessionToken"`
-	// 单位秒
-	StartTime int `json:"startTime"`
-	// 单位秒
-	ExpiredTime int `json:"expiredTime"`
+func InitCosConfig() cos.Config {
+	var cfg cos.Config
+	err := econf.UnmarshalKey("cos", &cfg)
+	if err != nil {
+		panic(err)
+	}
+	return cfg
 }

@@ -21,7 +21,6 @@ import (
 
 	"github.com/ecodeclub/ginx"
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 	sts "github.com/tencentyun/qcloud-cos-sts-sdk/go"
 )
 
@@ -64,20 +63,19 @@ func NewHandler(secretID, secretKey, appid, bucket,
 
 func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	cos := server.Group("/cos")
-	cos.GET("/authorization", ginx.W(h.TempAuthCode))
+	cos.POST("/authorization", ginx.B(h.TempAuthCode))
 }
 
 func (h *Handler) PublicRoutes(server *gin.Engine) {
 }
 
-func (h *Handler) TempAuthCode(ctx *ginx.Context) (ginx.Result, error) {
+func (h *Handler) TempAuthCode(ctx *ginx.Context, req TmpAuthCodeReq) (ginx.Result, error) {
 	// 策略概述 https://cloud.tencent.com/document/product/436/18023
-	key := uuid.New().String()
 	// 这里改成允许的路径前缀，可以根据自己网站的用户登录态判断允许上传的具体路径，例子： a.jpg 或者 a/* 或者 * (使用通配符*存在重大安全风险, 请谨慎评估使用)
 	// 存储桶的命名格式为 BucketName-APPID，此处填写的 bucket 必须为此格式
 	resource := fmt.Sprintf("qcs::cos:%s:uid/%s:%s-%s/%s",
 		h.region, h.appID,
-		h.bucket, h.appID, key)
+		h.bucket, h.appID, req.Key)
 	opt := &sts.CredentialOptions{
 		DurationSeconds: int64(time.Hour.Seconds()),
 		Region:          h.region,
@@ -88,6 +86,11 @@ func (h *Handler) TempAuthCode(ctx *ginx.Context) (ginx.Result, error) {
 					Effect: "allow",
 					Resource: []string{
 						resource,
+					},
+					Condition: map[string]map[string]interface{}{
+						"string_equal": {
+							"cos:content-type": req.Type,
+						},
 					},
 				},
 			},
@@ -106,7 +109,6 @@ func (h *Handler) TempAuthCode(ctx *ginx.Context) (ginx.Result, error) {
 			SessionToken: res.Credentials.SessionToken,
 			StartTime:    res.StartTime,
 			ExpiredTime:  res.ExpiredTime,
-			Key:          key,
 		},
 	}, nil
 }
