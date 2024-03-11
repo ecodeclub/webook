@@ -16,6 +16,7 @@ require (
 	github.com/lithammer/shortuuid/v4 v4.0.0
 	github.com/redis/go-redis/v9 v9.4.0
 	github.com/stretchr/testify v1.8.4
+	github.com/tencentyun/qcloud-cos-sts-sdk v0.0.0-20231121073521-dd65d8941a16
 	golang.org/x/sync v0.5.0
 	gorm.io/gorm v1.25.1
 )

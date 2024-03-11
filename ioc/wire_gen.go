@@ -7,6 +7,7 @@
 package ioc
 
 import (
+	"github.com/ecodeclub/webook/internal/cos"
 	baguwen "github.com/ecodeclub/webook/internal/question"
 	"github.com/ecodeclub/webook/internal/user"
 	"github.com/google/wire"
@@ -23,8 +24,14 @@ func InitApp() (*App, error) {
 	if err != nil {
 		return nil, err
 	}
+	questionSetHandler, err := baguwen.InitQuestionSetHandler(db, cache)
+	if err != nil {
+		return nil, err
+	}
 	webHandler := user.InitHandler(db, cache)
-	component := initGinxServer(provider, handler, webHandler)
+	config := InitCosConfig()
+	handler2 := cos.InitHandler(config)
+	component := initGinxServer(provider, handler, questionSetHandler, webHandler, handler2)
 	app := &App{
 		Web: component,
 	}
@@ -33,4 +40,4 @@ func InitApp() (*App, error) {
 
 // wire.go:
 
-var BaseSet = wire.NewSet(InitDB, InitCache, InitRedis)
+var BaseSet = wire.NewSet(InitDB, InitCache, InitRedis, InitCosConfig)

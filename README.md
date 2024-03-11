@@ -16,3 +16,8 @@
 
 ## 缓存的 key 设计
 基本上遵循了：`webook:$module:xxxxxxx` 的形式。即第一段是 webook，代表本体；第二段是 webook 内部的 module，代表模块。后面的就是 key，可以进一步细分。
+
+## 错误码
+- user - 01
+- question - 02
+- cos - o3

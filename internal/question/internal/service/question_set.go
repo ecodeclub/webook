@@ -23,7 +23,7 @@ import (
 )
 
 type QuestionSetService interface {
-	Create(ctx context.Context, set domain.QuestionSet) (int64, error)
+	Save(ctx context.Context, set domain.QuestionSet) (int64, error)
 	UpdateQuestions(ctx context.Context, set domain.QuestionSet) error
 	List(ctx context.Context, offset, limit int, uid int64) ([]domain.QuestionSet, int64, error)
 	Detail(ctx context.Context, id, uid int64) (domain.QuestionSet, error)
@@ -37,7 +37,10 @@ func NewQuestionSetService(repo repository.QuestionSetRepository) QuestionSetSer
 	return &questionSetService{repo: repo}
 }
 
-func (q *questionSetService) Create(ctx context.Context, set domain.QuestionSet) (int64, error) {
+func (q *questionSetService) Save(ctx context.Context, set domain.QuestionSet) (int64, error) {
+	if set.Id > 0 {
+		return set.Id, q.repo.UpdateNonZero(ctx, set)
+	}
 	return q.repo.Create(ctx, set)
 }
 

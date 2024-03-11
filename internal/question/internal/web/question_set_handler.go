@@ -51,16 +51,17 @@ func NewQuestionSetHandler(svc service.QuestionSetService) (*QuestionSetHandler,
 }
 
 func (h *QuestionSetHandler) PrivateRoutes(server *gin.Engine) {
-	server.POST("/question-sets/create", ginx.BS[CreateQuestionSetReq](h.CreateQuestionSet))
+	server.POST("/question-sets/save", ginx.BS[SaveQuestionSetReq](h.SaveQuestionSet))
 	server.POST("/question-sets/update", ginx.BS[UpdateQuestionsOfQuestionSetReq](h.UpdateQuestionsOfQuestionSet))
 	server.POST("/question-sets/list", ginx.BS[Page](h.ListPrivateQuestionSets))
 	server.POST("/question-sets/pub/list", ginx.B[Page](h.ListAllQuestionSets))
 	server.POST("/question-sets/detail", ginx.BS[QuestionSetID](h.RetrieveQuestionSetDetail))
 }
 
-// CreateQuestionSet 创建题集
-func (h *QuestionSetHandler) CreateQuestionSet(ctx *ginx.Context, req CreateQuestionSetReq, sess session.Session) (ginx.Result, error) {
-	id, err := h.svc.Create(ctx.Request.Context(), domain.QuestionSet{
+// SaveQuestionSet 保存
+func (h *QuestionSetHandler) SaveQuestionSet(ctx *ginx.Context, req SaveQuestionSetReq, sess session.Session) (ginx.Result, error) {
+	id, err := h.svc.Save(ctx.Request.Context(), domain.QuestionSet{
+		Id:          req.Id,
 		Uid:         sess.Claims().Uid,
 		Title:       req.Title,
 		Description: req.Description,

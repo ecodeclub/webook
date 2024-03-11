@@ -38,14 +38,16 @@ type QuestionSetDAO interface {
 
 	Count(ctx context.Context, uid int64) (int64, error)
 	List(ctx context.Context, offset, limit int, uid int64) ([]QuestionSet, error)
+	UpdateNonZero(ctx context.Context, set QuestionSet) error
 }
 
 type GORMQuestionSetDAO struct {
 	db *egorm.Component
 }
 
-func NewGORMQuestionSetDAO(db *egorm.Component) QuestionSetDAO {
-	return &GORMQuestionSetDAO{db: db}
+func (g *GORMQuestionSetDAO) UpdateNonZero(ctx context.Context, set QuestionSet) error {
+	set.Utime = time.Now().UnixMilli()
+	return g.db.WithContext(ctx).Where("id = ?", set.Id).Updates(set).Error
 }
 
 func (g *GORMQuestionSetDAO) Create(ctx context.Context, qs QuestionSet) (int64, error) {
@@ -148,4 +150,8 @@ func (g *GORMQuestionSetDAO) List(ctx context.Context, offset, limit int, uid in
 	}
 	err := db.Offset(offset).Limit(limit).Order("id DESC").Find(&res).Error
 	return res, err
+}
+
+func NewGORMQuestionSetDAO(db *egorm.Component) QuestionSetDAO {
+	return &GORMQuestionSetDAO{db: db}
 }
