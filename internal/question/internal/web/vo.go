@@ -70,7 +70,8 @@ type QuestionList struct {
 	Total     int64      `json:"total,omitempty"`
 }
 
-type CreateQuestionSetReq struct {
+type SaveQuestionSetReq struct {
+	Id          int64  `json:"id"`
 	Title       string `json:"title,omitempty"`
 	Description string `json:"description,omitempty"`
 }

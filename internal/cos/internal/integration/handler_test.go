@@ -55,7 +55,10 @@ func (s *HandlerTestSuite) SetupSuite() {
 }
 
 func (s *HandlerTestSuite) TestTmpAuthCode() {
-	res, err := s.handler.TempAuthCode(&ginx.Context{})
+	res, err := s.handler.TempAuthCode(&ginx.Context{}, web.TmpAuthCodeReq{
+		Key:  "hello",
+		Type: "application/json",
+	})
 	require.NoError(s.T(), err)
 	// 断言有值就可以了
 	assert.NotEmpty(s.T(), res.Data.(web.COSTmpAuthCode).SecretKey)

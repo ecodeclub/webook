@@ -688,17 +688,19 @@ func (s *HandlerTestSuite) assertAnswerElement(
 	assert.Equal(t, expect, ele)
 }
 
-func (s *HandlerTestSuite) TestQuestionSet_Create() {
+func (s *HandlerTestSuite) TestQuestionSet_Save() {
 	var testCases = []struct {
-		name  string
-		after func(t *testing.T)
-		req   web.CreateQuestionSetReq
+		name   string
+		before func(t *testing.T)
+		after  func(t *testing.T)
+		req    web.SaveQuestionSetReq
 
 		wantCode int
 		wantResp test.Result[int64]
 	}{
 		{
-			name: "创建成功1",
+			name:   "创建成功1",
+			before: func(t *testing.T) {},
 			after: func(t *testing.T) {
 				t.Helper()
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
@@ -712,7 +714,7 @@ func (s *HandlerTestSuite) TestQuestionSet_Create() {
 					Description: "mysql相关面试题",
 				}, qs)
 			},
-			req: web.CreateQuestionSetReq{
+			req: web.SaveQuestionSetReq{
 				Title:       "mysql",
 				Description: "mysql相关面试题",
 			},
@@ -723,20 +725,33 @@ func (s *HandlerTestSuite) TestQuestionSet_Create() {
 		},
 		{
 			name: "创建成功2",
+			before: func(t *testing.T) {
+				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+				defer cancel()
+				err := s.db.WithContext(ctx).Create(dao.QuestionSet{
+					Id:          2,
+					Uid:         uid,
+					Title:       "老的 MySQL",
+					Description: "老的 Desc",
+					Ctime:       123,
+					Utime:       123,
+				}).Error
+				require.NoError(t, err)
+			},
 			after: func(t *testing.T) {
 				t.Helper()
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 				defer cancel()
 				qs, err := s.questionSetDAO.GetByIDAndUID(ctx, 2, uid)
 				assert.NoError(t, err)
-
 				s.assertQuestionSetEqual(t, dao.QuestionSet{
 					Uid:         uid,
 					Title:       "mq",
 					Description: "mq相关面试题",
 				}, qs)
 			},
-			req: web.CreateQuestionSetReq{
+			req: web.SaveQuestionSetReq{
+				Id:          2,
 				Title:       "mq",
 				Description: "mq相关面试题",
 			},
@@ -748,7 +763,8 @@ func (s *HandlerTestSuite) TestQuestionSet_Create() {
 	}
 	for _, tc := range testCases {
 		s.T().Run(tc.name, func(t *testing.T) {
-			targeURL := "/question-sets/create"
+			tc.before(t)
+			targeURL := "/question-sets/save"
 			req, err := http.NewRequest(http.MethodPost, targeURL, iox.NewJSONReader(tc.req))
 			req.Header.Set("content-type", "application/json")
 			require.NoError(t, err)
@@ -758,7 +774,6 @@ func (s *HandlerTestSuite) TestQuestionSet_Create() {
 			s.server.ServeHTTP(recorder, req)
 			require.Equal(t, tc.wantCode, recorder.Code)
 			assert.Equal(t, tc.wantResp, recorder.MustScan())
-
 			tc.after(t)
 		})
 	}

@@ -18,6 +18,7 @@ import (
 
 func initGinxServer(sp session.Provider,
 	qh *baguwen.Handler,
+	qsh *baguwen.QuestionSetHandler,
 	user *user.Handler,
 	cosHdl *cos.Handler,
 ) *egin.Component {
@@ -45,6 +46,7 @@ func initGinxServer(sp session.Provider,
 	res.Use(session.CheckLoginMiddleware())
 	user.PrivateRoutes(res.Engine)
 	qh.PrivateRoutes(res.Engine)
+	qsh.PrivateRoutes(res.Engine)
 	cosHdl.PrivateRoutes(res.Engine)
 	return res
 }

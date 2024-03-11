@@ -24,10 +24,14 @@ func InitApp() (*App, error) {
 	if err != nil {
 		return nil, err
 	}
+	questionSetHandler, err := baguwen.InitQuestionSetHandler(db, cache)
+	if err != nil {
+		return nil, err
+	}
 	webHandler := user.InitHandler(db, cache)
 	config := InitCosConfig()
 	handler2 := cos.InitHandler(config)
-	component := initGinxServer(provider, handler, webHandler, handler2)
+	component := initGinxServer(provider, handler, questionSetHandler, webHandler, handler2)
 	app := &App{
 		Web: component,
 	}

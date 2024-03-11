@@ -30,6 +30,7 @@ type QuestionSetRepository interface {
 	GetByIDAndUID(ctx context.Context, id, uid int64) (domain.QuestionSet, error)
 	Total(ctx context.Context, uid int64) (int64, error)
 	List(ctx context.Context, offset int, limit int, uid int64) ([]domain.QuestionSet, error)
+	UpdateNonZero(ctx context.Context, set domain.QuestionSet) error
 }
 
 type questionSetRepository struct {
@@ -37,10 +38,8 @@ type questionSetRepository struct {
 	logger *elog.Component
 }
 
-func NewQuestionSetRepository(d dao.QuestionSetDAO) QuestionSetRepository {
-	return &questionSetRepository{
-		dao:    d,
-		logger: elog.DefaultLogger}
+func (q *questionSetRepository) UpdateNonZero(ctx context.Context, set domain.QuestionSet) error {
+	return q.dao.UpdateNonZero(ctx, q.toEntityQuestionSet(set))
 }
 
 func (q *questionSetRepository) Create(ctx context.Context, set domain.QuestionSet) (int64, error) {
@@ -129,4 +128,10 @@ func (q *questionSetRepository) toDomainQuestionSet(qs dao.QuestionSet) domain.Q
 		// Questions:   q.getDomainQuestions(),
 		Utime: time.UnixMilli(qs.Utime),
 	}
+}
+
+func NewQuestionSetRepository(d dao.QuestionSetDAO) QuestionSetRepository {
+	return &questionSetRepository{
+		dao:    d,
+		logger: elog.DefaultLogger}
 }

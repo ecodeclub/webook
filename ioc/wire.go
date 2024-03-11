@@ -16,6 +16,7 @@ func InitApp() (*App, error) {
 		BaseSet,
 		cos.InitHandler,
 		baguwen.InitHandler,
+		baguwen.InitQuestionSetHandler,
 		user.InitHandler,
 		InitSession,
 		initGinxServer)
