@@ -35,7 +35,7 @@ func (s *HandleTestSuite) SetupSuite() {
 	require.NoError(s.T(), err)
 	econf.Set("server", map[string]string{})
 	server := egin.Load("server").Build()
-	hdl := startup.InitHandler(nil)
+	hdl := startup.InitHandler(nil, nil)
 	server.Use(func(ctx *gin.Context) {
 		ctx.Set("_session", session.NewMemorySession(session.Claims{
 			Uid: 123,

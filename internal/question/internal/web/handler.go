@@ -15,6 +15,8 @@
 package web
 
 import (
+	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/ecodeclub/ekit/slice"
@@ -61,10 +63,10 @@ func NewHandler(svc service.Service) (*Handler, error) {
 }
 
 func (h *Handler) PrivateRoutes(server *gin.Engine) {
-	server.POST("/question/save", ginx.BS[SaveReq](h.Save))
-	server.POST("/question/list", ginx.BS[Page](h.List))
-	server.POST("/question/detail", ginx.BS[Qid](h.Detail))
-	server.POST("/question/publish", ginx.BS[SaveReq](h.Publish))
+	server.POST("/question/save", ginx.S(h.Permission), ginx.BS[SaveReq](h.Save))
+	server.POST("/question/list", ginx.S(h.Permission), ginx.BS[Page](h.List))
+	server.POST("/question/detail", ginx.S(h.Permission), ginx.BS[Qid](h.Detail))
+	server.POST("/question/publish", ginx.S(h.Permission), ginx.BS[SaveReq](h.Publish))
 	server.POST("/question/pub/list", ginx.B[Page](h.PubList))
 	server.POST("/question/pub/detail", ginx.B[Qid](h.PubDetail))
 }
@@ -166,4 +168,13 @@ func (h *Handler) PubDetail(ctx *ginx.Context, req Qid) (ginx.Result, error) {
 	return ginx.Result{
 		Data: vo,
 	}, err
+}
+
+func (h *Handler) Permission(ctx *ginx.Context, sess session.Session) (ginx.Result, error) {
+	if sess.Claims().Get("creator").StringOrDefault("") != "true" {
+		ctx.AbortWithStatus(http.StatusInternalServerError)
+		return ginx.Result{}, fmt.Errorf("非法访问创作中心 uid: %d", sess.Claims().Uid)
+	}
+	ctx.Next()
+	return ginx.Result{}, nil
 }

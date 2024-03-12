@@ -1,8 +1,9 @@
 package web
 
 import (
-	"net/http"
+	"strconv"
 
+	"github.com/ecodeclub/ekit/slice"
 	"github.com/ecodeclub/ginx"
 	"github.com/ecodeclub/ginx/session"
 	"github.com/ecodeclub/webook/internal/user/internal/domain"
@@ -16,13 +17,16 @@ var _ ginx.Handler = &Handler{}
 type Handler struct {
 	weSvc   service.OAuth2Service
 	userSvc service.UserService
+	// 白名单
+	creators []string
 }
 
 func NewHandler(weSvc service.OAuth2Service,
-	userSvc service.UserService) *Handler {
+	userSvc service.UserService, creators []string) *Handler {
 	return &Handler{
-		weSvc:   weSvc,
-		userSvc: userSvc,
+		weSvc:    weSvc,
+		userSvc:  userSvc,
+		creators: creators,
 	}
 }
 
@@ -30,9 +34,6 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	users := server.Group("/users")
 	users.GET("/profile", ginx.S(h.Profile))
 	users.POST("/profile", ginx.BS[EditReq](h.Edit))
-	users.GET("/401", func(ctx *gin.Context) {
-		ctx.String(http.StatusUnauthorized, "test")
-	})
 }
 
 func (h *Handler) PublicRoutes(server *gin.Engine) {
@@ -106,15 +107,21 @@ func (h *Handler) Callback(ctx *ginx.Context, req WechatCallback) (ginx.Result, 
 	if err != nil {
 		return systemErrorResult, err
 	}
-	_, err = session.NewSessionBuilder(ctx, user.Id).Build()
+	creator := slice.Contains(h.creators, user.WechatInfo.UnionId)
+	_, err = session.NewSessionBuilder(ctx, user.Id).
+		// 设置是否 creator 的标记位，后续引入权限控制再来改造
+		SetJwtData(map[string]string{
+			"creator": strconv.FormatBool(creator),
+		}).Build()
 	if err != nil {
 		return systemErrorResult, err
 	}
 	return ginx.Result{
 		Data: Profile{
-			Id:       user.Id,
-			Nickname: user.Nickname,
-			Avatar:   user.Avatar,
+			Id:        user.Id,
+			Nickname:  user.Nickname,
+			Avatar:    user.Avatar,
+			IsCreator: creator,
 		},
 	}, nil
 }

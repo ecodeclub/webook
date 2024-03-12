@@ -1,9 +1,10 @@
 package web
 
 type Profile struct {
-	Id       int64  `json:"id"`
-	Nickname string `json:"nickname"`
-	Avatar   string `json:"avatar"`
+	Id        int64  `json:"id,omitempty"`
+	Nickname  string `json:"nickname,omitempty"`
+	Avatar    string `json:"avatar,omitempty"`
+	IsCreator bool   `json:"isCreator,omitempty"`
 }
 
 type WechatCallback struct {

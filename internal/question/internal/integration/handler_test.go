@@ -97,7 +97,8 @@ func (s *HandlerTestSuite) SetupSuite() {
 	server := egin.Load("server").Build()
 	server.Use(func(ctx *gin.Context) {
 		ctx.Set("_session", session.NewMemorySession(session.Claims{
-			Uid: uid,
+			Uid:  uid,
+			Data: map[string]string{"creator": "true"},
 		}))
 	})
 	handler.PrivateRoutes(server.Engine)
