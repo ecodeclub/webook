@@ -21,7 +21,7 @@ var ProviderSet = wire.NewSet(web.NewHandler,
 	service.NewUserService,
 	repository.NewCachedUserRepository)
 
-func InitHandler(db *egorm.Component, cache ecache.Cache) *Handler {
+func InitHandler(db *egorm.Component, cache ecache.Cache, creators []string) *Handler {
 	wire.Build(ProviderSet)
 	return new(Handler)
 }

@@ -13,7 +13,7 @@ import (
 	"github.com/google/wire"
 )
 
-func InitHandler(weSvc service.OAuth2Service) *user.Handler {
+func InitHandler(weSvc service.OAuth2Service, creators []string) *user.Handler {
 	wire.Build(web.NewHandler,
 		testioc.BaseSet,
 		service.NewUserService,

@@ -21,13 +21,13 @@ import (
 
 // Injectors from wire.go:
 
-func InitHandler(db *gorm.DB, cache2 ecache.Cache) *web.Handler {
+func InitHandler(db *gorm.DB, cache2 ecache.Cache, creators []string) *web.Handler {
 	oAuth2Service := InitWechatService()
 	userDAO := InitDAO(db)
 	userCache := cache.NewUserECache(cache2)
 	userRepository := repository.NewCachedUserRepository(userDAO, userCache)
 	userService := service.NewUserService(userRepository)
-	handler := web.NewHandler(oAuth2Service, userService)
+	handler := web.NewHandler(oAuth2Service, userService, creators)
 	return handler
 }
 

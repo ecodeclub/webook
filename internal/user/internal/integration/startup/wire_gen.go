@@ -17,13 +17,13 @@ import (
 
 // Injectors from wire.go:
 
-func InitHandler(weSvc service.OAuth2Service) *web.Handler {
+func InitHandler(weSvc service.OAuth2Service, creators []string) *web.Handler {
 	db := testioc.InitDB()
 	userDAO := dao.NewGORMUserDAO(db)
 	ecacheCache := testioc.InitCache()
 	userCache := cache.NewUserECache(ecacheCache)
 	userRepository := repository.NewCachedUserRepository(userDAO, userCache)
 	userService := service.NewUserService(userRepository)
-	handler := web.NewHandler(weSvc, userService)
+	handler := web.NewHandler(weSvc, userService, creators)
 	return handler
 }
