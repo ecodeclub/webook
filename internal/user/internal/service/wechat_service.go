@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -56,7 +55,8 @@ func (s *WechatOAuth2Service) VerifyCode(ctx context.Context, code string) (doma
 		return domain.WechatInfo{}, err
 	}
 	if res.ErrCode != 0 {
-		return domain.WechatInfo{}, errors.New("换取 access_token 失败")
+		return domain.WechatInfo{},
+			fmt.Errorf("换取 access_token 失败 %d, %s", res.ErrCode, res.ErrMsg)
 	}
 	return domain.WechatInfo{
 		OpenId:  res.OpenId,
