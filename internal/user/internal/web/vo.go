@@ -5,8 +5,3 @@ type Profile struct {
 	Nickname string `json:"nickname"`
 	Avatar   string `json:"avatar"`
 }
-
-type WechatCallback struct {
-	Code  string `json:"code"`
-	State string `json:"state"`
-}
