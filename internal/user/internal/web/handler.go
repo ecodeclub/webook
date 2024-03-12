@@ -110,6 +110,8 @@ func (h *Handler) Callback(ctx *ginx.Context) (ginx.Result, error) {
 	if err != nil {
 		return systemErrorResult, err
 	}
+	// 固定跳转，后续考虑灵活跳转
+	ctx.Redirect(http.StatusTemporaryRedirect, "/")
 	return ginx.Result{
 		Data: Profile{
 			Id:       user.Id,
