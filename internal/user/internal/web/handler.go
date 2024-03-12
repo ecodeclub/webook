@@ -38,7 +38,7 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 func (h *Handler) PublicRoutes(server *gin.Engine) {
 	oauth2 := server.Group("/oauth2")
 	oauth2.GET("/wechat/auth_url", ginx.W(h.WechatAuthURL))
-	oauth2.Any("/wechat/callback", ginx.W(h.Callback))
+	oauth2.Any("/wechat/callback", ginx.B[WechatCallback](h.Callback))
 	oauth2.Any("/wechat/token/refresh", ginx.W(h.RefreshAccessToken))
 }
 
@@ -97,8 +97,8 @@ func (h *Handler) Edit(ctx *ginx.Context, req EditReq, sess session.Session) (gi
 	}, nil
 }
 
-func (h *Handler) Callback(ctx *ginx.Context) (ginx.Result, error) {
-	info, err := h.weSvc.VerifyCode(ctx, ctx.Query("code").StringOrDefault(""))
+func (h *Handler) Callback(ctx *ginx.Context, req WechatCallback) (ginx.Result, error) {
+	info, err := h.weSvc.VerifyCode(ctx, req.Code)
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -110,8 +110,6 @@ func (h *Handler) Callback(ctx *ginx.Context) (ginx.Result, error) {
 	if err != nil {
 		return systemErrorResult, err
 	}
-	// 固定跳转，后续考虑灵活跳转
-	ctx.Redirect(http.StatusTemporaryRedirect, "/")
 	return ginx.Result{
 		Data: Profile{
 			Id:       user.Id,
