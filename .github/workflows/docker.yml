@@ -54,7 +54,7 @@ jobs:
         with:
           go-version: '1.21'
       - name: Build Go
-        uses: go build -o webook .
+        run: go build -o webook .
 
       # Install the cosign tool except on PR
       # https://github.com/sigstore/cosign-installer
