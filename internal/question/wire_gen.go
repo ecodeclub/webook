@@ -26,10 +26,7 @@ func InitHandler(db *gorm.DB, ec ecache.Cache) (*web.Handler, error) {
 	questionCache := cache.NewQuestionECache(ec)
 	repositoryRepository := repository.NewCacheRepository(questionDAO, questionCache)
 	serviceService := service.NewService(repositoryRepository)
-	handler, err := web.NewHandler(serviceService)
-	if err != nil {
-		return nil, err
-	}
+	handler := web.NewHandler(serviceService)
 	return handler, nil
 }
 

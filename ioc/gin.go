@@ -4,6 +4,8 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/ecodeclub/webook/internal/label"
+
 	"github.com/ecodeclub/webook/internal/cos"
 
 	baguwen "github.com/ecodeclub/webook/internal/question"
@@ -19,6 +21,7 @@ import (
 func initGinxServer(sp session.Provider,
 	qh *baguwen.Handler,
 	qsh *baguwen.QuestionSetHandler,
+	lhdl *label.Handler,
 	user *user.Handler,
 	cosHdl *cos.Handler,
 ) *egin.Component {
@@ -45,6 +48,7 @@ func initGinxServer(sp session.Provider,
 	// 登录校验
 	res.Use(session.CheckLoginMiddleware())
 	user.PrivateRoutes(res.Engine)
+	lhdl.PrivateRoutes(res.Engine)
 	qh.PrivateRoutes(res.Engine)
 	qsh.PrivateRoutes(res.Engine)
 	cosHdl.PrivateRoutes(res.Engine)

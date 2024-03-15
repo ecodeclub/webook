@@ -18,6 +18,8 @@ import (
 	"context"
 	"time"
 
+	"github.com/ecodeclub/ekit/sqlx"
+
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/ecodeclub/webook/internal/question/internal/repository/cache"
 	"github.com/gotomicro/ego/core/elog"
@@ -119,13 +121,7 @@ func (c *CachedRepository) PubTotal(ctx context.Context) (int64, error) {
 }
 
 func (c *CachedRepository) toDomainWithAnswer(que dao.Question, eles []dao.AnswerElement) domain.Question {
-	res := domain.Question{
-		Id:      que.Id,
-		Uid:     que.Uid,
-		Title:   que.Title,
-		Content: que.Content,
-		Utime:   time.UnixMilli(que.Utime),
-	}
+	res := c.toDomain(que)
 	for _, ele := range eles {
 		switch ele.Type {
 		case dao.AnswerElementTypeAnalysis:
@@ -147,6 +143,7 @@ func (c *CachedRepository) toDomain(que dao.Question) domain.Question {
 		Uid:     que.Uid,
 		Title:   que.Title,
 		Content: que.Content,
+		Labels:  que.Labels.Val,
 		Utime:   time.UnixMilli(que.Utime),
 	}
 }
@@ -157,6 +154,7 @@ func (c *CachedRepository) toEntity(que *domain.Question) (dao.Question, []dao.A
 		Id:      que.Id,
 		Uid:     que.Uid,
 		Title:   que.Title,
+		Labels:  sqlx.JsonColumn[[]string]{Val: que.Labels, Valid: len(que.Labels) != 0},
 		Content: que.Content,
 		Ctime:   now,
 		Utime:   now,

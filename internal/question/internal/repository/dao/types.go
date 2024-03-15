@@ -14,12 +14,16 @@
 
 package dao
 
+import "github.com/ecodeclub/ekit/sqlx"
+
 type Question struct {
 	Id int64 `gorm:"primaryKey,autoIncrement"`
 	// 作者
 	Uid int64 `gorm:"index"`
+
+	Labels sqlx.JsonColumn[[]string] `gorm:"type:varchar(512)"`
 	// 面试标题
-	Title string
+	Title string `gorm:"type=varchar(512)"`
 	// 面试题目内容
 	Content string
 

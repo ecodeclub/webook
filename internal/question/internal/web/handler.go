@@ -17,49 +17,26 @@ package web
 import (
 	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/ecodeclub/ekit/slice"
-	"github.com/gotomicro/ego/core/elog"
-
-	"github.com/ecodeclub/ekit/bean/copier"
-	"github.com/ecodeclub/ekit/bean/copier/converter"
 	"github.com/ecodeclub/ginx"
 	"github.com/ecodeclub/ginx/session"
 	"github.com/ecodeclub/webook/internal/question/internal/domain"
 	"github.com/ecodeclub/webook/internal/question/internal/service"
 	"github.com/gin-gonic/gin"
+	"github.com/gotomicro/ego/core/elog"
 )
 
 type Handler struct {
-	vo2dm  copier.Copier[Question, domain.Question]
-	dm2vo  copier.Copier[domain.Question, Question]
 	svc    service.Service
 	logger *elog.Component
 }
 
-func NewHandler(svc service.Service) (*Handler, error) {
-	vo2dm, err := copier.NewReflectCopier[Question, domain.Question](
-		copier.IgnoreFields("Utime"),
-	)
-	if err != nil {
-		return nil, err
-	}
-	cnvter := converter.ConverterFunc[time.Time, string](func(src time.Time) (string, error) {
-		return src.Format(time.DateTime), nil
-	})
-	dm2vo, err := copier.NewReflectCopier[domain.Question, Question](
-		copier.ConvertField[time.Time, string]("Utime", cnvter),
-	)
-	if err != nil {
-		return nil, err
-	}
+func NewHandler(svc service.Service) *Handler {
 	return &Handler{
-		vo2dm:  vo2dm,
-		dm2vo:  dm2vo,
 		svc:    svc,
 		logger: elog.DefaultLogger,
-	}, nil
+	}
 }
 
 func (h *Handler) PrivateRoutes(server *gin.Engine) {
@@ -76,12 +53,9 @@ func (h *Handler) PublicRoutes(server *gin.Engine) {}
 func (h *Handler) Save(ctx *ginx.Context,
 	req SaveReq,
 	sess session.Session) (ginx.Result, error) {
-	que, err := h.vo2dm.Copy(&req.Question)
-	if err != nil {
-		return systemErrorResult, err
-	}
+	que := req.Question.toDomain()
 	que.Uid = sess.Claims().Uid
-	id, err := h.svc.Save(ctx, que)
+	id, err := h.svc.Save(ctx, &que)
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -91,12 +65,9 @@ func (h *Handler) Save(ctx *ginx.Context,
 }
 
 func (h *Handler) Publish(ctx *ginx.Context, req SaveReq, sess session.Session) (ginx.Result, error) {
-	que, err := h.vo2dm.Copy(&req.Question)
-	if err != nil {
-		return systemErrorResult, err
-	}
+	que := req.Question.toDomain()
 	que.Uid = sess.Claims().Uid
-	id, err := h.svc.Publish(ctx, que)
+	id, err := h.svc.Publish(ctx, &que)
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -130,15 +101,7 @@ func (h *Handler) toQuestionList(data []domain.Question, cnt int64) QuestionList
 	return QuestionList{
 		Total: cnt,
 		Questions: slice.Map(data, func(idx int, src domain.Question) Question {
-			// 忽略了错误
-			// 在 PubList 里面，不需要答案
-			dst, err := h.dm2vo.Copy(&src,
-				copier.IgnoreFields("Answer"))
-			if err != nil {
-				h.logger.Error("转化为 vo 失败", elog.FieldErr(err))
-				return Question{}
-			}
-			return *dst
+			return newQuestion(src)
 		}),
 	}
 }
@@ -153,9 +116,8 @@ func (h *Handler) Detail(ctx *ginx.Context, req Qid, sess session.Session) (ginx
 		// 在有人搞鬼的时候，直接返回系统错误就可以
 		return systemErrorResult, err
 	}
-	vo, err := h.dm2vo.Copy(&detail)
 	return ginx.Result{
-		Data: vo,
+		Data: newQuestion(detail),
 	}, err
 }
 
@@ -164,9 +126,8 @@ func (h *Handler) PubDetail(ctx *ginx.Context, req Qid) (ginx.Result, error) {
 	if err != nil {
 		return systemErrorResult, err
 	}
-	vo, err := h.dm2vo.Copy(&detail)
 	return ginx.Result{
-		Data: vo,
+		Data: newQuestion(detail),
 	}, err
 }
 
@@ -175,6 +136,5 @@ func (h *Handler) Permission(ctx *ginx.Context, sess session.Session) (ginx.Resu
 		ctx.AbortWithStatus(http.StatusInternalServerError)
 		return ginx.Result{}, fmt.Errorf("非法访问创作中心 uid: %d", sess.Claims().Uid)
 	}
-	ctx.Next()
-	return ginx.Result{}, nil
+	return ginx.Result{}, ginx.ErrNoResponse
 }
