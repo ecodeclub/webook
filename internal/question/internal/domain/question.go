@@ -16,15 +16,17 @@ package domain
 
 import "time"
 
+// Question 和 QuestionSet 是一个多对多的关系
 type Question struct {
-	Id      int64
-	Uid     int64
-	Title   string
+	Id    int64
+	Uid   int64
+	Title string
+	// 属于系统标签
+	Labels  []string
 	Content string
 
 	Answer Answer
-
-	Utime time.Time
+	Utime  time.Time
 }
 
 type Answer struct {

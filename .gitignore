@@ -29,3 +29,4 @@ config/local.yaml
 /logs/
 /internal/question/internal/integration/logs/
 cover.out
+/internal/label/internal/integration/logs/

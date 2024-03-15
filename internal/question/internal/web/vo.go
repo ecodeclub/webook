@@ -14,23 +14,29 @@
 
 package web
 
+import (
+	"time"
+
+	"github.com/ecodeclub/webook/internal/question/internal/domain"
+)
+
 type SaveReq struct {
 	// 问题的 ID
-	Question Question `json:"question"`
+	Question Question `json:"question,omitempty"`
 }
 
 type Question struct {
 	Id int64 `json:"id,omitempty"`
 	// 面试标题
-	Title string `json:"title,omitempty"`
+	Title  string   `json:"title,omitempty"`
+	Labels []string `json:"labels,omitempty"`
 	// 面试题目内容
 	Content string `json:"content,omitempty"`
 	Utime   string `json:"utime,omitempty"`
 
-	Answer Answer `json:"answer,omitempty"`
-}
+	// 题集 ID
+	Sets []QuestionSet `json:"sets"`
 
-type Answer struct {
 	Analysis AnswerElement `json:"analysis,omitempty"`
 	// 基本回答
 	Basic AnswerElement `json:"basic,omitempty"`
@@ -38,6 +44,35 @@ type Answer struct {
 	Intermediate AnswerElement `json:"intermediate,omitempty"`
 	// 高阶回答
 	Advanced AnswerElement `json:"advanced,omitempty"`
+}
+
+func (que Question) toDomain() domain.Question {
+	return domain.Question{
+		Id:      que.Id,
+		Title:   que.Title,
+		Content: que.Content,
+		Labels:  que.Labels,
+		Answer: domain.Answer{
+			Analysis:     que.Analysis.toDomain(),
+			Basic:        que.Basic.toDomain(),
+			Intermediate: que.Intermediate.toDomain(),
+			Advanced:     que.Intermediate.toDomain(),
+		},
+	}
+}
+
+func newQuestion(que domain.Question) Question {
+	return Question{
+		Id:           que.Id,
+		Title:        que.Title,
+		Content:      que.Content,
+		Labels:       que.Labels,
+		Analysis:     newAnswerElement(que.Answer.Analysis),
+		Basic:        newAnswerElement(que.Answer.Basic),
+		Intermediate: newAnswerElement(que.Answer.Intermediate),
+		Advanced:     newAnswerElement(que.Answer.Advanced),
+		Utime:        que.Utime.Format(time.DateTime),
+	}
 }
 
 type AnswerElement struct {
@@ -54,6 +89,28 @@ type AnswerElement struct {
 
 	// 引导点
 	Guidance string `json:"guidance,omitempty"`
+}
+
+func (ele AnswerElement) toDomain() domain.AnswerElement {
+	return domain.AnswerElement{
+		Id:        ele.Id,
+		Content:   ele.Content,
+		Keywords:  ele.Keywords,
+		Shorthand: ele.Shorthand,
+		Highlight: ele.Highlight,
+		Guidance:  ele.Guidance,
+	}
+}
+
+func newAnswerElement(ele domain.AnswerElement) AnswerElement {
+	return AnswerElement{
+		Id:        ele.Id,
+		Content:   ele.Content,
+		Keywords:  ele.Keywords,
+		Shorthand: ele.Shorthand,
+		Highlight: ele.Highlight,
+		Guidance:  ele.Guidance,
+	}
 }
 
 type Page struct {

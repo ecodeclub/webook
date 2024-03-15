@@ -23,6 +23,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ecodeclub/ekit/sqlx"
+
 	"github.com/ecodeclub/ecache"
 	"github.com/ecodeclub/ekit/iox"
 	"github.com/ecodeclub/ginx/session"
@@ -138,19 +140,22 @@ func (s *HandlerTestSuite) TestSave() {
 					Uid:     uid,
 					Title:   "面试题1",
 					Content: "面试题内容",
+					Labels: sqlx.JsonColumn[[]string]{
+						Valid: true,
+						Val:   []string{"MySQL"},
+					},
 				}, q)
 				assert.Equal(t, 4, len(eles))
 			},
 			req: web.SaveReq{
 				Question: web.Question{
-					Title:   "面试题1",
-					Content: "面试题内容",
-					Answer: web.Answer{
-						Analysis:     s.buildAnswerEle(0),
-						Basic:        s.buildAnswerEle(1),
-						Intermediate: s.buildAnswerEle(2),
-						Advanced:     s.buildAnswerEle(3),
-					},
+					Title:        "面试题1",
+					Content:      "面试题内容",
+					Labels:       []string{"MySQL"},
+					Analysis:     s.buildAnswerEle(0),
+					Basic:        s.buildAnswerEle(1),
+					Intermediate: s.buildAnswerEle(2),
+					Advanced:     s.buildAnswerEle(3),
 				},
 			},
 			wantCode: 200,
@@ -220,15 +225,13 @@ func (s *HandlerTestSuite) TestSave() {
 				}
 				return web.SaveReq{
 					Question: web.Question{
-						Id:      2,
-						Title:   "面试题1",
-						Content: "新的内容",
-						Answer: web.Answer{
-							Analysis:     analysis,
-							Basic:        s.buildAnswerEle(1),
-							Intermediate: s.buildAnswerEle(2),
-							Advanced:     s.buildAnswerEle(3),
-						},
+						Id:           2,
+						Title:        "面试题1",
+						Content:      "新的内容",
+						Analysis:     analysis,
+						Basic:        s.buildAnswerEle(1),
+						Intermediate: s.buildAnswerEle(2),
+						Advanced:     s.buildAnswerEle(3),
 					},
 				}
 			}(),
@@ -274,15 +277,13 @@ func (s *HandlerTestSuite) TestSave() {
 				}
 				return web.SaveReq{
 					Question: web.Question{
-						Id:      3,
-						Title:   "面试题1",
-						Content: "新的内容",
-						Answer: web.Answer{
-							Analysis:     analysis,
-							Basic:        s.buildAnswerEle(1),
-							Intermediate: s.buildAnswerEle(2),
-							Advanced:     s.buildAnswerEle(3),
-						},
+						Id:           3,
+						Title:        "面试题1",
+						Content:      "新的内容",
+						Analysis:     analysis,
+						Basic:        s.buildAnswerEle(1),
+						Intermediate: s.buildAnswerEle(2),
+						Advanced:     s.buildAnswerEle(3),
 					},
 				}
 			}(),
@@ -432,14 +433,12 @@ func (s *HandlerTestSuite) TestSync() {
 			},
 			req: web.SaveReq{
 				Question: web.Question{
-					Title:   "面试题1",
-					Content: "面试题内容",
-					Answer: web.Answer{
-						Analysis:     s.buildAnswerEle(0),
-						Basic:        s.buildAnswerEle(1),
-						Intermediate: s.buildAnswerEle(2),
-						Advanced:     s.buildAnswerEle(3),
-					},
+					Title:        "面试题1",
+					Content:      "面试题内容",
+					Analysis:     s.buildAnswerEle(0),
+					Basic:        s.buildAnswerEle(1),
+					Intermediate: s.buildAnswerEle(2),
+					Advanced:     s.buildAnswerEle(3),
 				},
 			},
 			wantCode: 200,
@@ -509,15 +508,13 @@ func (s *HandlerTestSuite) TestSync() {
 				}
 				return web.SaveReq{
 					Question: web.Question{
-						Id:      2,
-						Title:   "面试题1",
-						Content: "新的内容",
-						Answer: web.Answer{
-							Analysis:     analysis,
-							Basic:        s.buildAnswerEle(1),
-							Intermediate: s.buildAnswerEle(2),
-							Advanced:     s.buildAnswerEle(3),
-						},
+						Id:           2,
+						Title:        "面试题1",
+						Content:      "新的内容",
+						Analysis:     analysis,
+						Basic:        s.buildAnswerEle(1),
+						Intermediate: s.buildAnswerEle(2),
+						Advanced:     s.buildAnswerEle(3),
 					},
 				}
 			}(),
@@ -563,15 +560,13 @@ func (s *HandlerTestSuite) TestSync() {
 				}
 				return web.SaveReq{
 					Question: web.Question{
-						Id:      3,
-						Title:   "面试题1",
-						Content: "新的内容",
-						Answer: web.Answer{
-							Analysis:     analysis,
-							Basic:        s.buildAnswerEle(1),
-							Intermediate: s.buildAnswerEle(2),
-							Advanced:     s.buildAnswerEle(3),
-						},
+						Id:           3,
+						Title:        "面试题1",
+						Content:      "新的内容",
+						Analysis:     analysis,
+						Basic:        s.buildAnswerEle(1),
+						Intermediate: s.buildAnswerEle(2),
+						Advanced:     s.buildAnswerEle(3),
 					},
 				}
 			}(),
