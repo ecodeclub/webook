@@ -1,4 +1,3 @@
-
 CREATE TABLE IF NOT EXISTS `product_spus` (
     `id` bigint NOT NULL AUTO_INCREMENT COMMENT 'SPU ID',
     `sn` varchar(255) NOT NULL COMMENT 'SPU 对外展示ID',
@@ -21,7 +20,7 @@ CREATE TABLE IF NOT EXISTS `product_skus` (
     `product_spu_id` bigint NOT NULL,
     `name` varchar(255) NOT NULL COMMENT 'SKU名称',
     `description` longtext NOT NULL COMMENT 'SKU描述',
-    `price` bigint NOT NULL COMMENT '价格',
+    `price` bigint NOT NULL COMMENT '价格,单位为分;999表示9.99元',
     `stock` bigint NOT NULL COMMENT '库存数量',
     `stock_limit` bigint NOT NULL COMMENT '库存限制',
     `sale_type` tinyint unsigned NOT NULL DEFAULT '1' COMMENT '销售类型: 1=无限期 2=限时促销 3=预售',
