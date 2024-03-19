@@ -33,7 +33,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gotomicro/ego/core/econf"
 	"github.com/gotomicro/ego/server/egin"
-	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -114,7 +113,7 @@ func (s *HandlerTestSuite) TestProductDetail() {
 						ProductSPUID: 1,
 						Name:         "星期会员",
 						Description:  "提供一周的会员服务",
-						Price:        decimal.RequireFromString("7.99"),
+						Price:        799,
 						Stock:        1000,
 						StockLimit:   100000000,
 						Status:       dao.StatusOnShelf,
@@ -138,7 +137,7 @@ func (s *HandlerTestSuite) TestProductDetail() {
 						SN:         "SKU001",
 						Name:       "星期会员",
 						Desc:       "提供一周的会员服务",
-						Price:      "7.99",
+						Price:      799,
 						Stock:      1000,
 						StockLimit: 100000000,
 						SaleType:   1,
@@ -203,7 +202,7 @@ func (s *HandlerTestSuite) TestProductDetailFailed() {
 						ProductSPUID: 1,
 						Name:         "月会员",
 						Description:  "提供一个月的会员服务",
-						Price:        decimal.RequireFromString("9.99"),
+						Price:        999,
 						Stock:        1000,
 						StockLimit:   100000000,
 						Status:       dao.StatusOffShelf,
@@ -243,7 +242,7 @@ func (s *HandlerTestSuite) TestProductDetailFailed() {
 						ProductSPUID: 2,
 						Name:         "季度会员",
 						Description:  "提供一个季度的会员服务",
-						Price:        decimal.RequireFromString("29.70"),
+						Price:        2970,
 						Stock:        1000,
 						StockLimit:   100000000,
 						Status:       dao.StatusOnShelf,
@@ -283,7 +282,7 @@ func (s *HandlerTestSuite) TestProductDetailFailed() {
 						ProductSPUID: 3,
 						Name:         "年会员",
 						Description:  "提供一年的会员服务",
-						Price:        decimal.RequireFromString("118.80"),
+						Price:        11880,
 						Stock:        1000,
 						StockLimit:   100000000,
 						Status:       dao.StatusOffShelf,

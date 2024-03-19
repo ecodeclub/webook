@@ -14,8 +14,6 @@
 
 package domain
 
-import "github.com/shopspring/decimal"
-
 const (
 	StatusOffShelf = iota // 下架
 	StatusOnShelf         // 上架
@@ -38,7 +36,7 @@ type SKU struct {
 	Name string
 	Desc string
 
-	Price      decimal.Decimal
+	Price      int64
 	Stock      int64
 	StockLimit int64
 

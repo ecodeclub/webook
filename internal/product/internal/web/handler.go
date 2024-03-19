@@ -50,7 +50,7 @@ func (h *Handler) RetrieveProductDetail(ctx *ginx.Context, req ProductSNReq, _ s
 				SN:         p.SKU.SN,
 				Name:       p.SKU.Name,
 				Desc:       p.SKU.Desc,
-				Price:      p.SKU.Price.String(),
+				Price:      p.SKU.Price,
 				Stock:      p.SKU.Stock,
 				StockLimit: p.SKU.StockLimit,
 				SaleType:   p.SKU.SaleType,

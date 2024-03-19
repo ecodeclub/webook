@@ -19,7 +19,6 @@ import (
 	"time"
 
 	"github.com/ego-component/egorm"
-	"github.com/shopspring/decimal"
 )
 
 type ProductDAO interface {
@@ -72,15 +71,15 @@ type ProductSPU struct {
 }
 
 type ProductSKU struct {
-	Id           int64           `gorm:"primaryKey;autoIncrement;comment:SKU ID"`
-	SN           string          `gorm:"type:varchar(255);not null;uniqueIndex:uniq_code;comment:SKU 对外展示ID"`
-	ProductSPUID int64           `gorm:"column:product_spu_id;not null;index:idx_product_spu_id,comment:所属SPU的ID不是SN"`
-	Name         string          `gorm:"type:varchar(255);not null;comment:SKU名称"`
-	Description  string          `gorm:"not null;comment:SKU描述"`
-	Price        decimal.Decimal `gorm:"type:decimal(10,2);not null;comment:价格"`
-	Stock        int64           `gorm:"not null;default:0;comment:库存数量"`
-	StockLimit   int64           `gorm:"not null;comment:库存限制"`
-	SaleType     int64           `gorm:"type:tinyint unsigned;not null;default:1;comment:销售类型: 1=无限期 2=限时促销 3=预售"`
+	Id           int64  `gorm:"primaryKey;autoIncrement;comment:SKU ID"`
+	SN           string `gorm:"type:varchar(255);not null;uniqueIndex:uniq_code;comment:SKU 对外展示ID"`
+	ProductSPUID int64  `gorm:"column:product_spu_id;not null;index:idx_product_spu_id,comment:所属SPU的ID不是SN"`
+	Name         string `gorm:"type:varchar(255);not null;comment:SKU名称"`
+	Description  string `gorm:"not null;comment:SKU描述"`
+	Price        int64  `gorm:"not null;comment:价格单位为分, 999表示9.99元"`
+	Stock        int64  `gorm:"not null;comment:库存数量"`
+	StockLimit   int64  `gorm:"not null;comment:库存限制"`
+	SaleType     int64  `gorm:"type:tinyint unsigned;not null;default:1;comment:销售类型: 1=无限期 2=限时促销 3=预售"`
 	// SaleStart    sql.NullInt64   `gorm:"comment:销售开始时间,无限期销售为NULL"`
 	// SaleEnd      sql.NullInt64   `gorm:"comment:销售结束时间,无限期和预售为NULL"`
 	Status int64 `gorm:"type:tinyint unsigned;not null;default:0;comment:状态 0=下架 1=上架"`
