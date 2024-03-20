@@ -51,11 +51,13 @@ func NewQuestionSetHandler(svc service.QuestionSetService) (*QuestionSetHandler,
 }
 
 func (h *QuestionSetHandler) PrivateRoutes(server *gin.Engine) {
-	server.POST("/question-sets/save", ginx.BS[SaveQuestionSetReq](h.SaveQuestionSet))
-	server.POST("/question-sets/update", ginx.BS[UpdateQuestionsOfQuestionSetReq](h.UpdateQuestionsOfQuestionSet))
-	server.POST("/question-sets/list", ginx.BS[Page](h.ListPrivateQuestionSets))
-	server.POST("/question-sets/pub/list", ginx.B[Page](h.ListAllQuestionSets))
-	server.POST("/question-sets/detail", ginx.BS[QuestionSetID](h.RetrieveQuestionSetDetail))
+	g := server.Group("/question-sets")
+	g.POST("/save", ginx.BS[SaveQuestionSetReq](h.SaveQuestionSet))
+	g.POST("/questions/save", ginx.BS[UpdateQuestionsOfQuestionSetReq](h.UpdateQuestionsOfQuestionSet))
+	g.POST("/list", ginx.BS[Page](h.ListPrivateQuestionSets))
+	g.POST("/detail", ginx.BS[QuestionSetID](h.RetrieveQuestionSetDetail))
+
+	g.POST("/pub/list", ginx.B[Page](h.ListAllQuestionSets))
 }
 
 // SaveQuestionSet 保存
