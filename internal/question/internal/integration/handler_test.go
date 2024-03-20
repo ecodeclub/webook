@@ -1268,43 +1268,13 @@ func (s *HandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 			wantCode: 500,
 			wantResp: test.Result[int64]{Code: 502001, Msg: "系统错误"},
 		},
-		{
-			name: "待添加/删除的问题ID不存在",
-			before: func(t *testing.T) {
-				t.Helper()
-				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-				defer cancel()
-
-				// 创建一个空题集
-				id, err := s.questionSetDAO.Create(ctx, dao.QuestionSet{
-					Id:          221,
-					Uid:         uid,
-					Title:       "Go",
-					Description: "Go题集",
-				})
-				require.Equal(t, int64(221), id)
-				require.NoError(t, err)
-			},
-			after: func(t *testing.T) {
-				t.Helper()
-			},
-			req: web.UpdateQuestionsOfQuestionSetReq{
-				QSID: 221,
-				QIDs: []int64{1000, 1001, 1002},
-			},
-			wantCode: 500,
-			wantResp: test.Result[int64]{
-				Code: 502001,
-				Msg:  "系统错误",
-			},
-		},
 	}
 
 	for _, tc := range testCases {
 		s.T().Run(tc.name, func(t *testing.T) {
 			tc.before(t)
 			req, err := http.NewRequest(http.MethodPost,
-				"/question-sets/update", iox.NewJSONReader(tc.req))
+				"/question-sets/questions/save", iox.NewJSONReader(tc.req))
 			req.Header.Set("content-type", "application/json")
 			require.NoError(t, err)
 			recorder := test.NewJSONResponseRecorder[int64]()

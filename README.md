@@ -20,15 +20,5 @@
 ## 错误码
 - user - 01
 - question - 02
-- cos - o3
-
-
-案例-两套接口：
-- 管理员的（这个数据在一张表里面，叫 Cases 表）
-  - Save 接口（有 id 就更新，没 id 就创建，返回 id）
-  - Publish 接口
-  - List 接口（分页，offset, limit, 就是把 case 查询出来）
-  - Detail 接口
-- C 端接口（这个数据在另外一张表里面，叫做 publish_cases 表）
-  - List 接口（分页）
-  - Detail 接口
+- cos - 03
+- product - 04
