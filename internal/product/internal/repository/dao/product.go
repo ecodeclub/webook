@@ -61,33 +61,33 @@ func (d *ProductGORMDAO) CreateSKU(ctx context.Context, sku ProductSKU) (int64, 
 }
 
 type ProductSPU struct {
-	Id          int64  `gorm:"primaryKey;autoIncrement;comment:SPU ID"`
-	SN          string `gorm:"type:varchar(255);not null;uniqueIndex:uniq_code;comment:SPU 对外展示ID"`
+	Id          int64  `gorm:"primaryKey;autoIncrement;comment:商品SPU自增ID"`
+	SN          string `gorm:"type:varchar(255);not null;uniqueIndex:uniq_product_spu_sn;comment:商品SPU序列号"`
 	Name        string `gorm:"type:varchar(255);not null;comment:商品名称"`
 	Description string `gorm:"not null; comment:商品描述"`
-	Status      int64  `gorm:"type:tinyint unsigned;not null;default:0;comment:状态 0=下架 1=上架"`
+	Status      int64  `gorm:"type:tinyint unsigned;not null;default:1;comment:状态 1=下架 2=上架"`
 	Ctime       int64
 	Utime       int64
 }
 
 type ProductSKU struct {
-	Id           int64  `gorm:"primaryKey;autoIncrement;comment:SKU ID"`
-	SN           string `gorm:"type:varchar(255);not null;uniqueIndex:uniq_code;comment:SKU 对外展示ID"`
-	ProductSPUID int64  `gorm:"column:product_spu_id;not null;index:idx_product_spu_id,comment:所属SPU的ID不是SN"`
+	Id           int64  `gorm:"primaryKey;autoIncrement;comment:商品SKU自增ID"`
+	SN           string `gorm:"type:varchar(255);not null;uniqueIndex:uniq_product_sku_sn;comment:商品SKU序列号"`
+	ProductSPUID int64  `gorm:"column:product_spu_id;not null;index:idx_product_spu_id,comment:商品SPU自增ID"`
 	Name         string `gorm:"type:varchar(255);not null;comment:SKU名称"`
-	Description  string `gorm:"not null;comment:SKU描述"`
-	Price        int64  `gorm:"not null;comment:价格单位为分, 999表示9.99元"`
+	Description  string `gorm:"not null;comment:商品描述"`
+	Price        int64  `gorm:"not null;comment:商品单价;单位为分, 999表示9.99元"`
 	Stock        int64  `gorm:"not null;comment:库存数量"`
 	StockLimit   int64  `gorm:"not null;comment:库存限制"`
 	SaleType     int64  `gorm:"type:tinyint unsigned;not null;default:1;comment:销售类型: 1=无限期 2=限时促销 3=预售"`
 	// SaleStart    sql.NullInt64   `gorm:"comment:销售开始时间,无限期销售为NULL"`
 	// SaleEnd      sql.NullInt64   `gorm:"comment:销售结束时间,无限期和预售为NULL"`
-	Status int64 `gorm:"type:tinyint unsigned;not null;default:0;comment:状态 0=下架 1=上架"`
+	Status int64 `gorm:"type:tinyint unsigned;not null;default:1;comment:状态 1=下架 2=上架"`
 	Ctime  int64
 	Utime  int64
 }
 
 const (
-	StatusOffShelf = iota // 下架
-	StatusOnShelf         // 上架
+	StatusOffShelf = iota + 1 // 下架
+	StatusOnShelf             // 上架
 )
