@@ -73,7 +73,7 @@ type ProductSPU struct {
 type ProductSKU struct {
 	Id           int64  `gorm:"primaryKey;autoIncrement;comment:商品SKU自增ID"`
 	SN           string `gorm:"type:varchar(255);not null;uniqueIndex:uniq_product_sku_sn;comment:商品SKU序列号"`
-	ProductSPUID int64  `gorm:"column:product_spu_id;not null;index:idx_product_spu_id,comment:商品SPU自增ID"`
+	ProductSPUID int64  `gorm:"column:product_spu_id;not null;index:idx_product_spu_id;comment:商品SPU自增ID"`
 	Name         string `gorm:"type:varchar(255);not null;comment:SKU名称"`
 	Description  string `gorm:"not null;comment:商品描述"`
 	Price        int64  `gorm:"not null;comment:商品单价;单位为分, 999表示9.99元"`

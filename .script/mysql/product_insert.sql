@@ -17,7 +17,7 @@ VALUES ('SPU001', '会员服务', '提供不同期限的会员服务', 2, UNIX_T
 CREATE TABLE IF NOT EXISTS  `product_skus` (
     `id` bigint NOT NULL AUTO_INCREMENT COMMENT '商品SKU自增ID',
     `sn` varchar(255) NOT NULL COMMENT '商品SKU序列号',
-    `product_spu_id` bigint NOT NULL,
+    `product_spu_id` bigint NOT NULL COMMENT '商品SPU自增ID',
     `name` varchar(255) NOT NULL COMMENT 'SKU名称',
     `description` longtext NOT NULL COMMENT '商品描述',
     `price` bigint NOT NULL COMMENT '商品单价',
@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS  `product_skus` (
     `utime` bigint DEFAULT NULL,
     PRIMARY KEY (`id`),
     UNIQUE KEY `uniq_product_sku_sn` (`sn`),
-    KEY `idx_product_spu_id` (`product_spu_id`) COMMENT '商品SPU自增ID'
+    KEY `idx_product_spu_id` (`product_spu_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 
