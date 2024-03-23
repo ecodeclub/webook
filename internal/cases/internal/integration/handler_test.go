@@ -487,6 +487,94 @@ func (s *HandlerTestSuite) TestPublish() {
 				Data: 2,
 			},
 		},
+		{
+			name: "publish表有值发布",
+			// publish_case表的ctime不更新
+			before: func(t *testing.T) {
+				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+				defer cancel()
+				err := s.db.WithContext(ctx).Create(&dao.Case{
+					Id:      3,
+					Uid:     uid,
+					Title:   "老的案例标题",
+					Content: "老的案例内容",
+					Labels: sqlx.JsonColumn[[]string]{
+						Valid: true,
+						Val:   []string{"old-MySQL"},
+					},
+					CodeRepo:  "old-github.com",
+					Keywords:  "old_mysql_keywords",
+					Shorthand: "old_mysql_shorthand",
+					Highlight: "old_mysql_highlight",
+					Guidance:  "old_mysql_guidance",
+					Ctime:     123,
+					Utime:     234,
+				}).Error
+				require.NoError(t, err)
+				err = s.db.WithContext(ctx).Create(&dao.PublishCase{
+					Id:      3,
+					Uid:     uid,
+					Title:   "老的案例标题",
+					Content: "老的案例内容",
+					Labels: sqlx.JsonColumn[[]string]{
+						Valid: true,
+						Val:   []string{"old-MySQL"},
+					},
+					CodeRepo:  "old-github.com",
+					Keywords:  "old_mysql_keywords",
+					Shorthand: "old_mysql_shorthand",
+					Highlight: "old_mysql_highlight",
+					Guidance:  "old_mysql_guidance",
+					Ctime:     123,
+					Utime:     234,
+				}).Error
+				require.NoError(t, err)
+			},
+			after: func(t *testing.T) {
+				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+				defer cancel()
+				ca, err := s.dao.GetCaseByID(ctx, 3)
+				require.NoError(t, err)
+				wantCase := dao.Case{
+					Uid:     uid,
+					Title:   "案例2",
+					Content: "案例2内容",
+					Labels: sqlx.JsonColumn[[]string]{
+						Valid: true,
+						Val:   []string{"MySQL"},
+					},
+					CodeRepo:  "www.github.com",
+					Keywords:  "mysql_keywords",
+					Shorthand: "mysql_shorthand",
+					Highlight: "mysql_highlight",
+					Guidance:  "mysql_guidance",
+				}
+				s.assertCase(t, wantCase, ca)
+				publishCase, err := s.dao.GetPublishCase(ctx, 3)
+				require.NoError(t, err)
+				publishCase.Ctime = 123
+				s.assertCase(t, wantCase, dao.Case(publishCase))
+			},
+			req: web.SaveReq{
+				Case: web.Case{
+					Id:       3,
+					Title:    "案例2",
+					Content:  "案例2内容",
+					Labels:   []string{"MySQL"},
+					CodeRepo: "www.github.com",
+					Summary: web.Summary{
+						Keywords:  "mysql_keywords",
+						Shorthand: "mysql_shorthand",
+						Highlight: "mysql_highlight",
+						Guidance:  "mysql_guidance",
+					},
+				},
+			},
+			wantCode: 200,
+			wantResp: test.Result[int64]{
+				Data: 3,
+			},
+		},
 	}
 	for _, tc := range testCases {
 		s.T().Run(tc.name, func(t *testing.T) {
