@@ -2,8 +2,9 @@ package cache
 
 import (
 	"context"
-	"github.com/ecodeclub/ecache"
 	"time"
+
+	"github.com/ecodeclub/ecache"
 )
 
 type CaseCache interface {

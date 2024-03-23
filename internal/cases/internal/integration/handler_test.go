@@ -5,6 +5,10 @@ package integration
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"testing"
+	"time"
+
 	"github.com/ecodeclub/ecache"
 	"github.com/ecodeclub/ekit/iox"
 	"github.com/ecodeclub/ekit/sqlx"
@@ -21,9 +25,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
-	"net/http"
-	"testing"
-	"time"
 )
 
 const uid = 2051

@@ -7,6 +7,8 @@
 package baguwen
 
 import (
+	"sync"
+
 	"github.com/ecodeclub/ecache"
 	"github.com/ecodeclub/webook/internal/cases/internal/repository"
 	"github.com/ecodeclub/webook/internal/cases/internal/repository/cache"
@@ -15,7 +17,6 @@ import (
 	"github.com/ecodeclub/webook/internal/cases/internal/web"
 	"github.com/ego-component/egorm"
 	"gorm.io/gorm"
-	"sync"
 )
 
 // Injectors from wire.go:

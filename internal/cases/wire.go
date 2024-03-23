@@ -3,6 +3,8 @@
 package baguwen
 
 import (
+	"sync"
+
 	"github.com/ecodeclub/ecache"
 	"github.com/ecodeclub/webook/internal/cases/internal/repository"
 	"github.com/ecodeclub/webook/internal/cases/internal/repository/cache"
@@ -12,7 +14,6 @@ import (
 	"github.com/ego-component/egorm"
 	"github.com/google/wire"
 	"gorm.io/gorm"
-	"sync"
 )
 
 func InitHandler(db *egorm.Component, ec ecache.Cache) (*Handler, error) {

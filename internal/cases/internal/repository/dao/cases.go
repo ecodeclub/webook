@@ -2,9 +2,10 @@ package dao
 
 import (
 	"context"
+	"time"
+
 	"github.com/ego-component/egorm"
 	"gorm.io/gorm"
-	"time"
 )
 
 type CaseDAO interface {
