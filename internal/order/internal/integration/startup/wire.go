@@ -12,38 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package domain
+//go:build wireinject
 
-const (
-	StatusOffShelf = iota // 下架
-	StatusOnShelf         // 上架
+package startup
+
+import (
+	"github.com/ecodeclub/webook/internal/credit"
+	"github.com/ecodeclub/webook/internal/order"
+	"github.com/ecodeclub/webook/internal/order/internal/web"
+	"github.com/ecodeclub/webook/internal/payment"
+	"github.com/ecodeclub/webook/internal/product"
+	testioc "github.com/ecodeclub/webook/internal/test/ioc"
+	"github.com/google/wire"
 )
 
-type Product struct {
-	SPU SPU
-	SKU SKU
-}
-
-type SPU struct {
-	ID     int64
-	SN     string
-	Name   string
-	Desc   string
-	Status int64
-}
-
-type SKU struct {
-	ID   int64
-	SN   string
-	Name string
-	Desc string
-
-	Price      int64
-	Stock      int64
-	StockLimit int64
-
-	SaleType int64
-	// SaleStart int64
-	// SaleEnd   int64
-	Status int64
+func InitHandler(paymentSvc payment.Service, productSvc product.Service, creditSvc credit.Service) (*web.Handler, error) {
+	wire.Build(testioc.BaseSet, order.InitHandler)
+	return new(web.Handler), nil
 }

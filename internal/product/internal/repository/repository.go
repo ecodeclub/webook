@@ -52,12 +52,14 @@ func (p *productRepository) FindBySN(ctx context.Context, sn string) (domain.Pro
 func (p *productRepository) toDomainProduct(spu dao.ProductSPU, sku dao.ProductSKU) domain.Product {
 	return domain.Product{
 		SPU: domain.SPU{
+			ID:     spu.Id,
 			SN:     spu.SN,
 			Name:   spu.Name,
 			Desc:   spu.Description,
 			Status: spu.Status,
 		},
 		SKU: domain.SKU{
+			ID:         sku.Id,
 			SN:         sku.SN,
 			Name:       sku.Name,
 			Desc:       sku.Description,

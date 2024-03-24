@@ -14,36 +14,6 @@
 
 package domain
 
-const (
-	StatusOffShelf = iota // 下架
-	StatusOnShelf         // 上架
-)
-
-type Product struct {
-	SPU SPU
-	SKU SKU
-}
-
-type SPU struct {
-	ID     int64
-	SN     string
-	Name   string
-	Desc   string
-	Status int64
-}
-
-type SKU struct {
-	ID   int64
-	SN   string
-	Name string
-	Desc string
-
-	Price      int64
-	Stock      int64
-	StockLimit int64
-
-	SaleType int64
-	// SaleStart int64
-	// SaleEnd   int64
-	Status int64
+type Credit struct {
+	Amount int64
 }

@@ -26,7 +26,7 @@ go.work
 config/local.yaml
 
 /internal/baguwen/internal/integration/logs/
-/logs/
+/**/**/logs
 /internal/question/internal/integration/logs/
 cover.out
 /internal/label/internal/integration/logs/

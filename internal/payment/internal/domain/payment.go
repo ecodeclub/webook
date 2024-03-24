@@ -15,35 +15,34 @@
 package domain
 
 const (
-	StatusOffShelf = iota // 下架
-	StatusOnShelf         // 上架
+	ChannelTypeCredit = iota + 1
+	ChannelTypeWechat
 )
 
-type Product struct {
-	SPU SPU
-	SKU SKU
+type Payment struct {
+	ID          int64
+	SN          string
+	OrderID     int64
+	OrderSN     string
+	TotalAmount int64
+	Deadline    int64
+	PaidAt      int64
+	Status      int64
+	Records     []PaymentRecord
+	Ctime       int64
+	Utime       int64
 }
 
-type SPU struct {
-	ID     int64
-	SN     string
-	Name   string
-	Desc   string
-	Status int64
-}
-
-type SKU struct {
-	ID   int64
-	SN   string
-	Name string
+type PaymentChannel struct {
+	Type int64
 	Desc string
+}
 
-	Price      int64
-	Stock      int64
-	StockLimit int64
-
-	SaleType int64
-	// SaleStart int64
-	// SaleEnd   int64
-	Status int64
+type PaymentRecord struct {
+	PaymentNO3rd  string
+	Channel       int64
+	Amount        int64
+	PaidAt        int64
+	Status        int64
+	WechatCodeURL string
 }

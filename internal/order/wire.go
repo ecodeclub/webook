@@ -15,3 +15,42 @@
 //go:build wireinject
 
 package order
+
+import (
+	"sync"
+
+	"github.com/ecodeclub/ecache"
+	"github.com/ecodeclub/webook/internal/credit"
+	"github.com/ecodeclub/webook/internal/order/internal/repository"
+	"github.com/ecodeclub/webook/internal/order/internal/repository/dao"
+	"github.com/ecodeclub/webook/internal/order/internal/service"
+	"github.com/ecodeclub/webook/internal/order/internal/web"
+	"github.com/ecodeclub/webook/internal/payment"
+	"github.com/ecodeclub/webook/internal/pkg/sequencenumber"
+	"github.com/ecodeclub/webook/internal/product"
+	"github.com/ego-component/egorm"
+	"github.com/google/wire"
+)
+
+var HandlerSet = wire.NewSet(
+	InitTablesOnce,
+	repository.NewRepository,
+	service.NewService,
+	sequencenumber.NewGenerator,
+	web.NewHandler)
+
+func InitHandler(db *egorm.Component, paymentSvc payment.Service, productSvc product.Service, creditSvc credit.Service, cache ecache.Cache) *Handler {
+	wire.Build(HandlerSet)
+	return new(Handler)
+}
+
+var once = &sync.Once{}
+
+func InitTablesOnce(db *egorm.Component) dao.OrderDAO {
+	once.Do(func() {
+		_ = dao.InitTables(db)
+	})
+	return dao.NewOrderGORMDAO(db)
+}
+
+type Handler = web.Handler

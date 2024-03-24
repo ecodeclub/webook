@@ -12,38 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package domain
+package credit
 
-const (
-	StatusOffShelf = iota // 下架
-	StatusOnShelf         // 上架
+import (
+	"github.com/ecodeclub/webook/internal/credit/internal/domain"
+	"github.com/ecodeclub/webook/internal/credit/internal/service"
 )
 
-type Product struct {
-	SPU SPU
-	SKU SKU
-}
-
-type SPU struct {
-	ID     int64
-	SN     string
-	Name   string
-	Desc   string
-	Status int64
-}
-
-type SKU struct {
-	ID   int64
-	SN   string
-	Name string
-	Desc string
-
-	Price      int64
-	Stock      int64
-	StockLimit int64
-
-	SaleType int64
-	// SaleStart int64
-	// SaleEnd   int64
-	Status int64
-}
+type Credit = domain.Credit
+type Service = service.Service

@@ -1,4 +1,4 @@
-package sngenerator
+package sequencenumber
 
 import (
 	"testing"
@@ -10,7 +10,7 @@ import (
 const expectedSNLength = 39
 
 func TestGenerateSequenceNumberWith(t *testing.T) {
-	sng := NewSequenceNumberGeneratorWith(func(_ time.Time) int64 { return 1234554320123 }, func() string { return "nUfojcH2M5j2j3Tk5A1mf2" })
+	sng := NewGeneratorWith(func(_ time.Time) int64 { return 1234554320123 }, func() string { return "nUfojcH2M5j2j3Tk5A1mf2" })
 
 	testCases := []struct {
 		name     string
@@ -57,7 +57,7 @@ func TestGenerateSequenceNumberWith(t *testing.T) {
 }
 
 func TestGenerateSequenceNumber(t *testing.T) {
-	sn, err := NewSequenceNumberGenerator().Generate(123456789)
+	sn, err := NewGenerator().Generate(123456789)
 	assert.NoError(t, err)
 	assert.Contains(t, sn, "6789")
 	assert.Equal(t, expectedSNLength, len(sn))

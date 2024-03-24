@@ -12,38 +12,27 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package domain
+package service
 
-const (
-	StatusOffShelf = iota // 下架
-	StatusOnShelf         // 上架
+import (
+	"context"
+
+	"github.com/ecodeclub/webook/internal/credit/internal/domain"
+	"github.com/ecodeclub/webook/internal/credit/internal/repository"
 )
 
-type Product struct {
-	SPU SPU
-	SKU SKU
+type Service interface {
+	GetByUID(ctx context.Context, uid int64) (domain.Credit, error)
 }
 
-type SPU struct {
-	ID     int64
-	SN     string
-	Name   string
-	Desc   string
-	Status int64
+func NewService(repo repository.CreditRepository) Service {
+	return &service{repo: repo}
 }
 
-type SKU struct {
-	ID   int64
-	SN   string
-	Name string
-	Desc string
+type service struct {
+	repo repository.CreditRepository
+}
 
-	Price      int64
-	Stock      int64
-	StockLimit int64
-
-	SaleType int64
-	// SaleStart int64
-	// SaleEnd   int64
-	Status int64
+func (s *service) GetByUID(ctx context.Context, uid int64) (domain.Credit, error) {
+	return domain.Credit{}, nil
 }

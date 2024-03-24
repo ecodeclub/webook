@@ -9,6 +9,7 @@ package product
 import (
 	"sync"
 
+	"github.com/ecodeclub/webook/internal/product/internal/domain"
 	"github.com/ecodeclub/webook/internal/product/internal/repository"
 	"github.com/ecodeclub/webook/internal/product/internal/repository/dao"
 	"github.com/ecodeclub/webook/internal/product/internal/service"
@@ -21,16 +22,27 @@ import (
 // Injectors from wire.go:
 
 func InitHandler(db *gorm.DB) *web.Handler {
+	service := InitService(db)
+	handler := web.NewHandler(service)
+	return handler
+}
+
+func InitService(db *gorm.DB) service.Service {
 	productDAO := InitTablesOnce(db)
 	productRepository := repository.NewProductRepository(productDAO)
 	serviceService := service.NewService(productRepository)
-	handler := web.NewHandler(serviceService)
-	return handler
+	return serviceService
 }
 
 // wire.go:
 
-var HandlerSet = wire.NewSet(repository.NewProductRepository, InitTablesOnce, service.NewService, web.NewHandler)
+var ServiceSet = wire.NewSet(
+	InitTablesOnce, repository.NewProductRepository, service.NewService,
+)
+
+var HandlerSet = wire.NewSet(
+	InitService, web.NewHandler,
+)
 
 var once = &sync.Once{}
 
@@ -42,3 +54,11 @@ func InitTablesOnce(db *egorm.Component) dao.ProductDAO {
 }
 
 type Handler = web.Handler
+
+type Service = service.Service
+
+type Product = domain.Product
+
+type SKU = domain.SKU
+
+type SPU = domain.SPU
