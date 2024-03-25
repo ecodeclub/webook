@@ -10,15 +10,16 @@ import (
 	"sync"
 
 	"github.com/ecodeclub/ecache"
+	"github.com/ecodeclub/mq-api"
 	"github.com/ecodeclub/webook/internal/credit"
+	"github.com/ecodeclub/webook/internal/order/internal/consumer"
 	"github.com/ecodeclub/webook/internal/order/internal/repository"
 	"github.com/ecodeclub/webook/internal/order/internal/repository/dao"
-	service4 "github.com/ecodeclub/webook/internal/order/internal/service"
+	"github.com/ecodeclub/webook/internal/order/internal/service"
 	"github.com/ecodeclub/webook/internal/order/internal/web"
 	"github.com/ecodeclub/webook/internal/payment"
 	"github.com/ecodeclub/webook/internal/pkg/sequencenumber"
 	"github.com/ecodeclub/webook/internal/product"
-	"github.com/ego-component/egorm"
 	"github.com/google/wire"
 	"gorm.io/gorm"
 )
@@ -26,27 +27,50 @@ import (
 // Injectors from wire.go:
 
 func InitHandler(db *gorm.DB, paymentSvc payment.Service, productSvc product.Service, creditSvc credit.Service, cache ecache.Cache) *web.Handler {
-	orderDAO := InitTablesOnce(db)
-	orderRepository := repository.NewRepository(orderDAO)
-	serviceService := service4.NewService(orderRepository)
+	serviceService := initService(db)
 	generator := sequencenumber.NewGenerator()
 	handler := web.NewHandler(serviceService, paymentSvc, productSvc, creditSvc, generator, cache)
 	return handler
 }
 
-// wire.go:
-
-var HandlerSet = wire.NewSet(
-	InitTablesOnce, repository.NewRepository, service4.NewService, sequencenumber.NewGenerator, web.NewHandler,
-)
-
-var once = &sync.Once{}
-
-func InitTablesOnce(db *egorm.Component) dao.OrderDAO {
-	once.Do(func() {
-		_ = dao.InitTables(db)
-	})
-	return dao.NewOrderGORMDAO(db)
+func InitCompleteOrderConsumer(db *gorm.DB, q mq.MQ) *consumer.CompleteOrderConsumer {
+	serviceService := initService(db)
+	v := InitMQConsumer(q)
+	completeOrderConsumer := consumer.NewCompleteOrderConsumer(serviceService, v)
+	return completeOrderConsumer
 }
 
+// wire.go:
+
 type Handler = web.Handler
+
+type CompleteOrderConsumer = consumer.CompleteOrderConsumer
+
+var HandlerSet = wire.NewSet(
+	initService, sequencenumber.NewGenerator, web.NewHandler,
+)
+
+var (
+	once = &sync.Once{}
+	svc  service.Service
+)
+
+func initService(db *gorm.DB) service.Service {
+	once.Do(func() {
+		_ = dao.InitTables(db)
+		orderDAO := dao.NewOrderGORMDAO(db)
+		orderRepository := repository.NewRepository(orderDAO)
+		svc = service.NewService(orderRepository)
+	})
+	return svc
+}
+
+func InitMQConsumer(q mq.MQ) []mq.Consumer {
+	topic := "payment_successful"
+	groupID := "OrderConsumerGroup"
+	c, err := q.Consumer(topic, groupID)
+	if err != nil {
+		panic(err)
+	}
+	return []mq.Consumer{c}
+}

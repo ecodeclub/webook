@@ -20,7 +20,9 @@ import (
 	"sync"
 
 	"github.com/ecodeclub/ecache"
+	"github.com/ecodeclub/mq-api"
 	"github.com/ecodeclub/webook/internal/credit"
+	"github.com/ecodeclub/webook/internal/order/internal/consumer"
 	"github.com/ecodeclub/webook/internal/order/internal/repository"
 	"github.com/ecodeclub/webook/internal/order/internal/repository/dao"
 	"github.com/ecodeclub/webook/internal/order/internal/service"
@@ -30,12 +32,14 @@ import (
 	"github.com/ecodeclub/webook/internal/product"
 	"github.com/ego-component/egorm"
 	"github.com/google/wire"
+	"gorm.io/gorm"
 )
 
+type Handler = web.Handler
+type CompleteOrderConsumer = consumer.CompleteOrderConsumer
+
 var HandlerSet = wire.NewSet(
-	InitTablesOnce,
-	repository.NewRepository,
-	service.NewService,
+	initService,
 	sequencenumber.NewGenerator,
 	web.NewHandler)
 
@@ -44,13 +48,32 @@ func InitHandler(db *egorm.Component, paymentSvc payment.Service, productSvc pro
 	return new(Handler)
 }
 
-var once = &sync.Once{}
+var (
+	once = &sync.Once{}
+	svc  service.Service
+)
 
-func InitTablesOnce(db *egorm.Component) dao.OrderDAO {
+func initService(db *gorm.DB) service.Service {
 	once.Do(func() {
 		_ = dao.InitTables(db)
+		orderDAO := dao.NewOrderGORMDAO(db)
+		orderRepository := repository.NewRepository(orderDAO)
+		svc = service.NewService(orderRepository)
 	})
-	return dao.NewOrderGORMDAO(db)
+	return svc
 }
 
-type Handler = web.Handler
+func InitCompleteOrderConsumer(db *egorm.Component, q mq.MQ) *CompleteOrderConsumer {
+	wire.Build(initService, InitMQConsumer, consumer.NewCompleteOrderConsumer)
+	return new(CompleteOrderConsumer)
+}
+
+func InitMQConsumer(q mq.MQ) []mq.Consumer {
+	topic := "payment_successful"
+	groupID := "OrderConsumerGroup"
+	c, err := q.Consumer(topic, groupID)
+	if err != nil {
+		panic(err)
+	}
+	return []mq.Consumer{c}
+}

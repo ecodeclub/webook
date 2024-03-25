@@ -15,3 +15,10 @@ web:
 session:
   sessionEncryptedKey: "abcd"
 
+kafka:
+  network: tcp
+  addresses:
+    - kafka:9092
+  topics:
+    - name: payment_successful
+      partitions: 2
