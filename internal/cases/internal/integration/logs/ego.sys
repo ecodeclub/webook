@@ -1,0 +1,41 @@
+{"lv":"info","ts":1711172536,"msg":"start db","comp":"component.egorm","compName":"mysql","addr":"localhost:13316","name":"webook"}
+{"lv":"info","ts":1711172792,"msg":"start db","comp":"component.egorm","compName":"mysql","addr":"localhost:13316","name":"webook"}
+{"lv":"info","ts":1711172885,"msg":"start db","comp":"component.egorm","compName":"mysql","addr":"localhost:13316","name":"webook"}
+{"lv":"info","ts":1711172997,"msg":"start db","comp":"component.egorm","compName":"mysql","addr":"localhost:13316","name":"webook"}
+{"lv":"info","ts":1711173043,"msg":"start db","comp":"component.egorm","compName":"mysql","addr":"localhost:13316","name":"webook"}
+{"lv":"info","ts":1711173094,"msg":"start db","comp":"component.egorm","compName":"mysql","addr":"localhost:13316","name":"webook"}
+{"lv":"info","ts":1711173302,"msg":"start db","comp":"component.egorm","compName":"mysql","addr":"localhost:13316","name":"webook"}
+{"lv":"warn","ts":1711173307,"msg":"slow","comp":"server.egin","compName":"server","type":"http","cost":2873.141,"method":"POST./case/save","addr":"/case/save","ip":"","size":28,"peerIp":"","code":200,"ucode":200}
+{"lv":"info","ts":1711173307,"msg":"access","comp":"server.egin","compName":"server","type":"http","cost":2873.141,"method":"POST./case/save","addr":"/case/save","ip":"","size":28,"peerIp":"","code":200,"ucode":200,"event":"normal","error":"","code":200,"ucode":200}
+{"lv":"info","ts":1711173349,"msg":"start db","comp":"component.egorm","compName":"mysql","addr":"localhost:13316","name":"webook"}
+{"lv":"warn","ts":1711173394,"msg":"slow","comp":"server.egin","compName":"server","type":"http","cost":42156.623,"method":"POST./case/save","addr":"/case/save","ip":"","size":28,"peerIp":"","code":200,"ucode":200}
+{"lv":"info","ts":1711173394,"msg":"access","comp":"server.egin","compName":"server","type":"http","cost":42156.623,"method":"POST./case/save","addr":"/case/save","ip":"","size":28,"peerIp":"","code":200,"ucode":200,"event":"normal","error":"","code":200,"ucode":200}
+{"lv":"info","ts":1711174050,"msg":"start db","comp":"component.egorm","compName":"mysql","addr":"localhost:13316","name":"webook"}
+{"lv":"info","ts":1711174162,"msg":"start db","comp":"component.egorm","compName":"mysql","addr":"localhost:13316","name":"webook"}
+{"lv":"warn","ts":1711174171,"msg":"slow","comp":"server.egin","compName":"server","type":"http","cost":8961.903,"method":"POST./case/save","addr":"/case/save","ip":"","size":28,"peerIp":"","code":200,"ucode":200}
+{"lv":"info","ts":1711174171,"msg":"access","comp":"server.egin","compName":"server","type":"http","cost":8961.903,"method":"POST./case/save","addr":"/case/save","ip":"","size":28,"peerIp":"","code":200,"ucode":200,"event":"normal","error":"","code":200,"ucode":200}
+{"lv":"info","ts":1711175510,"msg":"start db","comp":"component.egorm","compName":"mysql","addr":"localhost:13316","name":"webook"}
+{"lv":"info","ts":1711175818,"msg":"start db","comp":"component.egorm","compName":"mysql","addr":"localhost:13316","name":"webook"}
+{"lv":"info","ts":1711175885,"msg":"start db","comp":"component.egorm","compName":"mysql","addr":"localhost:13316","name":"webook"}
+{"lv":"warn","ts":1711176024,"msg":"slow","comp":"server.egin","compName":"server","type":"http","cost":133090.224,"method":"POST./case/list","addr":"/case/list","ip":"","size":281,"peerIp":"","code":200,"ucode":200}
+{"lv":"info","ts":1711176024,"msg":"access","comp":"server.egin","compName":"server","type":"http","cost":133090.224,"method":"POST./case/list","addr":"/case/list","ip":"","size":281,"peerIp":"","code":200,"ucode":200,"event":"normal","error":"","code":200,"ucode":200}
+{"lv":"info","ts":1711177087,"msg":"start db","comp":"component.egorm","compName":"mysql","addr":"localhost:13316","name":"webook"}
+{"lv":"warn","ts":1711177091,"msg":"slow","comp":"server.egin","compName":"server","type":"http","cost":3899.043,"method":"POST./case/publish","addr":"/case/publish","ip":"","size":28,"peerIp":"","code":200,"ucode":200}
+{"lv":"info","ts":1711177091,"msg":"access","comp":"server.egin","compName":"server","type":"http","cost":3899.043,"method":"POST./case/publish","addr":"/case/publish","ip":"","size":28,"peerIp":"","code":200,"ucode":200,"event":"normal","error":"","code":200,"ucode":200}
+{"lv":"info","ts":1711177206,"msg":"start db","comp":"component.egorm","compName":"mysql","addr":"localhost:13316","name":"webook"}
+{"lv":"info","ts":1711177206,"msg":"access","comp":"server.egin","compName":"server","type":"http","cost":5.168,"method":"POST./case/publish","addr":"/case/publish","ip":"","size":28,"peerIp":"","event":"normal","error":"","code":200,"ucode":200}
+{"lv":"info","ts":1711177890,"msg":"start db","comp":"component.egorm","compName":"mysql","addr":"localhost:13316","name":"webook"}
+{"lv":"info","ts":1711177890,"msg":"access","comp":"server.egin","compName":"server","type":"http","cost":8.51,"method":"POST./case/publish","addr":"/case/publish","ip":"","size":28,"peerIp":"","event":"normal","error":"","code":200,"ucode":200}
+{"lv":"error","ts":1711177895,"msg":"access","comp":"component.egorm","compName":"mysql","addr":"localhost:13316","method":"gorm:query","name":"webook.publish_case","cost":0.123,"event":"error","error":"context deadline exceeded"}
+{"lv":"info","ts":1711177895,"msg":"access","comp":"server.egin","compName":"server","type":"http","cost":19.331,"method":"POST./case/publish","addr":"/case/publish","ip":"","size":28,"peerIp":"","event":"normal","error":"","code":200,"ucode":200}
+{"lv":"error","ts":1711177897,"msg":"access","comp":"component.egorm","compName":"mysql","addr":"localhost:13316","method":"gorm:query","name":"webook.publish_case","cost":0.083,"event":"error","error":"context deadline exceeded"}
+{"lv":"info","ts":1711178090,"msg":"start db","comp":"component.egorm","compName":"mysql","addr":"localhost:13316","name":"webook"}
+{"lv":"info","ts":1711178091,"msg":"access","comp":"server.egin","compName":"server","type":"http","cost":5.253,"method":"POST./case/publish","addr":"/case/publish","ip":"","size":28,"peerIp":"","event":"normal","error":"","code":200,"ucode":200}
+{"lv":"error","ts":1711178099,"msg":"access","comp":"component.egorm","compName":"mysql","addr":"localhost:13316","method":"gorm:query","name":"webook.publish_case","cost":0.081,"event":"error","error":"context deadline exceeded"}
+{"lv":"info","ts":1711178105,"msg":"start db","comp":"component.egorm","compName":"mysql","addr":"localhost:13316","name":"webook"}
+{"lv":"info","ts":1711178106,"msg":"access","comp":"server.egin","compName":"server","type":"http","cost":6.275,"method":"POST./case/publish","addr":"/case/publish","ip":"","size":28,"peerIp":"","event":"normal","error":"","code":200,"ucode":200}
+{"lv":"info","ts":1711178112,"msg":"access","comp":"server.egin","compName":"server","type":"http","cost":7.821,"method":"POST./case/publish","addr":"/case/publish","ip":"","size":28,"peerIp":"","event":"normal","error":"","code":200,"ucode":200}
+{"lv":"info","ts":1711178174,"msg":"start db","comp":"component.egorm","compName":"mysql","addr":"localhost:13316","name":"webook"}
+{"lv":"info","ts":1711178174,"msg":"access","comp":"server.egin","compName":"server","type":"http","cost":5.299,"method":"POST./case/publish","addr":"/case/publish","ip":"","size":28,"peerIp":"","event":"normal","error":"","code":200,"ucode":200}
+{"lv":"info","ts":1711178231,"msg":"start db","comp":"component.egorm","compName":"mysql","addr":"localhost:13316","name":"webook"}
+{"lv":"info","ts":1711178231,"msg":"access","comp":"server.egin","compName":"server","type":"http","cost":5.417,"method":"POST./case/publish","addr":"/case/publish","ip":"","size":28,"peerIp":"","event":"normal","error":"","code":200,"ucode":200}
