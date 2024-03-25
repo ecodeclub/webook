@@ -29,8 +29,13 @@ type OrderDAO interface {
 	FindOrderBySN(ctx context.Context, sn string) (Order, error)
 	FindOrderBySNAndBuyerID(ctx context.Context, sn string, buyerID int64) (Order, error)
 	FindOrderItemsByOrderID(ctx context.Context, oid int64) ([]OrderItem, error)
-	Count(ctx context.Context, uid int64) (int64, error)
-	List(ctx context.Context, offset int, limit int, uid int64) ([]Order, error)
+
+	CountOrdersByUID(ctx context.Context, uid int64) (int64, error)
+	ListOrdersByUID(ctx context.Context, offset, limit int, uid int64) ([]Order, error)
+
+	CountExpiredOrders(ctx context.Context, ctime int64) (int64, error)
+	ListExpiredOrders(ctx context.Context, offset, limit int, ctime int64) ([]Order, error)
+	UpdateExpiredOrders(ctx context.Context, orderIDs []int64) error
 }
 
 func NewOrderGORMDAO(db *egorm.Component) OrderDAO {
@@ -83,25 +88,45 @@ func (g *gormOrderDAO) FindOrderItemsByOrderID(ctx context.Context, oid int64) (
 	return res, err
 }
 
-func (g *gormOrderDAO) Count(ctx context.Context, uid int64) (int64, error) {
+func (g *gormOrderDAO) CountOrdersByUID(ctx context.Context, uid int64) (int64, error) {
 	var res int64
-	db := g.db.WithContext(ctx).Model(&Order{})
-	if uid != 0 {
-		db = db.Where("uid = ?", uid)
-	}
-	err := db.Select("COUNT(id)").Count(&res).Error
+	err := g.db.WithContext(ctx).Model(&Order{}).Where("buyer_id = ?", uid).Select("COUNT(id)").Count(&res).Error
 	return res, err
 }
 
-func (g *gormOrderDAO) List(ctx context.Context, offset int, limit int, uid int64) ([]Order, error) {
+func (g *gormOrderDAO) ListOrdersByUID(ctx context.Context, offset, limit int, uid int64) ([]Order, error) {
 	var res []Order
-	db := g.db.WithContext(ctx)
-	if uid != 0 {
-		db = db.Where("uid = ?", uid)
-	}
-	err := db.Offset(offset).Limit(limit).Order("id DESC").Find(&res).Error
+	err := g.db.WithContext(ctx).Offset(offset).Limit(limit).Order("id DESC").Find(&res, "buyer_id = ?", uid).Error
 	return res, err
 }
+
+func (g *gormOrderDAO) CountExpiredOrders(ctx context.Context, ctime int64) (int64, error) {
+	var res int64
+	err := g.db.WithContext(ctx).Model(&Order{}).Where("status = ? AND Ctime <= ?", OrderStatusUnpaid, ctime).Select("COUNT(id)").Count(&res).Error
+	return res, err
+}
+
+func (g *gormOrderDAO) ListExpiredOrders(ctx context.Context, offset, limit int, ctime int64) ([]Order, error) {
+	var res []Order
+	err := g.db.WithContext(ctx).Offset(offset).Limit(limit).Order("id DESC").Find(&res, "status = ? AND Ctime <= ?", OrderStatusUnpaid, ctime).Error
+	return res, err
+}
+
+func (g *gormOrderDAO) UpdateExpiredOrders(ctx context.Context, orderIDs []int64) error {
+	timestamp := time.Now().UnixMilli()
+	return g.db.WithContext(ctx).Model(&Order{}).Where("id IN ?", orderIDs).Updates(map[string]any{
+		"status":    OrderStatusExpired,
+		"closed_at": timestamp,
+		"utime":     timestamp,
+	}).Error
+}
+
+const (
+	OrderStatusUnpaid    = iota + 1 // 未支付
+	OrderStatusCompleted            // 已完成(已支付)
+	OrderStatusCanceled             // 已取消
+	OrderStatusExpired              // 已超时
+)
 
 type Order struct {
 	Id                 int64  `gorm:"primaryKey;autoIncrement;comment:订单自增ID"`

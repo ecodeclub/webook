@@ -71,10 +71,10 @@ type CompleteOrderReq struct {
 	BuyerID int64  `json:"buyerId"`
 }
 
-// CloseTimeoutOrderReq 关闭超时订单
-type CloseTimeoutOrderReq struct {
-	Offset int `json:"offset,omitempty"`
-	Limit  int `json:"limit,omitempty"`
+// CloseTimeoutOrdersReq 关闭超时订单
+type CloseTimeoutOrdersReq struct {
+	Limit  int   `json:"limit,omitempty"`
+	Minute int64 `json:"minute"`
 }
 
 // ListOrdersReq 分页查询用户所有订单
@@ -99,6 +99,7 @@ type RetrieveOrderDetailResp struct {
 
 type Order struct {
 	SN                 string      `json:"sn"`
+	PaymentSN          string      `json:"paymentSn"`
 	OriginalTotalPrice int64       `json:"originalPrice"`
 	RealTotalPrice     int64       `json:"realPrice"`
 	Status             int64       `json:"status"`

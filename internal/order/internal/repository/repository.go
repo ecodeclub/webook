@@ -28,22 +28,27 @@ type OrderRepository interface {
 	UpdateOrder(ctx context.Context, order domain.Order) error
 	FindOrderBySN(ctx context.Context, sn string) (domain.Order, error)
 	FindOrderBySNAndBuyerID(ctx context.Context, sn string, buyerID int64) (domain.Order, error)
-	ListOrders(ctx context.Context, offset int, limit int, uid int64) ([]domain.Order, error)
+
 	TotalOrders(ctx context.Context, uid int64) (int64, error)
+	ListOrdersByUID(ctx context.Context, offset, limit int, uid int64) ([]domain.Order, error)
+
+	TotalExpiredOrders(ctx context.Context, ctime int64) (int64, error)
+	ListExpiredOrders(ctx context.Context, offset, limit int, ctime int64) ([]domain.Order, error)
+	CloseExpiredOrders(ctx context.Context, orderIDs []int64) error
 }
 
 func NewRepository(d dao.OrderDAO) OrderRepository {
 	return &orderRepository{
-		d: d,
+		dao: d,
 	}
 }
 
 type orderRepository struct {
-	d dao.OrderDAO
+	dao dao.OrderDAO
 }
 
 func (o *orderRepository) CreateOrder(ctx context.Context, order domain.Order) (domain.Order, error) {
-	oid, err := o.d.CreateOrder(ctx, o.toOrderEntity(order), o.toOrderItemEntities(order.Items))
+	oid, err := o.dao.CreateOrder(ctx, o.toOrderEntity(order), o.toOrderItemEntities(order.Items))
 	if err != nil {
 		return domain.Order{}, err
 	}
@@ -80,15 +85,15 @@ func (o *orderRepository) toOrderItemEntities(orderItems []domain.OrderItem) []d
 }
 
 func (o *orderRepository) UpdateOrder(ctx context.Context, order domain.Order) error {
-	return o.d.UpdateOrder(ctx, o.toOrderEntity(order))
+	return o.dao.UpdateOrder(ctx, o.toOrderEntity(order))
 }
 
 func (o *orderRepository) FindOrderBySN(ctx context.Context, sn string) (domain.Order, error) {
-	order, err := o.d.FindOrderBySN(ctx, sn)
+	order, err := o.dao.FindOrderBySN(ctx, sn)
 	if err != nil {
 		return domain.Order{}, err
 	}
-	orderItems, err := o.d.FindOrderItemsByOrderID(ctx, order.Id)
+	orderItems, err := o.dao.FindOrderItemsByOrderID(ctx, order.Id)
 	if err != nil {
 		return domain.Order{}, err
 	}
@@ -124,25 +129,29 @@ func (o *orderRepository) toOrderDomain(order dao.Order, orderItems []dao.OrderI
 }
 
 func (o *orderRepository) FindOrderBySNAndBuyerID(ctx context.Context, sn string, buyerID int64) (domain.Order, error) {
-	order, err := o.d.FindOrderBySNAndBuyerID(ctx, sn, buyerID)
+	order, err := o.dao.FindOrderBySNAndBuyerID(ctx, sn, buyerID)
 	if err != nil {
 		return domain.Order{}, fmt.Errorf("通过订单序列号及买家ID查找订单失败: %w", err)
 	}
 
-	orderItems, err := o.d.FindOrderItemsByOrderID(ctx, order.Id)
+	orderItems, err := o.dao.FindOrderItemsByOrderID(ctx, order.Id)
 	if err != nil {
 		return domain.Order{}, fmt.Errorf("通过订单ID查找订单失败: %w", err)
 	}
 	return o.toOrderDomain(order, orderItems), nil
 }
 
-func (o *orderRepository) ListOrders(ctx context.Context, offset int, limit int, uid int64) ([]domain.Order, error) {
-	os, err := o.d.List(ctx, offset, limit, uid)
+func (o *orderRepository) TotalOrders(ctx context.Context, uid int64) (int64, error) {
+	return o.dao.CountOrdersByUID(ctx, uid)
+}
+
+func (o *orderRepository) ListOrdersByUID(ctx context.Context, offset, limit int, uid int64) ([]domain.Order, error) {
+	os, err := o.dao.ListOrdersByUID(ctx, offset, limit, uid)
 	if err != nil {
 		return nil, err
 	}
 	return slice.Map(os, func(idx int, src dao.Order) domain.Order {
-		items, er := o.d.FindOrderItemsByOrderID(ctx, src.Id)
+		items, er := o.dao.FindOrderItemsByOrderID(ctx, src.Id)
 		if er != nil {
 			return domain.Order{}
 		}
@@ -150,6 +159,20 @@ func (o *orderRepository) ListOrders(ctx context.Context, offset int, limit int,
 	}), err
 }
 
-func (o *orderRepository) TotalOrders(ctx context.Context, uid int64) (int64, error) {
-	return o.d.Count(ctx, uid)
+func (o *orderRepository) TotalExpiredOrders(ctx context.Context, ctime int64) (int64, error) {
+	return o.dao.CountExpiredOrders(ctx, ctime)
+}
+
+func (o *orderRepository) ListExpiredOrders(ctx context.Context, offset, limit int, ctime int64) ([]domain.Order, error) {
+	os, err := o.dao.ListExpiredOrders(ctx, offset, limit, ctime)
+	if err != nil {
+		return nil, err
+	}
+	return slice.Map(os, func(idx int, src dao.Order) domain.Order {
+		return o.toOrderDomain(src, nil)
+	}), err
+}
+
+func (o *orderRepository) CloseExpiredOrders(ctx context.Context, orderIDs []int64) error {
+	return o.dao.UpdateExpiredOrders(ctx, orderIDs)
 }

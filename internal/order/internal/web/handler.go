@@ -17,7 +17,6 @@ package web
 import (
 	"context"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/ecodeclub/ecache"
@@ -52,9 +51,7 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g.POST("/create", ginx.BS[CreateOrderReq](h.CreateOrderAndPayment))
 	g.POST("", ginx.BS[RetrieveOrderStatusReq](h.RetrieveOrderStatus))
 	g.POST("/complete", ginx.B[CompleteOrderReq](h.CompleteOrder))
-	// 定时任务超时关闭, 给定时任务一个token?
-	g.POST("/close", ginx.W(h.CloseTimeoutOrder))
-	// /order/list 分页查询,用户所有订单
+	g.POST("/close", ginx.B[CloseTimeoutOrdersReq](h.CloseTimeoutOrders))
 	g.POST("/list", ginx.BS[ListOrdersReq](h.ListOrders))
 	g.POST("/detail", ginx.BS[RetrieveOrderDetailReq](h.RetrieveOrderDetail))
 	g.POST("/cancel", ginx.BS[CancelOrderReq](h.CancelOrder))
@@ -128,7 +125,6 @@ func (h *Handler) CreateOrderAndPayment(ctx *ginx.Context, req CreateOrderReq, s
 
 	order.PaymentID = p.ID
 	order.PaymentSN = p.SN
-	log.Printf("p.ID = %d, p.SN = %s\n", p.ID, p.SN)
 	err = h.svc.UpdateOrder(ctx.Request.Context(), order)
 	if err != nil {
 		return systemErrorResult, fmt.Errorf("订单冗余支付ID及SN失败: %w", err)
@@ -254,7 +250,6 @@ func (h *Handler) createPayment(ctx context.Context, order domain.Order, payment
 
 // RetrieveOrderStatus 获取订单状态
 func (h *Handler) RetrieveOrderStatus(ctx *ginx.Context, req RetrieveOrderStatusReq, sess session.Session) (ginx.Result, error) {
-	log.Printf("RetrieveOrderStatus invoked, req = %#v, uid = %#v\n", req, sess.Claims().Uid)
 	order, err := h.svc.FindOrder(ctx.Request.Context(), req.OrderSN, sess.Claims().Uid)
 	if err != nil {
 		return systemErrorResult, fmt.Errorf("订单未找到: %w", err)
@@ -284,18 +279,32 @@ func (h *Handler) CompleteOrder(ctx *ginx.Context, req CompleteOrderReq) (ginx.R
 	return ginx.Result{Msg: "OK"}, nil
 }
 
-// CloseTimeoutOrder 关闭超时订单
-func (h *Handler) CloseTimeoutOrder(ctx *ginx.Context) (ginx.Result, error) {
-	// todo: 给定时任务生成一个token?
-	// 通过分页查询出订单, 慢慢匀速地修改,订单状态
-	// offset, limit := 0, 10
-	// var total int64
-	// _, n, err := h.svc.ListExpiredOrders(ctx, offset, limit)
-	// if err != nil {
-	// 	return systemErrorResult, err
-	// }
-	// total = n
-	return ginx.Result{}, nil
+// CloseTimeoutOrders 关闭超时订单
+func (h *Handler) CloseTimeoutOrders(ctx *ginx.Context, req CloseTimeoutOrdersReq) (ginx.Result, error) {
+	for {
+		orders, total, err := h.svc.ListExpiredOrders(ctx.Request.Context(), 0, req.Limit, time.Now().Add(time.Duration(-req.Minute)*time.Minute).UnixMilli())
+		if err != nil {
+			return systemErrorResult, fmt.Errorf("获取过期订单失败: %w", err)
+		}
+
+		ids := slice.Map(orders, func(idx int, src domain.Order) int64 {
+			return src.ID
+		})
+
+		err = h.svc.CloseExpiredOrders(ctx.Request.Context(), ids)
+		if err != nil {
+			return systemErrorResult, fmt.Errorf("关闭过期订单失败: %w", err)
+		}
+
+		if len(orders) < req.Limit {
+			break
+		}
+
+		if int64(req.Limit) >= total {
+			break
+		}
+	}
+	return ginx.Result{Msg: "OK"}, nil
 }
 
 // ListOrders 分页查询用户订单
@@ -304,42 +313,20 @@ func (h *Handler) ListOrders(ctx *ginx.Context, req ListOrdersReq, sess session.
 	if err != nil {
 		return systemErrorResult, err
 	}
-	os := make([]Order, 0, len(orders))
-	for _, o := range orders {
-		paymentInfo, e := h.paymentSvc.FindPaymentByID(ctx.Request.Context(), o.PaymentID)
-		if e != nil {
-			return systemErrorResult, fmt.Errorf("支付未找到: %w", err)
-		}
-		os = append(os, h.toOrderVO(o, paymentInfo))
-	}
 	return ginx.Result{
 		Data: ListOrdersResp{
-			Total:  total,
-			Orders: os,
+			Total: total,
+			Orders: slice.Map(orders, func(idx int, src domain.Order) Order {
+				return h.toOrderVO(src)
+			}),
 		},
 	}, nil
 }
 
-// RetrieveOrderDetail 查看订单详情
-func (h *Handler) RetrieveOrderDetail(ctx *ginx.Context, req RetrieveOrderDetailReq, sess session.Session) (ginx.Result, error) {
-	order, err := h.svc.FindOrder(ctx.Request.Context(), req.OrderSN, sess.Claims().Uid)
-	if err != nil {
-		return systemErrorResult, fmt.Errorf("订单未找到: %w", err)
-	}
-	paymentInfo, err := h.paymentSvc.FindPaymentByID(ctx.Request.Context(), order.PaymentID)
-	if err != nil {
-		return systemErrorResult, fmt.Errorf("支付未找到: %w", err)
-	}
-	return ginx.Result{
-		Data: RetrieveOrderDetailResp{
-			Order: h.toOrderVO(order, paymentInfo),
-		},
-	}, nil
-}
-
-func (h *Handler) toOrderVO(order domain.Order, pr payment.Payment) Order {
+func (h *Handler) toOrderVO(order domain.Order) Order {
 	return Order{
 		SN:                 order.SN,
+		PaymentSN:          order.PaymentSN,
 		OriginalTotalPrice: order.OriginalTotalPrice,
 		RealTotalPrice:     order.RealTotalPrice,
 		Status:             order.Status,
@@ -354,20 +341,41 @@ func (h *Handler) toOrderVO(order domain.Order, pr payment.Payment) Order {
 				Quantity:         src.Quantity,
 			}
 		}),
-		Payments: slice.Map(pr.Records, func(idx int, src payment.Record) Payment {
-			return Payment{
-				Type:   src.Channel,
-				Amount: src.Amount,
-			}
-		}),
 		Ctime: order.Ctime,
 		Utime: order.Utime,
 	}
 }
 
+// RetrieveOrderDetail 查看订单详情
+func (h *Handler) RetrieveOrderDetail(ctx *ginx.Context, req RetrieveOrderDetailReq, sess session.Session) (ginx.Result, error) {
+	order, err := h.svc.FindOrder(ctx.Request.Context(), req.OrderSN, sess.Claims().Uid)
+	if err != nil {
+		return systemErrorResult, fmt.Errorf("订单未找到: %w", err)
+	}
+	paymentInfo, err := h.paymentSvc.FindPaymentByID(ctx.Request.Context(), order.PaymentID)
+	if err != nil {
+		return systemErrorResult, fmt.Errorf("支付未找到: %w", err)
+	}
+	return ginx.Result{
+		Data: RetrieveOrderDetailResp{
+			Order: h.toOrderVOWithPaymentInfo(order, paymentInfo),
+		},
+	}, nil
+}
+
+func (h *Handler) toOrderVOWithPaymentInfo(order domain.Order, pr payment.Payment) Order {
+	vo := h.toOrderVO(order)
+	vo.Payments = slice.Map(pr.Records, func(idx int, src payment.Record) Payment {
+		return Payment{
+			Type:   src.Channel,
+			Amount: src.Amount,
+		}
+	})
+	return vo
+}
+
 // CancelOrder 取消订单
 func (h *Handler) CancelOrder(ctx *ginx.Context, req CancelOrderReq, sess session.Session) (ginx.Result, error) {
-	log.Printf("CancelOrder, req = %#v, uid = %#v\n", req.OrderSN, sess.Claims().Uid)
 	order, err := h.svc.FindOrder(ctx.Request.Context(), req.OrderSN, sess.Claims().Uid)
 	if err != nil {
 		return systemErrorResult, fmt.Errorf("查找订单失败: %w", err)

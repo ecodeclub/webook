@@ -28,11 +28,10 @@ type Service interface {
 	CreateOrder(ctx context.Context, order domain.Order) (domain.Order, error)
 	FindOrder(ctx context.Context, orderSN string, buyerID int64) (domain.Order, error)
 	UpdateOrder(ctx context.Context, order domain.Order) error
-
 	CompleteOrder(ctx context.Context, order domain.Order) error
-	CloseOrder(ctx context.Context, order domain.Order) error
 	ListOrders(ctx context.Context, offset, limit int, uid int64) ([]domain.Order, int64, error)
-	ListExpiredOrders(ctx context.Context, offset, limit int) ([]domain.Order, int64, error)
+	ListExpiredOrders(ctx context.Context, offset, limit int, ctime int64) ([]domain.Order, int64, error)
+	CloseExpiredOrders(ctx context.Context, orderIDs []int64) error
 	CancelOrder(ctx context.Context, order domain.Order) error
 }
 
@@ -70,7 +69,7 @@ func (s *service) ListOrders(ctx context.Context, offset, limit int, uid int64) 
 	)
 	eg.Go(func() error {
 		var err error
-		os, err = s.repo.ListOrders(ctx, offset, limit, uid)
+		os, err = s.repo.ListOrdersByUID(ctx, offset, limit, uid)
 		return err
 	})
 
@@ -82,8 +81,28 @@ func (s *service) ListOrders(ctx context.Context, offset, limit int, uid int64) 
 	return os, total, eg.Wait()
 }
 
-func (s *service) ListExpiredOrders(ctx context.Context, offset, limit int) ([]domain.Order, int64, error) {
-	return nil, 0, nil
+func (s *service) ListExpiredOrders(ctx context.Context, offset, limit int, ctime int64) ([]domain.Order, int64, error) {
+	var (
+		eg    errgroup.Group
+		os    []domain.Order
+		total int64
+	)
+	eg.Go(func() error {
+		var err error
+		os, err = s.repo.ListExpiredOrders(ctx, offset, limit, ctime)
+		return err
+	})
+
+	eg.Go(func() error {
+		var err error
+		total, err = s.repo.TotalExpiredOrders(ctx, ctime)
+		return err
+	})
+	return os, total, eg.Wait()
+}
+
+func (s *service) CloseExpiredOrders(ctx context.Context, orderIDs []int64) error {
+	return s.repo.CloseExpiredOrders(ctx, orderIDs)
 }
 
 func (s *service) CancelOrder(ctx context.Context, order domain.Order) error {
@@ -91,15 +110,6 @@ func (s *service) CancelOrder(ctx context.Context, order domain.Order) error {
 		return fmt.Errorf("订单状态非法")
 	}
 	order.Status = domain.OrderStatusCanceled
-	order.ClosedAt = time.Now().UnixMilli()
-	return s.repo.UpdateOrder(ctx, order)
-}
-
-func (s *service) CloseOrder(ctx context.Context, order domain.Order) error {
-	if order.Status != domain.OrderStatusUnpaid {
-		return fmt.Errorf("订单状态非法")
-	}
-	order.Status = domain.OrderStatusExpired
 	order.ClosedAt = time.Now().UnixMilli()
 	return s.repo.UpdateOrder(ctx, order)
 }
