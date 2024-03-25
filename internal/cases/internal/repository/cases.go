@@ -124,27 +124,25 @@ func (c *caseRepo) toEntity(caseDomain *domain.Case) dao.Case {
 		Title:     caseDomain.Title,
 		Content:   caseDomain.Content,
 		CodeRepo:  caseDomain.CodeRepo,
-		Keywords:  caseDomain.Summary.Keywords,
-		Shorthand: caseDomain.Summary.Shorthand,
-		Highlight: caseDomain.Summary.Highlight,
-		Guidance:  caseDomain.Summary.Guidance,
+		Keywords:  caseDomain.Keywords,
+		Shorthand: caseDomain.Shorthand,
+		Highlight: caseDomain.Highlight,
+		Guidance:  caseDomain.Guidance,
 	}
 }
 
 func (c *caseRepo) toDomain(caseDao dao.Case) domain.Case {
 	return domain.Case{
-		Id:       caseDao.Id,
-		Uid:      caseDao.Uid,
-		Labels:   caseDao.Labels.Val,
-		Title:    caseDao.Title,
-		Content:  caseDao.Content,
-		CodeRepo: caseDao.CodeRepo,
-		Summary: domain.Summary{
-			Keywords:  caseDao.Keywords,
-			Shorthand: caseDao.Shorthand,
-			Highlight: caseDao.Highlight,
-			Guidance:  caseDao.Guidance,
-		},
-		Utime: time.UnixMilli(caseDao.Utime),
+		Id:        caseDao.Id,
+		Uid:       caseDao.Uid,
+		Labels:    caseDao.Labels.Val,
+		Title:     caseDao.Title,
+		Content:   caseDao.Content,
+		CodeRepo:  caseDao.CodeRepo,
+		Keywords:  caseDao.Keywords,
+		Shorthand: caseDao.Shorthand,
+		Highlight: caseDao.Highlight,
+		Guidance:  caseDao.Guidance,
+		Utime:     time.UnixMilli(caseDao.Utime),
 	}
 }

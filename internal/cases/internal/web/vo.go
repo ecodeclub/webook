@@ -7,25 +7,18 @@ type Page struct {
 	Limit  int `json:"limit,omitempty"`
 }
 type CasesList struct {
-	Cases []Case `json:"questions,omitempty"`
+	Cases []Case `json:"cases,omitempty"`
 	Total int64  `json:"total,omitempty"`
 }
 type Case struct {
 	Id  int64 `json:"id,omitempty"`
 	UID int64 `json:"uid,omitempty"`
-	// 面试标题
+	// 面试案例标题
 	Title  string   `json:"title,omitempty"`
 	Labels []string `json:"labels,omitempty"`
-	// 面试题目内容
+	// 面试案例内容
 	Content  string `json:"content,omitempty"`
 	CodeRepo string `json:"codeRepo,omitempty"`
-	Utime    string `json:"utime,omitempty"`
-
-	// 面试总结
-	Summary Summary `json:"summary,omitempty"`
-}
-
-type Summary struct {
 	// 关键字，辅助记忆，提取重点
 	Keywords string `json:"keywords,omitempty"`
 	// 速记，口诀
@@ -34,9 +27,12 @@ type Summary struct {
 	Highlight string `json:"highlight,omitempty"`
 	// 引导点
 	Guidance string `json:"guidance,omitempty"`
+
+	Utime string `json:"utime,omitempty"`
 }
+
 type CaseId struct {
-	CaseId int64 `json:"caseId"`
+	Cid int64 `json:"cid"`
 }
 type SaveReq struct {
 	Case Case `json:"case,omitempty"`
@@ -44,16 +40,14 @@ type SaveReq struct {
 
 func (c Case) toDomain() domain.Case {
 	return domain.Case{
-		Id:       c.Id,
-		Title:    c.Title,
-		Labels:   c.Labels,
-		Content:  c.Content,
-		CodeRepo: c.CodeRepo,
-		Summary: domain.Summary{
-			Keywords:  c.Summary.Keywords,
-			Shorthand: c.Summary.Shorthand,
-			Highlight: c.Summary.Highlight,
-			Guidance:  c.Summary.Guidance,
-		},
+		Id:        c.Id,
+		Title:     c.Title,
+		Labels:    c.Labels,
+		Content:   c.Content,
+		CodeRepo:  c.CodeRepo,
+		Keywords:  c.Keywords,
+		Shorthand: c.Shorthand,
+		Highlight: c.Highlight,
+		Guidance:  c.Guidance,
 	}
 }

@@ -31,11 +31,12 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	server.POST("/case/list", ginx.S(h.Permission), ginx.B[Page](h.List))
 	server.POST("/case/detail", ginx.S(h.Permission), ginx.B[CaseId](h.Detail))
 	server.POST("/case/publish", ginx.S(h.Permission), ginx.BS[SaveReq](h.Publish))
-	server.POST("/case/pub/list", ginx.B[Page](h.PubList))
 	server.POST("/case/pub/detail", ginx.B[CaseId](h.PubDetail))
 }
 
-func (h *Handler) PublicRoutes(server *gin.Engine) {}
+func (h *Handler) PublicRoutes(server *gin.Engine) {
+	server.POST("/case/pub/list", ginx.B[Page](h.PubList))
+}
 
 func (h *Handler) Save(ctx *ginx.Context,
 	req SaveReq,
@@ -63,7 +64,7 @@ func (h *Handler) List(ctx *ginx.Context, req Page) (ginx.Result, error) {
 }
 
 func (h *Handler) Detail(ctx *ginx.Context, req CaseId) (ginx.Result, error) {
-	detail, err := h.svc.Detail(ctx, req.CaseId)
+	detail, err := h.svc.Detail(ctx, req.Cid)
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -78,12 +79,22 @@ func (h *Handler) PubList(ctx *ginx.Context, req Page) (ginx.Result, error) {
 		return systemErrorResult, err
 	}
 	return ginx.Result{
-		Data: h.toCaseList(data, cnt),
+		Data: CasesList{
+			Total: cnt,
+			Cases: slice.Map(data, func(idx int, ca domain.Case) Case {
+				return Case{
+					Id:     ca.Id,
+					Title:  ca.Title,
+					Labels: ca.Labels,
+					Utime:  ca.Utime.Format(time.DateTime),
+				}
+			}),
+		},
 	}, nil
 }
 
 func (h *Handler) PubDetail(ctx *ginx.Context, req CaseId) (ginx.Result, error) {
-	detail, err := h.svc.PubDetail(ctx, req.CaseId)
+	detail, err := h.svc.PubDetail(ctx, req.Cid)
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -107,31 +118,29 @@ func (h *Handler) Publish(ctx *ginx.Context, req SaveReq, sess session.Session) 
 func (h *Handler) toCaseList(data []domain.Case, cnt int64) CasesList {
 	return CasesList{
 		Total: cnt,
-		Cases: slice.Map(data, func(idx int, src domain.Case) Case {
-			return newCase(src)
+		Cases: slice.Map(data, func(idx int, ca domain.Case) Case {
+			return newCase(ca)
 		}),
 	}
 }
 
 func newCase(ca domain.Case) Case {
 	return Case{
-		Id:       ca.Id,
-		Title:    ca.Title,
-		Content:  ca.Content,
-		Labels:   ca.Labels,
-		CodeRepo: ca.CodeRepo,
-		Summary: Summary{
-			Keywords:  ca.Summary.Keywords,
-			Shorthand: ca.Summary.Shorthand,
-			Highlight: ca.Summary.Highlight,
-			Guidance:  ca.Summary.Guidance,
-		},
-		Utime: ca.Utime.Format(time.DateTime),
+		Id:        ca.Id,
+		Title:     ca.Title,
+		Content:   ca.Content,
+		Labels:    ca.Labels,
+		CodeRepo:  ca.CodeRepo,
+		Keywords:  ca.Keywords,
+		Shorthand: ca.Shorthand,
+		Highlight: ca.Highlight,
+		Guidance:  ca.Guidance,
+		Utime:     ca.Utime.Format(time.DateTime),
 	}
 }
 
 func (h *Handler) Permission(ctx *ginx.Context, sess session.Session) (ginx.Result, error) {
-	if sess.Claims().Get("admin").StringOrDefault("") != "true" {
+	if sess.Claims().Get("creator").StringOrDefault("") != "true" {
 		ctx.AbortWithStatus(http.StatusInternalServerError)
 		return ginx.Result{}, fmt.Errorf("非法访问创作中心 uid: %d", sess.Claims().Uid)
 	}

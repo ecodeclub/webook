@@ -4,6 +4,8 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/ecodeclub/webook/internal/cases"
+
 	"github.com/ecodeclub/webook/internal/label"
 
 	"github.com/ecodeclub/webook/internal/cos"
@@ -24,6 +26,7 @@ func initGinxServer(sp session.Provider,
 	lhdl *label.Handler,
 	user *user.Handler,
 	cosHdl *cos.Handler,
+	caseHdl *cases.Handler,
 ) *egin.Component {
 	session.SetDefaultProvider(sp)
 	res := egin.Load("web").Build()
@@ -45,6 +48,7 @@ func initGinxServer(sp session.Provider,
 	user.PublicRoutes(res.Engine)
 	qh.PublicRoutes(res.Engine)
 	cosHdl.PublicRoutes(res.Engine)
+	caseHdl.PublicRoutes(res.Engine)
 	// 登录校验
 	res.Use(session.CheckLoginMiddleware())
 	user.PrivateRoutes(res.Engine)
@@ -52,5 +56,6 @@ func initGinxServer(sp session.Provider,
 	qh.PrivateRoutes(res.Engine)
 	qsh.PrivateRoutes(res.Engine)
 	cosHdl.PrivateRoutes(res.Engine)
+	caseHdl.PrivateRoutes(res.Engine)
 	return res
 }

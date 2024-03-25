@@ -38,16 +38,16 @@ type HandlerTestSuite struct {
 }
 
 func (s *HandlerTestSuite) TearDownSuite() {
-	err := s.db.Exec("DROP TABLE `case`").Error
+	err := s.db.Exec("DROP TABLE `cases`").Error
 	require.NoError(s.T(), err)
-	err = s.db.Exec("DROP TABLE `publish_case`").Error
+	err = s.db.Exec("DROP TABLE `publish_cases`").Error
 	require.NoError(s.T(), err)
 }
 
 func (s *HandlerTestSuite) TearDownTest() {
-	err := s.db.Exec("TRUNCATE TABLE `case`").Error
+	err := s.db.Exec("TRUNCATE TABLE `cases`").Error
 	require.NoError(s.T(), err)
-	err = s.db.Exec("TRUNCATE TABLE `publish_case`").Error
+	err = s.db.Exec("TRUNCATE TABLE `publish_cases`").Error
 	require.NoError(s.T(), err)
 }
 
@@ -59,10 +59,11 @@ func (s *HandlerTestSuite) SetupSuite() {
 	server.Use(func(ctx *gin.Context) {
 		ctx.Set("_session", session.NewMemorySession(session.Claims{
 			Uid:  uid,
-			Data: map[string]string{"admin": "true"},
+			Data: map[string]string{"creator": "true"},
 		}))
 	})
 	handler.PrivateRoutes(server.Engine)
+	handler.PublicRoutes(server.Engine)
 	s.server = server
 	s.db = testioc.InitDB()
 	err = dao.InitTables(s.db)
@@ -107,16 +108,14 @@ func (s *HandlerTestSuite) TestSave() {
 			},
 			req: web.SaveReq{
 				Case: web.Case{
-					Title:    "案例1",
-					Content:  "案例1内容",
-					Labels:   []string{"MySQL"},
-					CodeRepo: "www.github.com",
-					Summary: web.Summary{
-						Keywords:  "mysql_keywords",
-						Shorthand: "mysql_shorthand",
-						Highlight: "mysql_highlight",
-						Guidance:  "mysql_guidance",
-					},
+					Title:     "案例1",
+					Content:   "案例1内容",
+					Labels:    []string{"MySQL"},
+					CodeRepo:  "www.github.com",
+					Keywords:  "mysql_keywords",
+					Shorthand: "mysql_shorthand",
+					Highlight: "mysql_highlight",
+					Guidance:  "mysql_guidance",
 				},
 			},
 			wantCode: 200,
@@ -170,17 +169,15 @@ func (s *HandlerTestSuite) TestSave() {
 			},
 			req: web.SaveReq{
 				Case: web.Case{
-					Id:       2,
-					Title:    "案例2",
-					Content:  "案例2内容",
-					Labels:   []string{"MySQL"},
-					CodeRepo: "www.github.com",
-					Summary: web.Summary{
-						Keywords:  "mysql_keywords",
-						Shorthand: "mysql_shorthand",
-						Highlight: "mysql_highlight",
-						Guidance:  "mysql_guidance",
-					},
+					Id:        2,
+					Title:     "案例2",
+					Content:   "案例2内容",
+					Labels:    []string{"MySQL"},
+					CodeRepo:  "www.github.com",
+					Keywords:  "mysql_keywords",
+					Shorthand: "mysql_shorthand",
+					Highlight: "mysql_highlight",
+					Guidance:  "mysql_guidance",
 				},
 			},
 			wantCode: 200,
@@ -202,9 +199,9 @@ func (s *HandlerTestSuite) TestSave() {
 			assert.Equal(t, tc.wantResp, recorder.MustScan())
 			tc.after(t)
 			// 清理掉 123 的数据
-			err = s.db.Exec("TRUNCATE table `case`").Error
+			err = s.db.Exec("TRUNCATE table `cases`").Error
 			require.NoError(t, err)
-			err = s.db.Exec("TRUNCATE table `publish_case`").Error
+			err = s.db.Exec("TRUNCATE table `publish_cases`").Error
 			require.NoError(t, err)
 		})
 	}
@@ -325,23 +322,21 @@ func (s *HandlerTestSuite) TestDetail() {
 		{
 			name: "查询到了数据",
 			req: web.CaseId{
-				CaseId: 3,
+				Cid: 3,
 			},
 			wantCode: 200,
 			wantResp: test.Result[web.Case]{
 				Data: web.Case{
-					Id:       3,
-					Labels:   []string{"Redis"},
-					Title:    "redis案例标题",
-					Content:  "redis案例内容",
-					CodeRepo: "redis仓库",
-					Summary: web.Summary{
-						Keywords:  "redis_keywords",
-						Shorthand: "redis_shorthand",
-						Highlight: "redis_highlight",
-						Guidance:  "redis_guidance",
-					},
-					Utime: time.UnixMilli(12).Format(time.DateTime),
+					Id:        3,
+					Labels:    []string{"Redis"},
+					Title:     "redis案例标题",
+					Content:   "redis案例内容",
+					CodeRepo:  "redis仓库",
+					Keywords:  "redis_keywords",
+					Shorthand: "redis_shorthand",
+					Highlight: "redis_highlight",
+					Guidance:  "redis_guidance",
+					Utime:     time.UnixMilli(12).Format(time.DateTime),
 				},
 			},
 		},
@@ -401,16 +396,14 @@ func (s *HandlerTestSuite) TestPublish() {
 			},
 			req: web.SaveReq{
 				Case: web.Case{
-					Title:    "案例1",
-					Content:  "案例1内容",
-					Labels:   []string{"MySQL"},
-					CodeRepo: "www.github.com",
-					Summary: web.Summary{
-						Keywords:  "mysql_keywords",
-						Shorthand: "mysql_shorthand",
-						Highlight: "mysql_highlight",
-						Guidance:  "mysql_guidance",
-					},
+					Title:     "案例1",
+					Content:   "案例1内容",
+					Labels:    []string{"MySQL"},
+					CodeRepo:  "www.github.com",
+					Keywords:  "mysql_keywords",
+					Shorthand: "mysql_shorthand",
+					Highlight: "mysql_highlight",
+					Guidance:  "mysql_guidance",
 				},
 			},
 			wantCode: 200,
@@ -470,17 +463,15 @@ func (s *HandlerTestSuite) TestPublish() {
 			},
 			req: web.SaveReq{
 				Case: web.Case{
-					Id:       2,
-					Title:    "案例2",
-					Content:  "案例2内容",
-					Labels:   []string{"MySQL"},
-					CodeRepo: "www.github.com",
-					Summary: web.Summary{
-						Keywords:  "mysql_keywords",
-						Shorthand: "mysql_shorthand",
-						Highlight: "mysql_highlight",
-						Guidance:  "mysql_guidance",
-					},
+					Id:        2,
+					Title:     "案例2",
+					Content:   "案例2内容",
+					Labels:    []string{"MySQL"},
+					CodeRepo:  "www.github.com",
+					Keywords:  "mysql_keywords",
+					Shorthand: "mysql_shorthand",
+					Highlight: "mysql_highlight",
+					Guidance:  "mysql_guidance",
 				},
 			},
 			wantCode: 200,
@@ -558,17 +549,15 @@ func (s *HandlerTestSuite) TestPublish() {
 			},
 			req: web.SaveReq{
 				Case: web.Case{
-					Id:       3,
-					Title:    "案例2",
-					Content:  "案例2内容",
-					Labels:   []string{"MySQL"},
-					CodeRepo: "www.github.com",
-					Summary: web.Summary{
-						Keywords:  "mysql_keywords",
-						Shorthand: "mysql_shorthand",
-						Highlight: "mysql_highlight",
-						Guidance:  "mysql_guidance",
-					},
+					Id:        3,
+					Title:     "案例2",
+					Content:   "案例2内容",
+					Labels:    []string{"MySQL"},
+					CodeRepo:  "www.github.com",
+					Keywords:  "mysql_keywords",
+					Shorthand: "mysql_shorthand",
+					Highlight: "mysql_highlight",
+					Guidance:  "mysql_guidance",
 				},
 			},
 			wantCode: 200,
@@ -589,9 +578,9 @@ func (s *HandlerTestSuite) TestPublish() {
 			require.Equal(t, tc.wantCode, recorder.Code)
 			assert.Equal(t, tc.wantResp, recorder.MustScan())
 			tc.after(t)
-			err = s.db.Exec("TRUNCATE table `case`").Error
+			err = s.db.Exec("TRUNCATE table `cases`").Error
 			require.NoError(t, err)
-			err = s.db.Exec("TRUNCATE table `publish_case`").Error
+			err = s.db.Exec("TRUNCATE table `publish_cases`").Error
 			require.NoError(t, err)
 		})
 	}
@@ -627,16 +616,14 @@ func (s *HandlerTestSuite) TestPublist() {
 					Total: 100,
 					Cases: []web.Case{
 						{
-							Id:      100,
-							Title:   "这是发布的案例标题 99",
-							Content: "这是发布的案例内容 99",
-							Utime:   time.UnixMilli(0).Format(time.DateTime),
+							Id:    100,
+							Title: "这是发布的案例标题 99",
+							Utime: time.UnixMilli(0).Format(time.DateTime),
 						},
 						{
-							Id:      99,
-							Title:   "这是发布的案例标题 98",
-							Content: "这是发布的案例内容 98",
-							Utime:   time.UnixMilli(0).Format(time.DateTime),
+							Id:    99,
+							Title: "这是发布的案例标题 98",
+							Utime: time.UnixMilli(0).Format(time.DateTime),
 						},
 					},
 				},
@@ -654,10 +641,9 @@ func (s *HandlerTestSuite) TestPublist() {
 					Total: 100,
 					Cases: []web.Case{
 						{
-							Id:      1,
-							Title:   "这是发布的案例标题 0",
-							Content: "这是发布的案例内容 0",
-							Utime:   time.UnixMilli(0).Format(time.DateTime),
+							Id:    1,
+							Title: "这是发布的案例标题 0",
+							Utime: time.UnixMilli(0).Format(time.DateTime),
 						},
 					},
 				},
@@ -711,23 +697,21 @@ func (s *HandlerTestSuite) TestPubDetail() {
 		{
 			name: "查询到了数据",
 			req: web.CaseId{
-				CaseId: 3,
+				Cid: 3,
 			},
 			wantCode: 200,
 			wantResp: test.Result[web.Case]{
 				Data: web.Case{
-					Id:       3,
-					Labels:   []string{"Redis"},
-					Title:    "redis案例标题",
-					Content:  "redis案例内容",
-					CodeRepo: "redis仓库",
-					Summary: web.Summary{
-						Keywords:  "redis_keywords",
-						Shorthand: "redis_shorthand",
-						Highlight: "redis_highlight",
-						Guidance:  "redis_guidance",
-					},
-					Utime: time.UnixMilli(13).Format(time.DateTime),
+					Id:        3,
+					Labels:    []string{"Redis"},
+					Title:     "redis案例标题",
+					Content:   "redis案例内容",
+					CodeRepo:  "redis仓库",
+					Keywords:  "redis_keywords",
+					Shorthand: "redis_shorthand",
+					Highlight: "redis_highlight",
+					Guidance:  "redis_guidance",
+					Utime:     time.UnixMilli(13).Format(time.DateTime),
 				},
 			},
 		},

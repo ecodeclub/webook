@@ -12,13 +12,6 @@ type Case struct {
 	Title    string
 	Content  string
 	CodeRepo string
-	Summary  Summary
-	Ctime    time.Time
-	Utime    time.Time
-}
-
-// 案例的总结摘要
-type Summary struct {
 	// 关键字，辅助记忆，提取重点
 	Keywords string
 	// 速记，口诀
@@ -27,4 +20,7 @@ type Summary struct {
 	Highlight string
 	// 引导点
 	Guidance string
+
+	Ctime time.Time
+	Utime time.Time
 }

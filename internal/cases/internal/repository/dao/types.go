@@ -26,11 +26,11 @@ type Case struct {
 }
 
 func (Case) TableName() string {
-	return "case"
+	return "cases"
 }
 
 type PublishCase Case
 
 func (PublishCase) TableName() string {
-	return "publish_case"
+	return "publish_cases"
 }

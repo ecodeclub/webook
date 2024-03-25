@@ -7,6 +7,7 @@
 package ioc
 
 import (
+	"github.com/ecodeclub/webook/internal/cases"
 	"github.com/ecodeclub/webook/internal/cos"
 	"github.com/ecodeclub/webook/internal/label"
 	baguwen "github.com/ecodeclub/webook/internal/question"
@@ -32,7 +33,11 @@ func InitApp() (*App, error) {
 	handler2 := InitUserHandler(db, cache)
 	config := InitCosConfig()
 	handler3 := cos.InitHandler(config)
-	component := initGinxServer(provider, handler, questionSetHandler, webHandler, handler2, handler3)
+	handler4, err := cases.InitHandler(db, cache)
+	if err != nil {
+		return nil, err
+	}
+	component := initGinxServer(provider, handler, questionSetHandler, webHandler, handler2, handler3, handler4)
 	app := &App{
 		Web: component,
 	}

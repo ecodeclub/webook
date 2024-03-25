@@ -17,6 +17,7 @@ package web
 import (
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/ecodeclub/ginx"
@@ -44,11 +45,12 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	server.POST("/question/list", ginx.S(h.Permission), ginx.BS[Page](h.List))
 	server.POST("/question/detail", ginx.S(h.Permission), ginx.BS[Qid](h.Detail))
 	server.POST("/question/publish", ginx.S(h.Permission), ginx.BS[SaveReq](h.Publish))
-	server.POST("/question/pub/list", ginx.B[Page](h.PubList))
 	server.POST("/question/pub/detail", ginx.B[Qid](h.PubDetail))
 }
 
-func (h *Handler) PublicRoutes(server *gin.Engine) {}
+func (h *Handler) PublicRoutes(server *gin.Engine) {
+	server.POST("/question/pub/list", ginx.B[Page](h.PubList))
+}
 
 func (h *Handler) Save(ctx *ginx.Context,
 	req SaveReq,
@@ -101,7 +103,13 @@ func (h *Handler) toQuestionList(data []domain.Question, cnt int64) QuestionList
 	return QuestionList{
 		Total: cnt,
 		Questions: slice.Map(data, func(idx int, src domain.Question) Question {
-			return newQuestion(src)
+			return Question{
+				Id:      src.Id,
+				Title:   src.Title,
+				Content: src.Content,
+				Labels:  src.Labels,
+				Utime:   src.Utime.Format(time.DateTime),
+			}
 		}),
 	}
 }

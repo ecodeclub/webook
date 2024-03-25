@@ -1,6 +1,6 @@
 //go:build wireinject
 
-package baguwen
+package cases
 
 import (
 	"sync"
