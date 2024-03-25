@@ -104,6 +104,7 @@ func (s *HandlerTestSuite) SetupSuite() {
 		}))
 	})
 	handler.PrivateRoutes(server.Engine)
+	handler.PublicRoutes(server.Engine)
 	questionSetHandler.PrivateRoutes(server.Engine)
 
 	s.server = server

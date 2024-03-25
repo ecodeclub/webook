@@ -79,10 +79,8 @@ func (s *service) PubList(ctx context.Context, offset int, limit int) ([]domain.
 		total, err = s.repo.PubTotal(ctx)
 		return err
 	})
-	if err := eg.Wait(); err != nil {
-		return caseList, total, err
-	}
-	return caseList, total, nil
+	err := eg.Wait()
+	return caseList, total, err
 }
 
 func (s *service) Detail(ctx context.Context, caseId int64) (domain.Case, error) {

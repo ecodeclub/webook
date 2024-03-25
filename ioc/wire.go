@@ -3,6 +3,7 @@
 package ioc
 
 import (
+	"github.com/ecodeclub/webook/internal/cases"
 	"github.com/ecodeclub/webook/internal/cos"
 	"github.com/ecodeclub/webook/internal/label"
 	baguwen "github.com/ecodeclub/webook/internal/question"
@@ -20,6 +21,7 @@ func InitApp() (*App, error) {
 		InitUserHandler,
 		InitSession,
 		label.InitHandler,
+		cases.InitHandler,
 		initGinxServer)
 	return new(App), nil
 }
