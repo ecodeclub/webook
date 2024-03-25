@@ -27,9 +27,9 @@ type WechatOAuth2Service struct {
 	client      *http.Client
 }
 
-func NewWechatService(appId, appSecret string) OAuth2Service {
+func NewWechatService(appId, appSecret, redirectURL string) OAuth2Service {
 	return &WechatOAuth2Service{
-		redirectURL: url.PathEscape("https://8.meoying.com/oauth2/wechat/callback"),
+		redirectURL: url.PathEscape(redirectURL),
 		logger:      elog.DefaultLogger,
 		client:      http.DefaultClient,
 		appId:       appId,
