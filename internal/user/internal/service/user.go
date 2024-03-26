@@ -48,7 +48,8 @@ func (svc *userService) FindOrCreateByWechat(ctx context.Context,
 		WechatInfo: info,
 	})
 	return domain.User{
-		Id: id,
+		Id:         id,
+		WechatInfo: info,
 	}, err
 }
 
