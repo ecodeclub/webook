@@ -50,11 +50,13 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g.POST("/preview", ginx.BS[PreviewOrderReq](h.RetrievePreviewOrder))
 	g.POST("/create", ginx.BS[CreateOrderReq](h.CreateOrderAndPayment))
 	g.POST("", ginx.BS[RetrieveOrderStatusReq](h.RetrieveOrderStatus))
-	g.POST("/complete", ginx.B[CompleteOrderReq](h.CompleteOrder))
-	g.POST("/close", ginx.B[CloseTimeoutOrdersReq](h.CloseTimeoutOrders))
 	g.POST("/list", ginx.BS[ListOrdersReq](h.ListOrders))
 	g.POST("/detail", ginx.BS[RetrieveOrderDetailReq](h.RetrieveOrderDetail))
 	g.POST("/cancel", ginx.BS[CancelOrderReq](h.CancelOrder))
+
+	// todo: 重构为event和cronjob并添加相关测试后,需要去掉下面这两个方法及相关测试
+	g.POST("/complete", ginx.B[CompleteOrderReq](h.CompleteOrder))
+	g.POST("/close", ginx.B[CloseTimeoutOrdersReq](h.CloseTimeoutOrders))
 }
 
 // RetrievePreviewOrder 获取订单预览信息, 此时订单尚未创建

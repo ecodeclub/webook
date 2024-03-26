@@ -18,11 +18,13 @@ package order
 
 import (
 	"sync"
+	"time"
 
 	"github.com/ecodeclub/ecache"
 	"github.com/ecodeclub/mq-api"
 	"github.com/ecodeclub/webook/internal/credit"
 	"github.com/ecodeclub/webook/internal/order/internal/consumer"
+	"github.com/ecodeclub/webook/internal/order/internal/job"
 	"github.com/ecodeclub/webook/internal/order/internal/repository"
 	"github.com/ecodeclub/webook/internal/order/internal/repository/dao"
 	"github.com/ecodeclub/webook/internal/order/internal/service"
@@ -37,6 +39,7 @@ import (
 
 type Handler = web.Handler
 type CompleteOrderConsumer = consumer.CompleteOrderConsumer
+type CloseExpiredOrdersJob = job.CloseExpiredOrdersJob
 
 var HandlerSet = wire.NewSet(
 	initService,
@@ -76,4 +79,8 @@ func InitMQConsumer(q mq.MQ) []mq.Consumer {
 		panic(err)
 	}
 	return []mq.Consumer{c}
+}
+
+func InitCloseExpiredOrdersJob(db *egorm.Component) *CloseExpiredOrdersJob {
+	return job.NewCloseExpiredOrdersJob(initService(db), 10, 31, time.Hour)
 }
