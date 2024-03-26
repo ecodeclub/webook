@@ -71,8 +71,9 @@ func (h *Handler) Profile(ctx *ginx.Context, sess session.Session) (ginx.Result,
 	}
 	return ginx.Result{
 		Data: Profile{
-			Nickname: u.Nickname,
-			Avatar:   u.Avatar,
+			IsCreator: sess.Claims().Get("creator").StringOrDefault("") == "true",
+			Nickname:  u.Nickname,
+			Avatar:    u.Avatar,
 		},
 	}, nil
 }
