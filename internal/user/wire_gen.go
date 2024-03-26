@@ -39,15 +39,16 @@ var ProviderSet = wire.NewSet(web.NewHandler, cache.NewUserECache, InitDAO,
 
 func InitWechatService() service.OAuth2Service {
 	type Config struct {
-		AppSecretID  string `yaml:"appSecretID"`
-		AppSecretKey string `yaml:"appSecretKey"`
+		AppSecretID      string `yaml:"appSecretID"`
+		AppSecretKey     string `yaml:"appSecretKey"`
+		LoginRedirectURL string `yaml:"loginRedirectURL"`
 	}
 	var cfg Config
 	err := econf.UnmarshalKey("wechat", &cfg)
 	if err != nil {
 		panic(err)
 	}
-	return service.NewWechatService(cfg.AppSecretID, cfg.AppSecretKey)
+	return service.NewWechatService(cfg.AppSecretID, cfg.AppSecretKey, cfg.LoginRedirectURL)
 }
 
 func InitDAO(db *egorm.Component) dao.UserDAO {
