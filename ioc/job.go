@@ -12,38 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package domain
+package ioc
 
-const (
-	StatusOffShelf = iota // 下架
-	StatusOnShelf         // 上架
+import (
+	"github.com/ecodeclub/webook/internal/job"
+	"github.com/ecodeclub/webook/internal/order"
+	"github.com/robfig/cron/v3"
 )
 
-type Product struct {
-	SPU SPU
-	SKU SKU
-}
-
-type SPU struct {
-	ID     int64
-	SN     string
-	Name   string
-	Desc   string
-	Status int64
-}
-
-type SKU struct {
-	ID   int64
-	SN   string
-	Name string
-	Desc string
-
-	Price      int64
-	Stock      int64
-	StockLimit int64
-
-	SaleType int64
-	// SaleStart int64
-	// SaleEnd   int64
-	Status int64
+func InitCronJobs(cjob *order.CloseExpiredOrdersJob) *cron.Cron {
+	builder := job.NewCronJobBuilder()
+	expr := cron.New(cron.WithSeconds())
+	_, err := expr.AddJob("@midnight", builder.Build(cjob))
+	if err != nil {
+		panic(err)
+	}
+	return expr
 }

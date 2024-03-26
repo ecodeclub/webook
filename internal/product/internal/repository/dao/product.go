@@ -36,6 +36,12 @@ func NewProductGORMDAO(db *egorm.Component) ProductDAO {
 	return &ProductGORMDAO{db: db}
 }
 
+func (d *ProductGORMDAO) FindSPUBySN(ctx context.Context, sn string) (ProductSPU, error) {
+	var res ProductSPU
+	err := d.db.WithContext(ctx).Where("sn = ? AND status = ?", sn, StatusOnShelf).First(&res).Error
+	return res, err
+}
+
 func (d *ProductGORMDAO) FindSKUBySN(ctx context.Context, sn string) (ProductSKU, error) {
 	var res ProductSKU
 	err := d.db.WithContext(ctx).Where("sn = ? AND status = ?", sn, StatusOnShelf).First(&res).Error

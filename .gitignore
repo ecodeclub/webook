@@ -24,9 +24,9 @@ go.work
 /go.work.sum
 /internal/user/internal/integration/logs/
 config/local.yaml
-
+logs/
 /internal/baguwen/internal/integration/logs/
-/logs/
+/**/**/logs
 /internal/question/internal/integration/logs/
 cover.out
 /internal/label/internal/integration/logs/
