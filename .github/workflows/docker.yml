@@ -54,14 +54,11 @@ jobs:
           repository: ecodeclub/webook-private
           ssh-key: ${{ secrets.WEBOOK_PRIVATE_DEPLOY_KEY }}
           path: 'webook-private'
-      - name: Output private path
-        run: pwd
 
       - name: Checkout repository
         uses: actions/checkout@v4
-      - name: Output webook path
-        run: pwd
-
+        with:
+          path: 'webook'
       - name: Set up Go
         uses: actions/setup-go@v2
         with:
