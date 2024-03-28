@@ -54,6 +54,12 @@ jobs:
         uses: actions/setup-go@v2
         with:
           go-version: '1.21'
+      - name: Checkout Private GO
+        uses: actions/checkout@v4
+        with:
+          repository: ecodeclub/webook
+          token: ${{ secrets.WEBOOK_PRIVATE_PAT_TOKEN }}
+
       - name: Build Go
         run: go build -o webook .
 

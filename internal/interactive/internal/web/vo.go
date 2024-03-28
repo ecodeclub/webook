@@ -30,9 +30,11 @@ type GetCntReq struct {
 }
 
 type GetCntResp struct {
-	CollectCnt int  `json:"collectCnt"`
-	LikeCnt    int  `json:"likeCnt"`
-	ViewCnt    int  `json:"viewCnt"`
-	Collected  bool `json:"collected"`
-	Liked      bool `json:"liked"`
+	CollectCnt int `json:"collectCnt"`
+	LikeCnt    int `json:"likeCnt"`
+	ViewCnt    int `json:"viewCnt"`
+	// 是否收藏过
+	Collected bool `json:"collected"`
+	// 是否点赞过
+	Liked bool `json:"liked"`
 }
