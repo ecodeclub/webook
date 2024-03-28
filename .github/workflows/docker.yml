@@ -53,6 +53,7 @@ jobs:
         with:
           repository: ecodeclub/webook-private
           ssh-key: ${{ secrets.WEBOOK_PRIVATE_DEPLOY_KEY }}
+          path: 'webook-private'
       - name: Output private path
         run: pwd
 
