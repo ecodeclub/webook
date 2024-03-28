@@ -58,7 +58,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: ecodeclub/webook-private
-          token: ${{ secrets.WEBOOK_PRIVATE_PAT_TOKEN }}
+          ssh-key: ${{ secrets.WEBOOK_PRIVATE_DEPLOY_KEY }}
 
       - name: Build Go
         run: go build -o webook .
