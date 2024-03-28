@@ -68,6 +68,10 @@ jobs:
         working-directory: ./webook
         run: mv go_build.work go.work
 
+      - name: go work sync
+        working-directory: ./webook
+        run: go work sync
+
       - name: go mod tidy
         working-directory: ./webook
         run: go mod tidy
