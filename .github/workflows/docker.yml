@@ -64,7 +64,7 @@ jobs:
         with:
           go-version: '1.21'
       - name: into workdir
-        run: cd /home/runner/work/webook/webook/webook
+        run: cd /home/runner/work/webook/webook/webook && ls -a
 
       - name: Init Go work
         run: mv go_build.work go.work
