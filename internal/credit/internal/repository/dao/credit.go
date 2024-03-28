@@ -114,7 +114,7 @@ func (g *creditDAO) CreateCreditLock(ctx context.Context, c CreditLock) error {
 			Status:        2, // 支付未生效
 		}
 		if err := g.Update(ctx, credit, creditLog); err != nil {
-			return fmt.Errorf("更新锁定积分并创建未生效积分流水失败", err)
+			return fmt.Errorf("更新锁定积分并创建未生效积分流水失败: %w", err)
 		}
 
 		// 创建预扣记录

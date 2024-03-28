@@ -14,9 +14,16 @@
 
 package repository
 
-import "github.com/ecodeclub/webook/internal/payment/internal/repository/dao"
+import (
+	"context"
+
+	"github.com/ecodeclub/webook/internal/payment/internal/domain"
+	"github.com/ecodeclub/webook/internal/payment/internal/repository/dao"
+)
 
 type PaymentRepository interface {
+	CreatePayment(ctx context.Context, payment domain.Payment) (domain.Payment, error)
+	CreateCreditPaymentRecord(ctx context.Context, record domain.PaymentRecord) (int64, error)
 }
 
 func NewRepository(d dao.PaymentDAO) PaymentRepository {
@@ -27,4 +34,14 @@ func NewRepository(d dao.PaymentDAO) PaymentRepository {
 
 type paymentRepository struct {
 	d dao.PaymentDAO
+}
+
+func (p *paymentRepository) CreateCreditPaymentRecord(ctx context.Context, record domain.PaymentRecord) (int64, error) {
+	// TODO implement me
+	panic("implement me")
+}
+
+func (p *paymentRepository) CreatePayment(ctx context.Context, payment domain.Payment) (domain.Payment, error) {
+	// TODO implement me
+	panic("implement me")
 }

@@ -69,7 +69,7 @@ func (h *Handler) RetrievePreviewOrder(ctx *ginx.Context, req PreviewOrderReq, s
 		// todo: 重新审视stockLimit的意义及用法
 		return systemErrorResult, fmt.Errorf("要购买的商品数量非法")
 	}
-	c, err := h.creditSvc.GetByUID(ctx.Request.Context(), sess.Claims().Uid)
+	c, err := h.creditSvc.GetCreditsByUID(ctx.Request.Context(), sess.Claims().Uid)
 	if err != nil {
 		return systemErrorResult, fmt.Errorf("获取用户积分失败: %w", err)
 	}
@@ -243,6 +243,7 @@ func (h *Handler) createPayment(ctx context.Context, order domain.Order, payment
 	}
 	return h.paymentSvc.CreatePayment(ctx, payment.Payment{
 		OrderID:     order.ID,
+		UserID:      order.BuyerID,
 		OrderSN:     order.SN,
 		TotalAmount: order.RealTotalPrice,
 		Deadline:    time.Now().Add(30 * time.Minute).UnixMilli(),
