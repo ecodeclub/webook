@@ -1,9 +1,0 @@
-go 1.21.0
-
-use (
-	.
-)
-
-replace (
-	github.com/ecodeclub/webook-private => ../webook-private
-)
