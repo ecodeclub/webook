@@ -57,7 +57,7 @@ jobs:
       - name: Checkout Private GO
         uses: actions/checkout@v4
         with:
-          repository: ecodeclub/webook
+          repository: ecodeclub/webook-private
           token: ${{ secrets.WEBOOK_PRIVATE_PAT_TOKEN }}
 
       - name: Build Go
