@@ -188,7 +188,22 @@ func (f *fakeProductService) FindBySN(_ context.Context, sn string) (product.Pro
 
 type fakeCreditService struct{}
 
-func (f *fakeCreditService) GetByUID(ctx context.Context, uid int64) (credit.Credit, error) {
+func (f *fakeCreditService) PreDeductCredits(ctx context.Context, amount int64) (sn string, availableCredits int64, err error) {
+	// TODO implement me
+	panic("implement me")
+}
+
+func (f *fakeCreditService) ConfirmDeductCredits(ctx context.Context, sn string) error {
+	// TODO implement me
+	panic("implement me")
+}
+
+func (f *fakeCreditService) DirectDeductCredits(ctx context.Context, amount int64) (sn string, availableCredits int64, err error) {
+	// TODO implement me
+	panic("implement me")
+}
+
+func (f *fakeCreditService) GetCreditsByUID(ctx context.Context, uid int64) (credit.Credit, error) {
 	credits := map[int64]credit.Credit{
 		testUID: {Amount: 1000},
 	}
