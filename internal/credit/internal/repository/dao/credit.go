@@ -92,27 +92,36 @@ func (g *creditDAO) CreateCreditLock(ctx context.Context, c CreditLock) error {
 		}
 
 		// 检查积分是否足够
-		if credit.TotalCredits-credit.LockedTotalCredits < c.Amount {
+		balance := credit.TotalCredits - credit.LockedTotalCredits - c.Amount
+		if balance < 0 {
 			return fmt.Errorf("积分不足")
 		}
 
 		// 增加预扣总积分
-		version := credit.Version
-		credit.Version++
+		// version := credit.Version
+		// credit.Version++
 		credit.LockedTotalCredits += c.Amount
-		now := time.Now().UnixMilli()
-		credit.Utime = now
 
-		if err := tx.Model(&Credit{}).
-			Select("LockedTotalCredits", "Utime", "Version").
-			Where("user_id = ? AND version = ?", c.UserId, version).Updates(&credit).Error; err != nil {
-			return fmt.Errorf("增加积分表预扣积分总数失败: %w", err)
+		// todo: 创建一个未生效流水记录
+		// 将计算部分移动到service层
+		creditLog := CreditLog{
+			SN:            "SN--", // 返回给支付模块使用
+			UserId:        c.UserId,
+			CreditChange:  c.Amount,
+			CreditBalance: balance,
+			Desc:          "购买商品",
+			Type:          CreditLogTypeBuyProduct,
+			Status:        2, // 支付未生效
+		}
+		if err := g.Update(ctx, credit, creditLog); err != nil {
+			return fmt.Errorf("更新锁定积分并创建未生效积分流水失败", err)
 		}
 
 		// 创建预扣记录
+		now := time.Now().UnixMilli()
 		c.Ctime, c.Utime = now, now
 		if err := tx.Create(&c).Error; err != nil {
-			return err
+			return fmt.Errorf("创建预扣记录失败: %w", err)
 		}
 
 		return nil
@@ -125,6 +134,8 @@ func (g *creditDAO) DeductCredits(ctx context.Context, lockID int64, c Credit, l
 	return g.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 
 		// 更新积分表并添加积分记录
+		// todo: 1) 积分表,totalCredits和lockedTotalCredits都减去amount, 再将creditLog的记录的status=1改为生效
+		// todo: 思考是否将creditLog与creditLock合并??
 		if err := g.Update(ctx, c, l); err != nil {
 			return fmt.Errorf("更新积分表并添加流水记录失败: %w", err)
 		}
@@ -172,11 +183,13 @@ type Credit struct {
 
 type CreditLog struct {
 	Id            int64  `gorm:"primaryKey;autoIncrement;comment:积分流水表自增ID"`
+	SN            string `gorm:"type:varchar(255);not null;uniqueIndex:uniq_credit_log_sn;comment:积分流水序列号"`
 	UserId        int64  `gorm:"not null;index:idx_user_id,comment:用户ID"`
 	CreditChange  int64  `gorm:"not null;comment:积分变动数量,正数为获得,负数为消耗"`
 	CreditBalance int64  `gorm:"not null;comment:变动后的积分余额"`
 	Desc          string `gorm:"type:varchar(255);not null;comment:积分流水描述"`
 	Type          int64  `gorm:"type:tinyint unsigned;not null;default:1;comment:流水类型 1=首次注册 2=邀请他人注册 3=购买商品 4=邀请他人购买商品"`
+	Status        int64  `gorm:"type:tinyint unsigned;not null;default:1;comment:流水状态 1=未生效, 2=已生效"`
 	Ctime         int64
 	Utime         int64
 }
