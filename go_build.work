@@ -5,5 +5,5 @@ use (
 )
 
 replace (
-	github.com/ecodeclub/webook-private => ../webook-private
+	github.com/ecodeclub/webook-private => .../webook-private
 )
