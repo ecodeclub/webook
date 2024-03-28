@@ -22,7 +22,10 @@ import (
 )
 
 type Service interface {
-	GetByUID(ctx context.Context, uid int64) (domain.Credit, error)
+	GetCreditsByUID(ctx context.Context, uid int64) (domain.Credit, error)
+	PreDeductCredits(ctx context.Context, amount int64) (sn string, availableCredits int64, err error)
+	ConfirmDeductCredits(ctx context.Context, sn string) error
+	DirectDeductCredits(ctx context.Context, amount int64) (sn string, availableCredits int64, err error)
 }
 
 func NewService(repo repository.CreditRepository) Service {
@@ -33,6 +36,21 @@ type service struct {
 	repo repository.CreditRepository
 }
 
-func (s *service) GetByUID(ctx context.Context, uid int64) (domain.Credit, error) {
+func (s *service) GetCreditsByUID(ctx context.Context, uid int64) (domain.Credit, error) {
 	return domain.Credit{}, nil
+}
+
+func (s *service) PreDeductCredits(ctx context.Context, amount int64) (sn string, availableCredits int64, err error) {
+	// TODO implement me
+	panic("implement me")
+}
+
+func (s *service) ConfirmDeductCredits(ctx context.Context, sn string) error {
+	// TODO implement me
+	panic("implement me")
+}
+
+func (s *service) DirectDeductCredits(ctx context.Context, amount int64) (sn string, availableCredits int64, err error) {
+	// TODO implement me
+	panic("implement me")
 }

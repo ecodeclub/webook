@@ -19,9 +19,20 @@ const (
 	ChannelTypeWechat
 )
 
+const (
+	PaymentStatusUnpaid = iota + 1
+	PaymentStatusPaid
+)
+
+const (
+	PaymentRecordStatusUnpaid = iota + 1
+	PaymentRecordStatusPaid
+)
+
 type Payment struct {
 	ID          int64
 	SN          string
+	UserID      int64
 	OrderID     int64
 	OrderSN     string
 	TotalAmount int64
