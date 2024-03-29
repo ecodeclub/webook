@@ -17,11 +17,14 @@ package service
 import (
 	"context"
 	"fmt"
+	"slices"
 	"time"
 
+	"github.com/ecodeclub/ekit/slice"
 	"github.com/ecodeclub/webook/internal/credit"
 	"github.com/ecodeclub/webook/internal/payment/internal/domain"
 	"github.com/ecodeclub/webook/internal/payment/internal/repository"
+	"github.com/ecodeclub/webook/internal/payment/internal/service/wechat"
 	"github.com/ecodeclub/webook/internal/pkg/sequencenumber"
 )
 
@@ -36,9 +39,10 @@ func NewService(repo repository.PaymentRepository, service2 credit.Service) Serv
 }
 
 type service struct {
-	repo        repository.PaymentRepository
+	wechatSvc   *wechat.NativePaymentService
 	creditSvc   credit.Service
 	snGenerator *sequencenumber.Generator
+	repo        repository.PaymentRepository
 }
 
 // CreatePayment 创建支付记录(支付主记录 + 支付渠道流水记录) 订单模块会同步调用该模块
@@ -48,73 +52,58 @@ func (s *service) CreatePayment(ctx context.Context, payment domain.Payment) (do
 	//    2)调用“积分模块” 扣减积分
 	//    3)调用“微信”, 获取二维码
 
-	// step 0: 创建支付主记录
-	p, err := s.createPayment(ctx, payment)
+	// 填充公共字段
+	paymentSN, err := s.snGenerator.Generate(payment.UserID)
 	if err != nil {
-		return domain.Payment{}, err
+		return domain.Payment{}, fmt.Errorf("生成支付序列号失败: %w", err)
 	}
+	payment.SN = paymentSN
+	payment.Deadline = time.Now().Add(30 * time.Minute).UnixMilli()
+
+	// 积分支付优先
+	slices.SortFunc(payment.Records, func(a, b domain.PaymentRecord) int {
+		if a.Channel < b.Channel {
+			return -1
+		} else if a.Channel > b.Channel {
+			return 1
+		}
+		return 0
+	})
 
 	// 把传递过来支付渠道相关的内容, 看作一种建议策略
 	// 1. 仅积分支付, 策略失败 - fallback到微信支付
 	// 2. 仅微信支付, 失败无fallback
 	// 3. 积分+微信, 还是先积分,不行再微信/支付宝
-	var paymentSN string
 	totalAmount := payment.TotalAmount
 	var createdPayment domain.Payment
-	paymentDeadline := time.Now().Add(30 * time.Minute).UnixMilli()
 
 	for _, record := range payment.Records {
 		switch record.Channel {
 		case domain.ChannelTypeCredit:
 
-			sn, left, err2 := s.creditSvc.DirectDeductCredits(ctx, payment.TotalAmount)
-
-			if err2 == nil {
-				newPayment := payment
+			// 直接扣减, 扣减失败会返回可用积分
+			paymentNO3rd, left, err := s.creditSvc.DirectDeductCredits(ctx, payment.TotalAmount)
+			if err == nil {
 				// 直扣积分成功
-				paidAt := time.Now().UnixMilli()
-
-				newPayment.SN = paymentSN
-				newPayment.PaidAt = paidAt
-				newPayment.Deadline = paymentDeadline
-				newPayment.Status = domain.PaymentStatusPaid
-
-				newPayment.Records = []domain.PaymentRecord{
-					{
-						PaymentNO3rd: sn,
-						Channel:      domain.ChannelTypeCredit,
-						Amount:       payment.TotalAmount,
-						PaidAt:       paidAt,
-						Status:       domain.PaymentRecordStatusPaid,
-					},
-				}
-
-				pp, err3 := s.repo.CreatePayment(ctx, newPayment)
-				if err3 != nil {
-					// todo: 事务问题, 积分扣减成功, 但是创建支付主记录及积分支付记录失败该怎么办?
-					// 记录日志, 人工补偿?
-					return domain.Payment{}, fmt.Errorf("创建支付主记录及积分支付记录失败: %w", err2)
-				}
-				return pp, nil
+				return s.createPaidPaymentAndCreditPaymentRecord(ctx, payment, paymentNO3rd)
 			}
 
-			leftCredits := left
-			var no string
-
 			// 进最大努力预扣积分
+			leftCredits := left
 			for leftCredits > 0 {
 				// 预扣积分
-				sn, l, err4 := s.creditSvc.PreDeductCredits(ctx, leftCredits)
-				if err4 != nil {
+				no3rd, l, err2 := s.creditSvc.PreDeductCredits(ctx, leftCredits)
+				if err2 != nil {
+					// 预扣失败, 更新可用积分
 					leftCredits = l
 					continue
 				}
-				no = sn
+				paymentNO3rd = no3rd
 				break
 			}
 
 			// 预扣失败
-			if no == "" {
+			if paymentNO3rd == "" {
 				if len(payment.Records) == 1 {
 					// 仅有积分支付渠道
 					return domain.Payment{}, fmt.Errorf("创建支付主记录及积分支付记录失败")
@@ -124,61 +113,123 @@ func (s *service) CreatePayment(ctx context.Context, payment domain.Payment) (do
 			}
 
 			// 预扣成功
-			// 创建支付主记录及积分支付记录, 状态均为未支付
-			py := payment
-			py.SN = paymentSN
-			py.Deadline = paymentDeadline
-			py.Records = []domain.PaymentRecord{
-				{
-					PaymentNO3rd: sn,
-					Channel:      domain.ChannelTypeCredit,
-					Amount:       leftCredits,
-				},
-			}
-			pp, err5 := s.repo.CreatePayment(ctx, py)
-			if err5 != nil {
-				return domain.Payment{}, fmt.Errorf("创建支付主记录及积分支付记录失败: %w", err2)
+			prePaidAmount := leftCredits
+			p, err3 := s.createUnpaidPayment(ctx, payment, domain.PaymentRecord{
+				PaymentNO3rd: paymentNO3rd,
+				Channel:      domain.ChannelTypeCredit,
+				Amount:       prePaidAmount,
+			})
+			if err3 != nil {
+				return p, err3
 			}
 
 			// 减去已扣减的积分
-			totalAmount -= leftCredits
-			createdPayment = pp
+			totalAmount -= prePaidAmount
+			createdPayment = p
 
 			// 仅积分支付, 调用积分模块, 扣减积分
 			// 积分扣减成功,拿到返回扣减后的事务ID
 			//        填充, record => paymnet_3rd_no, amount, paidAt, status(已支付)等 创建主表记录(已支付)+积分扣减支付记录, 返回
-			// 扣减失败? 自动fallback到微信?
+			// todo: 扣减失败? 自动fallback到微信?
 
 		case domain.ChannelTypeWechat:
 
-			//
-			if totalAmount != payment.TotalAmount {
-				// 之前有积分预扣操作
-				return domain.Payment{}, nil
-			} else {
-				// 仅微信支付
-				py := createdPayment
-				py.SN = ""
+			// 触发微信支付流程, 获取支付二维码
+			codeURL, err4 := s.wechatSvc.Prepay(ctx, payment)
+			if err4 != nil {
+				return domain.Payment{}, err4
 			}
 
+			// todo: 如何拿到微信的txn_id来填充 paymentNO3rd
+			var paymentNO3rd string
+
+			// 之前预扣积分已经创建积分支付记录,
+			if totalAmount != payment.TotalAmount {
+				// 仅创建微信支付记录即可
+				_, err5 := s.repo.CreatePaymentRecord(ctx, domain.PaymentRecord{
+					PaymentID:    createdPayment.ID,
+					PaymentNO3rd: paymentNO3rd,
+					Channel:      domain.ChannelTypeWechat,
+					Amount:       totalAmount,
+					PaidAt:       time.Now().UnixMilli(),
+					Status:       domain.PaymentStatusUnpaid,
+				})
+				if err5 != nil {
+					return domain.Payment{}, fmt.Errorf("创建微信支付记录失败: %w", err5)
+				}
+				// 返回包含主记录+积分支付记录+微信支付记录
+				p, err7 := s.FindPaymentByID(ctx, createdPayment.ID)
+				if err7 != nil {
+					return domain.Payment{}, fmt.Errorf("获取: %w", err7)
+				}
+
+				// 填充URL
+				p.Records = slice.Map(p.Records, func(idx int, src domain.PaymentRecord) domain.PaymentRecord {
+					if src.Channel == domain.ChannelTypeWechat {
+						src.WechatCodeURL = codeURL
+					}
+					return src
+				})
+				return p, nil
+			}
+
+			// 仅微信支付, 创建支付主记录和微信支付记录
+			pp, err6 := s.createUnpaidPayment(ctx, payment, domain.PaymentRecord{
+				PaymentNO3rd: paymentNO3rd,
+				Channel:      domain.ChannelTypeWechat,
+				Amount:       totalAmount,
+			})
+			if err6 != nil {
+				return domain.Payment{}, err6
+			}
+
+			// 填充二维码
+			pp.Records = slice.Map(pp.Records, func(idx int, src domain.PaymentRecord) domain.PaymentRecord {
+				if src.Channel == domain.ChannelTypeWechat {
+					src.WechatCodeURL = codeURL
+				}
+				return src
+			})
+			return pp, nil
 		}
 	}
 
-	return p, nil
+	return createdPayment, nil
 }
 
-func (s *service) createPayment(ctx context.Context, payment domain.Payment) (domain.Payment, error) {
-	sn, err := s.snGenerator.Generate(payment.UserID)
-	if err != nil {
-		return domain.Payment{}, fmt.Errorf("生成支付序列号失败: %w", err)
+// createPaidPaymentAndCreditPaymentRecord 创建已支付支付主记录及积分支付记录
+func (s *service) createPaidPaymentAndCreditPaymentRecord(ctx context.Context, payment domain.Payment, paymentNO3rd string) (domain.Payment, error) {
+
+	paidAt := time.Now().UnixMilli()
+	payment.PaidAt = paidAt
+	payment.Status = domain.PaymentStatusPaid
+
+	payment.Records = []domain.PaymentRecord{
+		{
+			PaymentNO3rd: paymentNO3rd,
+			Channel:      domain.ChannelTypeCredit,
+			Amount:       payment.TotalAmount,
+			PaidAt:       paidAt,
+			Status:       domain.PaymentRecordStatusPaid,
+		},
 	}
-	payment.SN = sn
-	payment.Deadline = time.Now().Add(30 * time.Minute).UnixMilli()
-	p, err := s.repo.CreatePayment(ctx, payment)
+
+	pp, err := s.repo.CreatePayment(ctx, payment)
 	if err != nil {
-		return domain.Payment{}, fmt.Errorf("创建支付主记录失败: %w", err)
+		// todo: 事务问题, 积分扣减成功, 但是创建支付主记录及积分支付记录失败该怎么办?
+		// 记录日志, 人工补偿?
+		return domain.Payment{}, fmt.Errorf("创建支付主记录及积分支付记录失败: %w", err)
 	}
-	return p, nil
+	return pp, nil
+}
+
+func (s *service) createUnpaidPayment(ctx context.Context, payment domain.Payment, record domain.PaymentRecord) (domain.Payment, error) {
+	payment.Records = []domain.PaymentRecord{record}
+	pp, err2 := s.repo.CreatePayment(ctx, payment)
+	if err2 != nil {
+		return domain.Payment{}, fmt.Errorf("创建支付主记录及积分支付记录失败: %w", err2)
+	}
+	return pp, nil
 }
 
 func (s *service) GetPaymentChannels(ctx context.Context) []domain.PaymentChannel {

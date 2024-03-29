@@ -32,6 +32,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+var _ ginx.Handler = &Handler{}
+
 type Handler struct {
 	svc         service.Service
 	paymentSvc  payment.Service
@@ -58,6 +60,8 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g.POST("/complete", ginx.B[CompleteOrderReq](h.CompleteOrder))
 	g.POST("/close", ginx.B[CloseTimeoutOrdersReq](h.CloseTimeoutOrders))
 }
+
+func (h *Handler) PublicRoutes(_ *gin.Engine) {}
 
 // RetrievePreviewOrder 获取订单预览信息, 此时订单尚未创建
 func (h *Handler) RetrievePreviewOrder(ctx *ginx.Context, req PreviewOrderReq, sess session.Session) (ginx.Result, error) {
