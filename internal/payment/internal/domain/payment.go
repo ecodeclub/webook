@@ -22,6 +22,8 @@ const (
 const (
 	PaymentStatusUnpaid = iota + 1
 	PaymentStatusPaid
+	PaymentStatusFailed
+	PaymentStatusRefund
 )
 
 const (
@@ -29,19 +31,31 @@ const (
 	PaymentRecordStatusPaid
 )
 
+type Amount struct {
+	// 如果要支持国际化，那么这个是不能少的
+	Currency string
+	// 这里我们遵循微信的做法，就用 int64 来记录分数。
+	// 那么对于不同的货币来说，这个字段的含义就不同。
+	// 比如说一些货币没有分，只有整数。
+	Total int64
+}
+
 type Payment struct {
-	ID          int64
-	SN          string
-	UserID      int64
-	OrderID     int64
-	OrderSN     string
-	TotalAmount int64
-	Deadline    int64
-	PaidAt      int64
-	Status      int64
-	Records     []PaymentRecord
-	Ctime       int64
-	Utime       int64
+	ID     int64
+	SN     string
+	UserID int64
+	// BizTradeNO, 就是OrderSN
+	OrderID int64
+	OrderSN string
+	// 订单的描述,冗余
+	OrderDescription string
+	TotalAmount      int64
+	Deadline         int64
+	PaidAt           int64
+	Status           int64
+	Records          []PaymentRecord
+	Ctime            int64
+	Utime            int64
 }
 
 type PaymentChannel struct {
@@ -50,10 +64,13 @@ type PaymentChannel struct {
 }
 
 type PaymentRecord struct {
-	PaymentNO3rd  string
-	Channel       int64
-	Amount        int64
-	PaidAt        int64
-	Status        int64
-	WechatCodeURL string
+	PaymentID int64
+	// 第三方那边返回的 ID TxnID string
+	PaymentNO3rd     string
+	OrderDescription string
+	Channel          int64
+	Amount           int64
+	PaidAt           int64
+	Status           int64
+	WechatCodeURL    string
 }
