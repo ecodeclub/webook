@@ -48,13 +48,36 @@ jobs:
       id-token: write
 
     steps:
+      - name: Checkout Private GO
+        uses: actions/checkout@v4
+        with:
+          repository: ecodeclub/webook-private
+          ssh-key: ${{ secrets.WEBOOK_PRIVATE_DEPLOY_KEY }}
+          path: 'webook-private'
+
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          path: 'webook'
       - name: Set up Go
         uses: actions/setup-go@v2
         with:
           go-version: '1.21'
+
+      - name: Init Go work
+        working-directory: ./webook
+        run: mv go_build.work go.work
+
+      - name: go work sync
+        working-directory: ./webook
+        run: go work sync
+
+      - name: go mod tidy
+        working-directory: ./webook
+        run: go mod tidy
+
       - name: Build Go
+        working-directory: ./webook
         run: go build -o webook .
 
       # Install the cosign tool except on PR
@@ -96,7 +119,7 @@ jobs:
         id: build-and-push
         uses: docker/build-push-action@0565240e2d4ab88bba5387d719585280857ece09 # v5.0.0
         with:
-          context: .
+          context: ./webook
           push: ${{ github.event_name != 'pull_request' }}
 #          tags: ${{ steps.meta.outputs.tags }}
           tags: ${{ env.TAGS }}

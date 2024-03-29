@@ -12,29 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package web
+package nonsense
 
-type CollectReq struct {
-	Biz   string `json:"biz"`
-	BizId int64  `json:"bizId"`
-}
+import (
+	"github.com/gin-gonic/gin"
+)
 
-type LikeReq struct {
-	Biz   string `json:"biz"`
-	BizId int64  `json:"bizId"`
-}
-
-type GetCntReq struct {
-	Biz   string `json:"biz"`
-	BizId int64  `json:"bizId"`
-}
-
-type GetCntResp struct {
-	CollectCnt int `json:"collectCnt"`
-	LikeCnt    int `json:"likeCnt"`
-	ViewCnt    int `json:"viewCnt"`
-	// 是否收藏过
-	Collected bool `json:"collected"`
-	// 是否点赞过
-	Liked bool `json:"liked"`
+// NonSenseV1
+var NonSenseV1 gin.HandlerFunc = func(ct *gin.Context) {
+	// 啥也不做
+	println("hello")
 }

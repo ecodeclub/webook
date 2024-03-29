@@ -1,0 +1,9 @@
+go 1.21.0
+
+use (
+	.
+)
+
+replace (
+	github.com/ecodeclub/webook-private => /home/runner/work/webook/webook/webook-private
+)
