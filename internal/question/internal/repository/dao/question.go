@@ -16,7 +16,6 @@ package dao
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/ecodeclub/ekit/slice"
@@ -75,17 +74,13 @@ func (g *GORMQuestionDAO) Update(ctx context.Context, q Question, eles []AnswerE
 
 func (g *GORMQuestionDAO) update(tx *gorm.DB, q Question, eles []AnswerElement) error {
 	now := time.Now().UnixMilli()
-	res := tx.Model(&q).Where("id = ? AND uid = ?", q.Id, q.Uid).Updates(map[string]any{
+	res := tx.Model(&q).Where("id = ?", q.Id).Updates(map[string]any{
 		"title":   q.Title,
 		"content": q.Content,
 		"utime":   now,
 	})
 	if res.Error != nil {
 		return res.Error
-	}
-	// 没有更新到数据，说明非法访问
-	if res.RowsAffected < 1 {
-		return fmt.Errorf("非法访问资源 uid %d, id %d", q.Uid, q.Id)
 	}
 	return g.saveEles(tx, eles)
 }
