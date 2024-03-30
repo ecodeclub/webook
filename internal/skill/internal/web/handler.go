@@ -36,6 +36,10 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	server.POST("/skill/pub/detail", ginx.B[Sid](h.PubDetail))
 }
 
+func (h *Handler) PublicRoutes(server *gin.Engine) {
+	server.POST("/skill/pub/detail", ginx.B[Sid](h.PubDetail))
+}
+
 func (h *Handler) Permission(ctx *ginx.Context, sess session.Session) (ginx.Result, error) {
 	if sess.Claims().Get("admin").StringOrDefault("") != "true" {
 		ctx.AbortWithStatus(http.StatusInternalServerError)
