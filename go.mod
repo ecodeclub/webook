@@ -5,7 +5,7 @@ go 1.21.0
 require (
 	github.com/ecodeclub/ecache v0.0.0-20240111145855-75679834beca
 	github.com/ecodeclub/ekit v0.0.9-0.20240211145635-ea42c17ffeb0
-	github.com/ecodeclub/ginx v0.0.0-20240326145355-0c3345eabf73
+	github.com/ecodeclub/ginx v0.0.0-20240330050527-80840e6a01ba
 	github.com/ecodeclub/mq-api v0.0.0-20231030023724-b3c489cdada2
 	github.com/ecodeclub/webook-private v0.0.0-20240328102016-f96c72f49853
 	github.com/ego-component/egorm v1.1.1
