@@ -497,6 +497,25 @@ func (s *HandlerTestSuite) TestSync() {
 					Highlight: "新的亮点",
 					Guidance:  "新的引导点",
 				}, analysis)
+
+				pq, pEles, err := s.dao.GetPubByID(ctx, 2)
+
+				s.assertQuestion(t, dao.Question{
+					Uid:     uid,
+					Title:   "面试题1",
+					Content: "新的内容",
+				}, dao.Question(pq))
+				assert.Equal(t, 4, len(pEles))
+				pAnalysis := pEles[0]
+				s.assertAnswerElement(t, dao.AnswerElement{
+					Content:   "新的分析",
+					Type:      dao.AnswerElementTypeAnalysis,
+					Qid:       2,
+					Keywords:  "新的 keyword",
+					Shorthand: "新的速记",
+					Highlight: "新的亮点",
+					Guidance:  "新的引导点",
+				}, dao.AnswerElement(pAnalysis))
 			},
 			req: func() web.SaveReq {
 				analysis := web.AnswerElement{
@@ -524,59 +543,6 @@ func (s *HandlerTestSuite) TestSync() {
 				Data: 2,
 			},
 		},
-		//{
-		//	name: "非法访问",
-		//	before: func(t *testing.T) {
-		//		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-		//		defer cancel()
-		//		err := s.db.WithContext(ctx).Create(&dao.Question{
-		//			Id:      3,
-		//			Uid:     234,
-		//			Title:   "老的标题",
-		//			Content: "老的内容",
-		//			Ctime:   123,
-		//			Utime:   234,
-		//		}).Error
-		//		require.NoError(t, err)
-		//	},
-		//	after: func(t *testing.T) {
-		//		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-		//		defer cancel()
-		//		q, _, err := s.dao.GetByID(ctx, 3)
-		//		require.NoError(t, err)
-		//		s.assertQuestion(t, dao.Question{
-		//			Uid:     234,
-		//			Title:   "老的标题",
-		//			Content: "老的内容",
-		//		}, q)
-		//	},
-		//	req: func() web.SaveReq {
-		//		analysis := web.AnswerElement{
-		//			Id:        1,
-		//			Content:   "新的分析",
-		//			Keywords:  "新的 keyword",
-		//			Shorthand: "新的速记",
-		//			Highlight: "新的亮点",
-		//			Guidance:  "新的引导点",
-		//		}
-		//		return web.SaveReq{
-		//			Question: web.Question{
-		//				Id:           3,
-		//				Title:        "面试题1",
-		//				Content:      "新的内容",
-		//				Analysis:     analysis,
-		//				Basic:        s.buildAnswerEle(1),
-		//				Intermediate: s.buildAnswerEle(2),
-		//				Advanced:     s.buildAnswerEle(3),
-		//			},
-		//		}
-		//	}(),
-		//	wantCode: 500,
-		//	wantResp: test.Result[int64]{
-		//		Code: 502001,
-		//		Msg:  "系统错误",
-		//	},
-		//},
 	}
 
 	for _, tc := range testCases {
