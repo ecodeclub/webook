@@ -183,6 +183,11 @@ func (g *GORMQuestionDAO) Sync(ctx context.Context, que Question, eles []AnswerE
 			return err
 		}
 		pubEles := slice.Map(eles, func(idx int, src AnswerElement) PublishAnswerElement {
+			// 强制将 id 设置为 0。因为前面的 update 或者 upsert 触发了 update 的时候，
+			// 即便是执行了更新，GIN 也会赋予一个 id，但是这个 id 是错误的 id。
+			// 我们依赖于唯一索引来更新
+			src.Id = 0
+			src.Qid = qid
 			return PublishAnswerElement(src)
 		})
 		return g.saveLive(tx, PublishQuestion(que), pubEles)
