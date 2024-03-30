@@ -27,7 +27,7 @@ type Service interface {
 	// Save 保存数据，question 绝对不会为 nil
 	Save(ctx context.Context, question *domain.Question) (int64, error)
 	Publish(ctx context.Context, que *domain.Question) (int64, error)
-	List(ctx context.Context, offset int, limit int, uid int64) ([]domain.Question, int64, error)
+	List(ctx context.Context, offset int, limit int) ([]domain.Question, int64, error)
 
 	PubList(ctx context.Context, offset int, limit int) ([]domain.Question, int64, error)
 	Detail(ctx context.Context, qid int64) (domain.Question, error)
@@ -46,7 +46,7 @@ func (s *service) Detail(ctx context.Context, qid int64) (domain.Question, error
 	return s.repo.GetById(ctx, qid)
 }
 
-func (s *service) List(ctx context.Context, offset int, limit int, uid int64) ([]domain.Question, int64, error) {
+func (s *service) List(ctx context.Context, offset int, limit int) ([]domain.Question, int64, error) {
 	var (
 		eg    errgroup.Group
 		qs    []domain.Question
@@ -54,13 +54,13 @@ func (s *service) List(ctx context.Context, offset int, limit int, uid int64) ([
 	)
 	eg.Go(func() error {
 		var err error
-		qs, err = s.repo.List(ctx, offset, limit, uid)
+		qs, err = s.repo.List(ctx, offset, limit)
 		return err
 	})
 
 	eg.Go(func() error {
 		var err error
-		total, err = s.repo.Total(ctx, uid)
+		total, err = s.repo.Total(ctx)
 		return err
 	})
 	return qs, total, eg.Wait()

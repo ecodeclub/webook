@@ -29,13 +29,13 @@ var (
 
 type QuestionSetDAO interface {
 	Create(ctx context.Context, qs QuestionSet) (int64, error)
-	GetByIDAndUID(ctx context.Context, id, uid int64) (QuestionSet, error)
+	GetByID(ctx context.Context, id int64) (QuestionSet, error)
 
 	GetQuestionsByID(ctx context.Context, id int64) ([]Question, error)
-	UpdateQuestionsByIDAndUID(ctx context.Context, id, uid int64, qids []int64) error
+	UpdateQuestionsByID(ctx context.Context, id int64, qids []int64) error
 
-	Count(ctx context.Context, uid int64) (int64, error)
-	List(ctx context.Context, offset, limit int, uid int64) ([]QuestionSet, error)
+	Count(ctx context.Context) (int64, error)
+	List(ctx context.Context, offset, limit int) ([]QuestionSet, error)
 	UpdateNonZero(ctx context.Context, set QuestionSet) error
 }
 
@@ -57,9 +57,9 @@ func (g *GORMQuestionSetDAO) Create(ctx context.Context, qs QuestionSet) (int64,
 	return qs.Id, err
 }
 
-func (g *GORMQuestionSetDAO) GetByIDAndUID(ctx context.Context, id, uid int64) (QuestionSet, error) {
+func (g *GORMQuestionSetDAO) GetByID(ctx context.Context, id int64) (QuestionSet, error) {
 	var qs QuestionSet
-	if err := g.db.WithContext(ctx).First(&qs, "id = ? AND uid = ?", id, uid).Error; err != nil {
+	if err := g.db.WithContext(ctx).First(&qs, "id = ?", id).Error; err != nil {
 		return QuestionSet{}, err
 	}
 	return qs, nil
@@ -80,10 +80,10 @@ func (g *GORMQuestionSetDAO) GetQuestionsByID(ctx context.Context, id int64) ([]
 	return q, err
 }
 
-func (g *GORMQuestionSetDAO) UpdateQuestionsByIDAndUID(ctx context.Context, id, uid int64, qids []int64) error {
+func (g *GORMQuestionSetDAO) UpdateQuestionsByID(ctx context.Context, id int64, qids []int64) error {
 	return g.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var qs QuestionSet
-		if err := tx.WithContext(ctx).First(&qs, "id = ? AND uid = ?", id, uid).Error; err != nil {
+		if err := tx.WithContext(ctx).First(&qs, "id = ? ", id).Error; err != nil {
 			return err
 		}
 		// 全部删除
@@ -113,22 +113,16 @@ func (g *GORMQuestionSetDAO) UpdateQuestionsByIDAndUID(ctx context.Context, id, 
 	})
 }
 
-func (g *GORMQuestionSetDAO) Count(ctx context.Context, uid int64) (int64, error) {
+func (g *GORMQuestionSetDAO) Count(ctx context.Context) (int64, error) {
 	var res int64
 	db := g.db.WithContext(ctx).Model(&QuestionSet{})
-	if uid != 0 {
-		db = db.Where("uid = ?", uid)
-	}
 	err := db.Select("COUNT(id)").Count(&res).Error
 	return res, err
 }
 
-func (g *GORMQuestionSetDAO) List(ctx context.Context, offset, limit int, uid int64) ([]QuestionSet, error) {
+func (g *GORMQuestionSetDAO) List(ctx context.Context, offset, limit int) ([]QuestionSet, error) {
 	var res []QuestionSet
 	db := g.db.WithContext(ctx)
-	if uid != 0 {
-		db = db.Where("uid = ?", uid)
-	}
 	err := db.Offset(offset).Limit(limit).Order("id DESC").Find(&res).Error
 	return res, err
 }

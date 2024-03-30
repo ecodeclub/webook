@@ -42,8 +42,8 @@ func NewHandler(svc service.Service) *Handler {
 
 func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	server.POST("/question/save", ginx.S(h.Permission), ginx.BS[SaveReq](h.Save))
-	server.POST("/question/list", ginx.S(h.Permission), ginx.BS[Page](h.List))
-	server.POST("/question/detail", ginx.S(h.Permission), ginx.BS[Qid](h.Detail))
+	server.POST("/question/list", ginx.S(h.Permission), ginx.B[Page](h.List))
+	server.POST("/question/detail", ginx.S(h.Permission), ginx.B[Qid](h.Detail))
 	server.POST("/question/publish", ginx.S(h.Permission), ginx.BS[SaveReq](h.Publish))
 	server.POST("/question/pub/detail", ginx.B[Qid](h.PubDetail))
 }
@@ -78,9 +78,9 @@ func (h *Handler) Publish(ctx *ginx.Context, req SaveReq, sess session.Session) 
 	}, nil
 }
 
-func (h *Handler) List(ctx *ginx.Context, req Page, sess session.Session) (ginx.Result, error) {
+func (h *Handler) List(ctx *ginx.Context, req Page) (ginx.Result, error) {
 	// 制作库不需要统计总数
-	data, cnt, err := h.svc.List(ctx, req.Offset, req.Limit, sess.Claims().Uid)
+	data, cnt, err := h.svc.List(ctx, req.Offset, req.Limit)
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -114,14 +114,9 @@ func (h *Handler) toQuestionList(data []domain.Question, cnt int64) QuestionList
 	}
 }
 
-func (h *Handler) Detail(ctx *ginx.Context, req Qid, sess session.Session) (ginx.Result, error) {
+func (h *Handler) Detail(ctx *ginx.Context, req Qid) (ginx.Result, error) {
 	detail, err := h.svc.Detail(ctx, req.Qid)
 	if err != nil {
-		return systemErrorResult, err
-	}
-	if detail.Uid != sess.Claims().Uid {
-		// 非法访问，说明有人搞鬼
-		// 在有人搞鬼的时候，直接返回系统错误就可以
 		return systemErrorResult, err
 	}
 	return ginx.Result{

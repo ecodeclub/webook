@@ -54,8 +54,8 @@ func (h *QuestionSetHandler) PrivateRoutes(server *gin.Engine) {
 	g := server.Group("/question-sets")
 	g.POST("/save", ginx.BS[SaveQuestionSetReq](h.SaveQuestionSet))
 	g.POST("/questions/save", ginx.BS[UpdateQuestionsOfQuestionSetReq](h.UpdateQuestionsOfQuestionSet))
-	g.POST("/list", ginx.BS[Page](h.ListPrivateQuestionSets))
-	g.POST("/detail", ginx.BS[QuestionSetID](h.RetrieveQuestionSetDetail))
+	g.POST("/list", ginx.B[Page](h.ListPrivateQuestionSets))
+	g.POST("/detail", ginx.B[QuestionSetID](h.RetrieveQuestionSetDetail))
 
 	g.POST("/pub/list", ginx.B[Page](h.ListAllQuestionSets))
 }
@@ -95,8 +95,8 @@ func (h *QuestionSetHandler) UpdateQuestionsOfQuestionSet(ctx *ginx.Context, req
 }
 
 // ListPrivateQuestionSets 展示个人题集
-func (h *QuestionSetHandler) ListPrivateQuestionSets(ctx *ginx.Context, req Page, sess session.Session) (ginx.Result, error) {
-	data, total, err := h.svc.List(ctx, req.Offset, req.Limit, sess.Claims().Uid)
+func (h *QuestionSetHandler) ListPrivateQuestionSets(ctx *ginx.Context, req Page) (ginx.Result, error) {
+	data, total, err := h.svc.List(ctx, req.Offset, req.Limit)
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -128,7 +128,7 @@ func (h *QuestionSetHandler) toQuestionSetList(data []domain.QuestionSet, total 
 
 // ListAllQuestionSets 展示所有题集
 func (h *QuestionSetHandler) ListAllQuestionSets(ctx *ginx.Context, req Page) (ginx.Result, error) {
-	data, total, err := h.svc.List(ctx, req.Offset, req.Limit, 0)
+	data, total, err := h.svc.List(ctx, req.Offset, req.Limit)
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -138,8 +138,8 @@ func (h *QuestionSetHandler) ListAllQuestionSets(ctx *ginx.Context, req Page) (g
 }
 
 // RetrieveQuestionSetDetail 题集详情
-func (h *QuestionSetHandler) RetrieveQuestionSetDetail(ctx *ginx.Context, req QuestionSetID, sess session.Session) (ginx.Result, error) {
-	data, err := h.svc.Detail(ctx.Request.Context(), req.QSID, sess.Claims().Uid)
+func (h *QuestionSetHandler) RetrieveQuestionSetDetail(ctx *ginx.Context, req QuestionSetID) (ginx.Result, error) {
+	data, err := h.svc.Detail(ctx.Request.Context(), req.QSID)
 	if err != nil {
 		return systemErrorResult, err
 	}

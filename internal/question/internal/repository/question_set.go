@@ -27,9 +27,9 @@ import (
 type QuestionSetRepository interface {
 	Create(ctx context.Context, set domain.QuestionSet) (int64, error)
 	UpdateQuestions(ctx context.Context, set domain.QuestionSet) error
-	GetByIDAndUID(ctx context.Context, id, uid int64) (domain.QuestionSet, error)
-	Total(ctx context.Context, uid int64) (int64, error)
-	List(ctx context.Context, offset int, limit int, uid int64) ([]domain.QuestionSet, error)
+	GetByID(ctx context.Context, id int64) (domain.QuestionSet, error)
+	Total(ctx context.Context) (int64, error)
+	List(ctx context.Context, offset int, limit int) ([]domain.QuestionSet, error)
 	UpdateNonZero(ctx context.Context, set domain.QuestionSet) error
 }
 
@@ -61,7 +61,7 @@ func (q *questionSetRepository) UpdateQuestions(ctx context.Context, set domain.
 	for i := range set.Questions {
 		qids[i] = set.Questions[i].Id
 	}
-	return q.dao.UpdateQuestionsByIDAndUID(ctx, set.Id, set.Uid, qids)
+	return q.dao.UpdateQuestionsByID(ctx, set.Id, qids)
 }
 
 func (q *questionSetRepository) getDomainQuestions(ctx context.Context, id int64) ([]domain.Question, error) {
@@ -85,8 +85,8 @@ func (q *questionSetRepository) toDomainQuestion(que dao.Question) domain.Questi
 	}
 }
 
-func (q *questionSetRepository) GetByIDAndUID(ctx context.Context, id, uid int64) (domain.QuestionSet, error) {
-	set, err := q.dao.GetByIDAndUID(ctx, id, uid)
+func (q *questionSetRepository) GetByID(ctx context.Context, id int64) (domain.QuestionSet, error) {
+	set, err := q.dao.GetByID(ctx, id)
 	if err != nil {
 		return domain.QuestionSet{}, err
 	}
@@ -105,12 +105,12 @@ func (q *questionSetRepository) GetByIDAndUID(ctx context.Context, id, uid int64
 	}, nil
 }
 
-func (q *questionSetRepository) Total(ctx context.Context, uid int64) (int64, error) {
-	return q.dao.Count(ctx, uid)
+func (q *questionSetRepository) Total(ctx context.Context) (int64, error) {
+	return q.dao.Count(ctx)
 }
 
-func (q *questionSetRepository) List(ctx context.Context, offset int, limit int, uid int64) ([]domain.QuestionSet, error) {
-	qs, err := q.dao.List(ctx, offset, limit, uid)
+func (q *questionSetRepository) List(ctx context.Context, offset int, limit int) ([]domain.QuestionSet, error) {
+	qs, err := q.dao.List(ctx, offset, limit)
 	if err != nil {
 		return nil, err
 	}

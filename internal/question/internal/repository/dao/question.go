@@ -29,8 +29,8 @@ type QuestionDAO interface {
 	Update(ctx context.Context, q Question, eles []AnswerElement) error
 	Create(ctx context.Context, q Question, eles []AnswerElement) (int64, error)
 	GetByID(ctx context.Context, id int64) (Question, []AnswerElement, error)
-	List(ctx context.Context, offset int, limit int, uid int64) ([]Question, error)
-	Count(ctx context.Context, uid int64) (int64, error)
+	List(ctx context.Context, offset int, limit int) ([]Question, error)
+	Count(ctx context.Context) (int64, error)
 
 	Sync(ctx context.Context, que Question, eles []AnswerElement) (int64, error)
 
@@ -60,7 +60,7 @@ func (g *GORMQuestionDAO) GetPubByID(ctx context.Context, qid int64) (PublishQue
 func (g *GORMQuestionDAO) Update(ctx context.Context, q Question, eles []AnswerElement) error {
 	now := time.Now().UnixMilli()
 	return g.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		res := tx.Model(&Question{}).WithContext(ctx).Where("id = ? AND uid = ?", q.Id, q.Uid).Updates(map[string]any{
+		res := tx.Model(&Question{}).WithContext(ctx).Where("id = ?", q.Id).Updates(map[string]any{
 			"title":   q.Title,
 			"content": q.Content,
 			"utime":   now,
@@ -68,10 +68,7 @@ func (g *GORMQuestionDAO) Update(ctx context.Context, q Question, eles []AnswerE
 		if res.Error != nil {
 			return res.Error
 		}
-		// 没有更新到数据，说明非法访问
-		if res.RowsAffected < 1 {
-			return fmt.Errorf("非法访问资源 uid %d, id %d", q.Uid, q.Id)
-		}
+
 		return g.saveEles(tx, eles)
 	})
 }
@@ -115,18 +112,18 @@ func (g *GORMQuestionDAO) create(tx *gorm.DB, q Question, eles []AnswerElement) 
 	return qid, g.saveEles(tx, eles)
 }
 
-func (g *GORMQuestionDAO) List(ctx context.Context, offset int, limit int, uid int64) ([]Question, error) {
+func (g *GORMQuestionDAO) List(ctx context.Context, offset int, limit int) ([]Question, error) {
 	var res []Question
-	err := g.db.WithContext(ctx).Where("uid = ?", uid).
+	err := g.db.WithContext(ctx).
 		Offset(offset).Limit(limit).
 		Order("id DESC").
 		Find(&res).Error
 	return res, err
 }
 
-func (g *GORMQuestionDAO) Count(ctx context.Context, uid int64) (int64, error) {
+func (g *GORMQuestionDAO) Count(ctx context.Context) (int64, error) {
 	var res int64
-	err := g.db.WithContext(ctx).Model(&Question{}).Where("uid = ?", uid).Select("COUNT(id)").Count(&res).Error
+	err := g.db.WithContext(ctx).Model(&Question{}).Select("COUNT(id)").Count(&res).Error
 	return res, err
 }
 
