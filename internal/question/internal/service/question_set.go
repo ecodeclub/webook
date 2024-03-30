@@ -25,8 +25,8 @@ import (
 type QuestionSetService interface {
 	Save(ctx context.Context, set domain.QuestionSet) (int64, error)
 	UpdateQuestions(ctx context.Context, set domain.QuestionSet) error
-	List(ctx context.Context, offset, limit int, uid int64) ([]domain.QuestionSet, int64, error)
-	Detail(ctx context.Context, id, uid int64) (domain.QuestionSet, error)
+	List(ctx context.Context, offset, limit int) ([]domain.QuestionSet, int64, error)
+	Detail(ctx context.Context, id int64) (domain.QuestionSet, error)
 }
 
 type questionSetService struct {
@@ -48,11 +48,11 @@ func (q *questionSetService) UpdateQuestions(ctx context.Context, set domain.Que
 	return q.repo.UpdateQuestions(ctx, set)
 }
 
-func (q *questionSetService) Detail(ctx context.Context, id, uid int64) (domain.QuestionSet, error) {
-	return q.repo.GetByIDAndUID(ctx, id, uid)
+func (q *questionSetService) Detail(ctx context.Context, id int64) (domain.QuestionSet, error) {
+	return q.repo.GetByID(ctx, id)
 }
 
-func (q *questionSetService) List(ctx context.Context, offset, limit int, uid int64) ([]domain.QuestionSet, int64, error) {
+func (q *questionSetService) List(ctx context.Context, offset, limit int) ([]domain.QuestionSet, int64, error) {
 	var (
 		eg    errgroup.Group
 		qs    []domain.QuestionSet
@@ -60,13 +60,13 @@ func (q *questionSetService) List(ctx context.Context, offset, limit int, uid in
 	)
 	eg.Go(func() error {
 		var err error
-		qs, err = q.repo.List(ctx, offset, limit, uid)
+		qs, err = q.repo.List(ctx, offset, limit)
 		return err
 	})
 
 	eg.Go(func() error {
 		var err error
-		total, err = q.repo.Total(ctx, uid)
+		total, err = q.repo.Total(ctx)
 		return err
 	})
 	return qs, total, eg.Wait()

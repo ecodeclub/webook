@@ -33,8 +33,8 @@ type Repository interface {
 	PubTotal(ctx context.Context) (int64, error)
 	// Sync 保存到制作库，而后同步到线上库
 	Sync(ctx context.Context, que *domain.Question) (int64, error)
-	List(ctx context.Context, offset int, limit int, uid int64) ([]domain.Question, error)
-	Total(ctx context.Context, uid int64) (int64, error)
+	List(ctx context.Context, offset int, limit int) ([]domain.Question, error)
+	Total(ctx context.Context) (int64, error)
 	Update(ctx context.Context, question *domain.Question) error
 	Create(ctx context.Context, question *domain.Question) (int64, error)
 	GetById(ctx context.Context, qid int64) (domain.Question, error)
@@ -85,15 +85,15 @@ func (c *CachedRepository) Sync(ctx context.Context, que *domain.Question) (int6
 	return c.dao.Sync(ctx, q, eles)
 }
 
-func (c *CachedRepository) List(ctx context.Context, offset int, limit int, uid int64) ([]domain.Question, error) {
-	qs, err := c.dao.List(ctx, offset, limit, uid)
+func (c *CachedRepository) List(ctx context.Context, offset int, limit int) ([]domain.Question, error) {
+	qs, err := c.dao.List(ctx, offset, limit)
 	return slice.Map(qs, func(idx int, src dao.Question) domain.Question {
 		return c.toDomain(src)
 	}), err
 }
 
-func (c *CachedRepository) Total(ctx context.Context, uid int64) (int64, error) {
-	return c.dao.Count(ctx, uid)
+func (c *CachedRepository) Total(ctx context.Context) (int64, error) {
+	return c.dao.Count(ctx)
 }
 
 func (c *CachedRepository) PubList(ctx context.Context, offset int, limit int) ([]domain.Question, error) {

@@ -241,59 +241,59 @@ func (s *HandlerTestSuite) TestSave() {
 				Data: 2,
 			},
 		},
-		{
-			name: "非法访问",
-			before: func(t *testing.T) {
-				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-				defer cancel()
-				err := s.db.WithContext(ctx).Create(&dao.Question{
-					Id:      3,
-					Uid:     234,
-					Title:   "老的标题",
-					Content: "老的内容",
-					Ctime:   123,
-					Utime:   234,
-				}).Error
-				require.NoError(t, err)
-			},
-			after: func(t *testing.T) {
-				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-				defer cancel()
-				q, _, err := s.dao.GetByID(ctx, 3)
-				require.NoError(t, err)
-				s.assertQuestion(t, dao.Question{
-					Uid:     234,
-					Title:   "老的标题",
-					Content: "老的内容",
-				}, q)
-			},
-			req: func() web.SaveReq {
-				analysis := web.AnswerElement{
-					Id:        1,
-					Content:   "新的分析",
-					Keywords:  "新的 keyword",
-					Shorthand: "新的速记",
-					Highlight: "新的亮点",
-					Guidance:  "新的引导点",
-				}
-				return web.SaveReq{
-					Question: web.Question{
-						Id:           3,
-						Title:        "面试题1",
-						Content:      "新的内容",
-						Analysis:     analysis,
-						Basic:        s.buildAnswerEle(1),
-						Intermediate: s.buildAnswerEle(2),
-						Advanced:     s.buildAnswerEle(3),
-					},
-				}
-			}(),
-			wantCode: 500,
-			wantResp: test.Result[int64]{
-				Code: 502001,
-				Msg:  "系统错误",
-			},
-		},
+		//{
+		//	name: "非法访问",
+		//	before: func(t *testing.T) {
+		//		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		//		defer cancel()
+		//		err := s.db.WithContext(ctx).Create(&dao.Question{
+		//			Id:      3,
+		//			Uid:     234,
+		//			Title:   "老的标题",
+		//			Content: "老的内容",
+		//			Ctime:   123,
+		//			Utime:   234,
+		//		}).Error
+		//		require.NoError(t, err)
+		//	},
+		//	after: func(t *testing.T) {
+		//		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		//		defer cancel()
+		//		q, _, err := s.dao.GetByID(ctx, 3)
+		//		require.NoError(t, err)
+		//		s.assertQuestion(t, dao.Question{
+		//			Uid:     234,
+		//			Title:   "老的标题",
+		//			Content: "老的内容",
+		//		}, q)
+		//	},
+		//	req: func() web.SaveReq {
+		//		analysis := web.AnswerElement{
+		//			Id:        1,
+		//			Content:   "新的分析",
+		//			Keywords:  "新的 keyword",
+		//			Shorthand: "新的速记",
+		//			Highlight: "新的亮点",
+		//			Guidance:  "新的引导点",
+		//		}
+		//		return web.SaveReq{
+		//			Question: web.Question{
+		//				Id:           3,
+		//				Title:        "面试题1",
+		//				Content:      "新的内容",
+		//				Analysis:     analysis,
+		//				Basic:        s.buildAnswerEle(1),
+		//				Intermediate: s.buildAnswerEle(2),
+		//				Advanced:     s.buildAnswerEle(3),
+		//			},
+		//		}
+		//	}(),
+		//	wantCode: 500,
+		//	wantResp: test.Result[int64]{
+		//		Code: 502001,
+		//		Msg:  "系统错误",
+		//	},
+		//},
 	}
 
 	for _, tc := range testCases {
@@ -524,59 +524,59 @@ func (s *HandlerTestSuite) TestSync() {
 				Data: 2,
 			},
 		},
-		{
-			name: "非法访问",
-			before: func(t *testing.T) {
-				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-				defer cancel()
-				err := s.db.WithContext(ctx).Create(&dao.Question{
-					Id:      3,
-					Uid:     234,
-					Title:   "老的标题",
-					Content: "老的内容",
-					Ctime:   123,
-					Utime:   234,
-				}).Error
-				require.NoError(t, err)
-			},
-			after: func(t *testing.T) {
-				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-				defer cancel()
-				q, _, err := s.dao.GetByID(ctx, 3)
-				require.NoError(t, err)
-				s.assertQuestion(t, dao.Question{
-					Uid:     234,
-					Title:   "老的标题",
-					Content: "老的内容",
-				}, q)
-			},
-			req: func() web.SaveReq {
-				analysis := web.AnswerElement{
-					Id:        1,
-					Content:   "新的分析",
-					Keywords:  "新的 keyword",
-					Shorthand: "新的速记",
-					Highlight: "新的亮点",
-					Guidance:  "新的引导点",
-				}
-				return web.SaveReq{
-					Question: web.Question{
-						Id:           3,
-						Title:        "面试题1",
-						Content:      "新的内容",
-						Analysis:     analysis,
-						Basic:        s.buildAnswerEle(1),
-						Intermediate: s.buildAnswerEle(2),
-						Advanced:     s.buildAnswerEle(3),
-					},
-				}
-			}(),
-			wantCode: 500,
-			wantResp: test.Result[int64]{
-				Code: 502001,
-				Msg:  "系统错误",
-			},
-		},
+		//{
+		//	name: "非法访问",
+		//	before: func(t *testing.T) {
+		//		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		//		defer cancel()
+		//		err := s.db.WithContext(ctx).Create(&dao.Question{
+		//			Id:      3,
+		//			Uid:     234,
+		//			Title:   "老的标题",
+		//			Content: "老的内容",
+		//			Ctime:   123,
+		//			Utime:   234,
+		//		}).Error
+		//		require.NoError(t, err)
+		//	},
+		//	after: func(t *testing.T) {
+		//		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		//		defer cancel()
+		//		q, _, err := s.dao.GetByID(ctx, 3)
+		//		require.NoError(t, err)
+		//		s.assertQuestion(t, dao.Question{
+		//			Uid:     234,
+		//			Title:   "老的标题",
+		//			Content: "老的内容",
+		//		}, q)
+		//	},
+		//	req: func() web.SaveReq {
+		//		analysis := web.AnswerElement{
+		//			Id:        1,
+		//			Content:   "新的分析",
+		//			Keywords:  "新的 keyword",
+		//			Shorthand: "新的速记",
+		//			Highlight: "新的亮点",
+		//			Guidance:  "新的引导点",
+		//		}
+		//		return web.SaveReq{
+		//			Question: web.Question{
+		//				Id:           3,
+		//				Title:        "面试题1",
+		//				Content:      "新的内容",
+		//				Analysis:     analysis,
+		//				Basic:        s.buildAnswerEle(1),
+		//				Intermediate: s.buildAnswerEle(2),
+		//				Advanced:     s.buildAnswerEle(3),
+		//			},
+		//		}
+		//	}(),
+		//	wantCode: 500,
+		//	wantResp: test.Result[int64]{
+		//		Code: 502001,
+		//		Msg:  "系统错误",
+		//	},
+		//},
 	}
 
 	for _, tc := range testCases {
@@ -702,7 +702,7 @@ func (s *HandlerTestSuite) TestQuestionSet_Save() {
 				t.Helper()
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 				defer cancel()
-				qs, err := s.questionSetDAO.GetByIDAndUID(ctx, 1, uid)
+				qs, err := s.questionSetDAO.GetByID(ctx, 1)
 				assert.NoError(t, err)
 
 				s.assertQuestionSetEqual(t, dao.QuestionSet{
@@ -739,7 +739,7 @@ func (s *HandlerTestSuite) TestQuestionSet_Save() {
 				t.Helper()
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 				defer cancel()
-				qs, err := s.questionSetDAO.GetByIDAndUID(ctx, 2, uid)
+				qs, err := s.questionSetDAO.GetByID(ctx, 2)
 				assert.NoError(t, err)
 				s.assertQuestionSetEqual(t, dao.QuestionSet{
 					Uid:         uid,
@@ -927,7 +927,7 @@ func (s *HandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 					require.NoError(t, s.db.WithContext(ctx).Create(q).Error)
 				}
 
-				require.NoError(t, s.questionSetDAO.UpdateQuestionsByIDAndUID(ctx, id, uid, []int64{14}))
+				require.NoError(t, s.questionSetDAO.UpdateQuestionsByID(ctx, id, []int64{14}))
 
 				// 题集中题目为1
 				qs, err := s.questionSetDAO.GetQuestionsByID(ctx, id)
@@ -1023,7 +1023,7 @@ func (s *HandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 					require.NoError(t, s.db.WithContext(ctx).Create(q).Error)
 				}
 
-				require.NoError(t, s.questionSetDAO.UpdateQuestionsByIDAndUID(ctx, id, uid, []int64{214, 215, 216}))
+				require.NoError(t, s.questionSetDAO.UpdateQuestionsByID(ctx, id, []int64{214, 215, 216}))
 
 				qs, err := s.questionSetDAO.GetQuestionsByID(ctx, id)
 				require.NoError(t, err)
@@ -1095,7 +1095,7 @@ func (s *HandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 					require.NoError(t, s.db.WithContext(ctx).Create(q).Error)
 				}
 
-				require.NoError(t, s.questionSetDAO.UpdateQuestionsByIDAndUID(ctx, id, uid, []int64{314, 315, 316}))
+				require.NoError(t, s.questionSetDAO.UpdateQuestionsByID(ctx, id, []int64{314, 315, 316}))
 
 				qs, err := s.questionSetDAO.GetQuestionsByID(ctx, id)
 				require.NoError(t, err)
@@ -1181,7 +1181,7 @@ func (s *HandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 				}
 
 				qids := []int64{414, 415}
-				require.NoError(t, s.questionSetDAO.UpdateQuestionsByIDAndUID(ctx, id, uid, qids))
+				require.NoError(t, s.questionSetDAO.UpdateQuestionsByID(ctx, id, qids))
 
 				qs, err := s.questionSetDAO.GetQuestionsByID(ctx, id)
 				require.NoError(t, err)
@@ -1241,34 +1241,34 @@ func (s *HandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 			wantCode: 500,
 			wantResp: test.Result[int64]{Code: 502001, Msg: "系统错误"},
 		},
-		{
-			name: "当前用户并非题集的创建者",
-			before: func(t *testing.T) {
-				t.Helper()
-
-				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-				defer cancel()
-
-				// 创建一个空题集
-				id, err := s.questionSetDAO.Create(ctx, dao.QuestionSet{
-					Id:          220,
-					Uid:         uid + 100,
-					Title:       "Go",
-					Description: "Go题集",
-				})
-				require.Equal(t, int64(220), id)
-				require.NoError(t, err)
-			},
-			after: func(t *testing.T) {
-				t.Helper()
-			},
-			req: web.UpdateQuestionsOfQuestionSetReq{
-				QSID: 220,
-				QIDs: []int64{},
-			},
-			wantCode: 500,
-			wantResp: test.Result[int64]{Code: 502001, Msg: "系统错误"},
-		},
+		//{
+		//	name: "当前用户并非题集的创建者",
+		//	before: func(t *testing.T) {
+		//		t.Helper()
+		//
+		//		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		//		defer cancel()
+		//
+		//		// 创建一个空题集
+		//		id, err := s.questionSetDAO.Create(ctx, dao.QuestionSet{
+		//			Id:          220,
+		//			Uid:         uid + 100,
+		//			Title:       "Go",
+		//			Description: "Go题集",
+		//		})
+		//		require.Equal(t, int64(220), id)
+		//		require.NoError(t, err)
+		//	},
+		//	after: func(t *testing.T) {
+		//		t.Helper()
+		//	},
+		//	req: web.UpdateQuestionsOfQuestionSetReq{
+		//		QSID: 220,
+		//		QIDs: []int64{},
+		//	},
+		//	wantCode: 500,
+		//	wantResp: test.Result[int64]{Code: 502001, Msg: "系统错误"},
+		//},
 	}
 
 	for _, tc := range testCases {
@@ -1387,7 +1387,7 @@ func (s *HandlerTestSuite) TestQuestionSet_RetrieveQuestionSetDetail() {
 				}
 
 				qids := []int64{614, 615, 616}
-				require.NoError(t, s.questionSetDAO.UpdateQuestionsByIDAndUID(ctx, id, uid, qids))
+				require.NoError(t, s.questionSetDAO.UpdateQuestionsByID(ctx, id, qids))
 
 				// 题集中题目为1
 				qs, err := s.questionSetDAO.GetQuestionsByID(ctx, id)
@@ -1472,33 +1472,33 @@ func (s *HandlerTestSuite) TestQuestionSet_RetrieveQuestionSetDetail_Failed() {
 			wantCode: 500,
 			wantResp: test.Result[int64]{Code: 502001, Msg: "系统错误"},
 		},
-		{
-			name: "题集ID非法_题集ID与UID不匹配",
-			before: func(t *testing.T) {
-				t.Helper()
-
-				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-				defer cancel()
-
-				// 创建一个空题集
-				id, err := s.questionSetDAO.Create(ctx, dao.QuestionSet{
-					Id:          320,
-					Uid:         uid + 100,
-					Title:       "Go",
-					Description: "Go题集",
-				})
-				require.Equal(t, int64(320), id)
-				require.NoError(t, err)
-			},
-			after: func(t *testing.T) {
-				t.Helper()
-			},
-			req: web.QuestionSetID{
-				QSID: 320,
-			},
-			wantCode: 500,
-			wantResp: test.Result[int64]{Code: 502001, Msg: "系统错误"},
-		},
+		//{
+		//	name: "题集ID非法_题集ID与UID不匹配",
+		//	before: func(t *testing.T) {
+		//		t.Helper()
+		//
+		//		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		//		defer cancel()
+		//
+		//		// 创建一个空题集
+		//		id, err := s.questionSetDAO.Create(ctx, dao.QuestionSet{
+		//			Id:          320,
+		//			Uid:         uid + 100,
+		//			Title:       "Go",
+		//			Description: "Go题集",
+		//		})
+		//		require.Equal(t, int64(320), id)
+		//		require.NoError(t, err)
+		//	},
+		//	after: func(t *testing.T) {
+		//		t.Helper()
+		//	},
+		//	req: web.QuestionSetID{
+		//		QSID: 320,
+		//	},
+		//	wantCode: 500,
+		//	wantResp: test.Result[int64]{Code: 502001, Msg: "系统错误"},
+		//},
 	}
 	for _, tc := range testCases {
 		s.T().Run(tc.name, func(t *testing.T) {
