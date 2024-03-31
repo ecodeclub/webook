@@ -45,6 +45,8 @@ func (ur *CachedUserRepository) Update(ctx context.Context, u domain.User) error
 
 func (ur *CachedUserRepository) Create(ctx context.Context, u domain.User) (int64, error) {
 	return ur.dao.Insert(ctx, dao.User{
+		SN:       u.SN,
+		Nickname: u.Nickname,
 		WechatUnionId: sql.NullString{
 			String: u.WechatInfo.UnionId,
 			Valid:  u.WechatInfo.UnionId != "",
@@ -90,6 +92,7 @@ func (ur *CachedUserRepository) entityToDomain(ue dao.User) domain.User {
 	return domain.User{
 		Id:       ue.Id,
 		Nickname: ue.Nickname,
+		SN:       ue.SN,
 		Avatar:   ue.Avatar,
 		WechatInfo: domain.WechatInfo{
 			OpenId:  ue.WechatOpenId.String,

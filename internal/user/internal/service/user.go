@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 
+	"github.com/google/uuid"
+
 	"github.com/ecodeclub/webook/internal/user/internal/domain"
 	"github.com/ecodeclub/webook/internal/user/internal/repository"
 	"github.com/gotomicro/ego/core/elog"
@@ -34,6 +36,8 @@ func NewUserService(repo repository.UserRepository) UserService {
 }
 
 func (svc *userService) UpdateNonSensitiveInfo(ctx context.Context, user domain.User) error {
+	// 不让修改序列号
+	user.SN = ""
 	return svc.repo.Update(ctx, user)
 }
 
@@ -44,8 +48,11 @@ func (svc *userService) FindOrCreateByWechat(ctx context.Context,
 	if !errors.Is(err, repository.ErrUserNotFound) {
 		return u, err
 	}
+	sn := uuid.New().String()
 	id, err := svc.repo.Create(ctx, domain.User{
 		WechatInfo: info,
+		SN:         sn,
+		Nickname:   sn[:4],
 	})
 	return domain.User{
 		Id:         id,

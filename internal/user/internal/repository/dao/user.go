@@ -69,6 +69,7 @@ type User struct {
 	Id            int64 `gorm:"primaryKey,autoIncrement"`
 	Nickname      string
 	Avatar        string
+	SN            string         `gorm:"type:varchar(256);unique"`
 	WechatOpenId  sql.NullString `gorm:"type:varchar(256);unique"`
 	WechatUnionId sql.NullString `gorm:"type:varchar(256);unique"`
 	// 创建时间
