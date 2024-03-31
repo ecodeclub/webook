@@ -21,6 +21,8 @@ type UserService interface {
 	// UpdateNonSensitiveInfo 更新非敏感数据
 	// 你可以在这里进一步补充究竟哪些数据会被更新
 	UpdateNonSensitiveInfo(ctx context.Context, user domain.User) error
+
+	UpdateSN(ctx context.Context) error
 }
 
 type userService struct {
@@ -33,6 +35,9 @@ func NewUserService(repo repository.UserRepository) UserService {
 		repo:   repo,
 		logger: elog.DefaultLogger,
 	}
+}
+func (svc *userService) UpdateSN(ctx context.Context) error {
+	return svc.repo.UpdateSN(ctx)
 }
 
 func (svc *userService) UpdateNonSensitiveInfo(ctx context.Context, user domain.User) error {

@@ -23,6 +23,7 @@ type UserDAO interface {
 	UpdateNonZeroFields(ctx context.Context, u User) error
 	FindByWechat(ctx context.Context, openId string) (User, error)
 	FindById(ctx context.Context, id int64) (User, error)
+	FindIDsBySN(ctx context.Context) ([]int64, error)
 }
 
 type GORMUserDAO struct {
@@ -64,12 +65,21 @@ func (ud *GORMUserDAO) FindById(ctx context.Context, id int64) (User, error) {
 	err := ud.db.WithContext(ctx).First(&u, "id = ?", id).Error
 	return u, err
 }
+func (ud *GORMUserDAO) FindIDsBySN(ctx context.Context) ([]int64, error) {
+	var res []int64
+	err := ud.db.
+		Model(&User{}).
+		WithContext(ctx).
+		Select([]string{"id"}).
+		Where("sn = ? ", "").Find(&res).Error
+	return res, err
+}
 
 type User struct {
 	Id            int64 `gorm:"primaryKey,autoIncrement"`
 	Nickname      string
 	Avatar        string
-	SN            string         `gorm:"type:varchar(256);unique"`
+	SN            string         `gorm:"type:varchar(256)"`
 	WechatOpenId  sql.NullString `gorm:"type:varchar(256);unique"`
 	WechatUnionId sql.NullString `gorm:"type:varchar(256);unique"`
 	// 创建时间

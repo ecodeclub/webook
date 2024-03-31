@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 
+	"github.com/google/uuid"
+
 	"github.com/ecodeclub/webook/internal/user/internal/domain"
 	"github.com/ecodeclub/webook/internal/user/internal/repository/cache"
 	"github.com/ecodeclub/webook/internal/user/internal/repository/dao"
@@ -18,6 +20,7 @@ type UserRepository interface {
 	// 将来可能需要按照 unionId 来查询
 	FindByWechat(ctx context.Context, openId string) (domain.User, error)
 	FindById(ctx context.Context, id int64) (domain.User, error)
+	UpdateSN(ctx context.Context) error
 }
 
 // CachedUserRepository 使用了缓存的 repository 实现
@@ -33,6 +36,28 @@ func NewCachedUserRepository(d dao.UserDAO,
 		dao:   d,
 		cache: c,
 	}
+}
+
+func (ur *CachedUserRepository) UpdateSN(ctx context.Context) error {
+	ids, err := ur.dao.FindIDsBySN(ctx)
+	if err != nil {
+		return err
+	}
+	users := make([]dao.User, 0, len(ids))
+	for _, id := range ids {
+		sn := uuid.New().String()
+		users = append(users, dao.User{
+			Id: id,
+			SN: sn,
+		})
+	}
+	for _, u := range users {
+		err = ur.dao.UpdateNonZeroFields(ctx, u)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (ur *CachedUserRepository) Update(ctx context.Context, u domain.User) error {

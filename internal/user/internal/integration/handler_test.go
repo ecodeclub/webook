@@ -3,8 +3,10 @@
 package integration
 
 import (
+	"database/sql"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/ecodeclub/ekit/iox"
 	"github.com/ecodeclub/ginx/session"
@@ -154,6 +156,7 @@ func (s *HandleTestSuite) TestProfile() {
 					Id:       123,
 					Nickname: "old name",
 					Avatar:   "old avatar",
+					SN:       "absd",
 				}).Error
 				require.NoError(t, err)
 			},
@@ -161,6 +164,7 @@ func (s *HandleTestSuite) TestProfile() {
 				Data: web.Profile{
 					Nickname: "old name",
 					Avatar:   "old avatar",
+					SN:       "absd",
 				},
 			},
 			wantCode: 200,
@@ -180,6 +184,66 @@ func (s *HandleTestSuite) TestProfile() {
 			assert.Equal(t, tc.wantResp, recorder.MustScan())
 		})
 	}
+}
+
+func (s *HandleTestSuite) TestUpdateSN() {
+	err := s.db.Create([]*dao.User{
+		{
+			Id:       1,
+			Avatar:   "avatar",
+			Nickname: "nickName",
+			WechatOpenId: sql.NullString{
+				String: "openId1",
+				Valid:  true,
+			},
+			WechatUnionId: sql.NullString{
+				String: "unionId1",
+				Valid:  true,
+			},
+			Ctime: time.Now().UnixMilli(),
+			Utime: time.Now().UnixMilli(),
+		},
+		{
+			Id:       2,
+			Avatar:   "avatar",
+			Nickname: "nickName",
+			WechatOpenId: sql.NullString{
+				String: "openId2",
+				Valid:  true,
+			},
+			WechatUnionId: sql.NullString{
+				String: "unionId2",
+				Valid:  true,
+			},
+			Ctime: time.Now().UnixMilli(),
+			Utime: time.Now().UnixMilli(),
+		},
+		{
+			Id:       3,
+			Avatar:   "avatar",
+			Nickname: "nickName",
+			WechatOpenId: sql.NullString{
+				String: "openId3",
+				Valid:  true,
+			},
+			WechatUnionId: sql.NullString{
+				String: "unionId3",
+				Valid:  true,
+			},
+			Ctime: time.Now().UnixMilli(),
+			Utime: time.Now().UnixMilli(),
+		},
+	}).Error
+	require.NoError(s.T(), err)
+	req, err := http.NewRequest(http.MethodGet,
+		"/users/updateSN", nil)
+	req.Header.Set("content-type", "application/json")
+	require.NoError(s.T(), err)
+	recorder := test2.NewJSONResponseRecorder[any]()
+	s.server.ServeHTTP(recorder, req)
+	assert.Equal(s.T(), 200, recorder.Code)
+	err = s.db.Exec("TRUNCATE table `users`").Error
+	require.NoError(s.T(), err)
 }
 
 func TestUserHandler(t *testing.T) {

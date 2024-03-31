@@ -34,6 +34,8 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	users := server.Group("/users")
 	users.GET("/profile", ginx.S(h.Profile))
 	users.POST("/profile", ginx.BS[EditReq](h.Edit))
+	users.GET("/updateSN", ginx.W(h.UpdateSN))
+
 }
 
 func (h *Handler) PublicRoutes(server *gin.Engine) {
@@ -41,6 +43,16 @@ func (h *Handler) PublicRoutes(server *gin.Engine) {
 	oauth2.GET("/wechat/auth_url", ginx.W(h.WechatAuthURL))
 	oauth2.Any("/wechat/callback", ginx.B[WechatCallback](h.Callback))
 	oauth2.Any("/wechat/token/refresh", ginx.W(h.RefreshAccessToken))
+}
+func (h *Handler) UpdateSN(ctx *ginx.Context) (ginx.Result, error) {
+	err := h.userSvc.UpdateSN(ctx)
+	if err != nil {
+		return ginx.Result{
+			Code: errs.SystemError.Code,
+			Msg:  errs.SystemError.Msg,
+		}, err
+	}
+	return ginx.Result{}, nil
 }
 
 func (h *Handler) WechatAuthURL(ctx *ginx.Context) (ginx.Result, error) {
@@ -71,6 +83,7 @@ func (h *Handler) Profile(ctx *ginx.Context, sess session.Session) (ginx.Result,
 	}
 	return ginx.Result{
 		Data: Profile{
+			SN:        u.SN,
 			IsCreator: sess.Claims().Get("creator").StringOrDefault("") == "true",
 			Nickname:  u.Nickname,
 			Avatar:    u.Avatar,
