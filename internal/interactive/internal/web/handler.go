@@ -31,12 +31,11 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g := server.Group("/intr")
 	g.POST("/collect", ginx.BS[CollectReq](h.Collect))
 	g.POST("/like", ginx.BS[LikeReq](h.Like))
-	// 统一用 POST 请求，懒得去处理不同的
+	// 获得某个数据的点赞数据
 	g.POST("/cnt", ginx.BS[GetCntReq](h.GetCnt))
 }
 
 func (h *Handler) PublicRoutes(server *gin.Engine) {
-	// TODO implement me
 	panic("implement me")
 }
 
