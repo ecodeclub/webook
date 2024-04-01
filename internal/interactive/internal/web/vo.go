@@ -17,6 +17,7 @@ package web
 type CollectReq struct {
 	Biz   string `json:"biz"`
 	BizId int64  `json:"bizId"`
+	// 目前还不支持收藏夹的功能。所以可以认为都是放到用户的默认收藏夹里面。
 }
 
 type LikeReq struct {
