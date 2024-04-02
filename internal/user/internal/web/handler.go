@@ -69,12 +69,12 @@ func (h *Handler) Profile(ctx *ginx.Context, sess session.Session) (ginx.Result,
 	if err != nil {
 		return ginx.Result{}, err
 	}
+	res := newProfile(u)
+	res.IsCreator = sess.Claims().
+		Get("creator").
+		StringOrDefault("") == "true"
 	return ginx.Result{
-		Data: Profile{
-			IsCreator: sess.Claims().Get("creator").StringOrDefault("") == "true",
-			Nickname:  u.Nickname,
-			Avatar:    u.Avatar,
-		},
+		Data: res,
 	}, nil
 }
 
@@ -117,12 +117,9 @@ func (h *Handler) Callback(ctx *ginx.Context, req WechatCallback) (ginx.Result, 
 	if err != nil {
 		return systemErrorResult, err
 	}
+	res := newProfile(user)
+	res.IsCreator = creator
 	return ginx.Result{
-		Data: Profile{
-			Id:        user.Id,
-			Nickname:  user.Nickname,
-			Avatar:    user.Avatar,
-			IsCreator: creator,
-		},
+		Data: res,
 	}, nil
 }
