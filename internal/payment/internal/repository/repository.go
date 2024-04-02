@@ -16,6 +16,8 @@ package repository
 
 import (
 	"context"
+	"database/sql"
+	"log"
 	"time"
 
 	"github.com/ecodeclub/webook/internal/payment/internal/domain"
@@ -24,11 +26,11 @@ import (
 
 type PaymentRepository interface {
 	CreatePayment(ctx context.Context, payment domain.Payment) (domain.Payment, error)
-	CreatePaymentRecord(ctx context.Context, record domain.PaymentRecord) (int64, error)
+	UpdatePayment(ctx context.Context, pmt domain.Payment) error
+	FindPaymentByOrderSN(ctx context.Context, orderSN string) (domain.Payment, error)
 
 	AddPayment(ctx context.Context, pmt domain.Payment) error
 	// UpdatePayment 这个设计有点差，因为
-	UpdatePayment(ctx context.Context, pmt domain.Payment) error
 	FindExpiredPayment(ctx context.Context, offset int, limit int, t time.Time) ([]domain.Payment, error)
 	GetPayment(ctx context.Context, bizTradeNO string) (domain.Payment, error)
 }
@@ -43,19 +45,97 @@ type paymentRepository struct {
 	dao dao.PaymentDAO
 }
 
-func (p *paymentRepository) CreatePayment(ctx context.Context, payment domain.Payment) (domain.Payment, error) {
-	// TODO implement me
-	panic("implement me")
+func (p *paymentRepository) CreatePayment(ctx context.Context, pmt domain.Payment) (domain.Payment, error) {
+	log.Printf("pmt = %#v\n", pmt)
+	pp, records := p.toEntity(pmt)
+	log.Printf("p = %#v, r = %#v\n", pp, records)
+	id, err := p.dao.FindOrCreate(ctx, pp, records)
+	if err != nil {
+		return domain.Payment{}, err
+	}
+	pmt.ID = id
+	return pmt, nil
 }
 
-func (p *paymentRepository) CreatePaymentRecord(ctx context.Context, record domain.PaymentRecord) (int64, error) {
-	// TODO implement me
-	panic("implement me")
+func (p *paymentRepository) toEntity(pmt domain.Payment) (dao.Payment, []dao.PaymentRecord) {
+	pp := dao.Payment{
+		Id:               pmt.ID,
+		SN:               pmt.SN,
+		OrderId:          pmt.OrderID,
+		OrderSn:          sql.NullString{String: pmt.OrderSN, Valid: true},
+		PayerId:          pmt.PayerID,
+		OrderDescription: pmt.OrderDescription,
+		TotalAmount:      pmt.TotalAmount,
+		PayDDL:           pmt.PayDDL,
+		PaidAt:           pmt.PaidAt,
+		Status:           pmt.Status,
+	}
+	records := make([]dao.PaymentRecord, 0, len(pmt.Records))
+	for _, r := range pmt.Records {
+		records = append(records, dao.PaymentRecord{
+			PaymentId:    r.PaymentID,
+			PaymentNO3rd: sql.NullString{String: r.PaymentNO3rd, Valid: r.PaymentNO3rd != ""},
+			Description:  r.Description,
+			Channel:      r.Channel,
+			Amount:       r.Amount,
+			PaidAt:       r.PaidAt,
+			Status:       r.Status,
+		})
+	}
+	return pp, records
+}
+
+func (p *paymentRepository) UpdatePayment(ctx context.Context, pmt domain.Payment) error {
+	// todo: 应该是OrderSN, paymentNo3rd(txn_id), Status
+	// return p.dao.UpdateTxnIDAndStatus(ctx, pmt.OrderSN, pmt.OrderSN, pmt.Status)
+
+	// 通过pmt.OrderSN -> pmt.ID -> []records{ {微信}, {积分}}
+	// 找到的records可能有两条 —— 微信和积分
+	entity, records := p.toEntity(pmt)
+	return p.dao.Update(ctx, entity, records)
+}
+
+func (p *paymentRepository) FindPaymentByOrderSN(ctx context.Context, orderSN string) (domain.Payment, error) {
+	pmt, records, err := p.dao.FindPaymentByOrderSN(ctx, orderSN)
+	return p.toDomain(pmt, records), err
+}
+
+func (p *paymentRepository) toDomain(pmt dao.Payment, records []dao.PaymentRecord) domain.Payment {
+
+	rs := make([]domain.PaymentRecord, 0, len(records))
+
+	for i := 0; i < len(records); i++ {
+		rs = append(rs, domain.PaymentRecord{
+			PaymentID:    records[i].PaymentId,
+			PaymentNO3rd: records[i].PaymentNO3rd.String,
+			Description:  records[i].Description,
+			Channel:      records[i].Channel,
+			Amount:       records[i].Amount,
+			PaidAt:       records[i].PaidAt,
+			Status:       records[i].Status,
+		})
+	}
+
+	return domain.Payment{
+		ID:               pmt.Id,
+		SN:               pmt.SN,
+		PayerID:          pmt.PayerId,
+		OrderID:          pmt.OrderId,
+		OrderSN:          pmt.OrderSn.String,
+		OrderDescription: pmt.OrderDescription,
+		TotalAmount:      pmt.TotalAmount,
+		PayDDL:           pmt.PayDDL,
+		PaidAt:           pmt.PaidAt,
+		Status:           pmt.Status,
+		Records:          rs,
+		Ctime:            pmt.Ctime,
+		Utime:            pmt.Utime,
+	}
 }
 
 func (p *paymentRepository) GetPayment(ctx context.Context, bizTradeNO string) (domain.Payment, error) {
 	r, err := p.dao.GetPayment(ctx, bizTradeNO)
-	return p.toDomain(r), err
+	return p.toDomain2(r), err
 }
 
 func (p *paymentRepository) FindExpiredPayment(ctx context.Context, offset int, limit int, t time.Time) ([]domain.Payment, error) {
@@ -65,34 +145,29 @@ func (p *paymentRepository) FindExpiredPayment(ctx context.Context, offset int, 
 	}
 	res := make([]domain.Payment, 0, len(pmts))
 	for _, pmt := range pmts {
-		res = append(res, p.toDomain(pmt))
+		res = append(res, p.toDomain2(pmt))
 	}
 	return res, nil
 }
 
 func (p *paymentRepository) AddPayment(ctx context.Context, pmt domain.Payment) error {
-	return p.dao.Insert(ctx, p.toEntity(pmt))
+	return p.dao.Insert(ctx, p.toEntity2(pmt))
 }
 
-func (p *paymentRepository) toDomain(pmt dao.Payment) domain.Payment {
-	return domain.Payment{
-		TotalAmount:      pmt.TotalAmount,
-		OrderSN:          pmt.OrderSn,
-		OrderDescription: pmt.OrderDescription,
-		Status:           pmt.Status,
-	}
-}
-
-func (p *paymentRepository) toEntity(pmt domain.Payment) dao.Payment {
+func (p *paymentRepository) toEntity2(pmt domain.Payment) dao.Payment {
 	return dao.Payment{
 		TotalAmount:      pmt.TotalAmount,
-		OrderSn:          pmt.OrderSN,
+		OrderSn:          sql.NullString{String: pmt.OrderSN, Valid: true},
 		OrderDescription: pmt.OrderDescription,
 		Status:           domain.PaymentStatusUnpaid,
 	}
 }
 
-func (p *paymentRepository) UpdatePayment(ctx context.Context, pmt domain.Payment) error {
-	// todo: 应该是OrderSN, paymentNo3rd(txn_id), Status
-	return p.dao.UpdateTxnIDAndStatus(ctx, pmt.OrderSN, pmt.OrderSN, pmt.Status)
+func (p *paymentRepository) toDomain2(pmt dao.Payment) domain.Payment {
+	return domain.Payment{
+		TotalAmount:      pmt.TotalAmount,
+		OrderSN:          pmt.OrderSn.String,
+		OrderDescription: pmt.OrderDescription,
+		Status:           pmt.Status,
+	}
 }

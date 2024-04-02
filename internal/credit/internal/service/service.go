@@ -21,11 +21,12 @@ import (
 	"github.com/ecodeclub/webook/internal/credit/internal/repository"
 )
 
+//go:generate mockgen -source=./service.go -destination=mocks/credit.mock.go -package=svcmocks Service
 type Service interface {
 	GetCreditsByUID(ctx context.Context, uid int64) (domain.Credit, error)
-	PreDeductCredits(ctx context.Context, amount int64) (sn string, availableCredits int64, err error)
+	TryDeductCredits(ctx context.Context, amount int64) (sn string, availableCredits int64, err error)
 	ConfirmDeductCredits(ctx context.Context, sn string) error
-	DirectDeductCredits(ctx context.Context, amount int64) (sn string, availableCredits int64, err error)
+	CancelDeductCredits(ctx context.Context, sn string) error
 }
 
 func NewService(repo repository.CreditRepository) Service {
@@ -40,7 +41,7 @@ func (s *service) GetCreditsByUID(ctx context.Context, uid int64) (domain.Credit
 	return domain.Credit{}, nil
 }
 
-func (s *service) PreDeductCredits(ctx context.Context, amount int64) (sn string, availableCredits int64, err error) {
+func (s *service) TryDeductCredits(ctx context.Context, amount int64) (sn string, availableCredits int64, err error) {
 	// TODO implement me
 	panic("implement me")
 }
@@ -50,7 +51,7 @@ func (s *service) ConfirmDeductCredits(ctx context.Context, sn string) error {
 	panic("implement me")
 }
 
-func (s *service) DirectDeductCredits(ctx context.Context, amount int64) (sn string, availableCredits int64, err error) {
+func (s *service) CancelDeductCredits(ctx context.Context, sn string) error {
 	// TODO implement me
 	panic("implement me")
 }

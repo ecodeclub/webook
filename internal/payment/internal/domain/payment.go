@@ -26,11 +26,6 @@ const (
 	PaymentStatusRefund
 )
 
-const (
-	PaymentRecordStatusUnpaid = iota + 1
-	PaymentRecordStatusPaid
-)
-
 type Amount struct {
 	// 如果要支持国际化，那么这个是不能少的
 	Currency string
@@ -41,16 +36,16 @@ type Amount struct {
 }
 
 type Payment struct {
-	ID     int64
-	SN     string
-	UserID int64
+	ID      int64
+	SN      string
+	PayerID int64
 	// BizTradeNO, 就是OrderSN
 	OrderID int64
 	OrderSN string
 	// 订单的描述,冗余
 	OrderDescription string
 	TotalAmount      int64
-	Deadline         int64
+	PayDDL           int64
 	PaidAt           int64
 	Status           int64
 	Records          []PaymentRecord
@@ -66,11 +61,11 @@ type PaymentChannel struct {
 type PaymentRecord struct {
 	PaymentID int64
 	// 第三方那边返回的 ID TxnID string
-	PaymentNO3rd     string
-	OrderDescription string
-	Channel          int64
-	Amount           int64
-	PaidAt           int64
-	Status           int64
-	WechatCodeURL    string
+	PaymentNO3rd  string
+	Description   string
+	Channel       int64
+	Amount        int64
+	PaidAt        int64
+	Status        int64
+	WechatCodeURL string
 }

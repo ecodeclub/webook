@@ -64,7 +64,7 @@ func (f *fakePaymentService) CreatePayment(ctx context.Context, p payment.Paymen
 			OrderID:     p.OrderID,
 			OrderSN:     p.OrderSN,
 			TotalAmount: p.TotalAmount,
-			Deadline:    p.Deadline,
+			PayDDL:      p.PayDDL,
 			Records: []payment.Record{
 				{
 					PaymentNO3rd: "credit-1",
@@ -80,7 +80,7 @@ func (f *fakePaymentService) CreatePayment(ctx context.Context, p payment.Paymen
 			OrderID:     p.OrderID,
 			OrderSN:     p.OrderSN,
 			TotalAmount: p.TotalAmount,
-			Deadline:    p.Deadline,
+			PayDDL:      p.PayDDL,
 			Records: []payment.Record{
 				{
 					PaymentNO3rd: "credit-1",
@@ -188,7 +188,7 @@ func (f *fakeProductService) FindBySN(_ context.Context, sn string) (product.Pro
 
 type fakeCreditService struct{}
 
-func (f *fakeCreditService) PreDeductCredits(ctx context.Context, amount int64) (sn string, availableCredits int64, err error) {
+func (f *fakeCreditService) TryDeductCredits(ctx context.Context, amount int64) (sn string, availableCredits int64, err error) {
 	// TODO implement me
 	panic("implement me")
 }
@@ -198,7 +198,7 @@ func (f *fakeCreditService) ConfirmDeductCredits(ctx context.Context, sn string)
 	panic("implement me")
 }
 
-func (f *fakeCreditService) DirectDeductCredits(ctx context.Context, amount int64) (sn string, availableCredits int64, err error) {
+func (f *fakeCreditService) CancelDeductCredits(ctx context.Context, sn string) error {
 	// TODO implement me
 	panic("implement me")
 }

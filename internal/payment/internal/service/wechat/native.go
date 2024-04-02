@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/ecodeclub/ekit/slice"
 	"github.com/ecodeclub/webook/internal/payment/internal/domain"
 	"github.com/ecodeclub/webook/internal/payment/internal/events"
 	"github.com/ecodeclub/webook/internal/payment/internal/repository"
@@ -32,14 +33,15 @@ import (
 var errUnknownTransactionState = errors.New("未知的微信事务状态")
 
 type NativePaymentService struct {
-	svc       *native.NativeApiService
+	svc            NativeAPIService
+	repo           repository.PaymentRepository
+	producer       events.Producer
+	paymentDDLFunc func() int64
+	l              *elog.Component
+
 	appID     string
 	mchID     string
 	notifyURL string
-	repo      repository.PaymentRepository
-	l         *elog.Component
-	producer  events.Producer
-
 	// 在微信 native 里面，分别是
 	// SUCCESS：支付成功
 	// REFUND：转入退款
@@ -51,16 +53,20 @@ type NativePaymentService struct {
 	nativeCallBackTypeToPaymentStatus map[string]int64
 }
 
-func NewNativePaymentService(svc *native.NativeApiService,
+func NewNativePaymentService(svc NativeAPIService,
 	repo repository.PaymentRepository,
 	producer events.Producer,
+	paymentDDLFunc func() int64,
+	l *elog.Component,
 	appid, mchid string) *NativePaymentService {
 	return &NativePaymentService{
-		l:     elog.DefaultLogger,
-		repo:  repo,
-		svc:   svc,
-		appID: appid,
-		mchID: mchid,
+		svc:            svc,
+		repo:           repo,
+		producer:       producer,
+		paymentDDLFunc: paymentDDLFunc,
+		l:              l,
+		appID:          appid,
+		mchID:          mchid,
 		// todo: 配置回调URL
 		notifyURL: "http://wechat.meoying.com/pay/callback",
 		nativeCallBackTypeToPaymentStatus: map[string]int64{
@@ -74,7 +80,16 @@ func NewNativePaymentService(svc *native.NativeApiService,
 	}
 }
 
-func (n *NativePaymentService) Prepay(ctx context.Context, pmt domain.Payment) (string, error) {
+func (n *NativePaymentService) Prepay(ctx context.Context, pmt domain.Payment) (domain.Payment, error) {
+
+	var amount int64
+	r, ok := slice.Find(pmt.Records, func(src domain.PaymentRecord) bool {
+		return src.Channel == domain.ChannelTypeCredit
+	})
+	if !ok || r.Amount == 0 {
+		return domain.Payment{}, fmt.Errorf("缺少微信支付金额信息")
+	}
+
 	resp, _, err := n.svc.Prepay(ctx,
 		native.PrepayRequest{
 			Appid:       core.String(n.appID),
@@ -85,15 +100,38 @@ func (n *NativePaymentService) Prepay(ctx context.Context, pmt domain.Payment) (
 			NotifyUrl:   core.String(n.notifyURL),
 			Amount: &native.Amount{
 				Currency: core.String("CNY"),
-				Total:    core.Int64(pmt.TotalAmount),
+				Total:    core.Int64(amount),
 			},
 		},
 	)
 	if err != nil {
-		return "", err
+		return domain.Payment{}, fmt.Errorf("微信预支付失败: %w", err)
 	}
 
-	return *resp.CodeUrl, nil
+	pmt.PayDDL = n.paymentDDLFunc()
+	pmt.Status = domain.PaymentStatusUnpaid
+
+	pmt.Records = []domain.PaymentRecord{
+		{
+			Description: pmt.OrderDescription,
+			Channel:     domain.ChannelTypeWechat,
+			Amount:      amount,
+			Status:      domain.PaymentStatusUnpaid,
+		},
+	}
+
+	pp, err2 := n.repo.CreatePayment(ctx, pmt)
+	if err2 != nil {
+		return domain.Payment{}, fmt.Errorf("微信预支付失败: 创建支付主记录及微信渠道支付记录失败: %w", err2)
+	}
+
+	pp.Records = slice.Map(pp.Records, func(idx int, src domain.PaymentRecord) domain.PaymentRecord {
+		if src.Channel == domain.ChannelTypeWechat {
+			src.WechatCodeURL = *resp.CodeUrl
+		}
+		return src
+	})
+	return pp, nil
 }
 
 // SyncWechatInfo 同步信息 定时任务调用此方法同步状态信息
@@ -124,16 +162,20 @@ func (n *NativePaymentService) updateByTxn(ctx context.Context, txn *payments.Tr
 		return fmt.Errorf("%w, %s", errUnknownTransactionState, *txn.TradeState)
 	}
 	// 跟新支付主记录+微信渠道支付记录两条数据的状态
+	paidAt := time.Now().UnixMilli()
 	pmt := domain.Payment{
 		OrderSN: *txn.OutTradeNo,
 		Records: []domain.PaymentRecord{
 			{
 				PaymentNO3rd: *txn.TransactionId,
+				Channel:      domain.ChannelTypeWechat,
+				PaidAt:       paidAt,
 				Status:       status,
 			},
 		},
 		Status: status,
 	}
+
 	err := n.repo.UpdatePayment(ctx, pmt)
 	if err != nil {
 		// 这里有一个小问题，就是如果超时了的话，你都不知道更新成功了没
@@ -147,7 +189,7 @@ func (n *NativePaymentService) updateByTxn(ctx context.Context, txn *payments.Tr
 	})
 	if err1 != nil {
 		// 要做好监控和告警
-		n.l.Error("发送支付事件失败", elog.FieldErr(err),
+		n.l.Error("发送支付事件失败", elog.FieldErr(err1),
 			elog.String("order_sn", pmt.OrderSN))
 	}
 	// 虽然发送事件失败，但是数据库记录了，所以可以返回 Nil

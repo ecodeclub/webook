@@ -17,10 +17,12 @@ package wechat
 import (
 	"context"
 
-	"github.com/ecodeclub/webook/internal/payment/internal/domain"
+	"github.com/wechatpay-apiv3/wechatpay-go/core"
+	"github.com/wechatpay-apiv3/wechatpay-go/services/payments"
+	"github.com/wechatpay-apiv3/wechatpay-go/services/payments/native"
 )
 
-type PaymentService interface {
-	// Prepay 预支付，对应于微信创建订单的步骤
-	Prepay(ctx context.Context, pmt domain.Payment) (string, error)
+type NativeAPIService interface {
+	Prepay(ctx context.Context, req native.PrepayRequest) (resp *native.PrepayResponse, result *core.APIResult, err error)
+	QueryOrderByOutTradeNo(ctx context.Context, req native.QueryOrderByOutTradeNoRequest) (resp *payments.Transaction, result *core.APIResult, err error)
 }

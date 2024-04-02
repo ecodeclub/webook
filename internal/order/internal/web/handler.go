@@ -241,16 +241,15 @@ func (h *Handler) createPayment(ctx context.Context, order domain.Order, payment
 			return payment.Payment{}, fmt.Errorf("支付渠道非法")
 		}
 		records = append(records, payment.Record{
-			// 每个支付渠道具体分摊多少金额留给payment模块自己决定
+			Amount:  pc.Amount,
 			Channel: pc.Type,
 		})
 	}
 	return h.paymentSvc.CreatePayment(ctx, payment.Payment{
 		OrderID:     order.ID,
-		UserID:      order.BuyerID,
 		OrderSN:     order.SN,
+		PayerID:     order.BuyerID,
 		TotalAmount: order.RealTotalPrice,
-		Deadline:    time.Now().Add(30 * time.Minute).UnixMilli(),
 		Records:     records,
 	})
 }

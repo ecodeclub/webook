@@ -17,7 +17,14 @@ package credit
 import (
 	"github.com/ecodeclub/webook/internal/credit/internal/domain"
 	"github.com/ecodeclub/webook/internal/credit/internal/service"
+	svcmocks "github.com/ecodeclub/webook/internal/credit/internal/service/mocks"
+	"go.uber.org/mock/gomock"
 )
 
 type Credit = domain.Credit
 type Service = service.Service
+type MockCreditService = svcmocks.MockService
+
+func NewMockCreditService(ctrl *gomock.Controller) *MockCreditService {
+	return svcmocks.NewMockService(ctrl)
+}

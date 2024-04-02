@@ -23,28 +23,28 @@ import (
 	"github.com/wechatpay-apiv3/wechatpay-go/services/payments"
 )
 
-var _ ginx.Handler = &WechatHandler{}
+var _ ginx.Handler = &Handler{}
 
-type WechatHandler struct {
+type Handler struct {
 	handler   *notify.Handler
 	l         *elog.Component
 	nativeSvc *wechat.NativePaymentService
 }
 
-func NewWechatHandler(handler *notify.Handler, nativeSvc *wechat.NativePaymentService) *WechatHandler {
-	return &WechatHandler{
+func NewHandler(handler *notify.Handler, nativeSvc *wechat.NativePaymentService) *Handler {
+	return &Handler{
 		handler:   handler,
 		nativeSvc: nativeSvc,
 		l:         elog.DefaultLogger}
 }
 
-func (h *WechatHandler) PrivateRoutes(_ *gin.Engine) {}
+func (h *Handler) PrivateRoutes(_ *gin.Engine) {}
 
-func (h *WechatHandler) PublicRoutes(server *gin.Engine) {
-	server.Any("/pay/callback", ginx.W(h.HandleNativeCallBack))
+func (h *Handler) PublicRoutes(server *gin.Engine) {
+	server.Any("/pay/callback", ginx.W(h.HandleWechatNativePayCallBack))
 }
 
-func (h *WechatHandler) HandleNativeCallBack(ctx *ginx.Context) (ginx.Result, error) {
+func (h *Handler) HandleWechatNativePayCallBack(ctx *ginx.Context) (ginx.Result, error) {
 	transaction := &payments.Transaction{}
 	_, err := h.handler.ParseNotifyRequest(ctx, ctx.Request, transaction)
 	if err != nil {
