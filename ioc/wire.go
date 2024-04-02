@@ -11,7 +11,7 @@ import (
 	"github.com/google/wire"
 )
 
-var BaseSet = wire.NewSet(InitDB, InitCache, InitRedis, InitCosConfig)
+var BaseSet = wire.NewSet(InitDB, InitCache, InitRedis, InitMQ, InitCosConfig)
 
 func InitApp() (*App, error) {
 	wire.Build(wire.Struct(new(App), "*"),

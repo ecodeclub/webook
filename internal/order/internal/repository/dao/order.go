@@ -131,8 +131,8 @@ const (
 type Order struct {
 	Id                 int64  `gorm:"primaryKey;autoIncrement;comment:订单自增ID"`
 	SN                 string `gorm:"type:varchar(255);not null;uniqueIndex:uniq_order_sn;comment:订单序列号"`
-	BuyerId            int64  `gorm:"not null;index:idx_buyer_id,comment:购买者ID"`
-	PaymentId          int64  `gorm:"uniqueIndex:uniq_payment_id,comment:支付自增ID,冗余允许为NULL"`
+	BuyerId            int64  `gorm:"not null;index:idx_buyer_id;comment:购买者ID"`
+	PaymentId          int64  `gorm:"uniqueIndex:uniq_payment_id;comment:支付自增ID,冗余允许为NULL"`
 	PaymentSn          string `gorm:"type:varchar(255);uniqueIndex:uniq_payment_sn;comment:支付序列号,冗余允许为NULL"`
 	OriginalTotalPrice int64  `gorm:"not null;comment:原始总价;单位为分, 999表示9.99元"`
 	RealTotalPrice     int64  `gorm:"not null;comment:实付总价;单位为分, 999表示9.99元"`
@@ -144,9 +144,9 @@ type Order struct {
 
 type OrderItem struct {
 	Id               int64  `gorm:"primaryKey;autoIncrement;comment:订单项自增ID"`
-	OrderId          int64  `gorm:"not null;index:idx_order_id,comment:订单自增ID"`
+	OrderId          int64  `gorm:"not null;index:idx_order_id;comment:订单自增ID"`
 	SPUId            int64  `gorm:"column:spu_id;not null;comment:SPU自增ID"`
-	SKUId            int64  `gorm:"column:sku_id;not null;index:idx_sku_id,comment:SKU自增ID"`
+	SKUId            int64  `gorm:"column:sku_id;not null;index:idx_sku_id;comment:SKU自增ID"`
 	SKUName          string `gorm:"column:sku_name;type:varchar(255);not null;comment:SKU名称"`
 	SKUDescription   string `gorm:"column:sku_description;not null;comment:SKU描述"`
 	SKUOriginalPrice int64  `gorm:"column:sku_original_price;not null;comment:商品原始单价;单位为分, 999表示9.99元"`
