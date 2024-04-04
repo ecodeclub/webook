@@ -20,13 +20,22 @@ type SkillDAO interface {
 	// Info 详情
 	Info(ctx context.Context, id int64) (Skill, error)
 	SkillLevelInfo(tx context.Context, id int64) ([]SkillLevel, error)
+	SkillLevelInfoByIDs(tx context.Context, ids []int64) ([]SkillLevel, error)
 	// Refs id 为skill的id
 	Refs(ctx context.Context, id int64) ([]SkillRef, error)
+	// RefsByLevelIDs ids 为 SkillLevel 的 ID
+	RefsByLevelIDs(ctx context.Context, ids []int64) ([]SkillRef, error)
 	Count(ctx context.Context) (int64, error)
 }
 
 type skillDAO struct {
 	db *egorm.Component
+}
+
+func (s *skillDAO) RefsByLevelIDs(ctx context.Context, ids []int64) ([]SkillRef, error) {
+	var res []SkillRef
+	err := s.db.WithContext(ctx).Where("slid IN ?", ids).Find(&res).Error
+	return res, err
 }
 
 func (s *skillDAO) Create(ctx context.Context, skill Skill, skillLevels []SkillLevel) (int64, error) {
@@ -130,6 +139,12 @@ func (s *skillDAO) Info(ctx context.Context, id int64) (Skill, error) {
 func (s *skillDAO) SkillLevelInfo(ctx context.Context, id int64) ([]SkillLevel, error) {
 	var skillLevels []SkillLevel
 	err := s.db.WithContext(ctx).Model(&SkillLevel{}).Where("sid = ? ", id).Find(&skillLevels).Error
+	return skillLevels, err
+}
+
+func (s *skillDAO) SkillLevelInfoByIDs(ctx context.Context, sids []int64) ([]SkillLevel, error) {
+	var skillLevels []SkillLevel
+	err := s.db.WithContext(ctx).Model(&SkillLevel{}).Where("sid IN ? ", sids).Find(&skillLevels).Error
 	return skillLevels, err
 }
 

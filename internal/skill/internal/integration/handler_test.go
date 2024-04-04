@@ -864,6 +864,88 @@ func (s *HandlerTestSuite) TestList() {
 
 }
 
+func (s *HandlerTestSuite) TestRefsByLevelIDs() {
+	err := s.db.Create([]*dao.SkillRef{
+		{
+			Id:    1,
+			Slid:  1,
+			Sid:   2,
+			Rtype: "case",
+			Rid:   1,
+			Ctime: time.Now().UnixMilli(),
+			Utime: time.Now().UnixMilli(),
+		},
+		{
+			Id:    2,
+			Slid:  1,
+			Sid:   2,
+			Rtype: "question",
+			Rid:   2,
+			Ctime: time.Now().UnixMilli(),
+			Utime: time.Now().UnixMilli(),
+		},
+		{
+			Id:    3,
+			Slid:  2,
+			Sid:   2,
+			Rtype: "question",
+			Rid:   1,
+			Ctime: time.Now().UnixMilli(),
+			Utime: time.Now().UnixMilli(),
+		},
+	}).Error
+	require.NoError(s.T(), err)
+	testCases := []struct {
+		name string
+		req  web.IDs
+
+		wantCode int
+		wantResp test.Result[[]web.SkillLevel]
+	}{
+		{
+			name: "查询成功",
+			req: web.IDs{
+				IDs: []int64{1, 2},
+			},
+			wantCode: 200,
+			wantResp: test.Result[[]web.SkillLevel]{
+				Data: []web.SkillLevel{
+					{
+						Id: 1,
+						Questions: []web.Question{
+							{Id: 2, Title: "这是问题2"},
+						},
+						Cases: []web.Case{
+							{Id: 1, Title: "这是案例1"},
+						},
+					},
+					{
+						Id: 2,
+						Questions: []web.Question{
+							{Id: 1, Title: "这是问题1"},
+						},
+						Cases: []web.Case{},
+					},
+				},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		s.T().Run(tc.name, func(t *testing.T) {
+			req, err := http.NewRequest(http.MethodPost,
+				"/skill/level-refs", iox.NewJSONReader(tc.req))
+			req.Header.Set("content-type", "application/json")
+			require.NoError(t, err)
+			recorder := test.NewJSONResponseRecorder[[]web.SkillLevel]()
+			s.server.ServeHTTP(recorder, req)
+			require.Equal(t, tc.wantCode, recorder.Code)
+			assert.Equal(t, tc.wantResp, recorder.MustScan())
+		})
+	}
+
+}
+
 func (s *HandlerTestSuite) assertSkill(wantSKill dao.Skill, actualSkill dao.Skill) {
 	t := s.T()
 	require.True(t, actualSkill.Id > 0)
@@ -873,28 +955,6 @@ func (s *HandlerTestSuite) assertSkill(wantSKill dao.Skill, actualSkill dao.Skil
 	actualSkill.Utime = 0
 	actualSkill.Ctime = 0
 	assert.Equal(t, wantSKill, actualSkill)
-}
-
-func (s *HandlerTestSuite) assertSkillLevel(wantSKillLevel dao.SkillLevel, actualSkillLevel dao.SkillLevel) {
-	t := s.T()
-	require.True(t, actualSkillLevel.Id > 0)
-	require.True(t, actualSkillLevel.Utime > 0)
-	require.True(t, actualSkillLevel.Ctime > 0)
-	actualSkillLevel.Id = 0
-	actualSkillLevel.Utime = 0
-	actualSkillLevel.Ctime = 0
-	assert.Equal(t, wantSKillLevel, actualSkillLevel)
-}
-
-func (s *HandlerTestSuite) assertSkillPreRequest(wantReq dao.SkillRef, actualReq dao.SkillRef) {
-	t := s.T()
-	require.True(t, actualReq.Id > 0)
-	require.True(t, actualReq.Ctime > 0)
-	require.True(t, actualReq.Utime > 0)
-	actualReq.Id = 0
-	actualReq.Utime = 0
-	actualReq.Ctime = 0
-	assert.Equal(t, wantReq, actualReq)
 }
 
 func TestHandler(t *testing.T) {

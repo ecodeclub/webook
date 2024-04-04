@@ -45,6 +45,20 @@ func (s SkillLevel) toDomain() domain.SkillLevel {
 	}
 }
 
+func (s *SkillLevel) setCases(qm map[int64]cases.Case) {
+	s.Cases = slice.Map(s.Cases, func(idx int, src Case) Case {
+		src.Title = qm[src.Id].Title
+		return src
+	})
+}
+
+func (s *SkillLevel) setQuestions(qm map[int64]baguwen.Question) {
+	s.Questions = slice.Map(s.Questions, func(idx int, src Question) Question {
+		src.Title = qm[src.Id].Title
+		return src
+	})
+}
+
 type Sid struct {
 	Sid int64 `json:"sid"`
 }
@@ -85,37 +99,15 @@ func newSkill(s domain.Skill) Skill {
 	return res
 }
 func (s *Skill) setQuestions(qm map[int64]baguwen.Question) {
-	s.Basic.Questions = slice.Map(s.Basic.Questions, func(idx int, src Question) Question {
-		src.Title = qm[src.Id].Title
-		return src
-	})
-
-	s.Intermediate.Questions = slice.Map(s.Intermediate.Questions, func(idx int, src Question) Question {
-		src.Title = qm[src.Id].Title
-		return src
-	})
-
-	s.Advanced.Questions = slice.Map(s.Advanced.Questions, func(idx int, src Question) Question {
-		src.Title = qm[src.Id].Title
-		return src
-	})
+	s.Basic.setQuestions(qm)
+	s.Intermediate.setQuestions(qm)
+	s.Advanced.setQuestions(qm)
 }
 
 func (s *Skill) setCases(qm map[int64]cases.Case) {
-	s.Basic.Cases = slice.Map(s.Basic.Cases, func(idx int, src Case) Case {
-		src.Title = qm[src.Id].Title
-		return src
-	})
-
-	s.Intermediate.Cases = slice.Map(s.Intermediate.Cases, func(idx int, src Case) Case {
-		src.Title = qm[src.Id].Title
-		return src
-	})
-
-	s.Advanced.Cases = slice.Map(s.Advanced.Cases, func(idx int, src Case) Case {
-		src.Title = qm[src.Id].Title
-		return src
-	})
+	s.Basic.setCases(qm)
+	s.Intermediate.setCases(qm)
+	s.Advanced.setCases(qm)
 }
 
 func newSkillLevel(s domain.SkillLevel) SkillLevel {
@@ -143,4 +135,8 @@ type Question struct {
 type Case struct {
 	Id    int64  `json:"id,omitempty"`
 	Title string `json:"title,omitempty"`
+}
+
+type IDs struct {
+	IDs []int64 `json:"ids,omitempty"`
 }
