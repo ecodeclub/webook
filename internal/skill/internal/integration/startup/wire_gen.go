@@ -8,19 +8,20 @@ package startup
 
 import (
 	"github.com/ecodeclub/webook/internal/cases"
-	"github.com/ecodeclub/webook/internal/cases/internal/web"
+	baguwen "github.com/ecodeclub/webook/internal/question"
+	"github.com/ecodeclub/webook/internal/skill"
+	"github.com/ecodeclub/webook/internal/skill/internal/web"
 	testioc "github.com/ecodeclub/webook/internal/test/ioc"
 )
 
 // Injectors from wire.go:
 
-func InitHandler() (*web.Handler, error) {
+func InitHandler(bm *baguwen.Module, cm *cases.Module) (*web.Handler, error) {
 	db := testioc.InitDB()
 	cache := testioc.InitCache()
-	module, err := cases.InitModule(db, cache)
+	handler, err := skill.InitHandler(db, cache, bm, cm)
 	if err != nil {
 		return nil, err
 	}
-	handler := module.Hdl
 	return handler, nil
 }

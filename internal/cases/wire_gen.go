@@ -10,6 +10,7 @@ import (
 	"sync"
 
 	"github.com/ecodeclub/ecache"
+	"github.com/ecodeclub/webook/internal/cases/internal/domain"
 	"github.com/ecodeclub/webook/internal/cases/internal/repository"
 	"github.com/ecodeclub/webook/internal/cases/internal/repository/cache"
 	"github.com/ecodeclub/webook/internal/cases/internal/repository/dao"
@@ -21,13 +22,17 @@ import (
 
 // Injectors from wire.go:
 
-func InitHandler(db *gorm.DB, ec ecache.Cache) (*web.Handler, error) {
+func InitModule(db *gorm.DB, ec ecache.Cache) (*Module, error) {
 	caseDAO := InitCaseDAO(db)
 	caseCache := cache.NewCaseCache(ec)
 	caseRepo := repository.NewCaseRepo(caseDAO, caseCache)
-	serviceService := service.NewService(caseRepo)
-	handler := web.NewHandler(serviceService)
-	return handler, nil
+	service := NewService(caseRepo)
+	handler := web.NewHandler(service)
+	module := &Module{
+		Svc: service,
+		Hdl: handler,
+	}
+	return module, nil
 }
 
 // wire.go:
@@ -43,9 +48,17 @@ func InitTableOnce(db *gorm.DB) {
 	})
 }
 
+func NewService(repo repository.CaseRepo) Service {
+	return service.NewService(repo)
+}
+
 func InitCaseDAO(db *egorm.Component) dao.CaseDAO {
 	InitTableOnce(db)
 	return dao.NewCaseDao(db)
 }
 
 type Handler = web.Handler
+
+type Service = service.Service
+
+type Case = domain.Case

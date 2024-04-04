@@ -24,4 +24,5 @@
 - product - 04
 - case - 05
 - order - 06
+- skill - 07
 
