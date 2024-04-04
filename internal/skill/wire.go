@@ -14,10 +14,13 @@
 
 //go:build wireinject
 
-package baguwen
+package skill
 
 import (
 	"sync"
+
+	"github.com/ecodeclub/webook/internal/cases"
+	baguwen "github.com/ecodeclub/webook/internal/question"
 
 	"github.com/ecodeclub/webook/internal/skill/internal/repository"
 	"github.com/ecodeclub/webook/internal/skill/internal/repository/cache"
@@ -32,12 +35,18 @@ import (
 	"gorm.io/gorm"
 )
 
-func InitHandler(db *egorm.Component, ec ecache.Cache) (*Handler, error) {
+func InitHandler(
+	db *egorm.Component,
+	ec ecache.Cache,
+	queModule *baguwen.Module,
+	caseModule *cases.Module) (*Handler, error) {
 	wire.Build(
 		InitSkillDAO,
+		wire.FieldsOf(new(*baguwen.Module), "Svc"),
+		wire.FieldsOf(new(*cases.Module), "Svc"),
 		cache.NewSkillCache,
 		repository.NewSkillRepo,
-		service.NewSkillSvc,
+		service.NewSkillService,
 		web.NewHandler,
 	)
 	return new(Handler), nil

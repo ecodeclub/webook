@@ -39,6 +39,7 @@ type Repository interface {
 	Create(ctx context.Context, question *domain.Question) (int64, error)
 	GetById(ctx context.Context, qid int64) (domain.Question, error)
 	GetPubByID(ctx context.Context, qid int64) (domain.Question, error)
+	GetPubByIDs(ctx context.Context, ids []int64) ([]domain.Question, error)
 }
 
 // CachedRepository 支持缓存的 repository 实现
@@ -47,6 +48,13 @@ type CachedRepository struct {
 	dao    dao.QuestionDAO
 	cache  cache.QuestionCache
 	logger *elog.Component
+}
+
+func (c *CachedRepository) GetPubByIDs(ctx context.Context, qids []int64) ([]domain.Question, error) {
+	data, err := c.dao.GetPubByIDs(ctx, qids)
+	return slice.Map(data, func(idx int, src dao.PublishQuestion) domain.Question {
+		return c.toDomain(dao.Question(src))
+	}), err
 }
 
 func (c *CachedRepository) GetPubByID(ctx context.Context, qid int64) (domain.Question, error) {

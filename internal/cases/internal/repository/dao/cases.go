@@ -22,17 +22,13 @@ type CaseDAO interface {
 	PublishCaseList(ctx context.Context, offset, limit int) ([]PublishCase, error)
 	PublishCaseCount(ctx context.Context) (int64, error)
 	GetPublishCase(ctx context.Context, caseId int64) (PublishCase, error)
+	GetPubByIDs(ctx context.Context, ids []int64) ([]PublishCase, error)
 }
 
 type caseDAO struct {
 	db *egorm.Component
 }
 
-func NewCaseDao(db *egorm.Component) CaseDAO {
-	return &caseDAO{
-		db: db,
-	}
-}
 func (ca *caseDAO) Count(ctx context.Context) (int64, error) {
 	var res int64
 	err := ca.db.WithContext(ctx).Model(&Case{}).Select("COUNT(id)").Count(&res).Error
@@ -140,4 +136,17 @@ func (ca *caseDAO) GetPublishCase(ctx context.Context, caseId int64) (PublishCas
 	db := ca.db.WithContext(ctx)
 	err := db.Where("id = ?", caseId).First(&c).Error
 	return c, err
+}
+
+func (ca *caseDAO) GetPubByIDs(ctx context.Context, ids []int64) ([]PublishCase, error) {
+	var c []PublishCase
+	db := ca.db.WithContext(ctx)
+	err := db.Where("id IN ?", ids).Find(&c).Error
+	return c, err
+}
+
+func NewCaseDao(db *egorm.Component) CaseDAO {
+	return &caseDAO{
+		db: db,
+	}
 }

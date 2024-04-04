@@ -3,41 +3,48 @@ package web
 import (
 	"time"
 
+	"github.com/ecodeclub/ekit/slice"
+	"github.com/ecodeclub/webook/internal/cases"
+	baguwen "github.com/ecodeclub/webook/internal/question"
+
 	"github.com/ecodeclub/webook/internal/skill/internal/domain"
 )
 
 type SaveReq struct {
 	Skill Skill `json:"skill,omitempty"`
 }
-type SaveRequestReq struct {
-	Sid      int64             `json:"sid"`
-	Slid     int64             `json:"slid"`
-	Requests []SkillPreRequest `json:"requests,omitempty"`
-}
 
 type Skill struct {
-	ID     int64        `json:"id,omitempty"`
-	Labels []string     `json:"labels,omitempty"`
-	Name   string       `json:"name,omitempty"`
-	Desc   string       `json:"desc,omitempty"`
-	Levels []SkillLevel `json:"levels,omitempty"`
-	Utime  string       `json:"utime,omitempty"`
+	ID           int64      `json:"id,omitempty"`
+	Labels       []string   `json:"labels,omitempty"`
+	Name         string     `json:"name,omitempty"`
+	Desc         string     `json:"desc,omitempty"`
+	Basic        SkillLevel `json:"basic,omitempty"`
+	Intermediate SkillLevel `json:"intermediate,omitempty"`
+	Advanced     SkillLevel `json:"advanced,omitempty"`
+	Utime        string     `json:"utime,omitempty"`
 }
 
 type SkillLevel struct {
-	Id       int64             `json:"id,omitempty"`
-	Level    string            `json:"level,omitempty"`
-	Desc     string            `json:"desc,omitempty"`
-	Utime    string            `json:"utime,omitempty"`
-	Requests []SkillPreRequest `json:"requests,omitempty"`
+	Id        int64      `json:"id,omitempty"`
+	Desc      string     `json:"desc,omitempty"`
+	Questions []Question `json:"questions"`
+	Cases     []Case     `json:"cases"`
 }
 
-type SkillPreRequest struct {
-	Id    int64  `json:"id,omitempty"`
-	Rid   int64  `json:"rid,omitempty"`
-	Rtype string `json:"rtype,omitempty"`
-	Utime string `json:"utime,omitempty"`
+func (s SkillLevel) toDomain() domain.SkillLevel {
+	return domain.SkillLevel{
+		Id:   s.Id,
+		Desc: s.Desc,
+		Questions: slice.Map(s.Questions, func(idx int, src Question) int64 {
+			return src.Id
+		}),
+		Cases: slice.Map(s.Cases, func(idx int, src Case) int64 {
+			return src.Id
+		}),
+	}
 }
+
 type Sid struct {
 	Sid int64 `json:"sid"`
 }
@@ -58,70 +65,82 @@ func (s Skill) toDomain() domain.Skill {
 		Name:   s.Name,
 		Desc:   s.Desc,
 	}
-	levels := make([]domain.SkillLevel, 0, len(s.Levels))
-	for _, level := range s.Levels {
-		levels = append(levels, level.toDomain())
-	}
-	skill.Levels = levels
+	skill.Basic = s.Basic.toDomain()
+	skill.Intermediate = s.Intermediate.toDomain()
+	skill.Advanced = s.Advanced.toDomain()
 	return skill
 }
 
-func (s SkillLevel) toDomain() domain.SkillLevel {
-	return domain.SkillLevel{
-		Id:    s.Id,
-		Level: s.Level,
-		Desc:  s.Desc,
-	}
-}
-
-func (s SkillPreRequest) toDomain() domain.SkillPreRequest {
-	return domain.SkillPreRequest{
-		Id:    s.Id,
-		Rid:   s.Rid,
-		Rtype: s.Rtype,
-	}
-}
-
 func newSkill(s domain.Skill) Skill {
-	newSkill := Skill{
-		ID:     s.ID,
-		Labels: s.Labels,
-		Name:   s.Name,
-		Desc:   s.Desc,
-		Utime:  s.Utime.Format(time.DateTime),
+	res := Skill{
+		ID:           s.ID,
+		Labels:       s.Labels,
+		Name:         s.Name,
+		Desc:         s.Desc,
+		Basic:        newSkillLevel(s.Basic),
+		Intermediate: newSkillLevel(s.Intermediate),
+		Advanced:     newSkillLevel(s.Advanced),
+		Utime:        s.Utime.Format(time.DateTime),
 	}
-	if len(s.Levels) > 0 {
-		levels := make([]SkillLevel, 0, len(s.Levels))
-		for _, l := range s.Levels {
-			levels = append(levels, newSkillLevel(l))
-		}
-		newSkill.Levels = levels
-	}
-	return newSkill
+	return res
+}
+func (s *Skill) setQuestions(qm map[int64]baguwen.Question) {
+	s.Basic.Questions = slice.Map(s.Basic.Questions, func(idx int, src Question) Question {
+		src.Title = qm[src.Id].Title
+		return src
+	})
+
+	s.Intermediate.Questions = slice.Map(s.Intermediate.Questions, func(idx int, src Question) Question {
+		src.Title = qm[src.Id].Title
+		return src
+	})
+
+	s.Advanced.Questions = slice.Map(s.Advanced.Questions, func(idx int, src Question) Question {
+		src.Title = qm[src.Id].Title
+		return src
+	})
+}
+
+func (s *Skill) setCases(qm map[int64]cases.Case) {
+	s.Basic.Cases = slice.Map(s.Basic.Cases, func(idx int, src Case) Case {
+		src.Title = qm[src.Id].Title
+		return src
+	})
+
+	s.Intermediate.Cases = slice.Map(s.Intermediate.Cases, func(idx int, src Case) Case {
+		src.Title = qm[src.Id].Title
+		return src
+	})
+
+	s.Advanced.Cases = slice.Map(s.Advanced.Cases, func(idx int, src Case) Case {
+		src.Title = qm[src.Id].Title
+		return src
+	})
 }
 
 func newSkillLevel(s domain.SkillLevel) SkillLevel {
-	level := SkillLevel{
-		Id:    s.Id,
-		Level: s.Level,
-		Desc:  s.Desc,
-		Utime: s.Utime.Format(time.DateTime),
+	return SkillLevel{
+		Id:   s.Id,
+		Desc: s.Desc,
+		Questions: slice.Map(s.Questions, func(idx int, src int64) Question {
+			return Question{
+				Id: src,
+			}
+		}),
+		Cases: slice.Map(s.Cases, func(idx int, src int64) Case {
+			return Case{
+				Id: src,
+			}
+		}),
 	}
-	if len(s.Requests) > 0 {
-		reqs := make([]SkillPreRequest, 0, len(s.Requests))
-		for _, req := range s.Requests {
-			reqs = append(reqs, newSkillPreRequest(req))
-		}
-		level.Requests = reqs
-	}
-	return level
 }
 
-func newSkillPreRequest(s domain.SkillPreRequest) SkillPreRequest {
-	return SkillPreRequest{
-		Id:    s.Id,
-		Rid:   s.Rid,
-		Rtype: s.Rtype,
-		Utime: s.Utime.Format(time.DateTime),
-	}
+type Question struct {
+	Id    int64  `json:"id,omitempty"`
+	Title string `json:"title,omitempty"`
+}
+
+type Case struct {
+	Id    int64  `json:"id,omitempty"`
+	Title string `json:"title,omitempty"`
 }

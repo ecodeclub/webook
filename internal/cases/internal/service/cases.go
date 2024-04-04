@@ -8,6 +8,7 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
+//go:generate mockgen -source=./cases.go -destination=../../mocks/cases.mock.go -package=casemocks -typed Service
 type Service interface {
 	// Save 保存数据，case 绝对不会为 nil
 	Save(ctx context.Context, ca *domain.Case) (int64, error)
@@ -15,6 +16,7 @@ type Service interface {
 	List(ctx context.Context, offset int, limit int) ([]domain.Case, int64, error)
 
 	PubList(ctx context.Context, offset int, limit int) ([]domain.Case, int64, error)
+	GetPubByIDs(ctx context.Context, ids []int64) ([]domain.Case, error)
 	Detail(ctx context.Context, caseId int64) (domain.Case, error)
 	PubDetail(ctx context.Context, caseId int64) (domain.Case, error)
 }
@@ -23,10 +25,8 @@ type service struct {
 	repo repository.CaseRepo
 }
 
-func NewService(repo repository.CaseRepo) Service {
-	return &service{
-		repo: repo,
-	}
+func (s *service) GetPubByIDs(ctx context.Context, ids []int64) ([]domain.Case, error) {
+	return s.repo.GetPubByIDs(ctx, ids)
 }
 
 func (s *service) Save(ctx context.Context, ca *domain.Case) (int64, error) {
@@ -89,4 +89,10 @@ func (s *service) Detail(ctx context.Context, caseId int64) (domain.Case, error)
 
 func (s *service) PubDetail(ctx context.Context, caseId int64) (domain.Case, error) {
 	return s.repo.GetPubByID(ctx, caseId)
+}
+
+func NewService(repo repository.CaseRepo) Service {
+	return &service{
+		repo: repo,
+	}
 }
