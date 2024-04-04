@@ -37,10 +37,18 @@ type QuestionDAO interface {
 	PubList(ctx context.Context, offset int, limit int) ([]PublishQuestion, error)
 	PubCount(ctx context.Context) (int64, error)
 	GetPubByID(ctx context.Context, qid int64) (PublishQuestion, []PublishAnswerElement, error)
+	GetPubByIDs(ctx context.Context, qids []int64) ([]PublishQuestion, error)
 }
 
 type GORMQuestionDAO struct {
 	db *egorm.Component
+}
+
+func (g *GORMQuestionDAO) GetPubByIDs(ctx context.Context, qids []int64) ([]PublishQuestion, error) {
+	var qs []PublishQuestion
+	db := g.db.WithContext(ctx)
+	err := db.Where("id IN ?", qids).Find(&qs).Error
+	return qs, err
 }
 
 func (g *GORMQuestionDAO) GetPubByID(ctx context.Context, qid int64) (PublishQuestion, []PublishAnswerElement, error) {

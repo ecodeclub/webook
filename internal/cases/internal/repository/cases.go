@@ -4,6 +4,8 @@ import (
 	"context"
 	"time"
 
+	"github.com/ecodeclub/ekit/slice"
+
 	"github.com/ecodeclub/ekit/sqlx"
 	"github.com/ecodeclub/webook/internal/cases/internal/domain"
 	"github.com/ecodeclub/webook/internal/cases/internal/repository/cache"
@@ -16,6 +18,7 @@ type CaseRepo interface {
 	PubList(ctx context.Context, offset int, limit int) ([]domain.Case, error)
 	PubTotal(ctx context.Context) (int64, error)
 	GetPubByID(ctx context.Context, caseId int64) (domain.Case, error)
+	GetPubByIDs(ctx context.Context, ids []int64) ([]domain.Case, error)
 	// Sync 保存到制作库，而后同步到线上库
 	Sync(ctx context.Context, ca *domain.Case) (int64, error)
 	// 管理端接口
@@ -30,13 +33,6 @@ type caseRepo struct {
 	caseDao   dao.CaseDAO
 	caseCache cache.CaseCache
 	logger    *elog.Component
-}
-
-func NewCaseRepo(caseDao dao.CaseDAO, caseCache cache.CaseCache) CaseRepo {
-	return &caseRepo{
-		caseDao:   caseDao,
-		caseCache: caseCache,
-	}
 }
 
 func (c *caseRepo) PubList(ctx context.Context, offset int, limit int) ([]domain.Case, error) {
@@ -73,6 +69,13 @@ func (c *caseRepo) GetPubByID(ctx context.Context, caseId int64) (domain.Case, e
 		return domain.Case{}, err
 	}
 	return c.toDomain(dao.Case(caseInfo)), nil
+}
+
+func (c *caseRepo) GetPubByIDs(ctx context.Context, ids []int64) ([]domain.Case, error) {
+	caseInfo, err := c.caseDao.GetPubByIDs(ctx, ids)
+	return slice.Map(caseInfo, func(idx int, src dao.PublishCase) domain.Case {
+		return c.toDomain(dao.Case(src))
+	}), err
 }
 
 func (c *caseRepo) Sync(ctx context.Context, ca *domain.Case) (int64, error) {
@@ -144,5 +147,12 @@ func (c *caseRepo) toDomain(caseDao dao.Case) domain.Case {
 		Highlight: caseDao.Highlight,
 		Guidance:  caseDao.Guidance,
 		Utime:     time.UnixMilli(caseDao.Utime),
+	}
+}
+
+func NewCaseRepo(caseDao dao.CaseDAO, caseCache cache.CaseCache) CaseRepo {
+	return &caseRepo{
+		caseDao:   caseDao,
+		caseCache: caseCache,
 	}
 }

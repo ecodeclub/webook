@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/google/uuid"
+	"github.com/lithammer/shortuuid/v4"
 
 	"github.com/ecodeclub/webook/internal/user/internal/domain"
 	"github.com/ecodeclub/webook/internal/user/internal/repository"
@@ -48,7 +48,7 @@ func (svc *userService) FindOrCreateByWechat(ctx context.Context,
 	if !errors.Is(err, repository.ErrUserNotFound) {
 		return u, err
 	}
-	sn := uuid.New().String()
+	sn := shortuuid.New()
 	id, err := svc.repo.Create(ctx, domain.User{
 		WechatInfo: info,
 		SN:         sn,

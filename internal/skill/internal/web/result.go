@@ -12,20 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:build wireinject
-
-package startup
+package web
 
 import (
-	"github.com/ecodeclub/webook/internal/cases"
-	"github.com/ecodeclub/webook/internal/cases/internal/web"
-
-	testioc "github.com/ecodeclub/webook/internal/test/ioc"
-	"github.com/google/wire"
+	"github.com/ecodeclub/ginx"
+	"github.com/ecodeclub/webook/internal/skill/internal/errs"
 )
 
-func InitHandler() (*web.Handler, error) {
-	wire.Build(testioc.BaseSet, cases.InitModule,
-		wire.FieldsOf(new(*cases.Module), "Hdl"))
-	return new(web.Handler), nil
-}
+var (
+	systemErrorResult = ginx.Result{
+		Code: errs.SystemError.Code,
+		Msg:  errs.SystemError.Msg,
+	}
+)

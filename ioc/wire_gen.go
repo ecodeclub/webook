@@ -11,6 +11,7 @@ import (
 	"github.com/ecodeclub/webook/internal/cos"
 	"github.com/ecodeclub/webook/internal/label"
 	baguwen "github.com/ecodeclub/webook/internal/question"
+	"github.com/ecodeclub/webook/internal/skill"
 	"github.com/google/wire"
 )
 
@@ -21,23 +22,26 @@ func InitApp() (*App, error) {
 	provider := InitSession(cmdable)
 	db := InitDB()
 	cache := InitCache(cmdable)
-	handler, err := baguwen.InitHandler(db, cache)
+	module, err := baguwen.InitModule(db, cache)
 	if err != nil {
 		return nil, err
 	}
-	questionSetHandler, err := baguwen.InitQuestionSetHandler(db, cache)
-	if err != nil {
-		return nil, err
-	}
+	handler := module.Hdl
+	questionSetHandler := module.QsHdl
 	webHandler := label.InitHandler(db)
 	handler2 := InitUserHandler(db, cache)
 	config := InitCosConfig()
 	handler3 := cos.InitHandler(config)
-	handler4, err := cases.InitHandler(db, cache)
+	casesModule, err := cases.InitModule(db, cache)
 	if err != nil {
 		return nil, err
 	}
-	component := initGinxServer(provider, handler, questionSetHandler, webHandler, handler2, handler3, handler4)
+	handler4 := casesModule.Hdl
+	handler5, err := skill.InitHandler(db, cache, module, casesModule)
+	if err != nil {
+		return nil, err
+	}
+	component := initGinxServer(provider, handler, questionSetHandler, webHandler, handler2, handler3, handler4, handler5)
 	app := &App{
 		Web: component,
 	}

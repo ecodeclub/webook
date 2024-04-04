@@ -142,8 +142,8 @@ github.com/eapache/go-xerial-snappy v0.0.0-20180814174437-776d5712da21/go.mod h1
 github.com/eapache/queue v1.1.0/go.mod h1:6eCeP0CKFpHLu8blIFXhExK/dRa7WDZfr6jVFPTqq+I=
 github.com/ecodeclub/ecache v0.0.0-20240111145855-75679834beca h1:qksXJxULYYX+3Z3g5kxwbAiWgMozO9FvLBrxdHp5uCg=
 github.com/ecodeclub/ecache v0.0.0-20240111145855-75679834beca/go.mod h1:faDaVWB0J1EfgyY6e7Z40EWv65Asu4FrtlWVDAOBRiM=
-github.com/ecodeclub/ekit v0.0.9-0.20240211145635-ea42c17ffeb0 h1:z10DfuwTEQusqNbUY04KWv1BNpaEniHToLXNU4mGGJ0=
-github.com/ecodeclub/ekit v0.0.9-0.20240211145635-ea42c17ffeb0/go.mod h1:rEGubThvxoIQT/qnbVBkZgSvYwgKrY/dtwEWKRTmgeY=
+github.com/ecodeclub/ekit v0.0.9-0.20240331142359-871f65136a9b h1:E2+ixsdn65iQdIBWEC0afanMV0P9/vcaTUq9aLWOTzk=
+github.com/ecodeclub/ekit v0.0.9-0.20240331142359-871f65136a9b/go.mod h1:rEGubThvxoIQT/qnbVBkZgSvYwgKrY/dtwEWKRTmgeY=
 github.com/ecodeclub/ginx v0.0.0-20240330050527-80840e6a01ba h1:itCI5FwPJ41E/JOs24xWpxaL4MMsS5oQ+vDR5G6RRAw=
 github.com/ecodeclub/ginx v0.0.0-20240330050527-80840e6a01ba/go.mod h1:PCGcpNNuknwamOKIEkRwfwKngqg4syGydrONSIxb08w=
 github.com/ecodeclub/mq-api v0.0.0-20231030023724-b3c489cdada2 h1:qTDaGwQeYTEgFCOfDBDC4bkpDYYXvyTDRu8cq316g5Y=
