@@ -12,25 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package ioc
+package event
 
 import (
-	"github.com/ecodeclub/ecache"
-	"github.com/ecodeclub/mq-api"
-	"github.com/ecodeclub/webook/internal/member"
-	"github.com/ecodeclub/webook/internal/user"
-	"github.com/ego-component/egorm"
-	"github.com/gotomicro/ego/core/econf"
+	"context"
 )
 
-func InitUserHandler(db *egorm.Component, ec ecache.Cache, q mq.MQ, memberSvc member.Service) *user.Handler {
-	type UserConfig struct {
-		Creators []string `json:"creators"`
-	}
-	var cfg UserConfig
-	err := econf.UnmarshalKey("user", &cfg)
-	if err != nil {
-		panic(err)
-	}
-	return user.InitHandler(db, ec, q, cfg.Creators, memberSvc)
+type Producer interface {
+	ProduceRegistrationEvent(ctx context.Context, evt RegistrationEvent) error
 }

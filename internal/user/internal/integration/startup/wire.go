@@ -3,8 +3,11 @@
 package startup
 
 import (
+	"github.com/ecodeclub/mq-api"
+	"github.com/ecodeclub/webook/internal/member"
 	testioc "github.com/ecodeclub/webook/internal/test/ioc"
 	"github.com/ecodeclub/webook/internal/user"
+	"github.com/ecodeclub/webook/internal/user/internal/event"
 	"github.com/ecodeclub/webook/internal/user/internal/repository"
 	"github.com/ecodeclub/webook/internal/user/internal/repository/cache"
 	"github.com/ecodeclub/webook/internal/user/internal/repository/dao"
@@ -13,12 +16,17 @@ import (
 	"github.com/google/wire"
 )
 
-func InitHandler(weSvc service.OAuth2Service, creators []string) *user.Handler {
+func InitHandler(weSvc service.OAuth2Service, memberSvc member.Service, creators []string) *user.Handler {
 	wire.Build(web.NewHandler,
 		testioc.BaseSet,
+		InitProducer,
 		service.NewUserService,
 		dao.NewGORMUserDAO,
 		cache.NewUserECache,
 		repository.NewCachedUserRepository)
 	return new(user.Handler)
+}
+
+func InitProducer(q mq.MQ) event.Producer {
+	return nil
 }

@@ -7,7 +7,10 @@
 package startup
 
 import (
+	"github.com/ecodeclub/mq-api"
+	service2 "github.com/ecodeclub/webook/internal/member"
 	testioc "github.com/ecodeclub/webook/internal/test/ioc"
+	"github.com/ecodeclub/webook/internal/user/internal/event"
 	"github.com/ecodeclub/webook/internal/user/internal/repository"
 	"github.com/ecodeclub/webook/internal/user/internal/repository/cache"
 	"github.com/ecodeclub/webook/internal/user/internal/repository/dao"
@@ -17,13 +20,21 @@ import (
 
 // Injectors from wire.go:
 
-func InitHandler(weSvc service.OAuth2Service, creators []string) *web.Handler {
+func InitHandler(weSvc service.OAuth2Service, memberSvc service2.Service, creators []string) *web.Handler {
 	db := testioc.InitDB()
 	userDAO := dao.NewGORMUserDAO(db)
 	ecacheCache := testioc.InitCache()
 	userCache := cache.NewUserECache(ecacheCache)
 	userRepository := repository.NewCachedUserRepository(userDAO, userCache)
 	userService := service.NewUserService(userRepository)
-	handler := web.NewHandler(weSvc, userService, creators)
+	mq := testioc.InitMQ()
+	producer := InitProducer(mq)
+	handler := web.NewHandler(weSvc, userService, memberSvc, producer, creators)
 	return handler
+}
+
+// wire.go:
+
+func InitProducer(q mq.MQ) event.Producer {
+	return nil
 }

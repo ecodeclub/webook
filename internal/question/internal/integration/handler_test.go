@@ -100,7 +100,7 @@ func (s *HandlerTestSuite) SetupSuite() {
 	server.Use(func(ctx *gin.Context) {
 		ctx.Set("_session", session.NewMemorySession(session.Claims{
 			Uid:  uid,
-			Data: map[string]string{"creator": "true"},
+			Data: map[string]string{"creator": "true", "memberDDL": "2099-01-01 00:00:00"},
 		}))
 	})
 	handler.PrivateRoutes(server.Engine)
@@ -241,7 +241,7 @@ func (s *HandlerTestSuite) TestSave() {
 				Data: 2,
 			},
 		},
-		//{
+		// {
 		//	name: "非法访问",
 		//	before: func(t *testing.T) {
 		//		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
@@ -293,7 +293,7 @@ func (s *HandlerTestSuite) TestSave() {
 		//		Code: 502001,
 		//		Msg:  "系统错误",
 		//	},
-		//},
+		// },
 	}
 
 	for _, tc := range testCases {
@@ -1207,7 +1207,7 @@ func (s *HandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 			wantCode: 500,
 			wantResp: test.Result[int64]{Code: 502001, Msg: "系统错误"},
 		},
-		//{
+		// {
 		//	name: "当前用户并非题集的创建者",
 		//	before: func(t *testing.T) {
 		//		t.Helper()
@@ -1234,7 +1234,7 @@ func (s *HandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 		//	},
 		//	wantCode: 500,
 		//	wantResp: test.Result[int64]{Code: 502001, Msg: "系统错误"},
-		//},
+		// },
 	}
 
 	for _, tc := range testCases {
@@ -1438,7 +1438,7 @@ func (s *HandlerTestSuite) TestQuestionSet_RetrieveQuestionSetDetail_Failed() {
 			wantCode: 500,
 			wantResp: test.Result[int64]{Code: 502001, Msg: "系统错误"},
 		},
-		//{
+		// {
 		//	name: "题集ID非法_题集ID与UID不匹配",
 		//	before: func(t *testing.T) {
 		//		t.Helper()
@@ -1464,7 +1464,7 @@ func (s *HandlerTestSuite) TestQuestionSet_RetrieveQuestionSetDetail_Failed() {
 		//	},
 		//	wantCode: 500,
 		//	wantResp: test.Result[int64]{Code: 502001, Msg: "系统错误"},
-		//},
+		// },
 	}
 	for _, tc := range testCases {
 		s.T().Run(tc.name, func(t *testing.T) {

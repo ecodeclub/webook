@@ -8,6 +8,7 @@ type Profile struct {
 	Avatar    string `json:"avatar,omitempty"`
 	SN        string `json:"sn,omitempty"`
 	IsCreator bool   `json:"isCreator,omitempty"`
+	MemberDDL string `json:"memberDDL,omitempty"`
 }
 
 func newProfile(u domain.User) Profile {
@@ -21,4 +22,9 @@ func newProfile(u domain.User) Profile {
 type WechatCallback struct {
 	Code  string `json:"code"`
 	State string `json:"state"`
+}
+
+type EditReq struct {
+	Avatar   string `json:"avatar"`
+	Nickname string `json:"nickname"`
 }

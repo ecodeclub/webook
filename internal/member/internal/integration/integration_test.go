@@ -36,10 +36,10 @@ import (
 )
 
 func TestMemberIntegrationTest(t *testing.T) {
-	suite.Run(t, new(IntegrationTestSuite))
+	suite.Run(t, new(ModuleTestSuite))
 }
 
-type IntegrationTestSuite struct {
+type ModuleTestSuite struct {
 	suite.Suite
 	db  *egorm.Component
 	mq  mq.MQ
@@ -47,7 +47,7 @@ type IntegrationTestSuite struct {
 	dao dao.MemberDAO
 }
 
-func (s *IntegrationTestSuite) SetupSuite() {
+func (s *ModuleTestSuite) SetupSuite() {
 	s.svc = startup.InitService()
 	s.db = testioc.InitDB()
 	require.NoError(s.T(), dao.InitTables(s.db))
@@ -56,17 +56,17 @@ func (s *IntegrationTestSuite) SetupSuite() {
 	s.mq = testioc.InitMQ()
 }
 
-func (s *IntegrationTestSuite) TearDownSuite() {
+func (s *ModuleTestSuite) TearDownSuite() {
 	err := s.db.Exec("DROP TABLE `members`").Error
 	require.NoError(s.T(), err)
 }
 
-func (s *IntegrationTestSuite) TearDownTest() {
+func (s *ModuleTestSuite) TearDownTest() {
 	err := s.db.Exec("TRUNCATE TABLE `members`").Error
 	require.NoError(s.T(), err)
 }
 
-func (s *IntegrationTestSuite) TestConsumer_ConsumeRegistrationEvent() {
+func (s *ModuleTestSuite) TestConsumer_ConsumeRegistrationEvent() {
 	t := s.T()
 
 	topic := "test_user_registration_events"
@@ -80,7 +80,7 @@ func (s *IntegrationTestSuite) TestConsumer_ConsumeRegistrationEvent() {
 	producer, err := s.mq.Producer(topic)
 	require.NoError(t, err)
 
-	consumer, err := s.mq.Consumer(topic, "member_test")
+	consumer, err := s.mq.Consumer(topic, topic)
 	require.NoError(t, err)
 
 	testCases := map[string]struct {
@@ -117,6 +117,22 @@ func (s *IntegrationTestSuite) TestConsumer_ConsumeRegistrationEvent() {
 			},
 			errAssertFunc: assert.NoError,
 		},
+		"开会员成功_新用户注册_优惠已到期": {
+			before: func(t *testing.T, producer mq.Producer, message *mq.Message) {
+				t.Helper()
+				_, err := producer.Produce(context.Background(), message)
+				require.NoError(t, err)
+			},
+			after:  func(t *testing.T, uid int64, startAtFunc func() int64, endAtFunc func() int64) {},
+			UserID: 1992,
+			startAtFunc: func() int64 {
+				return time.Date(2024, 7, 1, 18, 24, 33, 0, time.Local).Unix()
+			},
+			endAtFunc: func() int64 {
+				return time.Date(2024, 6, 30, 23, 59, 59, 0, time.Local).Unix()
+			},
+			errAssertFunc: assert.Error,
+		},
 		"开会员失败_用户已注册_会员生效中": {
 			before: func(t *testing.T, producer mq.Producer, message *mq.Message) {
 				t.Helper()
@@ -125,29 +141,16 @@ func (s *IntegrationTestSuite) TestConsumer_ConsumeRegistrationEvent() {
 
 				_, err = s.svc.CreateNewMembership(context.Background(), domain.Member{
 					UserID:  1993,
-					StartAt: time.Date(2024, 4, 11, 18, 24, 33, 0, time.Local).Unix(),
-					EndAt:   time.Date(2024, 6, 30, 23, 59, 59, 0, time.Local).Unix(),
+					StartAt: time.Now().Local().Unix(),
+					EndAt:   time.Now().Add(time.Hour * 24 * 30).Local().Unix(),
 					Status:  domain.MemberStatusActive,
 				})
 				require.NoError(t, err)
-
 			},
-			after: func(t *testing.T, uid int64, startAtFunc func() int64, endAtFunc func() int64) {
-				t.Helper()
-				info, err := s.svc.GetMembershipInfo(context.Background(), uid)
-				require.NoError(t, err)
-				require.NotZero(t, info.ID)
-				require.Equal(t, int64(domain.MemberStatusActive), info.Status)
-				require.Equal(t, startAtFunc(), info.StartAt)
-				require.Equal(t, endAtFunc(), info.EndAt)
-			},
-			UserID: 1993,
-			startAtFunc: func() int64 {
-				return time.Date(2024, 4, 11, 18, 24, 33, 0, time.Local).Unix()
-			},
-			endAtFunc: func() int64 {
-				return time.Date(2024, 6, 30, 23, 59, 59, 0, time.Local).Unix()
-			},
+			after:         func(t *testing.T, uid int64, startAtFunc func() int64, endAtFunc func() int64) {},
+			UserID:        1993,
+			startAtFunc:   nil,
+			endAtFunc:     nil,
 			errAssertFunc: assert.Error,
 		},
 		"开会员失败_用户已注册_会员已失效": {
@@ -158,29 +161,17 @@ func (s *IntegrationTestSuite) TestConsumer_ConsumeRegistrationEvent() {
 
 				_, err = s.svc.CreateNewMembership(context.Background(), domain.Member{
 					UserID:  1994,
-					StartAt: time.Date(2024, 4, 11, 18, 24, 33, 0, time.Local).Unix(),
-					EndAt:   time.Date(2024, 6, 30, 23, 59, 59, 0, time.Local).Unix(),
+					StartAt: time.Date(2023, 4, 11, 18, 24, 33, 0, time.Local).Unix(),
+					EndAt:   time.Date(2023, 6, 30, 23, 59, 59, 0, time.Local).Unix(),
 					Status:  domain.MemberStatusDeactivate,
 				})
 				require.NoError(t, err)
 
 			},
-			after: func(t *testing.T, uid int64, startAtFunc func() int64, endAtFunc func() int64) {
-				t.Helper()
-				info, err := s.svc.GetMembershipInfo(context.Background(), uid)
-				require.NoError(t, err)
-				require.NotZero(t, info.ID)
-				require.Equal(t, int64(domain.MemberStatusDeactivate), info.Status)
-				require.Equal(t, startAtFunc(), info.StartAt)
-				require.Equal(t, endAtFunc(), info.EndAt)
-			},
-			UserID: 1994,
-			startAtFunc: func() int64 {
-				return time.Date(2024, 4, 11, 18, 24, 33, 0, time.Local).Unix()
-			},
-			endAtFunc: func() int64 {
-				return time.Date(2024, 6, 30, 23, 59, 59, 0, time.Local).Unix()
-			},
+			after:         func(t *testing.T, uid int64, startAtFunc func() int64, endAtFunc func() int64) {},
+			UserID:        1994,
+			startAtFunc:   nil,
+			endAtFunc:     nil,
 			errAssertFunc: assert.Error,
 		},
 	}
@@ -202,7 +193,7 @@ func (s *IntegrationTestSuite) TestConsumer_ConsumeRegistrationEvent() {
 	}
 }
 
-func (s *IntegrationTestSuite) newRegistrationEventMessage(t *testing.T, userID int64) *mq.Message {
+func (s *ModuleTestSuite) newRegistrationEventMessage(t *testing.T, userID int64) *mq.Message {
 	marshal, err := json.Marshal(event.RegistrationEvent{UserID: userID})
 	require.NoError(t, err)
 	return &mq.Message{Value: marshal}

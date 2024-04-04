@@ -6,6 +6,7 @@ import (
 	"github.com/ecodeclub/webook/internal/cases"
 	"github.com/ecodeclub/webook/internal/cos"
 	"github.com/ecodeclub/webook/internal/label"
+	"github.com/ecodeclub/webook/internal/member"
 	baguwen "github.com/ecodeclub/webook/internal/question"
 	"github.com/ecodeclub/webook/internal/skill"
 	"github.com/google/wire"
@@ -25,6 +26,9 @@ func InitApp() (*App, error) {
 		cases.InitModule,
 		wire.FieldsOf(new(*cases.Module), "Hdl"),
 		skill.InitHandler,
+		// 会员服务
+		member.InitModule,
+		wire.FieldsOf(new(member.Module), "MemberService"),
 		initGinxServer)
 	return new(App), nil
 }

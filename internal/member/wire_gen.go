@@ -7,21 +7,31 @@
 package member
 
 import (
+	"context"
+	"sync"
+	"time"
+
+	"github.com/ecodeclub/mq-api"
 	"github.com/ecodeclub/webook/internal/member/internal/domain"
+	"github.com/ecodeclub/webook/internal/member/internal/event"
 	"github.com/ecodeclub/webook/internal/member/internal/repository"
 	"github.com/ecodeclub/webook/internal/member/internal/repository/dao"
 	"github.com/ecodeclub/webook/internal/member/internal/service"
-	"github.com/google/wire"
+	"github.com/ego-component/egorm"
+	"github.com/gotomicro/ego/core/elog"
 	"gorm.io/gorm"
 )
 
 // Injectors from wire.go:
 
-func InitService(db *gorm.DB) service.Service {
-	memberDAO := dao.NewMemberGORMDAO(db)
-	memberRepository := repository.NewMemberRepository(memberDAO)
-	serviceService := service.NewMemberService(memberRepository)
-	return serviceService
+func InitModule(db *gorm.DB, q mq.MQ) Module {
+	service := InitService(db, q)
+	consumer := initConsumer(service, q)
+	module := Module{
+		MemberService: service,
+		consumer:      consumer,
+	}
+	return module
 }
 
 // wire.go:
@@ -30,4 +40,50 @@ type Member = domain.Member
 
 type Service = service.Service
 
-var serviceSet = wire.NewSet(dao.NewMemberGORMDAO, repository.NewMemberRepository, service.NewMemberService)
+var (
+	once = &sync.Once{}
+	svc  service.Service
+)
+
+func InitService(db *egorm.Component, q mq.MQ) Service {
+	once.Do(func() {
+		_ = dao.InitTables(db)
+		d := dao.NewMemberGORMDAO(db)
+		r := repository.NewMemberRepository(d)
+		svc = service.NewMemberService(r)
+	})
+	return svc
+}
+
+func initConsumer(svc2 service.Service, q mq.MQ) event.Consumer {
+	startAtFunc := func() int64 {
+		return time.Now().Local().Unix()
+	}
+	endAtFunc := func() int64 {
+		return time.Date(2024, 6, 30, 23, 59, 59, 0, time.Local).Unix()
+	}
+
+	topic := event.RegistrationEvent{}.Topic()
+	groupID := topic
+	c, err := q.Consumer(topic, groupID)
+	if err != nil {
+		panic(err)
+	}
+
+	consumer := event.NewMQConsumer(svc2, c, startAtFunc, endAtFunc)
+	go func() {
+		for {
+			er := consumer.ConsumeRegistrationEvent(context.Background())
+			if er != nil {
+				elog.DefaultLogger.
+					Error("消费注册事件失败", elog.FieldErr(er))
+			}
+		}
+	}()
+	return consumer
+}
+
+type Module struct {
+	MemberService Service
+	consumer      event.Consumer // 不允许模块外访问,模块内部用
+}

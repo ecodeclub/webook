@@ -16,6 +16,7 @@ import (
 
 func InitService() service.Service {
 	db := testioc.InitDB()
-	serviceService := member.InitService(db)
+	mq := testioc.InitMQ()
+	serviceService := member.InitService(db, mq)
 	return serviceService
 }

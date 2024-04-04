@@ -52,6 +52,12 @@ func (c *MQConsumer) ConsumeRegistrationEvent(ctx context.Context) error {
 		return fmt.Errorf("用户会员记录已存在")
 	}
 
+	startAt := c.startAtFunc()
+	endAt := c.endAtFunc()
+	if endAt <= startAt {
+		return fmt.Errorf("超过注册优惠截止日期")
+	}
+
 	_, err = c.svc.CreateNewMembership(ctx, domain.Member{
 		UserID:  evt.UserID,
 		StartAt: c.startAtFunc(),

@@ -17,6 +17,7 @@
 package member
 
 import (
+	"context"
 	"sync"
 	"time"
 
@@ -28,6 +29,7 @@ import (
 	"github.com/ecodeclub/webook/internal/member/internal/service"
 	"github.com/ego-component/egorm"
 	"github.com/google/wire"
+	"github.com/gotomicro/ego/core/elog"
 )
 
 type Member = domain.Member
@@ -38,7 +40,7 @@ var (
 	svc  service.Service
 )
 
-func initService(db *egorm.Component) Service {
+func InitService(db *egorm.Component, q mq.MQ) Service {
 	once.Do(func() {
 		_ = dao.InitTables(db)
 		d := dao.NewMemberGORMDAO(db)
@@ -48,17 +50,44 @@ func initService(db *egorm.Component) Service {
 	return svc
 }
 
-func InitService(db *egorm.Component) Service {
-	wire.Build(initService)
-	return nil
-}
-
-func InitMQConsumer(db *egorm.Component, c mq.Consumer) *event.MQConsumer {
+func initConsumer(svc service.Service, q mq.MQ) event.Consumer {
 	startAtFunc := func() int64 {
-		return time.Now().Unix()
+		return time.Now().Local().Unix()
 	}
 	endAtFunc := func() int64 {
 		return time.Date(2024, 6, 30, 23, 59, 59, 0, time.Local).Unix()
 	}
-	return event.NewMQConsumer(initService(db), c, startAtFunc, endAtFunc)
+
+	// 通过冗余事件结构体获取topic
+	topic := event.RegistrationEvent{}.Topic()
+	groupID := topic
+	c, err := q.Consumer(topic, groupID)
+	if err != nil {
+		panic(err)
+	}
+
+	consumer := event.NewMQConsumer(svc, c, startAtFunc, endAtFunc)
+	go func() {
+		for {
+			er := consumer.ConsumeRegistrationEvent(context.Background())
+			if er != nil {
+				elog.DefaultLogger.Error("消费注册事件失败", elog.FieldErr(er))
+			}
+		}
+	}()
+	return consumer
+}
+
+type Module struct {
+	MemberService Service
+	consumer      event.Consumer // 不允许模块外访问,模块内部用
+}
+
+func InitModule(db *egorm.Component, q mq.MQ) Module {
+	wire.Build(wire.Struct(
+		new(Module), "*"),
+		InitService,
+		initConsumer,
+	)
+	return Module{}
 }
