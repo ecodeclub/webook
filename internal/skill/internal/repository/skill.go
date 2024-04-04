@@ -26,12 +26,34 @@ type SkillRepo interface {
 	// Info 详情
 	Info(ctx context.Context, id int64) (domain.Skill, error)
 	Count(ctx context.Context) (int64, error)
+	RefsByLevelIDs(ctx context.Context, ids []int64) ([]domain.SkillLevel, error)
 }
 type skillRepo struct {
 	skillDao dao.SkillDAO
 	// 暂时没用上
 	cache  cache.SkillCache
 	logger *elog.Component
+}
+
+func (s *skillRepo) RefsByLevelIDs(ctx context.Context, ids []int64) ([]domain.SkillLevel, error) {
+	refs, err := s.skillDao.RefsByLevelIDs(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+	const keyPattern = "%s_%d"
+	m := mapx.NewMultiBuiltinMap[string, int64](len(ids))
+	for _, ref := range refs {
+		_ = m.Put(fmt.Sprintf(keyPattern, ref.Rtype, ref.Slid), ref.Rid)
+	}
+	return slice.Map(ids, func(idx int, src int64) domain.SkillLevel {
+		ques, _ := m.Get(fmt.Sprintf(keyPattern, dao.RTypeQuestion, src))
+		cs, _ := m.Get(fmt.Sprintf(keyPattern, dao.RTypeCase, src))
+		return domain.SkillLevel{
+			Id:        src,
+			Questions: ques,
+			Cases:     cs,
+		}
+	}), nil
 }
 
 func (s *skillRepo) Save(ctx context.Context, skill domain.Skill) (int64, error) {
@@ -93,11 +115,25 @@ func (s *skillRepo) List(ctx context.Context, offset, limit int) ([]domain.Skill
 	if err != nil {
 		return nil, err
 	}
-	domainSkills := make([]domain.Skill, 0, len(skillList))
-	for _, sk := range skillList {
-		domainSkills = append(domainSkills, s.skillToListDomain(sk))
+
+	ids := slice.Map(skillList, func(idx int, src dao.Skill) int64 {
+		return src.Id
+	})
+
+	sls, err := s.skillDao.SkillLevelInfoByIDs(ctx, ids)
+	if err != nil {
+		return nil, err
 	}
-	return domainSkills, nil
+	slm := mapx.NewMultiBuiltinMap[int64, dao.SkillLevel](len(ids))
+	for _, sl := range sls {
+		_ = slm.Put(sl.Sid, sl)
+	}
+	res := make([]domain.Skill, 0, len(skillList))
+	for _, sk := range skillList {
+		skSL, _ := slm.Get(sk.Id)
+		res = append(res, s.skillToInfoDomain(sk, skSL, nil))
+	}
+	return res, nil
 }
 
 func (s *skillRepo) Info(ctx context.Context, id int64) (domain.Skill, error) {

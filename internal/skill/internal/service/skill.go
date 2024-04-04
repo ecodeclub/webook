@@ -14,10 +14,15 @@ type SkillService interface {
 	SaveRefs(ctx context.Context, skill domain.Skill) error
 	List(ctx context.Context, offset, limit int) ([]domain.Skill, int64, error)
 	Info(ctx context.Context, id int64) (domain.Skill, error)
+	RefsByLevelIDs(ctx context.Context, ids []int64) ([]domain.SkillLevel, error)
 }
 
 type skillService struct {
 	repo repository.SkillRepo
+}
+
+func (s *skillService) RefsByLevelIDs(ctx context.Context, ids []int64) ([]domain.SkillLevel, error) {
+	return s.repo.RefsByLevelIDs(ctx, ids)
 }
 
 func (s *skillService) SaveRefs(ctx context.Context, skill domain.Skill) error {

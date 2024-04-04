@@ -39,6 +39,7 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	server.POST("/skill/detail", ginx.B[Sid](h.Detail))
 	server.POST("/skill/detail-refs", ginx.S(h.Permission), ginx.B[Sid](h.DetailRefs))
 	server.POST("/skill/save-refs", ginx.S(h.Permission), ginx.B(h.SaveRefs))
+	server.POST("/skill/level-refs", ginx.S(h.Permission), ginx.B(h.RefsByLevelIDs))
 }
 
 func (h *Handler) PublicRoutes(server *gin.Engine) {
@@ -140,4 +141,54 @@ func (h *Handler) DetailRefs(ctx *ginx.Context, req Sid) (ginx.Result, error) {
 	return ginx.Result{
 		Data: res,
 	}, eg.Wait()
+}
+
+func (h *Handler) RefsByLevelIDs(ctx *ginx.Context, req IDs) (ginx.Result, error) {
+	if len(req.IDs) == 0 {
+		return ginx.Result{}, nil
+	}
+	res, err := h.svc.RefsByLevelIDs(ctx, req.IDs)
+	if err != nil {
+		return systemErrorResult, err
+	}
+	var (
+		eg  errgroup.Group
+		csm map[int64]cases.Case
+		qsm map[int64]baguwen.Question
+	)
+	qids := make([]int64, 0, 32)
+	cids := make([]int64, 0, 16)
+	for _, sl := range res {
+		qids = append(qids, sl.Questions...)
+		cids = append(cids, sl.Cases...)
+	}
+	eg.Go(func() error {
+		cs, err1 := h.caseSvc.GetPubByIDs(ctx, cids)
+		csm = slice.ToMap(cs, func(element cases.Case) int64 {
+			return element.Id
+		})
+		return err1
+	})
+
+	eg.Go(func() error {
+		qs, err1 := h.queSvc.GetPubByIDs(ctx, qids)
+		qsm = slice.ToMap(qs, func(element baguwen.Question) int64 {
+			return element.Id
+		})
+		return err1
+	})
+
+	err = eg.Wait()
+	if err != nil {
+		return systemErrorResult, err
+	}
+	// 组装 title
+	return ginx.Result{
+		Data: slice.Map(res, func(idx int, src domain.SkillLevel) SkillLevel {
+			sl := newSkillLevel(src)
+			sl.setCases(csm)
+			sl.setQuestions(qsm)
+			return sl
+		}),
+	}, nil
 }
