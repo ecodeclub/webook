@@ -26,9 +26,9 @@ import (
 )
 
 var (
-	ErrMembershipExpired = errors.New("会员已过期")
-	ErrGetMemberInfo     = errors.New("获取会员信息失败")
-	ErrSessionGeneration = errors.New("生成新session失败")
+	ErrMembershipExpired      = errors.New("会员已过期")
+	ErrGetMemberInfo          = errors.New("获取会员信息失败")
+	ErrRenewAccessTokenFailed = errors.New("刷新AccessToken失败")
 )
 
 type Validator struct {
@@ -73,11 +73,10 @@ func (c *Validator) Membership(ctx *ginx.Context, sess session.Session) (ginx.Re
 	jwtData := claims.Data
 	jwtData["memberDDL"] = time.Unix(info.EndAt, 0).Local().Format(time.DateTime)
 
-	// 刷新session
 	if session.RenewAccessToken(ctx) != nil {
 		ctx.AbortWithStatus(http.StatusUnauthorized)
 		// todo: 替换为 ginx.ErrUnauthorized
-		return ginx.Result{}, fmt.Errorf("%w uid: %d", ErrSessionGeneration, claims.Uid)
+		return ginx.Result{}, fmt.Errorf("%w uid: %d", ErrRenewAccessTokenFailed, claims.Uid)
 	}
 
 	return ginx.Result{}, nil
