@@ -140,7 +140,7 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeRegistrationEvent() {
 				require.NoError(t, err)
 
 				_, err = s.svc.CreateNewMembership(context.Background(), domain.Member{
-					UserID:  1993,
+					UID:     1993,
 					StartAt: time.Now().Local().Unix(),
 					EndAt:   time.Now().Add(time.Hour * 24 * 30).Local().Unix(),
 					Status:  domain.MemberStatusActive,
@@ -160,7 +160,7 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeRegistrationEvent() {
 				require.NoError(t, err)
 
 				_, err = s.svc.CreateNewMembership(context.Background(), domain.Member{
-					UserID:  1994,
+					UID:     1994,
 					StartAt: time.Date(2023, 4, 11, 18, 24, 33, 0, time.Local).Unix(),
 					EndAt:   time.Date(2023, 6, 30, 23, 59, 59, 0, time.Local).Unix(),
 					Status:  domain.MemberStatusDeactivate,
@@ -184,8 +184,8 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeRegistrationEvent() {
 			message := s.newRegistrationEventMessage(t, tc.UserID)
 			tc.before(t, producer, message)
 
-			evtConsumer := event.NewMQConsumer(s.svc, consumer, tc.startAtFunc, tc.endAtFunc)
-			err = evtConsumer.ConsumeRegistrationEvent(context.Background())
+			evtConsumer := event.NewRegistrationEventConsumer(s.svc, consumer, tc.startAtFunc, tc.endAtFunc)
+			err = evtConsumer.Consume(context.Background())
 			tc.errAssertFunc(t, err)
 
 			tc.after(t, tc.UserID, tc.startAtFunc, tc.endAtFunc)

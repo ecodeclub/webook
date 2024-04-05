@@ -22,15 +22,15 @@ import (
 	"github.com/ecodeclub/mq-api"
 )
 
-type MQProducer struct {
+type RegistrationEventProducer struct {
 	producer mq.Producer
 }
 
-func NewMQProducer(producer mq.Producer) *MQProducer {
-	return &MQProducer{producer: producer}
+func NewRegistrationEventProducer(producer mq.Producer) *RegistrationEventProducer {
+	return &RegistrationEventProducer{producer: producer}
 }
 
-func (p *MQProducer) ProduceRegistrationEvent(ctx context.Context, evt RegistrationEvent) error {
+func (p *RegistrationEventProducer) Produce(ctx context.Context, evt RegistrationEvent) error {
 	data, err := json.Marshal(&evt)
 	if err != nil {
 		return fmt.Errorf("序列化失败: %w", err)

@@ -31,9 +31,9 @@ func InitHandler(db *gorm.DB, cache2 ecache.Cache, q mq.MQ, creators []string, m
 	userDAO := InitDAO(db)
 	userCache := cache.NewUserECache(cache2)
 	userRepository := repository.NewCachedUserRepository(userDAO, userCache)
-	userService := service2.NewUserService(userRepository)
-	producer := InitProducer(q)
-	handler := web.NewHandler(oAuth2Service, userService, memberSvc, producer, creators)
+	registrationEventProducer := InitRegistrationEventProducer(q)
+	userService := service2.NewUserService(userRepository, registrationEventProducer)
+	handler := web.NewHandler(oAuth2Service, userService, memberSvc, creators)
 	return handler
 }
 
@@ -41,7 +41,7 @@ func InitHandler(db *gorm.DB, cache2 ecache.Cache, q mq.MQ, creators []string, m
 
 var ProviderSet = wire.NewSet(web.NewHandler, cache.NewUserECache, InitDAO,
 	InitWechatService,
-	InitProducer, service2.NewUserService, repository.NewCachedUserRepository,
+	InitRegistrationEventProducer, service2.NewUserService, repository.NewCachedUserRepository,
 )
 
 func InitWechatService() service2.OAuth2Service {
@@ -66,7 +66,7 @@ func InitDAO(db *egorm.Component) dao.UserDAO {
 	return dao.NewGORMUserDAO(db)
 }
 
-func InitProducer(q mq.MQ) event.Producer {
+func InitRegistrationEventProducer(q mq.MQ) *event.RegistrationEventProducer {
 	type Config struct {
 		Topic      string `yaml:"topic"`
 		Partitions int    `yaml:"partitions"`
@@ -84,7 +84,7 @@ func InitProducer(q mq.MQ) event.Producer {
 	if err != nil {
 		panic(err)
 	}
-	return event.NewMQProducer(producer)
+	return event.NewRegistrationEventProducer(producer)
 }
 
 // Handler 暴露出去给 ioc 使用

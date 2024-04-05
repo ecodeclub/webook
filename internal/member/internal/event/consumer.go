@@ -24,18 +24,18 @@ import (
 	"github.com/ecodeclub/webook/internal/member/internal/service"
 )
 
-type MQConsumer struct {
+type RegistrationEventConsumer struct {
 	svc         service.Service
 	consumer    mq.Consumer
 	startAtFunc func() int64
 	endAtFunc   func() int64
 }
 
-func NewMQConsumer(svc service.Service, consumer mq.Consumer, startAtFunc func() int64, endAtFunc func() int64) *MQConsumer {
-	return &MQConsumer{svc: svc, consumer: consumer, startAtFunc: startAtFunc, endAtFunc: endAtFunc}
+func NewRegistrationEventConsumer(svc service.Service, consumer mq.Consumer, startAtFunc func() int64, endAtFunc func() int64) *RegistrationEventConsumer {
+	return &RegistrationEventConsumer{svc: svc, consumer: consumer, startAtFunc: startAtFunc, endAtFunc: endAtFunc}
 }
 
-func (c *MQConsumer) ConsumeRegistrationEvent(ctx context.Context) error {
+func (c *RegistrationEventConsumer) Consume(ctx context.Context) error {
 	msg, err := c.consumer.Consume(ctx)
 	if err != nil {
 		return fmt.Errorf("获取消息失败: %w", err)
@@ -59,7 +59,7 @@ func (c *MQConsumer) ConsumeRegistrationEvent(ctx context.Context) error {
 	}
 
 	_, err = c.svc.CreateNewMembership(ctx, domain.Member{
-		UserID:  evt.UserID,
+		UID:     evt.UserID,
 		StartAt: c.startAtFunc(),
 		EndAt:   c.endAtFunc(),
 		Status:  domain.MemberStatusActive,

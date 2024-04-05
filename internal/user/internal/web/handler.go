@@ -11,7 +11,6 @@ import (
 	"github.com/ecodeclub/webook/internal/member"
 	"github.com/ecodeclub/webook/internal/user/internal/domain"
 	"github.com/ecodeclub/webook/internal/user/internal/errs"
-	"github.com/ecodeclub/webook/internal/user/internal/event"
 	"github.com/ecodeclub/webook/internal/user/internal/service"
 	"github.com/gin-gonic/gin"
 	"github.com/gotomicro/ego/core/elog"
@@ -23,19 +22,17 @@ type Handler struct {
 	weSvc     service.OAuth2Service
 	userSvc   service.UserService
 	memberSvc member.Service
-	producer  event.Producer
 	// 白名单
 	creators []string
 	logger   *elog.Component
 }
 
 func NewHandler(weSvc service.OAuth2Service,
-	userSvc service.UserService, memberSvc member.Service, producer event.Producer, creators []string) *Handler {
+	userSvc service.UserService, memberSvc member.Service, creators []string) *Handler {
 	return &Handler{
 		weSvc:     weSvc,
 		userSvc:   userSvc,
 		memberSvc: memberSvc,
-		producer:  producer,
 		creators:  creators,
 		logger:    elog.DefaultLogger,
 	}
@@ -45,7 +42,6 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	users := server.Group("/users")
 	users.GET("/profile", ginx.S(h.Profile))
 	users.POST("/profile", ginx.BS[EditReq](h.Edit))
-	users.POST("/member-benefits", ginx.S(h.MemberBenefits))
 }
 
 func (h *Handler) PublicRoutes(server *gin.Engine) {
@@ -109,52 +105,14 @@ func (h *Handler) Edit(ctx *ginx.Context, req EditReq, sess session.Session) (gi
 	}, nil
 }
 
-// MemberBenefits 会员权益页,将会员截止日期设置到
-func (h *Handler) MemberBenefits(ctx *ginx.Context, sess session.Session) (ginx.Result, error) {
-	claims := sess.Claims()
-	memberDDL := claims.Get("memberDDL").StringOrDefault("")
-	if memberDDL != "" {
-		// 已经设置过会员截止日期,至于是否过期需要进一步检查
-		return ginx.Result{}, nil
-	}
-
-	// 没有会员截止日期, 可能是未购买,可能购买过但未设置
-	memberDDL = h.getMemberDDL(ctx.Request.Context(), claims.Uid)
-	if memberDDL != "" {
-		// 重新生成session并替换
-		jwtData := claims.Data
-		jwtData["memberDDL"] = memberDDL
-		_, err := session.NewSessionBuilder(ctx, claims.Uid).SetJwtData(jwtData).Build()
-		if err != nil {
-			return systemErrorResult, err
-		}
-	}
-
-	return ginx.Result{}, nil
-}
-
 func (h *Handler) Callback(ctx *ginx.Context, req WechatCallback) (ginx.Result, error) {
 	info, err := h.weSvc.VerifyCode(ctx, req.Code)
 	if err != nil {
 		return systemErrorResult, err
 	}
-	user, isCreated, err := h.userSvc.FindOrCreateByWechat(ctx, info)
+	user, err := h.userSvc.FindOrCreateByWechat(ctx, info)
 	if err != nil {
 		return systemErrorResult, err
-	}
-
-	if isCreated {
-		// 发送注册成功消息
-		evt := event.RegistrationEvent{UserID: user.Id}
-		if e := h.producer.ProduceRegistrationEvent(ctx, evt); e != nil {
-			h.logger.Error("发送注册成功消息失败",
-				elog.FieldErr(e),
-				elog.FieldKey("event"),
-				elog.FieldValueAny(evt),
-			)
-		}
-		// 等1s尽最大努力让会员模块消费完
-		time.Sleep(1 * time.Second)
 	}
 
 	// 构建session

@@ -21,7 +21,7 @@ const (
 
 type Member struct {
 	ID      int64
-	UserID  int64
+	UID     int64
 	StartAt int64
 	EndAt   int64
 	Status  int64

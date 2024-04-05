@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/ecodeclub/webook/internal/user/internal/event"
 	"github.com/lithammer/shortuuid/v4"
 
 	"github.com/ecodeclub/webook/internal/user/internal/domain"
@@ -16,7 +17,7 @@ type UserService interface {
 	Profile(ctx context.Context, id int64) (domain.User, error)
 	// FindOrCreateByWechat 查找或者初始化
 	// 随着业务增长，这边可以考虑拆分出去作为一个新的 Service
-	FindOrCreateByWechat(ctx context.Context, info domain.WechatInfo) (domain.User, bool, error)
+	FindOrCreateByWechat(ctx context.Context, info domain.WechatInfo) (domain.User, error)
 
 	// UpdateNonSensitiveInfo 更新非敏感数据
 	// 你可以在这里进一步补充究竟哪些数据会被更新
@@ -24,14 +25,16 @@ type UserService interface {
 }
 
 type userService struct {
-	repo   repository.UserRepository
-	logger *elog.Component
+	repo                      repository.UserRepository
+	registrationEventProducer *event.RegistrationEventProducer
+	logger                    *elog.Component
 }
 
-func NewUserService(repo repository.UserRepository) UserService {
+func NewUserService(repo repository.UserRepository, p *event.RegistrationEventProducer) UserService {
 	return &userService{
-		repo:   repo,
-		logger: elog.DefaultLogger,
+		repo:                      repo,
+		registrationEventProducer: p,
+		logger:                    elog.DefaultLogger,
 	}
 }
 
@@ -42,11 +45,11 @@ func (svc *userService) UpdateNonSensitiveInfo(ctx context.Context, user domain.
 }
 
 func (svc *userService) FindOrCreateByWechat(ctx context.Context,
-	info domain.WechatInfo) (domain.User, bool, error) {
+	info domain.WechatInfo) (domain.User, error) {
 	// 类似于手机号的过程，大部分人只是扫码登录，也就是数据在我们这里是有的
 	u, err := svc.repo.FindByWechat(ctx, info.OpenId)
 	if !errors.Is(err, repository.ErrUserNotFound) {
-		return u, false, err
+		return u, err
 	}
 	sn := shortuuid.New()
 	id, err := svc.repo.Create(ctx, domain.User{
@@ -54,10 +57,25 @@ func (svc *userService) FindOrCreateByWechat(ctx context.Context,
 		SN:         sn,
 		Nickname:   sn[:4],
 	})
+
+	if err != nil {
+		return domain.User{}, err
+	}
+
+	// 发送注册成功消息
+	evt := event.RegistrationEvent{UserID: u.Id}
+	if e := svc.registrationEventProducer.Produce(ctx, evt); e != nil {
+		svc.logger.Error("发送注册成功消息失败",
+			elog.FieldErr(e),
+			elog.FieldKey("event"),
+			elog.FieldValueAny(evt),
+		)
+	}
+
 	return domain.User{
 		Id:         id,
 		WechatInfo: info,
-	}, true, err
+	}, nil
 }
 
 func (svc *userService) Profile(ctx context.Context,

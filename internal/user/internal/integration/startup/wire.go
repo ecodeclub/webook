@@ -19,7 +19,7 @@ import (
 func InitHandler(weSvc service.OAuth2Service, memberSvc member.Service, creators []string) *user.Handler {
 	wire.Build(web.NewHandler,
 		testioc.BaseSet,
-		InitProducer,
+		InitRegistrationEventProducer,
 		service.NewUserService,
 		dao.NewGORMUserDAO,
 		cache.NewUserECache,
@@ -27,6 +27,6 @@ func InitHandler(weSvc service.OAuth2Service, memberSvc member.Service, creators
 	return new(user.Handler)
 }
 
-func InitProducer(q mq.MQ) event.Producer {
+func InitRegistrationEventProducer(q mq.MQ) *event.RegistrationEventProducer {
 	return nil
 }

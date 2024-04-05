@@ -17,6 +17,6 @@ package member
 import "github.com/ecodeclub/webook/internal/member/internal/event"
 
 type Module struct {
-	Svc       Service
-	consumers []event.Consumer // 不允许模块外访问,模块内部用
+	Svc                        Service
+	registrationEventConsumers []*event.RegistrationEventConsumer
 }

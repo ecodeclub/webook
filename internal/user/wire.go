@@ -23,7 +23,7 @@ var ProviderSet = wire.NewSet(web.NewHandler,
 	cache.NewUserECache,
 	InitDAO,
 	InitWechatService,
-	InitProducer,
+	InitRegistrationEventProducer,
 	service.NewUserService,
 	repository.NewCachedUserRepository)
 
@@ -54,7 +54,7 @@ func InitDAO(db *egorm.Component) dao.UserDAO {
 	return dao.NewGORMUserDAO(db)
 }
 
-func InitProducer(q mq.MQ) event.Producer {
+func InitRegistrationEventProducer(q mq.MQ) *event.RegistrationEventProducer {
 	type Config struct {
 		Topic      string `yaml:"topic"`
 		Partitions int    `yaml:"partitions"`
@@ -72,7 +72,7 @@ func InitProducer(q mq.MQ) event.Producer {
 	if err != nil {
 		panic(err)
 	}
-	return event.NewMQProducer(producer)
+	return event.NewRegistrationEventProducer(producer)
 }
 
 // Handler 暴露出去给 ioc 使用

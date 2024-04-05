@@ -38,7 +38,7 @@ func NewMemberService(repo repository.MemberRepository) Service {
 }
 
 func (s *service) GetMembershipInfo(ctx context.Context, userID int64) (domain.Member, error) {
-	return s.repo.FindByUserID(ctx, userID)
+	return s.repo.FindByUID(ctx, userID)
 }
 
 func (s *service) CreateNewMembership(ctx context.Context, member domain.Member) (int64, error) {

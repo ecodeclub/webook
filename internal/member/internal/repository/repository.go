@@ -8,7 +8,7 @@ import (
 )
 
 type MemberRepository interface {
-	FindByUserID(ctx context.Context, userID int64) (domain.Member, error)
+	FindByUID(ctx context.Context, uid int64) (domain.Member, error)
 	Create(ctx context.Context, member domain.Member) (int64, error)
 	// Update(ctx context.Context, member domain.Member) error
 }
@@ -23,8 +23,8 @@ type memberRepository struct {
 	dao dao.MemberDAO
 }
 
-func (m *memberRepository) FindByUserID(ctx context.Context, userID int64) (domain.Member, error) {
-	d, err := m.dao.FindByUserID(ctx, userID)
+func (m *memberRepository) FindByUID(ctx context.Context, userID int64) (domain.Member, error) {
+	d, err := m.dao.FindByUID(ctx, userID)
 	if err != nil {
 		return domain.Member{}, err
 	}
@@ -34,7 +34,7 @@ func (m *memberRepository) FindByUserID(ctx context.Context, userID int64) (doma
 func (m *memberRepository) toDomain(d dao.Member) domain.Member {
 	return domain.Member{
 		ID:      d.Id,
-		UserID:  d.UserId,
+		UID:     d.Uid,
 		StartAt: d.StartAt,
 		EndAt:   d.EndAt,
 		Status:  d.Status,
@@ -48,7 +48,7 @@ func (m *memberRepository) Create(ctx context.Context, member domain.Member) (in
 func (m *memberRepository) toEntity(d domain.Member) dao.Member {
 	return dao.Member{
 		Id:      d.ID,
-		UserId:  d.UserID,
+		Uid:     d.UID,
 		StartAt: d.StartAt,
 		EndAt:   d.EndAt,
 		Status:  d.Status,

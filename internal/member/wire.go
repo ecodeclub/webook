@@ -39,7 +39,7 @@ func InitModule(db *egorm.Component, q mq.MQ) (*Module, error) {
 	wire.Build(wire.Struct(
 		new(Module), "*"),
 		InitService,
-		initConsumer,
+		initRegistrationConsumer,
 	)
 	return new(Module), nil
 }
@@ -59,7 +59,7 @@ func InitService(db *egorm.Component, q mq.MQ) Service {
 	return svc
 }
 
-func initConsumer(svc service.Service, q mq.MQ) ([]event.Consumer, error) {
+func initRegistrationConsumer(svc service.Service, q mq.MQ) ([]*event.RegistrationEventConsumer, error) {
 	startAtFunc := func() int64 {
 		return time.Now().Local().Unix()
 	}
@@ -68,20 +68,19 @@ func initConsumer(svc service.Service, q mq.MQ) ([]event.Consumer, error) {
 	}
 
 	partitions := 3
-	consumers := make([]event.Consumer, 0, partitions)
+	consumers := make([]*event.RegistrationEventConsumer, 0, partitions)
 	for i := 0; i < partitions; i++ {
-		// 通过冗余事件结构体获取topic
 		topic := event.RegistrationEvent{}.Topic()
 		groupID := topic
 		c, err := q.Consumer(topic, groupID)
 		if err != nil {
 			return nil, err
 		}
-		consumer := event.NewMQConsumer(svc, c, startAtFunc, endAtFunc)
+		consumer := event.NewRegistrationEventConsumer(svc, c, startAtFunc, endAtFunc)
 		consumers = append(consumers, consumer)
 		go func() {
 			for {
-				er := consumer.ConsumeRegistrationEvent(context.Background())
+				er := consumer.Consume(context.Background())
 				if er != nil {
 					elog.DefaultLogger.Error("消费注册事件失败", elog.FieldErr(er))
 				}
