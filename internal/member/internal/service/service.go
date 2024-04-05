@@ -21,6 +21,7 @@ import (
 	"github.com/ecodeclub/webook/internal/member/internal/repository"
 )
 
+//go:generate mockgen -source=./service.go -package=membermocks --destination=../../mocks/member.mock.go -typed Service
 type Service interface {
 	GetMembershipInfo(ctx context.Context, userID int64) (domain.Member, error)
 	CreateNewMembership(ctx context.Context, member domain.Member) (int64, error)
