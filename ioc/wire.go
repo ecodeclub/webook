@@ -28,7 +28,7 @@ func InitApp() (*App, error) {
 		skill.InitHandler,
 		// 会员服务
 		member.InitModule,
-		wire.FieldsOf(new(member.Module), "MemberService"),
+		wire.FieldsOf(new(*member.Module), "Svc"),
 		initGinxServer)
 	return new(App), nil
 }

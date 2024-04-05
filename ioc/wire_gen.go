@@ -31,8 +31,11 @@ func InitApp() (*App, error) {
 	questionSetHandler := module.QsHdl
 	webHandler := label.InitHandler(db)
 	mq := InitMQ()
-	module := member.InitModule(db, mq)
-	service := module.MemberService
+	memberModule, err := member.InitModule(db, mq)
+	if err != nil {
+		return nil, err
+	}
+	service := memberModule.Svc
 	handler2 := InitUserHandler(db, cache, mq, service)
 	config := InitCosConfig()
 	handler3 := cos.InitHandler(config)

@@ -35,6 +35,15 @@ import (
 type Member = domain.Member
 type Service = service.Service
 
+func InitModule(db *egorm.Component, q mq.MQ) (*Module, error) {
+	wire.Build(wire.Struct(
+		new(Module), "*"),
+		InitService,
+		initConsumer,
+	)
+	return new(Module), nil
+}
+
 var (
 	once = &sync.Once{}
 	svc  service.Service
@@ -50,7 +59,7 @@ func InitService(db *egorm.Component, q mq.MQ) Service {
 	return svc
 }
 
-func initConsumer(svc service.Service, q mq.MQ) event.Consumer {
+func initConsumer(svc service.Service, q mq.MQ) ([]event.Consumer, error) {
 	startAtFunc := func() int64 {
 		return time.Now().Local().Unix()
 	}
@@ -58,36 +67,26 @@ func initConsumer(svc service.Service, q mq.MQ) event.Consumer {
 		return time.Date(2024, 6, 30, 23, 59, 59, 0, time.Local).Unix()
 	}
 
-	// 通过冗余事件结构体获取topic
-	topic := event.RegistrationEvent{}.Topic()
-	groupID := topic
-	c, err := q.Consumer(topic, groupID)
-	if err != nil {
-		panic(err)
-	}
-
-	consumer := event.NewMQConsumer(svc, c, startAtFunc, endAtFunc)
-	go func() {
-		for {
-			er := consumer.ConsumeRegistrationEvent(context.Background())
-			if er != nil {
-				elog.DefaultLogger.Error("消费注册事件失败", elog.FieldErr(er))
-			}
+	partitions := 3
+	consumers := make([]event.Consumer, 0, partitions)
+	for i := 0; i < partitions; i++ {
+		// 通过冗余事件结构体获取topic
+		topic := event.RegistrationEvent{}.Topic()
+		groupID := topic
+		c, err := q.Consumer(topic, groupID)
+		if err != nil {
+			return nil, err
 		}
-	}()
-	return consumer
-}
-
-type Module struct {
-	MemberService Service
-	consumer      event.Consumer // 不允许模块外访问,模块内部用
-}
-
-func InitModule(db *egorm.Component, q mq.MQ) Module {
-	wire.Build(wire.Struct(
-		new(Module), "*"),
-		InitService,
-		initConsumer,
-	)
-	return Module{}
+		consumer := event.NewMQConsumer(svc, c, startAtFunc, endAtFunc)
+		consumers = append(consumers, consumer)
+		go func() {
+			for {
+				er := consumer.ConsumeRegistrationEvent(context.Background())
+				if er != nil {
+					elog.DefaultLogger.Error("消费注册事件失败", elog.FieldErr(er))
+				}
+			}
+		}()
+	}
+	return consumers, nil
 }
