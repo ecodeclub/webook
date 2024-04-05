@@ -49,7 +49,7 @@ func (c *Validator) Membership(ctx *ginx.Context, sess session.Session) (ginx.Re
 		if memberDDL.Local().Compare(time.Now().Local()) <= 0 {
 			ctx.AbortWithStatus(http.StatusUnauthorized)
 			// todo: 替换为 ginx.ErrUnauthorized
-			return ginx.Result{}, fmt.Errorf("%w uid: %d", ErrMembershipExpired, claims.Uid)
+			return ginx.Result{}, fmt.Errorf("%w: %w: uid: %d", ginx.ErrNoResponse, ErrMembershipExpired, claims.Uid)
 		}
 		return ginx.Result{}, nil
 	}
@@ -60,13 +60,13 @@ func (c *Validator) Membership(ctx *ginx.Context, sess session.Session) (ginx.Re
 	if err != nil {
 		ctx.AbortWithStatus(http.StatusUnauthorized)
 		// todo: 替换为 ginx.ErrUnauthorized
-		return ginx.Result{}, fmt.Errorf("%w uid: %d", ErrGetMemberInfo, claims.Uid)
+		return ginx.Result{}, fmt.Errorf("%w: %w: uid: %d", ginx.ErrNoResponse, ErrGetMemberInfo, claims.Uid)
 	}
 
 	if time.Unix(info.StartAt, 0).Local().Compare(time.Now().Local()) <= 0 {
 		ctx.AbortWithStatus(http.StatusUnauthorized)
 		// todo: 替换为 ginx.ErrUnauthorized
-		return ginx.Result{}, fmt.Errorf("%w uid: %d", ErrMembershipExpired, claims.Uid)
+		return ginx.Result{}, fmt.Errorf("%w: %w: uid: %d", ginx.ErrNoResponse, ErrMembershipExpired, claims.Uid)
 	}
 
 	// 再原有jwt数据中添加会员截止日期
@@ -76,7 +76,7 @@ func (c *Validator) Membership(ctx *ginx.Context, sess session.Session) (ginx.Re
 	if session.RenewAccessToken(ctx) != nil {
 		ctx.AbortWithStatus(http.StatusUnauthorized)
 		// todo: 替换为 ginx.ErrUnauthorized
-		return ginx.Result{}, fmt.Errorf("%w uid: %d", ErrRenewAccessTokenFailed, claims.Uid)
+		return ginx.Result{}, fmt.Errorf("%w: %w: uid: %d", ginx.ErrNoResponse, ErrRenewAccessTokenFailed, claims.Uid)
 	}
 
 	return ginx.Result{}, nil
