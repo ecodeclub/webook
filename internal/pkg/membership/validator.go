@@ -74,8 +74,7 @@ func (c *Validator) Membership(ctx *ginx.Context, sess session.Session) (ginx.Re
 	jwtData["memberDDL"] = time.Unix(info.EndAt, 0).Local().Format(time.DateTime)
 
 	// 刷新session
-	_, err = session.NewSessionBuilder(ctx, claims.Uid).SetJwtData(jwtData).Build()
-	if err != nil {
+	if session.RenewAccessToken(ctx) != nil {
 		ctx.AbortWithStatus(http.StatusUnauthorized)
 		// todo: 替换为 ginx.ErrUnauthorized
 		return ginx.Result{}, fmt.Errorf("%w uid: %d", ErrSessionGeneration, claims.Uid)
