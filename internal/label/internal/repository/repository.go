@@ -24,14 +24,18 @@ import (
 
 type LabelRepository interface {
 	UidLabels(ctx context.Context, uid int64) ([]domain.Label, error)
+	CreateLabel(ctx context.Context, uid int64, name string) (int64, error)
 }
 
 type CachedLabelRepository struct {
 	dao dao.LabelDAO
 }
 
-func NewCachedLabelRepository(dao dao.LabelDAO) LabelRepository {
-	return &CachedLabelRepository{dao: dao}
+func (repo *CachedLabelRepository) CreateLabel(ctx context.Context, uid int64, name string) (int64, error) {
+	return repo.dao.CreateLabel(ctx, dao.Label{
+		Uid:  uid,
+		Name: name,
+	})
 }
 
 func (repo *CachedLabelRepository) UidLabels(ctx context.Context, uid int64) ([]domain.Label, error) {
@@ -43,4 +47,8 @@ func (repo *CachedLabelRepository) UidLabels(ctx context.Context, uid int64) ([]
 			Name: src.Name,
 		}
 	}), err
+}
+
+func NewCachedLabelRepository(dao dao.LabelDAO) LabelRepository {
+	return &CachedLabelRepository{dao: dao}
 }
