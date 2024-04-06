@@ -37,7 +37,6 @@ func (m *memberRepository) toDomain(d dao.Member) domain.Member {
 		UID:     d.Uid,
 		StartAt: d.StartAt,
 		EndAt:   d.EndAt,
-		Status:  d.Status,
 	}
 }
 
@@ -51,6 +50,5 @@ func (m *memberRepository) toEntity(d domain.Member) dao.Member {
 		Uid:     d.UID,
 		StartAt: d.StartAt,
 		EndAt:   d.EndAt,
-		Status:  d.Status,
 	}
 }

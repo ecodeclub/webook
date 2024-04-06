@@ -56,9 +56,8 @@ func (g *memberGROMDAO) Create(ctx context.Context, member Member) (int64, error
 type Member struct {
 	Id      int64 `gorm:"primaryKey;autoIncrement;comment:会员表自增ID"`
 	Uid     int64 `gorm:"not null;uniqueIndex:unq_user_id;comment: 用户ID"`
-	StartAt int64 `gorm:"not null;comment: 会员开始日期,2024-04-01 12:51:28"`
-	EndAt   int64 `gorm:"not null;comment: 会员结束日期,2024-06-30 23:59:59"`
-	Status  int64 `gorm:"type:tinyint unsigned;not null;default:1;comment:会员状态 1=有效, 2=失效"`
+	StartAt int64 `gorm:"not null;comment: 会员开始日期,UTC Unix毫秒数"`
+	EndAt   int64 `gorm:"not null;comment: 会员结束日期,UTC Unix毫秒数"`
 	Ctime   int64
 	Utime   int64
 }

@@ -104,7 +104,6 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeRegistrationEvent() {
 				info, err := s.svc.GetMembershipInfo(context.Background(), uid)
 				require.NoError(t, err)
 				require.NotZero(t, info.ID)
-				require.Equal(t, int64(domain.MemberStatusActive), info.Status)
 				require.Equal(t, startAtFunc(), info.StartAt)
 				require.Equal(t, endAtFunc(), info.EndAt)
 			},
@@ -143,7 +142,6 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeRegistrationEvent() {
 					UID:     1993,
 					StartAt: time.Now().Local().Unix(),
 					EndAt:   time.Now().Add(time.Hour * 24 * 30).Local().Unix(),
-					Status:  domain.MemberStatusActive,
 				})
 				require.NoError(t, err)
 			},
@@ -163,7 +161,6 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeRegistrationEvent() {
 					UID:     1994,
 					StartAt: time.Date(2023, 4, 11, 18, 24, 33, 0, time.Local).Unix(),
 					EndAt:   time.Date(2023, 6, 30, 23, 59, 59, 0, time.Local).Unix(),
-					Status:  domain.MemberStatusDeactivate,
 				})
 				require.NoError(t, err)
 

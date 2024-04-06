@@ -62,7 +62,6 @@ func (c *RegistrationEventConsumer) Consume(ctx context.Context) error {
 		UID:     evt.UserID,
 		StartAt: c.startAtFunc(),
 		EndAt:   c.endAtFunc(),
-		Status:  domain.MemberStatusActive,
 	})
 	return err
 }

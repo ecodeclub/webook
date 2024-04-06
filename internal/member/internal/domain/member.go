@@ -14,15 +14,9 @@
 
 package domain
 
-const (
-	MemberStatusActive = iota + 1
-	MemberStatusDeactivate
-)
-
 type Member struct {
 	ID      int64
 	UID     int64
 	StartAt int64
 	EndAt   int64
-	Status  int64
 }
