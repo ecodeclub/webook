@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/ecodeclub/webook/internal/pkg/middleware"
 	"github.com/ecodeclub/webook/internal/skill"
 
 	"github.com/ecodeclub/webook-private/nonsense"
@@ -25,6 +26,7 @@ import (
 )
 
 func initGinxServer(sp session.Provider,
+	checkMembershipMiddleware *middleware.CheckMembershipMiddlewareBuilder,
 	qh *baguwen.Handler,
 	qsh *baguwen.QuestionSetHandler,
 	lhdl *label.Handler,
@@ -69,5 +71,10 @@ func initGinxServer(sp session.Provider,
 	cosHdl.PrivateRoutes(res.Engine)
 	caseHdl.PrivateRoutes(res.Engine)
 	skillHdl.PrivateRoutes(res.Engine)
+	// 会员校验
+	res.Use(checkMembershipMiddleware.Build())
+	qh.MemberRoutes(res.Engine)
+	qsh.MemberRoutes(res.Engine)
+	caseHdl.MemberRoutes(res.Engine)
 	return res
 }

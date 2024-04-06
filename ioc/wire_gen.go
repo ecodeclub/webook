@@ -11,6 +11,7 @@ import (
 	"github.com/ecodeclub/webook/internal/cos"
 	"github.com/ecodeclub/webook/internal/label"
 	"github.com/ecodeclub/webook/internal/member"
+	"github.com/ecodeclub/webook/internal/pkg/middleware"
 	baguwen "github.com/ecodeclub/webook/internal/question"
 	"github.com/ecodeclub/webook/internal/skill"
 	"github.com/google/wire"
@@ -22,20 +23,21 @@ func InitApp() (*App, error) {
 	cmdable := InitRedis()
 	provider := InitSession(cmdable)
 	db := InitDB()
-	cache := InitCache(cmdable)
-	module, err := baguwen.InitModule(db, cache)
-	if err != nil {
-		return nil, err
-	}
-	handler := module.Hdl
-	questionSetHandler := module.QsHdl
-	webHandler := label.InitHandler(db)
 	mq := InitMQ()
-	memberModule, err := member.InitModule(db, mq)
+	module, err := member.InitModule(db, mq)
 	if err != nil {
 		return nil, err
 	}
-	service := memberModule.Svc
+	service := module.Svc
+	checkMembershipMiddlewareBuilder := middleware.NewCheckMembershipMiddlewareBuilder(service)
+	cache := InitCache(cmdable)
+	baguwenModule, err := baguwen.InitModule(db, cache)
+	if err != nil {
+		return nil, err
+	}
+	handler := baguwenModule.Hdl
+	questionSetHandler := baguwenModule.QsHdl
+	webHandler := label.InitHandler(db)
 	handler2 := InitUserHandler(db, cache, mq, service)
 	config := InitCosConfig()
 	handler3 := cos.InitHandler(config)
@@ -44,11 +46,11 @@ func InitApp() (*App, error) {
 		return nil, err
 	}
 	handler4 := casesModule.Hdl
-	handler5, err := skill.InitHandler(db, cache, module, casesModule)
+	handler5, err := skill.InitHandler(db, cache, baguwenModule, casesModule)
 	if err != nil {
 		return nil, err
 	}
-	component := initGinxServer(provider, handler, questionSetHandler, webHandler, handler2, handler3, handler4, handler5)
+	component := initGinxServer(provider, checkMembershipMiddlewareBuilder, handler, questionSetHandler, webHandler, handler2, handler3, handler4, handler5)
 	app := &App{
 		Web: component,
 	}

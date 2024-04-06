@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package membership
+package middleware
 
 import (
 	"errors"
@@ -49,7 +49,7 @@ func (c *CheckMembershipMiddlewareBuilder) check(ctx *ginx.Context, sess session
 		if memberDDL.UTC().Compare(time.Now().UTC()) <= 0 {
 			return ginx.Result{}, fmt.Errorf("%w: %w: uid: %d", ginx.ErrUnauthorized, ErrMembershipExpired, claims.Uid)
 		}
-		return ginx.Result{}, nil
+		return ginx.Result{}, ginx.ErrNoResponse
 	}
 
 	// jwt中未找到会员截止日期
@@ -72,7 +72,7 @@ func (c *CheckMembershipMiddlewareBuilder) check(ctx *ginx.Context, sess session
 		return ginx.Result{}, fmt.Errorf("%w: %w: uid: %d", ginx.ErrUnauthorized, ErrRenewAccessTokenFailed, claims.Uid)
 	}
 
-	return ginx.Result{}, nil
+	return ginx.Result{}, ginx.ErrNoResponse
 }
 
 func (c *CheckMembershipMiddlewareBuilder) Build() gin.HandlerFunc {

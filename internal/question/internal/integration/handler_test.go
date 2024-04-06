@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/ecodeclub/ekit/sqlx"
+	"github.com/ecodeclub/webook/internal/pkg/middleware"
 
 	"github.com/ecodeclub/ecache"
 	"github.com/ecodeclub/ekit/iox"
@@ -97,15 +98,20 @@ func (s *HandlerTestSuite) SetupSuite() {
 
 	econf.Set("server", map[string]any{"contextTimeout": "1s"})
 	server := egin.Load("server").Build()
+
+	handler.PublicRoutes(server.Engine)
+	questionSetHandler.PublicRoutes(server.Engine)
 	server.Use(func(ctx *gin.Context) {
 		ctx.Set("_session", session.NewMemorySession(session.Claims{
 			Uid:  uid,
-			Data: map[string]string{"creator": "true"},
+			Data: map[string]string{"creator": "true", "memberDDL": "2099-01-01 23:59:59"},
 		}))
 	})
 	handler.PrivateRoutes(server.Engine)
-	handler.PublicRoutes(server.Engine)
 	questionSetHandler.PrivateRoutes(server.Engine)
+	server.Use(middleware.NewCheckMembershipMiddlewareBuilder(nil).Build())
+	handler.MemberRoutes(server.Engine)
+	questionSetHandler.MemberRoutes(server.Engine)
 
 	s.server = server
 	s.db = testioc.InitDB()

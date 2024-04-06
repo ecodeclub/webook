@@ -26,16 +26,19 @@ func NewHandler(svc service.Service) *Handler {
 	}
 }
 
+func (h *Handler) PublicRoutes(server *gin.Engine) {
+	server.POST("/case/pub/list", ginx.B[Page](h.PubList))
+}
+
 func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	server.POST("/case/save", ginx.S(h.Permission), ginx.BS[SaveReq](h.Save))
 	server.POST("/case/list", ginx.S(h.Permission), ginx.B[Page](h.List))
 	server.POST("/case/detail", ginx.S(h.Permission), ginx.B[CaseId](h.Detail))
 	server.POST("/case/publish", ginx.S(h.Permission), ginx.BS[SaveReq](h.Publish))
-	server.POST("/case/pub/detail", ginx.B[CaseId](h.PubDetail))
 }
 
-func (h *Handler) PublicRoutes(server *gin.Engine) {
-	server.POST("/case/pub/list", ginx.B[Page](h.PubList))
+func (h *Handler) MemberRoutes(server *gin.Engine) {
+	server.POST("/case/pub/detail", ginx.B[CaseId](h.PubDetail))
 }
 
 func (h *Handler) Save(ctx *ginx.Context,
