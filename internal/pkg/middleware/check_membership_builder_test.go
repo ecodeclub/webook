@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package membership
+package middleware
 
 import (
 	"errors"
@@ -24,7 +24,7 @@ import (
 	"github.com/ecodeclub/ginx/session"
 	"github.com/ecodeclub/webook/internal/member"
 	membermocks "github.com/ecodeclub/webook/internal/member/mocks"
-	sessmocks "github.com/ecodeclub/webook/internal/pkg/middleware/membership/mocks"
+	sessmocks "github.com/ecodeclub/webook/internal/pkg/middleware/mocks"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -55,8 +55,10 @@ func TestCheck(t *testing.T) {
 				mockSession.EXPECT().Claims().Return(claims)
 				return mockSession
 			},
-			requireErrFunc: require.NoError,
-			afterFunc:      func(t *testing.T, ctx *ginx.Context) {},
+			requireErrFunc: func(t require.TestingT, err error, i ...interface{}) {
+				require.ErrorIs(t, err, ginx.ErrNoResponse)
+			},
+			afterFunc: func(t *testing.T, ctx *ginx.Context) {},
 		},
 
 		"应该失败_JWT有会员截止日期_会员已过期": {
@@ -151,7 +153,9 @@ func TestCheck(t *testing.T) {
 				mockProvider.EXPECT().Get(gomock.Any()).Return(mockSession, nil)
 				return mockSession
 			},
-			requireErrFunc: require.NoError,
+			requireErrFunc: func(t require.TestingT, err error, i ...interface{}) {
+				require.ErrorIs(t, err, ginx.ErrNoResponse)
+			},
 			afterFunc: func(t *testing.T, ctx *ginx.Context) {
 				sess, err := session.Get(ctx)
 				require.NoError(t, err)

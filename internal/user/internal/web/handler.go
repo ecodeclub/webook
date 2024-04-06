@@ -156,5 +156,5 @@ func (h *Handler) getMemberDDL(ctx context.Context, userID int64) string {
 	if err != nil {
 		return ""
 	}
-	return time.Unix(mem.EndAt, 0).Local().Format(time.DateTime)
+	return time.UnixMilli(mem.EndAt).UTC().Format(time.DateTime)
 }

@@ -28,6 +28,8 @@ import (
 	"github.com/gotomicro/ego/core/elog"
 )
 
+var _ ginx.Handler = (*QuestionSetHandler)(nil)
+
 type QuestionSetHandler struct {
 	dm2vo  copier.Copier[domain.QuestionSet, QuestionSet]
 	svc    service.QuestionSetService
@@ -50,6 +52,8 @@ func NewQuestionSetHandler(svc service.QuestionSetService) (*QuestionSetHandler,
 	}, nil
 }
 
+func (h *QuestionSetHandler) PublicRoutes(server *gin.Engine) {}
+
 func (h *QuestionSetHandler) PrivateRoutes(server *gin.Engine) {
 	g := server.Group("/question-sets")
 	g.POST("/save", ginx.BS[SaveQuestionSetReq](h.SaveQuestionSet))
@@ -57,7 +61,10 @@ func (h *QuestionSetHandler) PrivateRoutes(server *gin.Engine) {
 	g.POST("/list", ginx.B[Page](h.ListPrivateQuestionSets))
 	g.POST("/detail", ginx.B[QuestionSetID](h.RetrieveQuestionSetDetail))
 
-	g.POST("/pub/list", ginx.B[Page](h.ListAllQuestionSets))
+}
+
+func (h *QuestionSetHandler) MemberRoutes(server *gin.Engine) {
+	server.POST("/question-sets/pub/list", ginx.B[Page](h.ListAllQuestionSets))
 }
 
 // SaveQuestionSet 保存
