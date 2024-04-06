@@ -30,7 +30,7 @@ import (
 	"go.uber.org/mock/gomock"
 )
 
-func TestNewValidator(t *testing.T) {
+func TestCheck(t *testing.T) {
 
 	testCases := map[string]struct {
 		svcFunc        func(ctrl *gomock.Controller) member.Service
@@ -206,12 +206,17 @@ func TestNewValidator(t *testing.T) {
 			w := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(w)
 
-			validator := NewCheckMembershipMiddlewareBuilder(tc.svcFunc(ctrl))
+			builder := NewCheckMembershipMiddlewareBuilder(tc.svcFunc(ctrl))
 			ctx := &ginx.Context{Context: c}
-			res, err := validator.Check(ctx, tc.sessFunc(ctrl))
+			res, err := builder.check(ctx, tc.sessFunc(ctrl))
 			tc.requireErrFunc(t, err)
 			require.Equal(t, tc.wantResult, res)
 			tc.afterFunc(t, ctx)
 		})
 	}
+}
+
+func TestBuild(t *testing.T) {
+	builder := NewCheckMembershipMiddlewareBuilder(nil)
+	require.NotZero(t, builder.Build())
 }

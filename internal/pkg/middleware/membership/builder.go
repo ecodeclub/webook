@@ -41,7 +41,7 @@ func NewCheckMembershipMiddlewareBuilder(svc member.Service) *CheckMembershipMid
 	}
 }
 
-func (c *CheckMembershipMiddlewareBuilder) Check(ctx *ginx.Context, sess session.Session) (ginx.Result, error) {
+func (c *CheckMembershipMiddlewareBuilder) check(ctx *ginx.Context, sess session.Session) (ginx.Result, error) {
 	claims := sess.Claims()
 	memberDDL, err := time.Parse(time.DateTime, claims.Get("memberDDL").StringOrDefault(""))
 	if err == nil {
@@ -76,5 +76,5 @@ func (c *CheckMembershipMiddlewareBuilder) Check(ctx *ginx.Context, sess session
 }
 
 func (c *CheckMembershipMiddlewareBuilder) Build() gin.HandlerFunc {
-	return ginx.S(c.Check)
+	return ginx.S(c.check)
 }
