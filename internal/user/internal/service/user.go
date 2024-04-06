@@ -77,7 +77,7 @@ func (svc *userService) FindOrCreateByWechat(ctx context.Context,
 	}
 
 	// 发送注册成功消息
-	evt := event.RegistrationEvent{UserID: u.Id}
+	evt := event.RegistrationEvent{Uid: u.Id}
 	if e := svc.registrationEventProducer.Produce(ctx, evt); e != nil {
 		svc.logger.Error("发送注册成功消息失败",
 			elog.FieldErr(e),

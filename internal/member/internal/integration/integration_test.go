@@ -191,7 +191,7 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeRegistrationEvent() {
 }
 
 func (s *ModuleTestSuite) newRegistrationEventMessage(t *testing.T, userID int64) *mq.Message {
-	marshal, err := json.Marshal(event.RegistrationEvent{UserID: userID})
+	marshal, err := json.Marshal(event.RegistrationEvent{Uid: userID})
 	require.NoError(t, err)
 	return &mq.Message{Value: marshal}
 }

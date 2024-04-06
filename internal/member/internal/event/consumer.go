@@ -22,6 +22,7 @@ import (
 	"github.com/ecodeclub/mq-api"
 	"github.com/ecodeclub/webook/internal/member/internal/domain"
 	"github.com/ecodeclub/webook/internal/member/internal/service"
+	"github.com/gotomicro/ego/core/elog"
 )
 
 type RegistrationEventConsumer struct {
@@ -29,10 +30,16 @@ type RegistrationEventConsumer struct {
 	consumer    mq.Consumer
 	startAtFunc func() int64
 	endAtFunc   func() int64
+	logger      *elog.Component
 }
 
 func NewRegistrationEventConsumer(svc service.Service, consumer mq.Consumer, startAtFunc func() int64, endAtFunc func() int64) *RegistrationEventConsumer {
-	return &RegistrationEventConsumer{svc: svc, consumer: consumer, startAtFunc: startAtFunc, endAtFunc: endAtFunc}
+	return &RegistrationEventConsumer{
+		svc:         svc,
+		consumer:    consumer,
+		startAtFunc: startAtFunc,
+		endAtFunc:   endAtFunc,
+		logger:      elog.DefaultLogger}
 }
 
 func (c *RegistrationEventConsumer) Consume(ctx context.Context) error {
@@ -47,7 +54,7 @@ func (c *RegistrationEventConsumer) Consume(ctx context.Context) error {
 		return fmt.Errorf("解析消息失败: %w", err)
 	}
 
-	_, err = c.svc.GetMembershipInfo(ctx, evt.UserID)
+	_, err = c.svc.GetMembershipInfo(ctx, evt.Uid)
 	if err == nil {
 		return fmt.Errorf("用户会员记录已存在")
 	}
@@ -59,9 +66,15 @@ func (c *RegistrationEventConsumer) Consume(ctx context.Context) error {
 	}
 
 	_, err = c.svc.CreateNewMembership(ctx, domain.Member{
-		UID:     evt.UserID,
+		UID:     evt.Uid,
 		StartAt: c.startAtFunc(),
 		EndAt:   c.endAtFunc(),
 	})
+	if err != nil {
+		c.logger.Error("创建会员记录失败",
+			elog.FieldErr(err),
+			elog.Int64("uid", evt.Uid),
+		)
+	}
 	return err
 }
