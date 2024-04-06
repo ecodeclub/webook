@@ -33,10 +33,11 @@ func NewHandler(svc service.Service) *Handler {
 func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g := server.Group("/label")
 	g.GET("/system", ginx.W(h.SystemLabels))
+	g.POST("/system/create", ginx.B(h.CreateSystemLabel))
 }
 
 func (h *Handler) SystemLabels(ctx *ginx.Context) (ginx.Result, error) {
-	labels, err := h.svc.UidLabels(ctx)
+	labels, err := h.svc.SystemLabels(ctx)
 	if err != nil {
 		return ginx.Result{}, err
 	}
@@ -48,4 +49,12 @@ func (h *Handler) SystemLabels(ctx *ginx.Context) (ginx.Result, error) {
 			}
 		}),
 	}, nil
+}
+
+func (h *Handler) CreateSystemLabel(ctx *ginx.Context, req Label) (ginx.Result, error) {
+	id, err := h.svc.CreateSystemLabel(ctx, req.Name)
+	if err != nil {
+		return systemErrorResult, err
+	}
+	return ginx.Result{Data: id}, nil
 }
