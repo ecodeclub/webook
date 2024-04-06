@@ -24,11 +24,15 @@ import (
 )
 
 func InitHandler() (*web.Handler, error) {
-	wire.Build(testioc.BaseSet, baguwen.InitHandler)
+	wire.Build(testioc.BaseSet,
+		baguwen.InitModule,
+		wire.FieldsOf(new(*baguwen.Module), "Hdl"),
+	)
 	return new(web.Handler), nil
 }
 
 func InitQuestionSetHandler() (*web.QuestionSetHandler, error) {
-	wire.Build(testioc.BaseSet, baguwen.InitQuestionSetHandler)
+	wire.Build(testioc.BaseSet, baguwen.InitModule,
+		wire.FieldsOf(new(*baguwen.Module), "QsHdl"))
 	return new(web.QuestionSetHandler), nil
 }

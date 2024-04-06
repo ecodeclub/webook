@@ -17,19 +17,21 @@ import (
 func InitHandler() (*web.Handler, error) {
 	db := testioc.InitDB()
 	cache := testioc.InitCache()
-	handler, err := baguwen.InitHandler(db, cache)
+	module, err := baguwen.InitModule(db, cache)
 	if err != nil {
 		return nil, err
 	}
+	handler := module.Hdl
 	return handler, nil
 }
 
 func InitQuestionSetHandler() (*web.QuestionSetHandler, error) {
 	db := testioc.InitDB()
 	cache := testioc.InitCache()
-	questionSetHandler, err := baguwen.InitQuestionSetHandler(db, cache)
+	module, err := baguwen.InitModule(db, cache)
 	if err != nil {
 		return nil, err
 	}
+	questionSetHandler := module.QsHdl
 	return questionSetHandler, nil
 }

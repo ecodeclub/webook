@@ -21,16 +21,12 @@ import (
 
 // Injectors from wire.go:
 
-func InitHandler(db *gorm.DB, ec ecache.Cache) (*web.Handler, error) {
+func InitModule(db *gorm.DB, ec ecache.Cache) (*Module, error) {
 	questionDAO := InitQuestionDAO(db)
 	questionCache := cache.NewQuestionECache(ec)
 	repositoryRepository := repository.NewCacheRepository(questionDAO, questionCache)
 	serviceService := service.NewService(repositoryRepository)
 	handler := web.NewHandler(serviceService)
-	return handler, nil
-}
-
-func InitQuestionSetHandler(db *gorm.DB, ec ecache.Cache) (*web.QuestionSetHandler, error) {
 	questionSetDAO := InitQuestionSetDAO(db)
 	questionSetRepository := repository.NewQuestionSetRepository(questionSetDAO)
 	questionSetService := service.NewQuestionSetService(questionSetRepository)
@@ -38,7 +34,12 @@ func InitQuestionSetHandler(db *gorm.DB, ec ecache.Cache) (*web.QuestionSetHandl
 	if err != nil {
 		return nil, err
 	}
-	return questionSetHandler, nil
+	module := &Module{
+		Svc:   serviceService,
+		Hdl:   handler,
+		QsHdl: questionSetHandler,
+	}
+	return module, nil
 }
 
 // wire.go:
@@ -63,7 +64,3 @@ func InitQuestionSetDAO(db *egorm.Component) dao.QuestionSetDAO {
 	InitTableOnce(db)
 	return dao.NewGORMQuestionSetDAO(db)
 }
-
-type Handler = web.Handler
-
-type QuestionSetHandler = web.QuestionSetHandler

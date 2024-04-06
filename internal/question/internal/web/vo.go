@@ -56,7 +56,7 @@ func (que Question) toDomain() domain.Question {
 			Analysis:     que.Analysis.toDomain(),
 			Basic:        que.Basic.toDomain(),
 			Intermediate: que.Intermediate.toDomain(),
-			Advanced:     que.Intermediate.toDomain(),
+			Advanced:     que.Advanced.toDomain(),
 		},
 	}
 }
