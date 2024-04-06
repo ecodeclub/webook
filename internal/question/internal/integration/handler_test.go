@@ -153,6 +153,22 @@ func (s *HandlerTestSuite) TestSave() {
 					},
 				}, q)
 				assert.Equal(t, 4, len(eles))
+				wantEles := []dao.AnswerElement{
+					s.buildDAOAnswerEle(1, 0, dao.AnswerElementTypeAnalysis),
+					s.buildDAOAnswerEle(1, 1, dao.AnswerElementTypeBasic),
+					s.buildDAOAnswerEle(1, 2, dao.AnswerElementTypeIntermedia),
+					s.buildDAOAnswerEle(1, 3, dao.AnswerElementTypeAdvanced),
+				}
+				for i := range eles {
+					ele := &(eles[i])
+					assert.True(t, ele.Id > 0)
+					assert.True(t, ele.Ctime > 0)
+					assert.True(t, ele.Utime > 0)
+					ele.Id = 0
+					ele.Ctime = 0
+					ele.Utime = 0
+				}
+				assert.ElementsMatch(t, wantEles, eles)
 			},
 			req: web.SaveReq{
 				Question: web.Question{
@@ -247,59 +263,6 @@ func (s *HandlerTestSuite) TestSave() {
 				Data: 2,
 			},
 		},
-		// {
-		//	name: "非法访问",
-		//	before: func(t *testing.T) {
-		//		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-		//		defer cancel()
-		//		err := s.db.WithContext(ctx).Create(&dao.Question{
-		//			Id:      3,
-		//			Uid:     234,
-		//			Title:   "老的标题",
-		//			Content: "老的内容",
-		//			Ctime:   123,
-		//			Utime:   234,
-		//		}).Error
-		//		require.NoError(t, err)
-		//	},
-		//	after: func(t *testing.T) {
-		//		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-		//		defer cancel()
-		//		q, _, err := s.dao.GetByID(ctx, 3)
-		//		require.NoError(t, err)
-		//		s.assertQuestion(t, dao.Question{
-		//			Uid:     234,
-		//			Title:   "老的标题",
-		//			Content: "老的内容",
-		//		}, q)
-		//	},
-		//	req: func() web.SaveReq {
-		//		analysis := web.AnswerElement{
-		//			Id:        1,
-		//			Content:   "新的分析",
-		//			Keywords:  "新的 keyword",
-		//			Shorthand: "新的速记",
-		//			Highlight: "新的亮点",
-		//			Guidance:  "新的引导点",
-		//		}
-		//		return web.SaveReq{
-		//			Question: web.Question{
-		//				Id:           3,
-		//				Title:        "面试题1",
-		//				Content:      "新的内容",
-		//				Analysis:     analysis,
-		//				Basic:        s.buildAnswerEle(1),
-		//				Intermediate: s.buildAnswerEle(2),
-		//				Advanced:     s.buildAnswerEle(3),
-		//			},
-		//		}
-		//	}(),
-		//	wantCode: 500,
-		//	wantResp: test.Result[int64]{
-		//		Code: 502001,
-		//		Msg:  "系统错误",
-		//	},
-		// },
 	}
 
 	for _, tc := range testCases {
@@ -619,6 +582,21 @@ func (s *HandlerTestSuite) TestPubDetail() {
 			require.Equal(t, tc.wantCode, recorder.Code)
 			assert.Equal(t, tc.wantResp, recorder.MustScan())
 		})
+	}
+}
+
+func (s *HandlerTestSuite) buildDAOAnswerEle(
+	qid int64,
+	idx int,
+	typ uint8) dao.AnswerElement {
+	return dao.AnswerElement{
+		Qid:       qid,
+		Type:      typ,
+		Content:   fmt.Sprintf("这是解析 %d", idx),
+		Keywords:  fmt.Sprintf("关键字 %d", idx),
+		Shorthand: fmt.Sprintf("快速记忆法 %d", idx),
+		Highlight: fmt.Sprintf("亮点 %d", idx),
+		Guidance:  fmt.Sprintf("引导点 %d", idx),
 	}
 }
 

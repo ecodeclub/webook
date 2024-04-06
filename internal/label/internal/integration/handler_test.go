@@ -17,8 +17,12 @@
 package integration
 
 import (
+	"context"
 	"net/http"
 	"testing"
+	"time"
+
+	"github.com/ecodeclub/ekit/iox"
 
 	"github.com/ecodeclub/ecache"
 	"github.com/ecodeclub/webook/internal/label/internal/integration/startup"
@@ -58,7 +62,7 @@ func (s *HandlerTestSuite) SetupSuite() {
 	s.rdb = testioc.InitCache()
 }
 
-func (s *HandlerTestSuite) TearDownSuite() {
+func (s *HandlerTestSuite) TearDownTest() {
 	err := s.db.Exec("TRUNCATE TABLE `labels`").Error
 	require.NoError(s.T(), err)
 }
@@ -98,6 +102,57 @@ func (s *HandlerTestSuite) TestSystemLabels() {
 			s.server.ServeHTTP(recorder, req)
 			require.Equal(t, tc.wantCode, recorder.Code)
 			assert.Equal(t, tc.wantResp, recorder.MustScan())
+		})
+	}
+}
+
+func (s *HandlerTestSuite) TestCreate() {
+	testCases := []struct {
+		name string
+
+		req web.Label
+
+		after func(t *testing.T)
+
+		wantCode int
+		wantResp test.Result[int64]
+	}{
+		{
+			name: "创建成功",
+			req: web.Label{
+				Name: "标签1",
+			},
+			after: func(t *testing.T) {
+				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+				defer cancel()
+				l, err := s.dao.GetByID(ctx, 1)
+				require.NoError(t, err)
+				assert.True(t, l.Utime > 0)
+				assert.True(t, l.Ctime > 0)
+				l.Utime = 0
+				l.Ctime = 0
+				assert.Equal(t, dao.Label{
+					Id:   1,
+					Name: "标签1",
+					Uid:  -1,
+				}, l)
+			},
+			wantCode: 200,
+			wantResp: test.Result[int64]{Data: 1},
+		},
+	}
+
+	for _, tc := range testCases {
+		s.T().Run(tc.name, func(t *testing.T) {
+			req, err := http.NewRequest(http.MethodPost,
+				"/label/system/create", iox.NewJSONReader(tc.req))
+			req.Header.Set("content-type", "application/json")
+			require.NoError(t, err)
+			recorder := test.NewJSONResponseRecorder[int64]()
+			s.server.ServeHTTP(recorder, req)
+			require.Equal(t, tc.wantCode, recorder.Code)
+			assert.Equal(t, tc.wantResp, recorder.MustScan())
+			tc.after(t)
 		})
 	}
 }

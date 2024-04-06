@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 
-	"github.com/ecodeclub/webook/internal/feedback/internal/event"
 	"github.com/gotomicro/ego/core/elog"
 
 	"github.com/ecodeclub/webook/internal/feedback/internal/domain"
@@ -25,9 +24,9 @@ type Service interface {
 }
 
 type service struct {
-	repo                 repository.FeedBackRepo
-	creditsEventProducer *event.CreditsEventProducer
-	logger               *elog.Component
+	repo repository.FeedBackRepo
+	//creditsEventProducer *event.CreditsEventProducer
+	logger *elog.Component
 }
 
 func (s *service) PendingCount(ctx context.Context) (int64, error) {
@@ -43,19 +42,20 @@ func (s *service) UpdateStatus(ctx context.Context, domainFeedback domain.FeedBa
 	if err != nil {
 		return err
 	}
-	if domainFeedback.Status == domain.Access {
-		// todo 添加发送反馈成功时间
-		//evt := event.CreditsEvent{
-		//	Uid: uid,
-		//}
-		//if eerr := s.creditsEventProducer.Produce(ctx, evt); eerr != nil {
-		//	s.logger.Error("发送反馈成功消息失败",
-		//		elog.FieldErr(eerr),
-		//		elog.FieldKey("event"),
-		//		elog.FieldValueAny(evt),
-		//	)
-		//}
-	}
+	// todo 添加发送反馈成功时间
+	//if domainFeedback.Status == domain.Access {
+
+	//evt := event.CreditsEvent{
+	//	Uid: uid,
+	//}
+	//if eerr := s.creditsEventProducer.Produce(ctx, evt); eerr != nil {
+	//	s.logger.Error("发送反馈成功消息失败",
+	//		elog.FieldErr(eerr),
+	//		elog.FieldKey("event"),
+	//		elog.FieldValueAny(evt),
+	//	)
+	//}
+	//}
 	return nil
 }
 
