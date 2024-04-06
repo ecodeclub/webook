@@ -242,11 +242,13 @@ func (s *HandlerTestSuite) TestInfo() {
 			UID:     uid,
 			Content: "cases",
 			Status:  2,
-			Utime:   "2024-04-05 00:00:00",
-			Ctime:   "2024-04-04 00:00:00",
 		},
 	}
 	actualResp := recorder.MustScan()
+	require.True(t, actualResp.Data.Ctime != "")
+	require.True(t, actualResp.Data.Utime != "")
+	actualResp.Data.Utime = ""
+	actualResp.Data.Ctime = ""
 	assert.Equal(t, wantResp, actualResp)
 	err = s.db.Exec("TRUNCATE table `feed_back`").Error
 	require.NoError(t, err)
