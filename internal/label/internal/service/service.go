@@ -21,17 +21,22 @@ import (
 	"github.com/ecodeclub/webook/internal/label/internal/repository"
 )
 
-const systemUid = -1
+const systemUid int64 = -1
 
 type Service interface {
-	UidLabels(ctx context.Context) ([]domain.Label, error)
+	SystemLabels(ctx context.Context) ([]domain.Label, error)
+	CreateSystemLabel(ctx context.Context, name string) (int64, error)
 }
 
 type service struct {
 	repo repository.LabelRepository
 }
 
-func (s *service) UidLabels(ctx context.Context) ([]domain.Label, error) {
+func (s *service) CreateSystemLabel(ctx context.Context, name string) (int64, error) {
+	return s.repo.CreateLabel(ctx, systemUid, name)
+}
+
+func (s *service) SystemLabels(ctx context.Context) ([]domain.Label, error) {
 	return s.repo.UidLabels(ctx, systemUid)
 }
 
