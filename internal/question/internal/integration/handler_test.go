@@ -100,7 +100,7 @@ func (s *HandlerTestSuite) SetupSuite() {
 	server.Use(func(ctx *gin.Context) {
 		ctx.Set("_session", session.NewMemorySession(session.Claims{
 			Uid:  uid,
-			Data: map[string]string{"creator": "true", "memberDDL": "2099-01-01 00:00:00"},
+			Data: map[string]string{"creator": "true"},
 		}))
 	})
 	handler.PrivateRoutes(server.Engine)
