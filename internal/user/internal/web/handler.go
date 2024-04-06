@@ -1,32 +1,54 @@
+// Copyright 2023 ecodeclub
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package web
 
 import (
+	"context"
 	"strconv"
+	"time"
 
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/ecodeclub/ginx"
 	"github.com/ecodeclub/ginx/session"
+	"github.com/ecodeclub/webook/internal/member"
 	"github.com/ecodeclub/webook/internal/user/internal/domain"
 	"github.com/ecodeclub/webook/internal/user/internal/errs"
 	"github.com/ecodeclub/webook/internal/user/internal/service"
 	"github.com/gin-gonic/gin"
+	"github.com/gotomicro/ego/core/elog"
 )
 
 var _ ginx.Handler = &Handler{}
 
 type Handler struct {
-	weSvc   service.OAuth2Service
-	userSvc service.UserService
+	weSvc     service.OAuth2Service
+	userSvc   service.UserService
+	memberSvc member.Service
 	// 白名单
 	creators []string
+	logger   *elog.Component
 }
 
 func NewHandler(weSvc service.OAuth2Service,
-	userSvc service.UserService, creators []string) *Handler {
+	userSvc service.UserService, memberSvc member.Service, creators []string) *Handler {
 	return &Handler{
-		weSvc:    weSvc,
-		userSvc:  userSvc,
-		creators: creators,
+		weSvc:     weSvc,
+		userSvc:   userSvc,
+		memberSvc: memberSvc,
+		creators:  creators,
+		logger:    elog.DefaultLogger,
 	}
 }
 
@@ -67,23 +89,21 @@ func (h *Handler) RefreshAccessToken(ctx *ginx.Context) (ginx.Result, error) {
 func (h *Handler) Profile(ctx *ginx.Context, sess session.Session) (ginx.Result, error) {
 	u, err := h.userSvc.Profile(ctx, sess.Claims().Uid)
 	if err != nil {
-		return ginx.Result{}, err
+		return systemErrorResult, err
 	}
 	res := newProfile(u)
 	res.IsCreator = sess.Claims().
 		Get("creator").
 		StringOrDefault("") == "true"
+	res.MemberDDL = sess.Claims().
+		Get("memberDDL").
+		StringOrDefault("")
 	return ginx.Result{
 		Data: res,
 	}, nil
 }
 
-type EditReq struct {
-	Avatar   string `json:"avatar"`
-	Nickname string `json:"nickname"`
-}
-
-// Edit 用户编译信息
+// Edit 用户编辑信息
 func (h *Handler) Edit(ctx *ginx.Context, req EditReq, sess session.Session) (ginx.Result, error) {
 	uid := sess.Claims().Uid
 	err := h.userSvc.UpdateNonSensitiveInfo(ctx, domain.User{
@@ -108,18 +128,33 @@ func (h *Handler) Callback(ctx *ginx.Context, req WechatCallback) (ginx.Result, 
 	if err != nil {
 		return systemErrorResult, err
 	}
-	creator := slice.Contains(h.creators, user.WechatInfo.UnionId)
-	_, err = session.NewSessionBuilder(ctx, user.Id).
-		// 设置是否 creator 的标记位，后续引入权限控制再来改造
-		SetJwtData(map[string]string{
-			"creator": strconv.FormatBool(creator),
-		}).Build()
+
+	// 构建session
+	jwtData := map[string]string{}
+	// 设置是否 creator 的标记位，后续引入权限控制再来改造
+	isCreator := slice.Contains(h.creators, user.WechatInfo.UnionId)
+	jwtData["creator"] = strconv.FormatBool(isCreator)
+	// 设置会员截止日期
+	memberDDL := h.getMemberDDL(ctx.Request.Context(), user.Id)
+	jwtData["memberDDL"] = memberDDL
+
+	_, err = session.NewSessionBuilder(ctx, user.Id).SetJwtData(jwtData).Build()
 	if err != nil {
 		return systemErrorResult, err
 	}
+
 	res := newProfile(user)
-	res.IsCreator = creator
+	res.IsCreator = isCreator
+	res.MemberDDL = memberDDL
 	return ginx.Result{
 		Data: res,
 	}, nil
+}
+
+func (h *Handler) getMemberDDL(ctx context.Context, userID int64) string {
+	mem, err := h.memberSvc.GetMembershipInfo(ctx, userID)
+	if err != nil {
+		return ""
+	}
+	return time.UnixMilli(mem.EndAt).UTC().Format(time.DateTime)
 }

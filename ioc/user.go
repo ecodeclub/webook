@@ -16,12 +16,14 @@ package ioc
 
 import (
 	"github.com/ecodeclub/ecache"
+	"github.com/ecodeclub/mq-api"
+	"github.com/ecodeclub/webook/internal/member"
 	"github.com/ecodeclub/webook/internal/user"
 	"github.com/ego-component/egorm"
 	"github.com/gotomicro/ego/core/econf"
 )
 
-func InitUserHandler(db *egorm.Component, ec ecache.Cache) *user.Handler {
+func InitUserHandler(db *egorm.Component, ec ecache.Cache, q mq.MQ, memberSvc member.Service) *user.Handler {
 	type UserConfig struct {
 		Creators []string `json:"creators"`
 	}
@@ -30,5 +32,5 @@ func InitUserHandler(db *egorm.Component, ec ecache.Cache) *user.Handler {
 	if err != nil {
 		panic(err)
 	}
-	return user.InitHandler(db, ec, cfg.Creators)
+	return user.InitHandler(db, ec, q, cfg.Creators, memberSvc)
 }

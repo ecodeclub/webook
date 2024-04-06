@@ -1,3 +1,17 @@
+// Copyright 2023 ecodeclub
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 //go:build e2e
 
 package integration
@@ -16,6 +30,7 @@ import (
 	"github.com/ecodeclub/webook/internal/cases/internal/integration/startup"
 	"github.com/ecodeclub/webook/internal/cases/internal/repository/dao"
 	"github.com/ecodeclub/webook/internal/cases/internal/web"
+	"github.com/ecodeclub/webook/internal/pkg/middleware"
 	"github.com/ecodeclub/webook/internal/test"
 	testioc "github.com/ecodeclub/webook/internal/test/ioc"
 	"github.com/ego-component/egorm"
@@ -56,14 +71,18 @@ func (s *HandlerTestSuite) SetupSuite() {
 	require.NoError(s.T(), err)
 	econf.Set("server", map[string]any{"contextTimeout": "1s"})
 	server := egin.Load("server").Build()
+
+	handler.PublicRoutes(server.Engine)
 	server.Use(func(ctx *gin.Context) {
 		ctx.Set("_session", session.NewMemorySession(session.Claims{
 			Uid:  uid,
-			Data: map[string]string{"creator": "true"},
+			Data: map[string]string{"creator": "true", "memberDDL": "2099-01-01 23:59:59"},
 		}))
 	})
 	handler.PrivateRoutes(server.Engine)
-	handler.PublicRoutes(server.Engine)
+	server.Use(middleware.NewCheckMembershipMiddlewareBuilder(nil).Build())
+	handler.MemberRoutes(server.Engine)
+
 	s.server = server
 	s.db = testioc.InitDB()
 	err = dao.InitTables(s.db)

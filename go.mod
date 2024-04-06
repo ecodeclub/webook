@@ -4,8 +4,8 @@ go 1.21.0
 
 require (
 	github.com/ecodeclub/ecache v0.0.0-20240111145855-75679834beca
-	github.com/ecodeclub/ekit v0.0.9-0.20240211145635-ea42c17ffeb0
-	github.com/ecodeclub/ginx v0.0.0-20240330050527-80840e6a01ba
+	github.com/ecodeclub/ekit v0.0.9-0.20240331142359-871f65136a9b
+	github.com/ecodeclub/ginx v0.0.0-20240405140433-b236eb60dad0
 	github.com/ecodeclub/mq-api v0.0.0-20231030023724-b3c489cdada2
 	github.com/ecodeclub/webook-private v0.0.0-20240328102016-f96c72f49853
 	github.com/ego-component/egorm v1.1.1
@@ -20,6 +20,7 @@ require (
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/stretchr/testify v1.9.0
 	github.com/tencentyun/qcloud-cos-sts-sdk v0.0.0-20231121073521-dd65d8941a16
+	go.uber.org/mock v0.3.0
 	golang.org/x/sync v0.6.0
 	gorm.io/gorm v1.25.1
 )
@@ -116,9 +117,9 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.26.0 // indirect
 	golang.org/x/arch v0.7.0 // indirect
-	golang.org/x/crypto v0.21.0 // indirect
-	golang.org/x/net v0.22.0 // indirect
-	golang.org/x/sys v0.18.0 // indirect
+	golang.org/x/crypto v0.22.0 // indirect
+	golang.org/x/net v0.24.0 // indirect
+	golang.org/x/sys v0.19.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20230711160842-782d3b101e98 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20230711160842-782d3b101e98 // indirect

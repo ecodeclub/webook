@@ -20,6 +20,7 @@ import (
 	"sync"
 
 	"github.com/ecodeclub/ecache"
+
 	"github.com/ecodeclub/webook/internal/question/internal/repository"
 	"github.com/ecodeclub/webook/internal/question/internal/repository/cache"
 	"github.com/ecodeclub/webook/internal/question/internal/repository/dao"
@@ -30,24 +31,21 @@ import (
 	"gorm.io/gorm"
 )
 
-func InitHandler(db *egorm.Component, ec ecache.Cache) (*Handler, error) {
+func InitModule(db *egorm.Component, ec ecache.Cache) (*Module, error) {
 	wire.Build(InitQuestionDAO,
 		cache.NewQuestionECache,
 		repository.NewCacheRepository,
 		service.NewService,
 		web.NewHandler,
-	)
-	return new(Handler), nil
-}
 
-func InitQuestionSetHandler(db *egorm.Component, ec ecache.Cache) (*QuestionSetHandler, error) {
-	wire.Build(
 		InitQuestionSetDAO,
 		repository.NewQuestionSetRepository,
 		service.NewQuestionSetService,
 		web.NewQuestionSetHandler,
+
+		wire.Struct(new(Module), "*"),
 	)
-	return new(QuestionSetHandler), nil
+	return new(Module), nil
 }
 
 var daoOnce = sync.Once{}
@@ -70,6 +68,3 @@ func InitQuestionSetDAO(db *egorm.Component) dao.QuestionSetDAO {
 	InitTableOnce(db)
 	return dao.NewGORMQuestionSetDAO(db)
 }
-
-type Handler = web.Handler
-type QuestionSetHandler = web.QuestionSetHandler

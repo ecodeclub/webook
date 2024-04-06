@@ -5,6 +5,8 @@ package cases
 import (
 	"sync"
 
+	"github.com/ecodeclub/webook/internal/cases/internal/domain"
+
 	"github.com/ecodeclub/ecache"
 	"github.com/ecodeclub/webook/internal/cases/internal/repository"
 	"github.com/ecodeclub/webook/internal/cases/internal/repository/cache"
@@ -16,14 +18,15 @@ import (
 	"gorm.io/gorm"
 )
 
-func InitHandler(db *egorm.Component, ec ecache.Cache) (*Handler, error) {
+func InitModule(db *egorm.Component, ec ecache.Cache) (*Module, error) {
 	wire.Build(InitCaseDAO,
 		cache.NewCaseCache,
 		repository.NewCaseRepo,
-		service.NewService,
+		NewService,
 		web.NewHandler,
+		wire.Struct(new(Module), "*"),
 	)
-	return new(Handler), nil
+	return new(Module), nil
 }
 
 var daoOnce = sync.Once{}
@@ -37,9 +40,15 @@ func InitTableOnce(db *gorm.DB) {
 	})
 }
 
+func NewService(repo repository.CaseRepo) Service {
+	return service.NewService(repo)
+}
+
 func InitCaseDAO(db *egorm.Component) dao.CaseDAO {
 	InitTableOnce(db)
 	return dao.NewCaseDao(db)
 }
 
 type Handler = web.Handler
+type Service = service.Service
+type Case = domain.Case
