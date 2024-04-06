@@ -144,15 +144,5 @@ func (h *Handler) Permission(ctx *ginx.Context, sess session.Session) (ginx.Resu
 		ctx.AbortWithStatus(http.StatusInternalServerError)
 		return ginx.Result{}, fmt.Errorf("非法访问创作中心 uid: %d", sess.Claims().Uid)
 	}
-
-	memberDDL, err := time.Parse(time.DateTime, sess.Claims().Get("memberDDL").StringOrDefault(""))
-	if err != nil {
-		ctx.AbortWithStatus(http.StatusInternalServerError)
-		return ginx.Result{}, fmt.Errorf("非法访问创作中心 会员截止日期非法 uid: %d", sess.Claims().Uid)
-	}
-	if memberDDL.Local().Compare(time.Now().Local()) <= 0 {
-		ctx.AbortWithStatus(http.StatusInternalServerError)
-		return ginx.Result{}, fmt.Errorf("非法访问创作中心 会员已过期 uid: %d", sess.Claims().Uid)
-	}
 	return ginx.Result{}, ginx.ErrNoResponse
 }
