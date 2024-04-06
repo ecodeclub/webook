@@ -61,10 +61,10 @@ func InitService(db *egorm.Component, q mq.MQ) Service {
 
 func initRegistrationConsumer(svc service.Service, q mq.MQ) ([]*event.RegistrationEventConsumer, error) {
 	startAtFunc := func() int64 {
-		return time.Now().Local().Unix()
+		return time.Now().UTC().UnixMilli()
 	}
 	endAtFunc := func() int64 {
-		return time.Date(2024, 6, 30, 23, 59, 59, 0, time.Local).Unix()
+		return time.Date(2024, 6, 30, 23, 59, 59, 0, time.UTC).UnixMilli()
 	}
 
 	partitions := 3

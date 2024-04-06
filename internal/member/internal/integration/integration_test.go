@@ -109,10 +109,10 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeRegistrationEvent() {
 			},
 			UserID: 1991,
 			startAtFunc: func() int64 {
-				return time.Date(2024, 5, 10, 18, 24, 33, 0, time.Local).Unix()
+				return time.Date(2024, 5, 10, 18, 24, 33, 0, time.UTC).UnixMilli()
 			},
 			endAtFunc: func() int64 {
-				return time.Date(2024, 6, 30, 23, 59, 59, 0, time.Local).Unix()
+				return time.Date(2024, 6, 30, 23, 59, 59, 0, time.UTC).UnixMilli()
 			},
 			errAssertFunc: assert.NoError,
 		},
@@ -125,10 +125,10 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeRegistrationEvent() {
 			after:  func(t *testing.T, uid int64, startAtFunc func() int64, endAtFunc func() int64) {},
 			UserID: 1992,
 			startAtFunc: func() int64 {
-				return time.Date(2024, 7, 1, 18, 24, 33, 0, time.Local).Unix()
+				return time.Date(2024, 7, 1, 18, 24, 33, 0, time.UTC).UnixMilli()
 			},
 			endAtFunc: func() int64 {
-				return time.Date(2024, 6, 30, 23, 59, 59, 0, time.Local).Unix()
+				return time.Date(2024, 6, 30, 23, 59, 59, 0, time.UTC).UnixMilli()
 			},
 			errAssertFunc: assert.Error,
 		},
@@ -140,8 +140,8 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeRegistrationEvent() {
 
 				_, err = s.svc.CreateNewMembership(context.Background(), domain.Member{
 					UID:     1993,
-					StartAt: time.Now().Local().Unix(),
-					EndAt:   time.Now().Add(time.Hour * 24 * 30).Local().Unix(),
+					StartAt: time.Now().UTC().UnixMilli(),
+					EndAt:   time.Now().Add(time.Hour * 24 * 30).UTC().UnixMilli(),
 				})
 				require.NoError(t, err)
 			},
@@ -159,8 +159,8 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeRegistrationEvent() {
 
 				_, err = s.svc.CreateNewMembership(context.Background(), domain.Member{
 					UID:     1994,
-					StartAt: time.Date(2023, 4, 11, 18, 24, 33, 0, time.Local).Unix(),
-					EndAt:   time.Date(2023, 6, 30, 23, 59, 59, 0, time.Local).Unix(),
+					StartAt: time.Date(2023, 4, 11, 18, 24, 33, 0, time.UTC).UnixMilli(),
+					EndAt:   time.Date(2023, 6, 30, 23, 59, 59, 0, time.UTC).UnixMilli(),
 				})
 				require.NoError(t, err)
 
