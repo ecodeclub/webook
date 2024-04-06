@@ -10,6 +10,7 @@ import (
 	"github.com/ecodeclub/webook/internal/cases"
 	"github.com/ecodeclub/webook/internal/cos"
 	"github.com/ecodeclub/webook/internal/label"
+	"github.com/ecodeclub/webook/internal/member"
 	baguwen "github.com/ecodeclub/webook/internal/question"
 	"github.com/ecodeclub/webook/internal/skill"
 	"github.com/google/wire"
@@ -29,7 +30,13 @@ func InitApp() (*App, error) {
 	handler := module.Hdl
 	questionSetHandler := module.QsHdl
 	webHandler := label.InitHandler(db)
-	handler2 := InitUserHandler(db, cache)
+	mq := InitMQ()
+	memberModule, err := member.InitModule(db, mq)
+	if err != nil {
+		return nil, err
+	}
+	service := memberModule.Svc
+	handler2 := InitUserHandler(db, cache, mq, service)
 	config := InitCosConfig()
 	handler3 := cos.InitHandler(config)
 	casesModule, err := cases.InitModule(db, cache)
@@ -50,4 +57,4 @@ func InitApp() (*App, error) {
 
 // wire.go:
 
-var BaseSet = wire.NewSet(InitDB, InitCache, InitRedis, InitCosConfig)
+var BaseSet = wire.NewSet(InitDB, InitCache, InitRedis, InitMQ, InitCosConfig)

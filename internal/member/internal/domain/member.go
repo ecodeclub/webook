@@ -12,25 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package ioc
+package domain
 
-import (
-	"github.com/ecodeclub/ecache"
-	"github.com/ecodeclub/mq-api"
-	"github.com/ecodeclub/webook/internal/member"
-	"github.com/ecodeclub/webook/internal/user"
-	"github.com/ego-component/egorm"
-	"github.com/gotomicro/ego/core/econf"
-)
-
-func InitUserHandler(db *egorm.Component, ec ecache.Cache, q mq.MQ, memberSvc member.Service) *user.Handler {
-	type UserConfig struct {
-		Creators []string `json:"creators"`
-	}
-	var cfg UserConfig
-	err := econf.UnmarshalKey("user", &cfg)
-	if err != nil {
-		panic(err)
-	}
-	return user.InitHandler(db, ec, q, cfg.Creators, memberSvc)
+type Member struct {
+	ID      int64
+	UID     int64
+	StartAt int64
+	EndAt   int64
 }

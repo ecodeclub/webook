@@ -12,25 +12,32 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package ioc
+package event
 
 import (
-	"github.com/ecodeclub/ecache"
+	"context"
+	"encoding/json"
+	"fmt"
+
 	"github.com/ecodeclub/mq-api"
-	"github.com/ecodeclub/webook/internal/member"
-	"github.com/ecodeclub/webook/internal/user"
-	"github.com/ego-component/egorm"
-	"github.com/gotomicro/ego/core/econf"
 )
 
-func InitUserHandler(db *egorm.Component, ec ecache.Cache, q mq.MQ, memberSvc member.Service) *user.Handler {
-	type UserConfig struct {
-		Creators []string `json:"creators"`
-	}
-	var cfg UserConfig
-	err := econf.UnmarshalKey("user", &cfg)
+type RegistrationEventProducer struct {
+	producer mq.Producer
+}
+
+func NewRegistrationEventProducer(producer mq.Producer) *RegistrationEventProducer {
+	return &RegistrationEventProducer{producer: producer}
+}
+
+func (p *RegistrationEventProducer) Produce(ctx context.Context, evt RegistrationEvent) error {
+	data, err := json.Marshal(&evt)
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("序列化失败: %w", err)
 	}
-	return user.InitHandler(db, ec, q, cfg.Creators, memberSvc)
+	_, err = p.producer.Produce(ctx, &mq.Message{Value: data})
+	if err != nil {
+		return fmt.Errorf("发送注册成功消息失败: %w", err)
+	}
+	return nil
 }

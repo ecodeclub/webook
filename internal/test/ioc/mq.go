@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package ioc
+package testioc
 
 import (
 	"sync"
@@ -58,6 +58,8 @@ func initMQ() (mq.MQ, error) {
 		Addresses []string `yaml:"addresses"`
 	}
 	var cfg Config
+	econf.Set("kafka.network", "tcp")
+	econf.Set("kafka.addresses", []string{"localhost:9092"})
 	err := econf.UnmarshalKey("kafka", &cfg)
 	if err != nil {
 		return nil, err
