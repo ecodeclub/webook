@@ -7,8 +7,6 @@
 package user
 
 import (
-	"context"
-
 	"github.com/ecodeclub/ecache"
 	"github.com/ecodeclub/mq-api"
 	"github.com/ecodeclub/webook/internal/member"
@@ -16,7 +14,7 @@ import (
 	"github.com/ecodeclub/webook/internal/user/internal/repository"
 	"github.com/ecodeclub/webook/internal/user/internal/repository/cache"
 	"github.com/ecodeclub/webook/internal/user/internal/repository/dao"
-	service2 "github.com/ecodeclub/webook/internal/user/internal/service"
+	"github.com/ecodeclub/webook/internal/user/internal/service"
 	"github.com/ecodeclub/webook/internal/user/internal/web"
 	"github.com/ego-component/egorm"
 	"github.com/google/wire"
@@ -26,14 +24,15 @@ import (
 
 // Injectors from wire.go:
 
-func InitHandler(db *gorm.DB, cache2 ecache.Cache, q mq.MQ, creators []string, memberSvc member.Service) *web.Handler {
+func InitHandler(db *gorm.DB, cache2 ecache.Cache, q mq.MQ, creators []string, memberSvc *member.Module) *web.Handler {
 	oAuth2Service := InitWechatService()
 	userDAO := InitDAO(db)
 	userCache := cache.NewUserECache(cache2)
 	userRepository := repository.NewCachedUserRepository(userDAO, userCache)
 	registrationEventProducer := InitRegistrationEventProducer(q)
-	userService := service2.NewUserService(userRepository, registrationEventProducer)
-	handler := web.NewHandler(oAuth2Service, userService, memberSvc, creators)
+	userService := service.NewUserService(userRepository, registrationEventProducer)
+	serviceService := memberSvc.Svc
+	handler := web.NewHandler(oAuth2Service, userService, serviceService, creators)
 	return handler
 }
 
@@ -41,10 +40,10 @@ func InitHandler(db *gorm.DB, cache2 ecache.Cache, q mq.MQ, creators []string, m
 
 var ProviderSet = wire.NewSet(web.NewHandler, cache.NewUserECache, InitDAO,
 	InitWechatService,
-	InitRegistrationEventProducer, service2.NewUserService, repository.NewCachedUserRepository,
+	InitRegistrationEventProducer, service.NewUserService, repository.NewCachedUserRepository,
 )
 
-func InitWechatService() service2.OAuth2Service {
+func InitWechatService() service.OAuth2Service {
 	type Config struct {
 		AppSecretID      string `yaml:"appSecretID"`
 		AppSecretKey     string `yaml:"appSecretKey"`
@@ -55,7 +54,7 @@ func InitWechatService() service2.OAuth2Service {
 	if err != nil {
 		panic(err)
 	}
-	return service2.NewWechatService(cfg.AppSecretID, cfg.AppSecretKey, cfg.LoginRedirectURL)
+	return service.NewWechatService(cfg.AppSecretID, cfg.AppSecretKey, cfg.LoginRedirectURL)
 }
 
 func InitDAO(db *egorm.Component) dao.UserDAO {
@@ -67,20 +66,7 @@ func InitDAO(db *egorm.Component) dao.UserDAO {
 }
 
 func InitRegistrationEventProducer(q mq.MQ) *event.RegistrationEventProducer {
-	type Config struct {
-		Topic      string `yaml:"topic"`
-		Partitions int    `yaml:"partitions"`
-	}
-	var cfg Config
-	err := econf.UnmarshalKey("user.event", &cfg)
-	if err != nil {
-		panic(err)
-	}
-	err = q.CreateTopic(context.Background(), cfg.Topic, cfg.Partitions)
-	if err != nil {
-		panic(err)
-	}
-	producer, err := q.Producer(cfg.Topic)
+	producer, err := q.Producer("user_registration_events")
 	if err != nil {
 		panic(err)
 	}

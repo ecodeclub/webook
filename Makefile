@@ -39,4 +39,5 @@ e2e_down:
 
 .PHONY: mock
 mock:
-	mockgen -destination=test/mocks/session.mock.go -package=mocks github.com/ecodeclub/ginx/session Session
+	@mockgen -destination=internal/test/mocks/session_provider.mock.go -package=mocks -typed=true github.com/ecodeclub/ginx/session Provider
+	@mockgen -destination=internal/test/mocks/session.mock.go -package=mocks -typed=true github.com/ecodeclub/ginx/session Session

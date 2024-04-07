@@ -15,7 +15,7 @@
 package event
 
 type RegistrationEvent struct {
-	Uid int64 `json:"uid"`
+	Uid int64 `json:"uid,omitempty"`
 }
 
 func (RegistrationEvent) Topic() string {

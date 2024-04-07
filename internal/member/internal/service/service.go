@@ -25,9 +25,6 @@ import (
 type Service interface {
 	GetMembershipInfo(ctx context.Context, userID int64) (domain.Member, error)
 	CreateNewMembership(ctx context.Context, member domain.Member) (int64, error)
-	// ExtendMembership(ctx context.Context, member domain.Member) error
-	// ReactivateMembership(ctx context.Context, member domain.Member) error
-	// DeactivateMembership(ctx context.Context, member domain.Member) error
 }
 
 type service struct {

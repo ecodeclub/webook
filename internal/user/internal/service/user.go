@@ -39,16 +39,16 @@ type UserService interface {
 }
 
 type userService struct {
-	repo                      repository.UserRepository
-	registrationEventProducer *event.RegistrationEventProducer
-	logger                    *elog.Component
+	repo     repository.UserRepository
+	producer *event.RegistrationEventProducer
+	logger   *elog.Component
 }
 
 func NewUserService(repo repository.UserRepository, p *event.RegistrationEventProducer) UserService {
 	return &userService{
-		repo:                      repo,
-		registrationEventProducer: p,
-		logger:                    elog.DefaultLogger,
+		repo:     repo,
+		producer: p,
+		logger:   elog.DefaultLogger,
 	}
 }
 
@@ -77,8 +77,8 @@ func (svc *userService) FindOrCreateByWechat(ctx context.Context,
 	}
 
 	// 发送注册成功消息
-	evt := event.RegistrationEvent{Uid: u.Id}
-	if e := svc.registrationEventProducer.Produce(ctx, evt); e != nil {
+	evt := event.RegistrationEvent{Uid: id}
+	if e := svc.producer.Produce(ctx, evt); e != nil {
 		svc.logger.Error("发送注册成功消息失败",
 			elog.FieldErr(e),
 			elog.FieldKey("event"),

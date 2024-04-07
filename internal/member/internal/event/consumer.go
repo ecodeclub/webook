@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/ecodeclub/mq-api"
 	"github.com/ecodeclub/webook/internal/member/internal/domain"
@@ -26,20 +27,37 @@ import (
 )
 
 type RegistrationEventConsumer struct {
-	svc         service.Service
-	consumer    mq.Consumer
-	startAtFunc func() int64
-	endAtFunc   func() int64
-	logger      *elog.Component
+	svc      service.Service
+	consumer mq.Consumer
+	endAt    int64
+	logger   *elog.Component
 }
 
-func NewRegistrationEventConsumer(svc service.Service, consumer mq.Consumer, startAtFunc func() int64, endAtFunc func() int64) *RegistrationEventConsumer {
+func NewRegistrationEventConsumer(svc service.Service,
+	q mq.MQ) (*RegistrationEventConsumer, error) {
+	const groupID = "member"
+	consumer, err := q.Consumer(userRegistrationEvents, groupID)
+	if err != nil {
+		return nil, err
+	}
 	return &RegistrationEventConsumer{
-		svc:         svc,
-		consumer:    consumer,
-		startAtFunc: startAtFunc,
-		endAtFunc:   endAtFunc,
-		logger:      elog.DefaultLogger}
+		svc:      svc,
+		consumer: consumer,
+		endAt:    time.Date(2024, 6, 30, 23, 59, 59, 0, time.UTC).UnixMilli(),
+		logger:   elog.DefaultLogger,
+	}, nil
+}
+
+// Start 后面要考虑借助 ctx 来优雅退出
+func (c *RegistrationEventConsumer) Start(ctx context.Context) {
+	go func() {
+		for {
+			er := c.Consume(ctx)
+			if er != nil {
+				c.logger.Error("消费注册事件失败", elog.FieldErr(er))
+			}
+		}
+	}()
 }
 
 func (c *RegistrationEventConsumer) Consume(ctx context.Context) error {
@@ -53,23 +71,12 @@ func (c *RegistrationEventConsumer) Consume(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("解析消息失败: %w", err)
 	}
-
-	_, err = c.svc.GetMembershipInfo(ctx, evt.Uid)
-	if err == nil {
-		return fmt.Errorf("用户会员记录已存在")
-	}
-
-	startAt := c.startAtFunc()
-	endAt := c.endAtFunc()
-	if endAt <= startAt {
-		return fmt.Errorf("超过注册优惠截止日期")
-	}
-
 	_, err = c.svc.CreateNewMembership(ctx, domain.Member{
 		UID:     evt.Uid,
-		StartAt: c.startAtFunc(),
-		EndAt:   c.endAtFunc(),
+		StartAt: time.Now().UnixMilli(),
+		EndAt:   c.endAt,
 	})
+
 	if err != nil {
 		c.logger.Error("创建会员记录失败",
 			elog.FieldErr(err),

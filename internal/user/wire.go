@@ -17,8 +17,6 @@
 package user
 
 import (
-	"context"
-
 	"github.com/ecodeclub/ecache"
 	"github.com/ecodeclub/mq-api"
 	"github.com/ecodeclub/webook/internal/member"
@@ -41,8 +39,12 @@ var ProviderSet = wire.NewSet(web.NewHandler,
 	service.NewUserService,
 	repository.NewCachedUserRepository)
 
-func InitHandler(db *egorm.Component, cache ecache.Cache, q mq.MQ, creators []string, memberSvc member.Service) *Handler {
-	wire.Build(ProviderSet)
+func InitHandler(db *egorm.Component, cache ecache.Cache,
+	q mq.MQ, creators []string, memberSvc *member.Module) *Handler {
+	wire.Build(
+		ProviderSet,
+		wire.FieldsOf(new(*member.Module), "Svc"),
+	)
 	return new(Handler)
 }
 
@@ -69,20 +71,7 @@ func InitDAO(db *egorm.Component) dao.UserDAO {
 }
 
 func InitRegistrationEventProducer(q mq.MQ) *event.RegistrationEventProducer {
-	type Config struct {
-		Topic      string `yaml:"topic"`
-		Partitions int    `yaml:"partitions"`
-	}
-	var cfg Config
-	err := econf.UnmarshalKey("user.event", &cfg)
-	if err != nil {
-		panic(err)
-	}
-	err = q.CreateTopic(context.Background(), cfg.Topic, cfg.Partitions)
-	if err != nil {
-		panic(err)
-	}
-	producer, err := q.Producer(cfg.Topic)
+	producer, err := q.Producer("user_registration_events")
 	if err != nil {
 		panic(err)
 	}
