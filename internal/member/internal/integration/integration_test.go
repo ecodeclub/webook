@@ -79,14 +79,10 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeRegistrationEvent() {
 	}{
 		"开会员成功_新用户注册": {
 			before: func(t *testing.T, producer mq.Producer, message *mq.Message) {
-				// ctx, cancel := context.WithTimeout(context.Background(), time.Second * 3)
-				// defer cancel()
 				_, err := producer.Produce(context.Background(), message)
 				require.NoError(t, err)
 			},
 			after: func(t *testing.T, uid int64) {
-				// ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
-				// defer cancel()
 				info, err := s.svc.GetMembershipInfo(context.Background(), uid)
 				require.NoError(t, err)
 				require.NotZero(t, info.ID)
@@ -94,7 +90,9 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeRegistrationEvent() {
 			Uid:           1991,
 			errAssertFunc: assert.NoError,
 		},
-		// 开会员失败_新用户注册_优惠已到期
+
+		// 开会员失败_新用户注册_优惠已到期, 无法测到,通过代码审查来补充
+
 		"开会员失败_用户已注册_会员生效中": {
 			before: func(t *testing.T, producer mq.Producer, message *mq.Message) {
 				t.Helper()
@@ -129,7 +127,7 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeRegistrationEvent() {
 		},
 	}
 
-	c, err := event.NewRegistrationEventConsumer(s.svc, s.mq)
+	consumer, err := event.NewRegistrationEventConsumer(s.svc, s.mq)
 	require.NoError(t, err)
 
 	for i := range testCases {
@@ -138,7 +136,7 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeRegistrationEvent() {
 			message := s.newRegistrationEventMessage(t, tc.Uid)
 			tc.before(t, producer, message)
 
-			err = c.Consume(context.Background())
+			err = consumer.Consume(context.Background())
 
 			tc.errAssertFunc(t, err)
 			tc.after(t, tc.Uid)
