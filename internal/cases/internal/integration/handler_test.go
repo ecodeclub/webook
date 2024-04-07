@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strconv"
 	"testing"
 	"time"
 
@@ -75,8 +76,11 @@ func (s *HandlerTestSuite) SetupSuite() {
 	handler.PublicRoutes(server.Engine)
 	server.Use(func(ctx *gin.Context) {
 		ctx.Set("_session", session.NewMemorySession(session.Claims{
-			Uid:  uid,
-			Data: map[string]string{"creator": "true", "memberDDL": "2099-01-01 23:59:59"},
+			Uid: uid,
+			Data: map[string]string{
+				"creator":   "true",
+				"memberDDL": strconv.FormatInt(time.Now().Add(time.Hour).UnixMilli(), 10),
+			},
 		}))
 	})
 	handler.PrivateRoutes(server.Engine)

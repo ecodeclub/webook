@@ -17,7 +17,6 @@ package web
 import (
 	"context"
 	"strconv"
-	"time"
 
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/ecodeclub/ginx"
@@ -95,9 +94,8 @@ func (h *Handler) Profile(ctx *ginx.Context, sess session.Session) (ginx.Result,
 	res.IsCreator = sess.Claims().
 		Get("creator").
 		StringOrDefault("") == "true"
-	res.MemberDDL = sess.Claims().
-		Get("memberDDL").
-		StringOrDefault("")
+	res.MemberDDL, _ = sess.Claims().
+		Get("memberDDL").AsInt64()
 	return ginx.Result{
 		Data: res,
 	}, nil
@@ -136,7 +134,7 @@ func (h *Handler) Callback(ctx *ginx.Context, req WechatCallback) (ginx.Result, 
 	jwtData["creator"] = strconv.FormatBool(isCreator)
 	// 设置会员截止日期
 	memberDDL := h.getMemberDDL(ctx.Request.Context(), user.Id)
-	jwtData["memberDDL"] = memberDDL
+	jwtData["memberDDL"] = strconv.FormatInt(memberDDL, 10)
 
 	_, err = session.NewSessionBuilder(ctx, user.Id).SetJwtData(jwtData).Build()
 	if err != nil {
@@ -151,10 +149,10 @@ func (h *Handler) Callback(ctx *ginx.Context, req WechatCallback) (ginx.Result, 
 	}, nil
 }
 
-func (h *Handler) getMemberDDL(ctx context.Context, userID int64) string {
+func (h *Handler) getMemberDDL(ctx context.Context, userID int64) int64 {
 	mem, err := h.memberSvc.GetMembershipInfo(ctx, userID)
 	if err != nil {
-		return ""
+		h.logger.Error("查找会员信息失败", elog.FieldErr(err), elog.Int64("uid", userID))
 	}
-	return time.UnixMilli(mem.EndAt).UTC().Format(time.DateTime)
+	return mem.EndAt
 }

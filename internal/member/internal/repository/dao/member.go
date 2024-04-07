@@ -16,13 +16,10 @@ package dao
 
 import (
 	"context"
-	"errors"
 	"time"
 
 	"github.com/ego-component/egorm"
 )
-
-var ErrUserDuplicate = errors.New("用户已有记录")
 
 type MemberDAO interface {
 	FindByUID(ctx context.Context, uid int64) (Member, error)

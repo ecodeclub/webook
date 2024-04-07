@@ -14,10 +14,8 @@
 
 package event
 
+const userRegistrationEvents = "user_registration_events"
+
 type RegistrationEvent struct {
 	Uid int64 `json:"uid"`
-}
-
-func (RegistrationEvent) Topic() string {
-	return "user_registration_events"
 }

@@ -144,10 +144,10 @@ github.com/ecodeclub/ecache v0.0.0-20240111145855-75679834beca h1:qksXJxULYYX+3Z
 github.com/ecodeclub/ecache v0.0.0-20240111145855-75679834beca/go.mod h1:faDaVWB0J1EfgyY6e7Z40EWv65Asu4FrtlWVDAOBRiM=
 github.com/ecodeclub/ekit v0.0.9-0.20240331142359-871f65136a9b h1:E2+ixsdn65iQdIBWEC0afanMV0P9/vcaTUq9aLWOTzk=
 github.com/ecodeclub/ekit v0.0.9-0.20240331142359-871f65136a9b/go.mod h1:rEGubThvxoIQT/qnbVBkZgSvYwgKrY/dtwEWKRTmgeY=
-github.com/ecodeclub/ginx v0.0.0-20240405140433-b236eb60dad0 h1:Wsgg2xMCb/feluO6xF4l3PGbL6k6kmQMO1t9fxS8nTw=
-github.com/ecodeclub/ginx v0.0.0-20240405140433-b236eb60dad0/go.mod h1:PCGcpNNuknwamOKIEkRwfwKngqg4syGydrONSIxb08w=
-github.com/ecodeclub/mq-api v0.0.0-20231030023724-b3c489cdada2 h1:qTDaGwQeYTEgFCOfDBDC4bkpDYYXvyTDRu8cq316g5Y=
-github.com/ecodeclub/mq-api v0.0.0-20231030023724-b3c489cdada2/go.mod h1:mRlnirjJILt4xJ6WaG6XdwNq8HyEVK3v/4bOlIb96ts=
+github.com/ecodeclub/ginx v0.0.0-20240407090958-53f744f58112 h1:ACg5ZgxFTK0NyBA8LVz428UefC3Suzwx3SQnIgWdzO8=
+github.com/ecodeclub/ginx v0.0.0-20240407090958-53f744f58112/go.mod h1:PCGcpNNuknwamOKIEkRwfwKngqg4syGydrONSIxb08w=
+github.com/ecodeclub/mq-api v0.0.0-20240406140940-b7e27bcf1d5f h1:zcGm4r2zvI0k8WiQQizeUvSt1ZDOHks2rDo9/0oxpOw=
+github.com/ecodeclub/mq-api v0.0.0-20240406140940-b7e27bcf1d5f/go.mod h1:M+2owQhSRoGyX15L0rUdoSvUDvTOuexquG/605wqYtI=
 github.com/edsrzf/mmap-go v1.0.0/go.mod h1:YO35OhQPt3KJa3ryjFM5Bs14WD66h8eGKpfaBNrHW5M=
 github.com/ego-component/egorm v1.1.1 h1:0jcaEY1MwTZMzX4GOsXpzox5VafuMFjlMbX8Opqndu4=
 github.com/ego-component/egorm v1.1.1/go.mod h1:BqF8f0GsWpV2DFAKL/vFiSfrocX+t3KCYzz3GnoJnrY=

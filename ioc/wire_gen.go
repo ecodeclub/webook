@@ -38,7 +38,7 @@ func InitApp() (*App, error) {
 	handler := baguwenModule.Hdl
 	questionSetHandler := baguwenModule.QsHdl
 	webHandler := label.InitHandler(db)
-	handler2 := InitUserHandler(db, cache, mq, service)
+	handler2 := InitUserHandler(db, cache, mq, module)
 	config := InitCosConfig()
 	handler3 := cos.InitHandler(config)
 	casesModule, err := cases.InitModule(db, cache)

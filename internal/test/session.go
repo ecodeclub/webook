@@ -13,6 +13,10 @@ func init() {
 type SessionProvider struct {
 }
 
+func (s *SessionProvider) UpdateClaims(ctx *gctx.Context, claims session.Claims) error {
+	return nil
+}
+
 func (s *SessionProvider) RenewAccessToken(ctx *gctx.Context) error {
 	//TODO implement me
 	panic("implement me")

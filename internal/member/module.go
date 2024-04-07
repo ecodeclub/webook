@@ -14,9 +14,6 @@
 
 package member
 
-import "github.com/ecodeclub/webook/internal/member/internal/event"
-
 type Module struct {
-	Svc                        Service
-	registrationEventConsumers []*event.RegistrationEventConsumer
+	Svc Service
 }

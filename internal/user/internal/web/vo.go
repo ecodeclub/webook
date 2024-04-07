@@ -22,7 +22,8 @@ type Profile struct {
 	Avatar    string `json:"avatar,omitempty"`
 	SN        string `json:"sn,omitempty"`
 	IsCreator bool   `json:"isCreator,omitempty"`
-	MemberDDL string `json:"memberDDL,omitempty"`
+	// 毫秒数
+	MemberDDL int64 `json:"memberDDL,omitempty"`
 }
 
 func newProfile(u domain.User) Profile {
