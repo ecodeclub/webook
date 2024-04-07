@@ -15,6 +15,7 @@
 package testioc
 
 import (
+	"context"
 	"sync"
 	"time"
 
@@ -53,13 +54,28 @@ func InitMQ() mq.MQ {
 }
 
 func initMQ() (mq.MQ, error) {
+	type Topic struct {
+		Name       string `yaml:"name"`
+		Partitions int    `yaml:"partitions"`
+	}
 	type Config struct {
 		Network   string   `yaml:"network"`
 		Addresses []string `yaml:"addresses"`
+		Topics    []Topic  `yaml:"topics"`
 	}
 	var cfg Config
 	econf.Set("kafka.network", "tcp")
 	econf.Set("kafka.addresses", []string{"localhost:9092"})
+	econf.Set("kafka.topics", []Topic{
+		{
+			Name:       "payment_successful",
+			Partitions: 1,
+		},
+		{
+			Name:       "user_registration_events",
+			Partitions: 1,
+		},
+	})
 	err := econf.UnmarshalKey("kafka", &cfg)
 	if err != nil {
 		return nil, err
@@ -67,6 +83,12 @@ func initMQ() (mq.MQ, error) {
 	qq, err := kafka.NewMQ(cfg.Network, cfg.Addresses)
 	if err != nil {
 		return nil, err
+	}
+	for _, t := range cfg.Topics {
+		err = qq.CreateTopic(context.Background(), t.Name, t.Partitions)
+		if err != nil {
+			return nil, err
+		}
 	}
 	return qq, nil
 }

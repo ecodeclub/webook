@@ -37,6 +37,7 @@ func InitModule(db *egorm.Component, q mq.MQ) (*Module, error) {
 	wire.Build(wire.Struct(
 		new(Module), "*"),
 		InitService,
+		initRegistrationConsumer,
 	)
 	return new(Module), nil
 }
@@ -52,15 +53,15 @@ func InitService(db *egorm.Component, q mq.MQ) Service {
 		d := dao.NewMemberGORMDAO(db)
 		r := repository.NewMemberRepository(d)
 		svc = service.NewMemberService(r)
-		initRegistrationConsumer(svc, q)
 	})
 	return svc
 }
 
-func initRegistrationConsumer(svc service.Service, q mq.MQ) {
+func initRegistrationConsumer(svc service.Service, q mq.MQ) *event.RegistrationEventConsumer {
 	c, err := event.NewRegistrationEventConsumer(svc, q)
 	if err != nil {
 		panic(err)
 	}
 	c.Start(context.Background())
+	return c
 }
