@@ -24,8 +24,10 @@ import (
 
 func InitModule(db *gorm.DB, q mq.MQ) (*Module, error) {
 	service := InitService(db, q)
+	registrationEventConsumer := initRegistrationConsumer(service, q)
 	module := &Module{
 		Svc: service,
+		c:   registrationEventConsumer,
 	}
 	return module, nil
 }
@@ -47,15 +49,15 @@ func InitService(db *egorm.Component, q mq.MQ) Service {
 		d := dao.NewMemberGORMDAO(db)
 		r := repository.NewMemberRepository(d)
 		svc = service.NewMemberService(r)
-		initRegistrationConsumer(svc, q)
 	})
 	return svc
 }
 
-func initRegistrationConsumer(svc2 service.Service, q mq.MQ) {
+func initRegistrationConsumer(svc2 service.Service, q mq.MQ) *event.RegistrationEventConsumer {
 	c, err := event.NewRegistrationEventConsumer(svc2, q)
 	if err != nil {
 		panic(err)
 	}
 	c.Start(context.Background())
+	return c
 }
