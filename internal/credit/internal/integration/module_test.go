@@ -19,8 +19,11 @@ package integration
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"log"
 	"testing"
 
+	"github.com/ecodeclub/ecache"
 	"github.com/ecodeclub/mq-api"
 	"github.com/ecodeclub/webook/internal/credit/internal/domain"
 	"github.com/ecodeclub/webook/internal/credit/internal/event"
@@ -31,187 +34,254 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+	"golang.org/x/sync/errgroup"
 )
+
+func TestCreditModule(t *testing.T) {
+	suite.Run(t, new(ModuleTestSuite))
+}
 
 type ModuleTestSuite struct {
 	suite.Suite
-	db  *egorm.Component
-	mq  mq.MQ
-	svc service.Service
-}
-
-func TestModule(t *testing.T) {
-	suite.Run(t, new(ModuleTestSuite))
+	db    *egorm.Component
+	mq    mq.MQ
+	cache ecache.Cache
+	svc   service.Service
 }
 
 func (s *ModuleTestSuite) SetupTest() {
 	s.svc = startup.InitService()
 	s.mq = testioc.InitMQ()
 	s.db = testioc.InitDB()
+	s.cache = testioc.InitCache()
 }
 
 func (s *ModuleTestSuite) TearDownSuite() {
-	err := s.db.Exec("DROP TABLE `credits`").Error
-	s.NoError(err)
-	err = s.db.Exec("DROP TABLE `credit_logs`").Error
-	s.NoError(err)
+	// err := s.db.Exec("DROP TABLE `credits`").Error
+	// s.NoError(err)
+	// err = s.db.Exec("DROP TABLE `credit_logs`").Error
+	// s.NoError(err)
 }
 
 func (s *ModuleTestSuite) TearDownTest() {
-	err := s.db.Exec("TRUNCATE TABLE `credits`").Error
-	s.NoError(err)
-	err = s.db.Exec("TRUNCATE TABLE `credit_logs`").Error
-	s.NoError(err)
+	// err := s.db.Exec("TRUNCATE TABLE `credits`").Error
+	// s.NoError(err)
+	// err = s.db.Exec("TRUNCATE TABLE `credit_logs`").Error
+	// s.NoError(err)
 }
 
-func (s *ModuleTestSuite) TestConsumer_ConsumeCreditEvent() {
+func (s *ModuleTestSuite) TestConsumer_ConsumeCreditIncreaseEvent() {
+	// 单消费者顺序消费
 	t := s.T()
-	producer, err := s.mq.Producer("credit_events")
-	require.NoError(t, err)
 
-	testCases := []struct {
-		name   string
-		before func(t *testing.T, producer mq.Producer, message *mq.Message)
-		after  func(t *testing.T, uid int64)
+	producer, er := s.mq.Producer("credit_increase_events")
+	require.NoError(t, er)
 
-		Uid           int64
-		errAssertFunc assert.ErrorAssertionFunc
-	}{
-		{
-			name: "开会员成功_新用户注册",
-			before: func(t *testing.T, producer mq.Producer, message *mq.Message) {
-				_, err := producer.Produce(context.Background(), message)
-				require.NoError(t, err)
-			},
-			after: func(t *testing.T, uid int64) {
-
-			},
-			Uid:           1991,
-			errAssertFunc: assert.NoError,
-		},
-		{
-			name: "开会员失败_用户已注册_会员生效中",
-			before: func(t *testing.T, producer mq.Producer, message *mq.Message) {
-				t.Helper()
-				_, err := producer.Produce(context.Background(), message)
-				require.NoError(t, err)
-
-			},
-			after:         func(t *testing.T, uid int64) {},
-			Uid:           1993,
-			errAssertFunc: assert.Error,
-		},
-		{
-			name: "开会员失败_用户已注册_会员已失效",
-			before: func(t *testing.T, producer mq.Producer, message *mq.Message) {
-				t.Helper()
-				_, err := producer.Produce(context.Background(), message)
-				require.NoError(t, err)
-			},
-			after:         func(t *testing.T, uid int64) {},
-			Uid:           1994,
-			errAssertFunc: assert.Error,
-		},
-	}
-
-	consumer, err := event.NewCreditConsumer(s.svc, s.mq)
-	require.NoError(t, err)
-
-	for i := range testCases {
-		tc := testCases[i]
-		t.Run(tc.name, func(t *testing.T) {
-			message := s.newRegistrationEventMessage(t, tc.Uid)
-			tc.before(t, producer, message)
-
-			err = consumer.Consume(context.Background())
-
-			tc.errAssertFunc(t, err)
-			tc.after(t, tc.Uid)
-		})
-	}
-}
-
-func (s *ModuleTestSuite) newRegistrationEventMessage(t *testing.T, uid int64) *mq.Message {
-	marshal, err := json.Marshal(event.CreditEvent{Uid: uid})
-	require.NoError(t, err)
-	return &mq.Message{Value: marshal}
-}
-
-func (s *ModuleTestSuite) TestService_AddCreditsAndGetCreditsByUID() {
-	t := s.T()
+	consumer, er := event.NewCreditIncreaseConsumer(s.svc, s.mq, s.cache)
+	require.NoError(t, er)
+	t.Cleanup(func() {
+		require.NoError(t, consumer.Stop(context.Background()))
+	})
 
 	testCases := []struct {
 		name string
 
-		before func(t *testing.T)
-		uid    int64
-		amount int64
-		after  func(t *testing.T)
+		before func(t *testing.T, producer mq.Producer, message *mq.Message)
+		after  func(t *testing.T, evt event.CreditIncreaseEvent)
+		evt    event.CreditIncreaseEvent
 
-		wantErr error
+		errAssertFunc assert.ErrorAssertionFunc
 	}{
 		{
-			name: "用户积分主记录不存在_增加积分成功",
-			before: func(t *testing.T) {
-				t.Helper()
-				_, err := s.svc.GetCreditsByUID(context.Background(), 5127)
-				require.Error(t, err)
-			},
-			uid:    5127,
-			amount: 51,
-			after: func(t *testing.T) {
-				t.Helper()
-				credits, err := s.svc.GetCreditsByUID(context.Background(), 5127)
+			name: "增加积分成功_新增用户",
+			before: func(t *testing.T, producer mq.Producer, message *mq.Message) {
+				_, err := producer.Produce(context.Background(), message)
 				require.NoError(t, err)
-				require.Equal(t, int64(51), credits)
+				// 模拟重试
+				_, err = producer.Produce(context.Background(), message)
+				require.NoError(t, err)
 			},
+			after: func(t *testing.T, evt event.CreditIncreaseEvent) {
+				key := fmt.Sprintf("webook:credit:increase:%s", evt.Key)
+				t.Logf("after evt.Key=%#v, key = %#v\n", evt.Key, key)
+				_, err := s.cache.Delete(context.Background(), key)
+				require.NoError(t, err)
+
+				uid := int64(6001)
+
+				c, err := s.svc.GetCreditsByUID(context.Background(), uid)
+				require.NoError(t, err)
+
+				require.Len(t, c.Logs, 1)
+				require.Equal(t, int64(domain.CreditLogStatusActive), c.Logs[0].Status)
+
+				require.Equal(t, evt, event.CreditIncreaseEvent{
+					Key:     evt.Key,
+					Uid:     c.Uid,
+					Amount:  c.TotalAmount,
+					BizId:   c.Logs[0].BizId,
+					BizType: c.Logs[0].BizType,
+					Action:  c.Logs[0].Action,
+				})
+			},
+			evt: event.CreditIncreaseEvent{
+				Key:     "sn-key-6001",
+				Uid:     6001,
+				Amount:  100,
+				BizId:   1,
+				BizType: 1,
+				Action:  "注册",
+			},
+			errAssertFunc: assert.NoError,
 		},
 		{
-			name: "用户积分主记录已存在_无预扣积分_增加积分成功",
-			before: func(t *testing.T) {
-				t.Helper()
-				uid := int64(5128)
+			name: "增加积分成功_已有用户_无预扣积分",
+			before: func(t *testing.T, producer mq.Producer, message *mq.Message) {
 
-				_, err := s.svc.GetCreditsByUID(context.Background(), uid)
-				require.Error(t, err)
-
-				amount := int64(199)
-				require.NoError(t, s.svc.AddCredits(context.Background(), domain.Credit{
-					Uid:    uid,
-					Amount: amount,
-				}))
-
-				credits, err := s.svc.GetCreditsByUID(context.Background(), uid)
+				// 创建已有用户
+				uid := int64(6002)
+				err := s.svc.AddCredits(context.Background(), domain.Credit{
+					Uid:          uid,
+					ChangeAmount: 100,
+					Logs: []domain.CreditLog{
+						{
+							BizId:   2,
+							BizType: 2,
+							Action:  "邀请注册",
+						},
+					},
+				})
 				require.NoError(t, err)
-				require.Equal(t, amount, credits)
-			},
-			uid:    5128,
-			amount: 100,
-			after: func(t *testing.T) {
-				t.Helper()
-				uid := int64(5128)
-				credits, err := s.svc.GetCreditsByUID(context.Background(), uid)
-				require.NoError(t, err)
-				require.Equal(t, int64(299), credits)
-			},
-		},
-		{
-			name: "用户积分主记录已存在_有预扣积分_增加积分成功",
-		},
-		// todo: 用户积分主记录已存在_有预扣积分_增加积分成功
-		// todo: amount <= 0
 
+				// 发送消息
+				_, err = producer.Produce(context.Background(), message)
+				require.NoError(t, err)
+
+				// 模拟重试
+				_, err = producer.Produce(context.Background(), message)
+				require.NoError(t, err)
+			},
+			after: func(t *testing.T, evt event.CreditIncreaseEvent) {
+				key := fmt.Sprintf("webook:credit:increase:%s", evt.Key)
+				t.Logf("after evt.Key=%#v, key = %#v\n", evt.Key, key)
+				_, err := s.cache.Delete(context.Background(), key)
+				require.NoError(t, err)
+
+				uid := int64(6002)
+				c, err := s.svc.GetCreditsByUID(context.Background(), uid)
+				require.NoError(t, err)
+
+				require.Len(t, c.Logs, 2)
+				require.Equal(t, int64(domain.CreditLogStatusActive), c.Logs[0].Status)
+				changedAmount := c.TotalAmount - int64(100)
+				require.Equal(t, evt, event.CreditIncreaseEvent{
+					Key:     evt.Key,
+					Uid:     c.Uid,
+					Amount:  changedAmount,
+					BizId:   c.Logs[0].BizId,
+					BizType: c.Logs[0].BizType,
+					Action:  c.Logs[0].Action,
+				})
+			},
+			evt: event.CreditIncreaseEvent{
+				Key:     "sn-key-6002",
+				Uid:     6002,
+				Amount:  250,
+				BizId:   3,
+				BizType: 3,
+				Action:  "购买商品",
+			},
+			errAssertFunc: assert.NoError,
+		},
+		// todo: 增加积分成功_已有用户_有预扣积分
+		// todo: changeAmount <= 0
 	}
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
 
-	for _, tt := range testCases {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.before(t)
-			err := s.svc.AddCredits(context.Background(), domain.Credit{
-				Uid:    tt.uid,
-				Amount: tt.amount,
-			})
-			require.Equal(t, tt.wantErr, err)
-			tt.after(t)
+			message := s.newCreditIncreaseEventMessage(t, tc.evt)
+			tc.before(t, producer, message)
+
+			err := consumer.Consume(context.Background())
+			// 模拟重复消费
+			err = consumer.Consume(context.Background())
+
+			tc.errAssertFunc(t, err)
+			tc.after(t, tc.evt)
+			t.Logf("test end\n")
 		})
 	}
+}
+
+func (s *ModuleTestSuite) TestConsumer_ConsumeCreditIncreaseEvent_Concurrent() {
+	// 多消费者并发消费
+	t := s.T()
+
+	producer, er := s.mq.Producer("credit_increase_events")
+	require.NoError(t, er)
+
+	uid := int64(6004)
+	evt := event.CreditIncreaseEvent{
+		Key:     "sn-6004",
+		Uid:     uid,
+		Amount:  100,
+		BizId:   1,
+		BizType: 1,
+		Action:  "注册",
+	}
+
+	// 模拟生产者重试
+	n := 3
+	for i := 0; i < n; i++ {
+		_, e := producer.Produce(context.Background(), s.newCreditIncreaseEventMessage(t, evt))
+		require.NoError(t, e)
+	}
+
+	// 并发消费
+	var eg errgroup.Group
+	waitChan := make(chan struct{})
+	for i := 0; i < n; i++ {
+		i := i
+		eg.Go(func() error {
+			<-waitChan
+			log.Printf("i = %d\n", i)
+			defer func() {
+				log.Printf("goroutine exit\n")
+			}()
+			c, err := event.NewCreditIncreaseConsumer(s.svc, s.mq, s.cache)
+			require.NoError(t, err)
+			return c.Consume(context.Background())
+		})
+	}
+
+	t.Logf("1 =-==\n")
+	close(waitChan)
+	<-waitChan
+	t.Logf("2 =-==\n")
+	require.NoError(t, eg.Wait())
+	t.Logf("3 =-==\n")
+
+	// 断言
+	credit, err := s.svc.GetCreditsByUID(context.Background(), uid)
+	require.NoError(t, err)
+
+	require.Len(t, credit.Logs, 1)
+	require.Equal(t, int64(domain.CreditLogStatusActive), credit.Logs[0].Status)
+
+	require.Equal(t, evt, event.CreditIncreaseEvent{
+		Key:     evt.Key,
+		Uid:     credit.Uid,
+		Amount:  credit.TotalAmount,
+		BizId:   credit.Logs[0].BizId,
+		BizType: credit.Logs[0].BizType,
+		Action:  credit.Logs[0].Action,
+	})
+}
+
+func (s *ModuleTestSuite) newCreditIncreaseEventMessage(t *testing.T, evt event.CreditIncreaseEvent) *mq.Message {
+	t.Helper()
+	marshal, err := json.Marshal(evt)
+	require.NoError(t, err)
+	return &mq.Message{Value: marshal}
 }

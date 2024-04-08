@@ -79,7 +79,7 @@ func (h *Handler) RetrievePreviewOrder(ctx *ginx.Context, req PreviewOrderReq, s
 	}
 	return ginx.Result{
 		Data: PreviewOrderResp{
-			Credits:  c.Amount,
+			Credits:  c.TotalAmount,
 			Payments: h.toPaymentChannelVO(ctx),
 			Products: h.toProductVO(p, req.Quantity),
 			Policy:   "请注意: 虚拟商品、一旦支持成功不退、不换,请谨慎操作",

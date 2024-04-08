@@ -18,5 +18,5 @@ import "github.com/ecodeclub/webook/internal/credit/internal/event"
 
 type Module struct {
 	Svc Service
-	c   *event.CreditConsumer
+	c   *event.CreditIncreaseConsumer
 }

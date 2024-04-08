@@ -12,15 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package event
+package cache
 
-const creditIncreaseEvents = "credit_increase_events"
+import "context"
 
-type CreditIncreaseEvent struct {
-	Key     string `json:"key"`
-	Uid     int64  `json:"uid"`      // 用户A                用户C
-	Amount  int64  `json:"amount"`   // 增加100              增加1000
-	BizId   int64  `json:"biz_id"`   // 通过用户B userB_id    oder_id
-	BizType int64  `json:"biz_type"` // 用户注册             下单
-	Action  string `json:"action"`   // 邀请注册             购买商品
+type CreditCache interface {
+	GetEventKey(ctx context.Context, key string) (string, error)
+	SetNXEventKey(ctx context.Context, key string) (bool, error)
+	DelEventKey(ctx context.Context, key string) (int64, error)
 }

@@ -20,6 +20,7 @@ import (
 	"context"
 	"sync"
 
+	"github.com/ecodeclub/ecache"
 	"github.com/ecodeclub/mq-api"
 	"github.com/ecodeclub/webook/internal/credit/internal/domain"
 	"github.com/ecodeclub/webook/internal/credit/internal/event"
@@ -41,7 +42,7 @@ func NewMockCreditService(ctrl *gomock.Controller) *MockCreditService {
 	return svcmocks.NewMockService(ctrl)
 }
 
-func InitModule(db *egorm.Component, q mq.MQ) (*Module, error) {
+func InitModule(db *egorm.Component, q mq.MQ, e ecache.Cache) (*Module, error) {
 	wire.Build(wire.Struct(
 		new(Module), "*"),
 		InitService,
@@ -65,8 +66,8 @@ func InitService(db *egorm.Component) Service {
 	return svc
 }
 
-func initCreditConsumer(svc service.Service, q mq.MQ) *event.CreditConsumer {
-	c, err := event.NewCreditConsumer(svc, q)
+func initCreditConsumer(svc service.Service, q mq.MQ, e ecache.Cache) *event.CreditIncreaseConsumer {
+	c, err := event.NewCreditIncreaseConsumer(svc, q, e)
 	if err != nil {
 		panic(err)
 	}

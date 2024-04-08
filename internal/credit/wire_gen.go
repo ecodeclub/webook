@@ -10,6 +10,7 @@ import (
 	"context"
 	"sync"
 
+	"github.com/ecodeclub/ecache"
 	"github.com/ecodeclub/mq-api"
 	"github.com/ecodeclub/webook/internal/credit/internal/domain"
 	"github.com/ecodeclub/webook/internal/credit/internal/event"
@@ -24,12 +25,12 @@ import (
 
 // Injectors from wire.go:
 
-func InitModule(db *gorm.DB, q mq.MQ) (*Module, error) {
+func InitModule(db *gorm.DB, q mq.MQ, e ecache.Cache) (*Module, error) {
 	service := InitService(db)
-	creditConsumer := initCreditConsumer(service, q)
+	creditIncreaseConsumer := initCreditConsumer(service, q, e)
 	module := &Module{
 		Svc: service,
-		c:   creditConsumer,
+		c:   creditIncreaseConsumer,
 	}
 	return module, nil
 }
@@ -62,8 +63,8 @@ func InitService(db *egorm.Component) Service {
 	return svc
 }
 
-func initCreditConsumer(svc2 service.Service, q mq.MQ) *event.CreditConsumer {
-	c, err := event.NewCreditConsumer(svc2, q)
+func initCreditConsumer(svc2 service.Service, q mq.MQ, e ecache.Cache) *event.CreditIncreaseConsumer {
+	c, err := event.NewCreditIncreaseConsumer(svc2, q, e)
 	if err != nil {
 		panic(err)
 	}

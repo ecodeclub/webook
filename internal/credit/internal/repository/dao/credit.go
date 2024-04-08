@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/ecodeclub/webook/internal/credit/internal/domain"
 	"github.com/ego-component/egorm"
 	"gorm.io/gorm"
 )
@@ -30,8 +31,10 @@ var (
 
 type CreditDAO interface {
 	FindCreditByUID(ctx context.Context, uid int64) (Credit, error)
+	Upsert(ctx context.Context, uid, amount int64, l CreditLog) (int64, error)
 	Create(ctx context.Context, c Credit, l CreditLog) (int64, error)
 	Update(ctx context.Context, c Credit, l CreditLog) error
+	FindCreditLogsByCreditID(ctx context.Context, id int64) ([]CreditLog, error)
 }
 
 type creditDAO struct {
@@ -70,8 +73,8 @@ func (g *creditDAO) Upsert(ctx context.Context, uid, amount int64, l CreditLog) 
 	var id int64
 	err := g.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		now := time.Now().UnixMilli()
-		var c Credit
-		res := tx.Where(Credit{Uid: uid}).Attrs(Credit{TotalCredits: amount, Ctime: now, Utime: now}).FirstOrCreate(&c)
+		c := Credit{TotalCredits: amount, Version: 1, Ctime: now, Utime: now}
+		res := tx.Where(Credit{Uid: uid}).Attrs(c).FirstOrCreate(&c)
 		if res.RowsAffected == 0 {
 			// 找到积分主记录, 更新可用积分
 			version := c.Version
@@ -86,7 +89,7 @@ func (g *creditDAO) Upsert(ctx context.Context, uid, amount int64, l CreditLog) 
 					"Utime":        now,
 					"Version":      c.Version,
 				}).Error; err != nil {
-				return fmt.Errorf("更新积分失败: %w", err)
+				return fmt.Errorf("更新积分主记录失败: %w", err)
 			}
 		}
 		// 添加积分流水记录
@@ -125,6 +128,15 @@ func (g *creditDAO) Update(ctx context.Context, c Credit, l CreditLog) error {
 		}
 		return nil
 	})
+}
+
+func (g *creditDAO) FindCreditLogsByCreditID(ctx context.Context, cid int64) ([]CreditLog, error) {
+	var res []CreditLog
+	err := g.db.WithContext(ctx).
+		Where("cid = ? AND status = ?", cid, domain.CreditLogStatusActive).
+		Order("ctime DESC").
+		Find(&res).Error
+	return res, err
 }
 
 /*
@@ -199,12 +211,6 @@ func (g *creditDAO) DeductCredits(ctx context.Context, lockID int64, c Credit, l
 	})
 }
 */
-
-const (
-	CreditLogStatusActive   = 1
-	CreditLogStatusLocked   = 2
-	CreditLogStatusInactive = 3
-)
 
 type Credit struct {
 	Id                 int64 `gorm:"primaryKey;autoIncrement;comment:积分主表自增ID"`

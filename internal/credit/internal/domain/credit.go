@@ -14,14 +14,22 @@
 
 package domain
 
+const (
+	CreditLogStatusActive   = 1
+	CreditLogStatusLocked   = 2
+	CreditLogStatusInactive = 3
+)
+
 type Credit struct {
-	Uid    int64
-	Amount int64
-	Logs   []CreditLog
+	Uid          int64
+	ChangeAmount int64
+	TotalAmount  int64
+	Logs         []CreditLog
 }
 
 type CreditLog struct {
 	BizId   int64
 	BizType int64
 	Action  string
+	Status  int64
 }

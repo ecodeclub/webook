@@ -17,6 +17,7 @@ package repository
 import (
 	"context"
 
+	"github.com/ecodeclub/ekit/slice"
 	"github.com/ecodeclub/webook/internal/credit/internal/domain"
 	"github.com/ecodeclub/webook/internal/credit/internal/repository/dao"
 )
@@ -35,31 +36,42 @@ func NewCreditRepository(dao dao.CreditDAO) CreditRepository {
 }
 
 func (r *creditRepository) AddCredits(ctx context.Context, credit domain.Credit) error {
-	c, l := r.toEntity(credit)
-	_, err := r.dao.Create(ctx, c, l)
+	cl := r.toCreditLogsEntity(credit.Logs)
+	_, err := r.dao.Upsert(ctx, credit.Uid, credit.ChangeAmount, cl[0])
 	return err
 }
 
-func (r *creditRepository) toEntity(credit domain.Credit) (dao.Credit, dao.CreditLog) {
-	c := dao.Credit{
-		Id:                 0,
-		Uid:                credit.Uid,
-		TotalCredits:       0,
-		LockedTotalCredits: 0,
-		Version:            0,
-	}
-	l := dao.CreditLog{}
-	return c, l
+func (r *creditRepository) toCreditLogsEntity(cl []domain.CreditLog) []dao.CreditLog {
+	return slice.Map(cl, func(idx int, src domain.CreditLog) dao.CreditLog {
+		return dao.CreditLog{
+			BizId:   src.BizId,
+			BizType: src.BizType,
+			Desc:    src.Action,
+			Status:  src.Status,
+		}
+	})
 }
 
 func (r *creditRepository) GetCreditByUID(ctx context.Context, uid int64) (domain.Credit, error) {
-	byUID, err := r.dao.FindCreditByUID(ctx, uid)
-	return r.toDomain(byUID), err
+	c, err := r.dao.FindCreditByUID(ctx, uid)
+	if err != nil {
+		return domain.Credit{}, err
+	}
+	cl, err := r.dao.FindCreditLogsByCreditID(ctx, c.Id)
+	return r.toDomain(c, cl), err
 }
 
-func (r *creditRepository) toDomain(d dao.Credit) domain.Credit {
+func (r *creditRepository) toDomain(d dao.Credit, l []dao.CreditLog) domain.Credit {
 	return domain.Credit{
-		Uid:    d.Uid,
-		Amount: d.TotalCredits,
+		Uid:         d.Uid,
+		TotalAmount: d.TotalCredits,
+		Logs: slice.Map(l, func(idx int, src dao.CreditLog) domain.CreditLog {
+			return domain.CreditLog{
+				BizId:   src.BizId,
+				BizType: src.BizType,
+				Action:  src.Desc,
+				Status:  src.Status,
+			}
+		}),
 	}
 }
