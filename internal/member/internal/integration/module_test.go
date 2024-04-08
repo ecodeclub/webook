@@ -26,7 +26,6 @@ import (
 	"github.com/ecodeclub/webook/internal/member/internal/domain"
 	"github.com/ecodeclub/webook/internal/member/internal/event"
 	"github.com/ecodeclub/webook/internal/member/internal/integration/startup"
-	"github.com/ecodeclub/webook/internal/member/internal/repository/dao"
 	"github.com/ecodeclub/webook/internal/member/internal/service"
 	testioc "github.com/ecodeclub/webook/internal/test/ioc"
 	"github.com/ego-component/egorm"
@@ -35,7 +34,7 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-func TestMemberIntegrationTest(t *testing.T) {
+func TestMemberModule(t *testing.T) {
 	suite.Run(t, new(ModuleTestSuite))
 }
 
@@ -44,15 +43,11 @@ type ModuleTestSuite struct {
 	db  *egorm.Component
 	mq  mq.MQ
 	svc service.Service
-	dao dao.MemberDAO
 }
 
 func (s *ModuleTestSuite) SetupSuite() {
 	s.svc = startup.InitService()
 	s.db = testioc.InitDB()
-	require.NoError(s.T(), dao.InitTables(s.db))
-	s.dao = dao.NewMemberGORMDAO(s.db)
-
 	s.mq = testioc.InitMQ()
 }
 
@@ -70,14 +65,16 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeRegistrationEvent() {
 	producer, err := s.mq.Producer("user_registration_events")
 	require.NoError(t, err)
 
-	testCases := map[string]struct {
+	testCases := []struct {
+		name   string
 		before func(t *testing.T, producer mq.Producer, message *mq.Message)
 		after  func(t *testing.T, uid int64)
 
 		Uid           int64
 		errAssertFunc assert.ErrorAssertionFunc
 	}{
-		"开会员成功_新用户注册": {
+		{
+			name: "开会员成功_新用户注册",
 			before: func(t *testing.T, producer mq.Producer, message *mq.Message) {
 				_, err := producer.Produce(context.Background(), message)
 				require.NoError(t, err)
@@ -92,8 +89,8 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeRegistrationEvent() {
 		},
 
 		// 开会员失败_新用户注册_优惠已到期, 无法测到,通过代码审查来补充
-
-		"开会员失败_用户已注册_会员生效中": {
+		{
+			name: "开会员失败_用户已注册_会员生效中",
 			before: func(t *testing.T, producer mq.Producer, message *mq.Message) {
 				t.Helper()
 				_, err := producer.Produce(context.Background(), message)
@@ -109,7 +106,8 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeRegistrationEvent() {
 			Uid:           1993,
 			errAssertFunc: assert.Error,
 		},
-		"开会员失败_用户已注册_会员已失效": {
+		{
+			name: "开会员失败_用户已注册_会员已失效",
 			before: func(t *testing.T, producer mq.Producer, message *mq.Message) {
 				t.Helper()
 				_, err := producer.Produce(context.Background(), message)
@@ -131,8 +129,8 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeRegistrationEvent() {
 	require.NoError(t, err)
 
 	for i := range testCases {
-		name, tc := i, testCases[i]
-		t.Run(name, func(t *testing.T) {
+		tc := testCases[i]
+		t.Run(tc.name, func(t *testing.T) {
 			message := s.newRegistrationEventMessage(t, tc.Uid)
 			tc.before(t, producer, message)
 
