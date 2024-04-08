@@ -21,7 +21,7 @@ import (
 	"github.com/ecodeclub/webook/internal/credit/internal/repository"
 )
 
-//go:generate mockgen -source=./service.go -destination=mocks/credit.mock.go -package=svcmocks Service
+//go:generate mockgen -source=./service.go -destination=../../mocks/credit.mock.go -package=creditmocks Service
 type Service interface {
 	AddCredits(ctx context.Context, credit domain.Credit) error
 	GetCreditsByUID(ctx context.Context, uid int64) (domain.Credit, error)

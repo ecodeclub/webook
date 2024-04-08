@@ -27,20 +27,12 @@ import (
 	"github.com/ecodeclub/webook/internal/credit/internal/repository"
 	"github.com/ecodeclub/webook/internal/credit/internal/repository/dao"
 	"github.com/ecodeclub/webook/internal/credit/internal/service"
-	svcmocks "github.com/ecodeclub/webook/internal/credit/internal/service/mocks"
 	"github.com/ego-component/egorm"
 	"github.com/google/wire"
-	"go.uber.org/mock/gomock"
 )
 
 type Credit = domain.Credit
 type Service = service.Service
-type MockCreditService = svcmocks.MockService
-
-// todo: 在credit下建立mocks, 然后去掉这里
-func NewMockCreditService(ctrl *gomock.Controller) *MockCreditService {
-	return svcmocks.NewMockService(ctrl)
-}
 
 func InitModule(db *egorm.Component, q mq.MQ, e ecache.Cache) (*Module, error) {
 	wire.Build(wire.Struct(

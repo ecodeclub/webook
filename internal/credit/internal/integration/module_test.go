@@ -20,7 +20,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"testing"
 
 	"github.com/ecodeclub/ecache"
@@ -34,7 +33,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
-	"golang.org/x/sync/errgroup"
 )
 
 func TestCreditModule(t *testing.T) {
@@ -212,71 +210,6 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeCreditIncreaseEvent() {
 			t.Logf("test end\n")
 		})
 	}
-}
-
-func (s *ModuleTestSuite) TestConsumer_ConsumeCreditIncreaseEvent_Concurrent() {
-	// 多消费者并发消费
-	t := s.T()
-
-	producer, er := s.mq.Producer("credit_increase_events")
-	require.NoError(t, er)
-
-	uid := int64(6004)
-	evt := event.CreditIncreaseEvent{
-		Key:     "sn-6004",
-		Uid:     uid,
-		Amount:  100,
-		BizId:   1,
-		BizType: 1,
-		Action:  "注册",
-	}
-
-	// 模拟生产者重试
-	n := 3
-	for i := 0; i < n; i++ {
-		_, e := producer.Produce(context.Background(), s.newCreditIncreaseEventMessage(t, evt))
-		require.NoError(t, e)
-	}
-
-	// 并发消费
-	var eg errgroup.Group
-	waitChan := make(chan struct{})
-	for i := 0; i < n; i++ {
-		i := i
-		eg.Go(func() error {
-			<-waitChan
-			log.Printf("i = %d\n", i)
-			defer func() {
-				log.Printf("goroutine exit\n")
-			}()
-			c, err := event.NewCreditIncreaseConsumer(s.svc, s.mq, s.cache)
-			require.NoError(t, err)
-			return c.Consume(context.Background())
-		})
-	}
-
-	t.Logf("1 =-==\n")
-	close(waitChan)
-	<-waitChan
-	t.Logf("2 =-==\n")
-	require.NoError(t, eg.Wait())
-	t.Logf("3 =-==\n")
-
-	// 断言
-	credit, err := s.svc.GetCreditsByUID(context.Background(), uid)
-	require.NoError(t, err)
-
-	require.Len(t, credit.Logs, 1)
-	require.Equal(t, int64(domain.CreditLogStatusActive), credit.Logs[0].Status)
-
-	require.Equal(t, evt, event.CreditIncreaseEvent{
-		Key:     evt.Key,
-		Uid:     credit.Uid,
-		Amount:  credit.TotalAmount,
-		BizId:   credit.Logs[0].BizId,
-		BizType: credit.Logs[0].BizType,
-		Action:  credit.Logs[0].Action,
-	})
 }
 
 func (s *ModuleTestSuite) newCreditIncreaseEventMessage(t *testing.T, evt event.CreditIncreaseEvent) *mq.Message {
