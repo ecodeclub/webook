@@ -12,10 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package dao
+package credit
 
-import "github.com/ego-component/egorm"
+import "github.com/ecodeclub/webook/internal/credit/internal/event"
 
-func InitTables(db *egorm.Component) error {
-	return db.AutoMigrate(&Credit{}, &CreditLog{})
+type Module struct {
+	Svc Service
+	c   *event.CreditConsumer
 }

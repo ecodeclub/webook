@@ -14,5 +14,52 @@
 
 package repository
 
+import (
+	"context"
+
+	"github.com/ecodeclub/webook/internal/credit/internal/domain"
+	"github.com/ecodeclub/webook/internal/credit/internal/repository/dao"
+)
+
 type CreditRepository interface {
+	AddCredits(ctx context.Context, credit domain.Credit) error
+	GetCreditByUID(ctx context.Context, uid int64) (domain.Credit, error)
+}
+
+type creditRepository struct {
+	dao dao.CreditDAO
+}
+
+func NewCreditRepository(dao dao.CreditDAO) CreditRepository {
+	return &creditRepository{dao: dao}
+}
+
+func (r *creditRepository) AddCredits(ctx context.Context, credit domain.Credit) error {
+	c, l := r.toEntity(credit)
+	_, err := r.dao.Create(ctx, c, l)
+	return err
+}
+
+func (r *creditRepository) toEntity(credit domain.Credit) (dao.Credit, dao.CreditLog) {
+	c := dao.Credit{
+		Id:                 0,
+		Uid:                credit.Uid,
+		TotalCredits:       0,
+		LockedTotalCredits: 0,
+		Version:            0,
+	}
+	l := dao.CreditLog{}
+	return c, l
+}
+
+func (r *creditRepository) GetCreditByUID(ctx context.Context, uid int64) (domain.Credit, error) {
+	byUID, err := r.dao.FindCreditByUID(ctx, uid)
+	return r.toDomain(byUID), err
+}
+
+func (r *creditRepository) toDomain(d dao.Credit) domain.Credit {
+	return domain.Credit{
+		Uid:    d.Uid,
+		Amount: d.TotalCredits,
+	}
 }

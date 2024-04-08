@@ -15,5 +15,13 @@
 package domain
 
 type Credit struct {
+	Uid    int64
 	Amount int64
+	Logs   []CreditLog
+}
+
+type CreditLog struct {
+	BizId   int64
+	BizType int64
+	Action  string
 }

@@ -12,10 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package dao
+package event
 
-import "github.com/ego-component/egorm"
+const creditEvents = "credit_events"
 
-func InitTables(db *egorm.Component) error {
-	return db.AutoMigrate(&Credit{}, &CreditLog{})
+type CreditEvent struct {
+	Uid     int64  `json:"uid"`
+	Amount  int64  `json:"amount"`
+	BizId   int64  `json:"biz_id"`
+	BizType int64  `json:"biz_type"`
+	Action  string `json:"action"`
 }

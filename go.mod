@@ -20,7 +20,6 @@ require (
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/stretchr/testify v1.9.0
 	github.com/tencentyun/qcloud-cos-sts-sdk v0.0.0-20231121073521-dd65d8941a16
-	go.uber.org/mock v0.3.0
 	github.com/wechatpay-apiv3/wechatpay-go v0.2.18
 	go.uber.org/mock v0.3.0
 	golang.org/x/sync v0.6.0

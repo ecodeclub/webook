@@ -23,6 +23,7 @@ import (
 
 //go:generate mockgen -source=./service.go -destination=mocks/credit.mock.go -package=svcmocks Service
 type Service interface {
+	AddCredits(ctx context.Context, credit domain.Credit) error
 	GetCreditsByUID(ctx context.Context, uid int64) (domain.Credit, error)
 	TryDeductCredits(ctx context.Context, amount int64) (sn string, availableCredits int64, err error)
 	ConfirmDeductCredits(ctx context.Context, sn string) error
@@ -37,8 +38,16 @@ type service struct {
 	repo repository.CreditRepository
 }
 
+func NewCreditService(repo repository.CreditRepository) Service {
+	return &service{repo: repo}
+}
+
+func (s *service) AddCredits(ctx context.Context, credit domain.Credit) error {
+	return s.repo.AddCredits(ctx, credit)
+}
+
 func (s *service) GetCreditsByUID(ctx context.Context, uid int64) (domain.Credit, error) {
-	return domain.Credit{}, nil
+	return s.repo.GetCreditByUID(ctx, uid)
 }
 
 func (s *service) TryDeductCredits(ctx context.Context, amount int64) (sn string, availableCredits int64, err error) {

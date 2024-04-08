@@ -29,32 +29,79 @@ var (
 )
 
 type CreditDAO interface {
-	Create(ctx context.Context, c Credit, l CreditLog) error
+	FindCreditByUID(ctx context.Context, uid int64) (Credit, error)
+	Create(ctx context.Context, c Credit, l CreditLog) (int64, error)
 	Update(ctx context.Context, c Credit, l CreditLog) error
-	CreateCreditLock(ctx context.Context, c CreditLock) error
-	FindByUID(ctx context.Context, uid int64) (Credit, error)
 }
 
 type creditDAO struct {
 	db *egorm.Component
 }
 
-func NewGORMCreditDAO(db *egorm.Component) CreditDAO {
+func NewCreditGORMDAO(db *egorm.Component) CreditDAO {
 	return &creditDAO{db: db}
 }
 
-func (g *creditDAO) Create(ctx context.Context, c Credit, l CreditLog) error {
-	return g.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+func (g *creditDAO) FindCreditByUID(ctx context.Context, uid int64) (Credit, error) {
+	var res Credit
+	err := g.db.WithContext(ctx).First(&res, "uid = ?", uid).Error
+	return res, err
+}
+
+func (g *creditDAO) Create(ctx context.Context, c Credit, l CreditLog) (int64, error) {
+	var id int64
+	err := g.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		now := time.Now().UnixMilli()
 		c.Utime, c.Ctime, l.Utime, l.Ctime = now, now, now, now
 		if err := tx.Create(&c).Error; err != nil {
 			return err
 		}
+		id = c.Id
+		l.Cid = id
 		if err := tx.Create(&l).Error; err != nil {
 			return err
 		}
 		return nil
 	})
+	return id, err
+}
+
+func (g *creditDAO) Upsert(ctx context.Context, uid, amount int64, l CreditLog) (int64, error) {
+	var id int64
+	err := g.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		now := time.Now().UnixMilli()
+		var c Credit
+		res := tx.Where(Credit{Uid: uid}).Attrs(Credit{TotalCredits: amount, Ctime: now, Utime: now}).FirstOrCreate(&c)
+		if res.RowsAffected == 0 {
+			// 找到积分主记录, 更新可用积分
+			version := c.Version
+			c.TotalCredits += amount
+			c.Version += 1
+			c.Utime = now
+			if err := tx.Model(&Credit{}).
+				Where("uid = ? AND Version = ?", uid, version).
+				// Select("TotalCredits", "Utime", "Version").
+				Updates(map[string]any{
+					"TotalCredits": c.TotalCredits, // 更新后可能为0
+					"Utime":        now,
+					"Version":      c.Version,
+				}).Error; err != nil {
+				return fmt.Errorf("更新积分失败: %w", err)
+			}
+		}
+		// 添加积分流水记录
+		id = c.Id
+		l.Cid = id
+		l.CreditChange = amount
+		l.CreditBalance = c.TotalCredits
+		l.Ctime = now
+		l.Utime = now
+		if err := tx.Create(&l).Error; err != nil {
+			return err
+		}
+		return nil
+	})
+	return id, err
 }
 
 func (g *creditDAO) Update(ctx context.Context, c Credit, l CreditLog) error {
@@ -68,7 +115,7 @@ func (g *creditDAO) Update(ctx context.Context, c Credit, l CreditLog) error {
 
 		if err := tx.Model(&Credit{}).
 			Select("TotalCredits", "LockedTotalCredits", "Utime", "Version").
-			Where("user_id = ? AND Version = ?", c.UserId, currentVersion).Updates(&c).Error; err != nil {
+			Where("uid = ? AND Version = ?", c.Uid, currentVersion).Updates(&c).Error; err != nil {
 			return fmt.Errorf("更新积分失败: %w", err)
 		}
 
@@ -80,8 +127,9 @@ func (g *creditDAO) Update(ctx context.Context, c Credit, l CreditLog) error {
 	})
 }
 
+/*
 // CreateCreditLock 创建积分预扣记录
-func (g *creditDAO) CreateCreditLock(ctx context.Context, c CreditLock) error {
+func (g *creditDAO) CreateCreditLock(ctx context.Context, c domain.CreditLog) error {
 
 	return g.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 
@@ -105,8 +153,6 @@ func (g *creditDAO) CreateCreditLock(ctx context.Context, c CreditLock) error {
 		// todo: 创建一个未生效流水记录
 		// 将计算部分移动到service层
 		creditLog := CreditLog{
-			SN:            "SN--", // 返回给支付模块使用
-			UserId:        c.UserId,
 			CreditChange:  c.Amount,
 			CreditBalance: balance,
 			Desc:          "购买商品",
@@ -142,39 +188,28 @@ func (g *creditDAO) DeductCredits(ctx context.Context, lockID int64, c Credit, l
 
 		// 更新预扣记录状态为已扣减
 		updateData := map[string]any{
-			"Status": CreditLockStatusDeducted,
-			"Utime":  time.Now().UnixMilli(),
+			// "Status": CreditLockStatusDeducted,
+			"Utime": time.Now().UnixMilli(),
 		}
-		if err := tx.Model(&CreditLock{}).Where("id = ?", lockID).Updates(updateData).Error; err != nil {
+		if err := tx.Where("id = ?", lockID).Updates(updateData).Error; err != nil {
 			return err
 		}
 
 		return nil
 	})
 }
-
-func (g *creditDAO) FindByUID(ctx context.Context, uid int64) (Credit, error) {
-	var res Credit
-	err := g.db.WithContext(ctx).First(&res, "user_id = ?", uid).Error
-	return res, err
-}
+*/
 
 const (
-	CreditLogTypeRegitser = iota + 1
-	CreditLogTypeInviteOtherRegitser
-	CreditLogTypeBuyProduct
-)
-
-const (
-	CreditLockStatusLocked = iota + 1
-	CreditLockStatusDeducted
-	CreditLockStatusReleased
+	CreditLogStatusActive   = 1
+	CreditLogStatusLocked   = 2
+	CreditLogStatusInactive = 3
 )
 
 type Credit struct {
-	Id                 int64 `gorm:"primaryKey;autoIncrement;comment:积分表自增ID"`
-	UserId             int64 `gorm:"not null;uniqueIndex:unq_user_id,comment:用户ID"`
-	TotalCredits       int64 `gorm:"not null;default 0;comment:积分总数"`
+	Id                 int64 `gorm:"primaryKey;autoIncrement;comment:积分主表自增ID"`
+	Uid                int64 `gorm:"not null;uniqueIndex:unq_user_id,comment:用户ID"`
+	TotalCredits       int64 `gorm:"not null;default 0;comment:可用的积分总数"`
 	LockedTotalCredits int64 `gorm:"not null;default 0;comment:锁定的积分总数"`
 	Version            int64 `gorm:"not null;default 1;comment:版本号"`
 	Ctime              int64
@@ -183,22 +218,13 @@ type Credit struct {
 
 type CreditLog struct {
 	Id            int64  `gorm:"primaryKey;autoIncrement;comment:积分流水表自增ID"`
-	SN            string `gorm:"type:varchar(255);not null;uniqueIndex:uniq_credit_log_sn;comment:积分流水序列号"`
-	UserId        int64  `gorm:"not null;index:idx_user_id,comment:用户ID"`
-	CreditChange  int64  `gorm:"not null;comment:积分变动数量,正数为获得,负数为消耗"`
-	CreditBalance int64  `gorm:"not null;comment:变动后的积分余额"`
+	Cid           int64  `gorm:"not null;index:idx_credit_id,comment:积分主记录ID"`
+	BizId         int64  `gorm:"not null;index:idx_biz_id,comment:业务ID"`
+	BizType       int64  `gorm:"type:tinyint unsigned;not null;default:1;comment:业务类型 1=注册 2=购买"`
 	Desc          string `gorm:"type:varchar(255);not null;comment:积分流水描述"`
-	Type          int64  `gorm:"type:tinyint unsigned;not null;default:1;comment:流水类型 1=首次注册 2=邀请他人注册 3=购买商品 4=邀请他人购买商品"`
-	Status        int64  `gorm:"type:tinyint unsigned;not null;default:1;comment:流水状态 1=未生效, 2=已生效"`
+	CreditChange  int64  `gorm:"not null;comment:积分变动数量,正数为增加,负数为减少"`
+	CreditBalance int64  `gorm:"not null;comment:变动后可用的积分总数"`
+	Status        int64  `gorm:"type:tinyint unsigned;not null;default:1;comment:流水状态 1=已生效, 2=预扣中, 3=已失效"`
 	Ctime         int64
 	Utime         int64
-}
-
-type CreditLock struct {
-	Id     int64 `gorm:"primaryKey;autoIncrement;comment:积分预扣记录表自增ID"`
-	UserId int64 `gorm:"not null;index:idx_user_id,comment:用户ID"`
-	Amount int64 `gorm:"not null;comment:预扣积分数"`
-	Status int64 `gorm:"type:tinyint unsigned;not null;default:1;comment:预扣状态 1=预扣中 2=已扣减 3=已释放"`
-	Ctime  int64
-	Utime  int64
 }
