@@ -18,9 +18,9 @@ const creditIncreaseEvents = "credit_increase_events"
 
 type CreditIncreaseEvent struct {
 	Key    string `json:"key"`
-	Uid    int64  `json:"uid"`    // 用户A                用户C
-	Amount uint64 `json:"amount"` // 增加100              增加1000
-	Biz    int64  `json:"biz"`    // 用户模块            下单
-	BizId  int64  `json:"biz_id"` // 通过用户B userB_id    oder_id
-	Action string `json:"action"` // 邀请注册             购买商品
+	Uid    int64  `json:"uid"`    // 用户A       用户C
+	Amount uint64 `json:"amount"` // 增加100     增加1000
+	Biz    int64  `json:"biz"`    // 用户模块     订单模块
+	BizId  int64  `json:"biz_id"` // user_id=B   order_id
+	Action string `json:"action"` // 邀请注册     购买商品
 }
