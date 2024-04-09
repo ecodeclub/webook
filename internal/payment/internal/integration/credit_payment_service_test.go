@@ -38,7 +38,7 @@ import (
 	"go.uber.org/mock/gomock"
 )
 
-const testUID = 789
+const testUID = int64(789)
 
 type CreditPaymentServiceTestSuite struct {
 	suite.Suite
@@ -83,7 +83,7 @@ func (s *CreditPaymentServiceTestSuite) TestPay() {
 		mockedCreditService := creditmocks.NewMockService(ctrl)
 		paymentNo3rd := int64(1)
 		mockedCreditService.EXPECT().TryDeductCredits(gomock.Any(), gomock.Any()).Return(paymentNo3rd, int64(10), nil)
-		mockedCreditService.EXPECT().ConfirmDeductCredits(gomock.Any(), paymentNo3rd).Return(nil)
+		mockedCreditService.EXPECT().ConfirmDeductCredits(gomock.Any(), testUID, paymentNo3rd).Return(nil)
 		// mockedCreditService.EXPECT().CancelDeductCredits(gomock.Any(), paymentNo3rd).Return(nil)
 
 		paymentDDLFunc := func() int64 {
@@ -154,8 +154,8 @@ func (s *CreditPaymentServiceTestSuite) TestPay() {
 		expectedErr := errors.New("确认预扣积分失败")
 		paymentNo3rd := int64(1)
 		mockedCreditService.EXPECT().TryDeductCredits(gomock.Any(), gomock.Any()).Return(paymentNo3rd, nil)
-		mockedCreditService.EXPECT().ConfirmDeductCredits(gomock.Any(), gomock.Any()).Return(expectedErr).AnyTimes()
-		mockedCreditService.EXPECT().CancelDeductCredits(gomock.Any(), paymentNo3rd).Return(nil)
+		mockedCreditService.EXPECT().ConfirmDeductCredits(gomock.Any(), gomock.Any(), gomock.Any()).Return(expectedErr).AnyTimes()
+		mockedCreditService.EXPECT().CancelDeductCredits(gomock.Any(), testUID, paymentNo3rd).Return(nil)
 
 		paymentDDLFunc := func() int64 {
 			return time.Now().Add(1 * time.Minute).UnixMilli()

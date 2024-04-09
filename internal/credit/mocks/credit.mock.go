@@ -54,31 +54,31 @@ func (mr *MockServiceMockRecorder) AddCredits(ctx, credit any) *gomock.Call {
 }
 
 // CancelDeductCredits mocks base method.
-func (m *MockService) CancelDeductCredits(ctx context.Context, tid int64) error {
+func (m *MockService) CancelDeductCredits(ctx context.Context, uid, tid int64) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CancelDeductCredits", ctx, tid)
+	ret := m.ctrl.Call(m, "CancelDeductCredits", ctx, uid, tid)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // CancelDeductCredits indicates an expected call of CancelDeductCredits.
-func (mr *MockServiceMockRecorder) CancelDeductCredits(ctx, tid any) *gomock.Call {
+func (mr *MockServiceMockRecorder) CancelDeductCredits(ctx, uid, tid any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CancelDeductCredits", reflect.TypeOf((*MockService)(nil).CancelDeductCredits), ctx, tid)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CancelDeductCredits", reflect.TypeOf((*MockService)(nil).CancelDeductCredits), ctx, uid, tid)
 }
 
 // ConfirmDeductCredits mocks base method.
-func (m *MockService) ConfirmDeductCredits(ctx context.Context, tid int64) error {
+func (m *MockService) ConfirmDeductCredits(ctx context.Context, uid, tid int64) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ConfirmDeductCredits", ctx, tid)
+	ret := m.ctrl.Call(m, "ConfirmDeductCredits", ctx, uid, tid)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // ConfirmDeductCredits indicates an expected call of ConfirmDeductCredits.
-func (mr *MockServiceMockRecorder) ConfirmDeductCredits(ctx, tid any) *gomock.Call {
+func (mr *MockServiceMockRecorder) ConfirmDeductCredits(ctx, uid, tid any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ConfirmDeductCredits", reflect.TypeOf((*MockService)(nil).ConfirmDeductCredits), ctx, tid)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ConfirmDeductCredits", reflect.TypeOf((*MockService)(nil).ConfirmDeductCredits), ctx, uid, tid)
 }
 
 // GetCreditsByUID mocks base method.
