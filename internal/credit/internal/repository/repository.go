@@ -25,6 +25,9 @@ import (
 type CreditRepository interface {
 	AddCredits(ctx context.Context, credit domain.Credit) error
 	GetCreditByUID(ctx context.Context, uid int64) (domain.Credit, error)
+	TryDeductCredits(ctx context.Context, credit domain.Credit) (int64, error)
+	ConfirmDeductCredits(ctx context.Context, uid, tid int64) error
+	CancelDeductCredits(ctx context.Context, uid, tid int64) error
 }
 
 type creditRepository struct {
@@ -44,10 +47,10 @@ func (r *creditRepository) AddCredits(ctx context.Context, credit domain.Credit)
 func (r *creditRepository) toCreditLogsEntity(cl []domain.CreditLog) []dao.CreditLog {
 	return slice.Map(cl, func(idx int, src domain.CreditLog) dao.CreditLog {
 		return dao.CreditLog{
-			BizId:   src.BizId,
-			BizType: src.BizType,
-			Desc:    src.Action,
-			Status:  src.Status,
+			Key:   src.Key,
+			BizId: src.BizId,
+			Biz:   src.Biz,
+			Desc:  src.Action,
 		}
 	})
 }
@@ -57,7 +60,7 @@ func (r *creditRepository) GetCreditByUID(ctx context.Context, uid int64) (domai
 	if err != nil {
 		return domain.Credit{}, err
 	}
-	cl, err := r.dao.FindCreditLogsByCreditID(ctx, c.Id)
+	cl, err := r.dao.FindCreditLogsByUID(ctx, uid)
 	return r.toDomain(c, cl), err
 }
 
@@ -67,11 +70,25 @@ func (r *creditRepository) toDomain(d dao.Credit, l []dao.CreditLog) domain.Cred
 		TotalAmount: d.TotalCredits,
 		Logs: slice.Map(l, func(idx int, src dao.CreditLog) domain.CreditLog {
 			return domain.CreditLog{
-				BizId:   src.BizId,
-				BizType: src.BizType,
-				Action:  src.Desc,
-				Status:  src.Status,
+				Key:    src.Key,
+				BizId:  src.BizId,
+				Biz:    src.Biz,
+				Action: src.Desc,
 			}
 		}),
 	}
+}
+
+func (r *creditRepository) TryDeductCredits(ctx context.Context, credit domain.Credit) (int64, error) {
+	cl := r.toCreditLogsEntity(credit.Logs)
+	id, err := r.dao.CreateCreditLockLog(ctx, credit.Uid, credit.ChangeAmount, cl[0])
+	return id, err
+}
+
+func (r *creditRepository) ConfirmDeductCredits(ctx context.Context, uid, tid int64) error {
+	return r.dao.ConfirmCreditLockLog(ctx, uid, tid)
+}
+
+func (r *creditRepository) CancelDeductCredits(ctx context.Context, uid, tid int64) error {
+	return r.dao.CancelCreditLockLog(ctx, uid, tid)
 }

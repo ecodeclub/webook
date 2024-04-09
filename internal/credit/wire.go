@@ -58,8 +58,8 @@ func InitService(db *egorm.Component) Service {
 	return svc
 }
 
-func initCreditConsumer(svc service.Service, q mq.MQ, e ecache.Cache) *event.CreditIncreaseConsumer {
-	c, err := event.NewCreditIncreaseConsumer(svc, q, e)
+func initCreditConsumer(svc service.Service, q mq.MQ) *event.CreditIncreaseConsumer {
+	c, err := event.NewCreditIncreaseConsumer(svc, q)
 	if err != nil {
 		panic(err)
 	}

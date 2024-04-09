@@ -373,7 +373,7 @@ func (s *HandlerTestSuite) TestList() {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-	_, err = s.rdb.Delete(ctx, "webook:question:total")
+	_, err = s.rdb.Delete(ctx, "question:total")
 	require.NoError(s.T(), err)
 }
 

@@ -19,10 +19,8 @@ package integration
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"testing"
 
-	"github.com/ecodeclub/ecache"
 	"github.com/ecodeclub/mq-api"
 	"github.com/ecodeclub/webook/internal/credit/internal/domain"
 	"github.com/ecodeclub/webook/internal/credit/internal/event"
@@ -30,7 +28,6 @@ import (
 	"github.com/ecodeclub/webook/internal/credit/internal/service"
 	testioc "github.com/ecodeclub/webook/internal/test/ioc"
 	"github.com/ego-component/egorm"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -41,17 +38,15 @@ func TestCreditModule(t *testing.T) {
 
 type ModuleTestSuite struct {
 	suite.Suite
-	db    *egorm.Component
-	mq    mq.MQ
-	cache ecache.Cache
-	svc   service.Service
+	db  *egorm.Component
+	mq  mq.MQ
+	svc service.Service
 }
 
 func (s *ModuleTestSuite) SetupTest() {
 	s.svc = startup.InitService()
 	s.mq = testioc.InitMQ()
 	s.db = testioc.InitDB()
-	s.cache = testioc.InitCache()
 }
 
 func (s *ModuleTestSuite) TearDownSuite() {
@@ -75,7 +70,7 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeCreditIncreaseEvent() {
 	producer, er := s.mq.Producer("credit_increase_events")
 	require.NoError(t, er)
 
-	consumer, er := event.NewCreditIncreaseConsumer(s.svc, s.mq, s.cache)
+	consumer, er := event.NewCreditIncreaseConsumer(s.svc, s.mq)
 	require.NoError(t, er)
 	t.Cleanup(func() {
 		require.NoError(t, consumer.Stop(context.Background()))
@@ -88,11 +83,13 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeCreditIncreaseEvent() {
 		after  func(t *testing.T, evt event.CreditIncreaseEvent)
 		evt    event.CreditIncreaseEvent
 
-		errAssertFunc assert.ErrorAssertionFunc
+		errAssertFunc require.ErrorAssertionFunc
 	}{
 		{
 			name: "增加积分成功_新增用户",
 			before: func(t *testing.T, producer mq.Producer, message *mq.Message) {
+				t.Helper()
+
 				_, err := producer.Produce(context.Background(), message)
 				require.NoError(t, err)
 				// 模拟重试
@@ -100,10 +97,7 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeCreditIncreaseEvent() {
 				require.NoError(t, err)
 			},
 			after: func(t *testing.T, evt event.CreditIncreaseEvent) {
-				key := fmt.Sprintf("webook:credit:increase:%s", evt.Key)
-				t.Logf("after evt.Key=%#v, key = %#v\n", evt.Key, key)
-				_, err := s.cache.Delete(context.Background(), key)
-				require.NoError(t, err)
+				t.Helper()
 
 				uid := int64(6001)
 
@@ -111,30 +105,29 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeCreditIncreaseEvent() {
 				require.NoError(t, err)
 
 				require.Len(t, c.Logs, 1)
-				require.Equal(t, int64(domain.CreditLogStatusActive), c.Logs[0].Status)
-
-				require.Equal(t, evt, event.CreditIncreaseEvent{
-					Key:     evt.Key,
-					Uid:     c.Uid,
-					Amount:  c.TotalAmount,
-					BizId:   c.Logs[0].BizId,
-					BizType: c.Logs[0].BizType,
-					Action:  c.Logs[0].Action,
+				require.Equal(t, c.Logs, []domain.CreditLog{
+					{
+						Key:    "key-6001",
+						BizId:  1,
+						Biz:    1,
+						Action: "注册",
+					},
 				})
 			},
 			evt: event.CreditIncreaseEvent{
-				Key:     "sn-key-6001",
-				Uid:     6001,
-				Amount:  100,
-				BizId:   1,
-				BizType: 1,
-				Action:  "注册",
+				Key:    "key-6001",
+				Uid:    6001,
+				Amount: 100,
+				BizId:  1,
+				Biz:    1,
+				Action: "注册",
 			},
-			errAssertFunc: assert.NoError,
+			errAssertFunc: require.NoError,
 		},
 		{
 			name: "增加积分成功_已有用户_无预扣积分",
 			before: func(t *testing.T, producer mq.Producer, message *mq.Message) {
+				t.Helper()
 
 				// 创建已有用户
 				uid := int64(6002)
@@ -143,9 +136,10 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeCreditIncreaseEvent() {
 					ChangeAmount: 100,
 					Logs: []domain.CreditLog{
 						{
-							BizId:   2,
-							BizType: 2,
-							Action:  "邀请注册",
+							Key:    "key-6002-1",
+							BizId:  2,
+							Biz:    2,
+							Action: "邀请注册",
 						},
 					},
 				})
@@ -160,39 +154,39 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeCreditIncreaseEvent() {
 				require.NoError(t, err)
 			},
 			after: func(t *testing.T, evt event.CreditIncreaseEvent) {
-				key := fmt.Sprintf("webook:credit:increase:%s", evt.Key)
-				t.Logf("after evt.Key=%#v, key = %#v\n", evt.Key, key)
-				_, err := s.cache.Delete(context.Background(), key)
-				require.NoError(t, err)
+				t.Helper()
 
 				uid := int64(6002)
 				c, err := s.svc.GetCreditsByUID(context.Background(), uid)
 				require.NoError(t, err)
 
-				require.Len(t, c.Logs, 2)
-				require.Equal(t, int64(domain.CreditLogStatusActive), c.Logs[0].Status)
-				changedAmount := c.TotalAmount - int64(100)
-				require.Equal(t, evt, event.CreditIncreaseEvent{
-					Key:     evt.Key,
-					Uid:     c.Uid,
-					Amount:  changedAmount,
-					BizId:   c.Logs[0].BizId,
-					BizType: c.Logs[0].BizType,
-					Action:  c.Logs[0].Action,
+				require.Equal(t, uint64(350), c.TotalAmount)
+				require.Equal(t, c.Logs, []domain.CreditLog{
+					{
+						Key:    "key-6002-2",
+						BizId:  3,
+						Biz:    3,
+						Action: "购买商品",
+					},
+					{
+						Key:    "key-6002-1",
+						BizId:  2,
+						Biz:    2,
+						Action: "邀请注册",
+					},
 				})
 			},
 			evt: event.CreditIncreaseEvent{
-				Key:     "sn-key-6002",
-				Uid:     6002,
-				Amount:  250,
-				BizId:   3,
-				BizType: 3,
-				Action:  "购买商品",
+				Key:    "key-6002-2",
+				Uid:    6002,
+				Amount: 250,
+				BizId:  3,
+				Biz:    3,
+				Action: "购买商品",
 			},
-			errAssertFunc: assert.NoError,
+			errAssertFunc: require.NoError,
 		},
 		// todo: 增加积分成功_已有用户_有预扣积分
-		// todo: changeAmount <= 0
 	}
 	for _, tc := range testCases {
 		tc := tc
@@ -207,7 +201,6 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeCreditIncreaseEvent() {
 
 			tc.errAssertFunc(t, err)
 			tc.after(t, tc.evt)
-			t.Logf("test end\n")
 		})
 	}
 }
@@ -217,4 +210,472 @@ func (s *ModuleTestSuite) newCreditIncreaseEventMessage(t *testing.T, evt event.
 	marshal, err := json.Marshal(evt)
 	require.NoError(t, err)
 	return &mq.Message{Value: marshal}
+}
+
+func (s *ModuleTestSuite) TestService_TryDeductCredits() {
+
+	t := s.T()
+
+	testCases := []struct {
+		name string
+
+		before        func(t *testing.T)
+		after         func(t *testing.T)
+		credit        domain.Credit
+		errAssertFunc require.ErrorAssertionFunc
+	}{
+		{
+			name: "预扣积分成功_用户积分充足_有剩余",
+			before: func(t *testing.T) {
+				t.Helper()
+
+				// 创建已有用户
+				uid := int64(7001)
+				err := s.svc.AddCredits(context.Background(), domain.Credit{
+					Uid:          uid,
+					ChangeAmount: 100,
+					Logs: []domain.CreditLog{
+						{
+							Key:    "key-7001-1",
+							BizId:  2,
+							Biz:    2,
+							Action: "邀请注册",
+						},
+					},
+				})
+				require.NoError(t, err)
+			},
+			credit: domain.Credit{
+				Uid:          7001,
+				ChangeAmount: 70,
+				Logs: []domain.CreditLog{
+					{
+						Key:    "key-7001-2",
+						BizId:  7,
+						Biz:    7,
+						Action: "购买商品",
+					},
+				},
+			},
+			after: func(t *testing.T) {
+				t.Helper()
+
+				uid := int64(7001)
+				expectedTotalAmount := uint64(30)
+				c, err := s.svc.GetCreditsByUID(context.Background(), uid)
+				require.NoError(t, err)
+
+				require.Equal(t, uid, c.Uid)
+				require.Equal(t, expectedTotalAmount, c.TotalAmount)
+				require.Equal(t, c.Logs, []domain.CreditLog{
+					{
+						Key:    "key-7001-1",
+						BizId:  2,
+						Biz:    2,
+						Action: "邀请注册",
+					},
+				})
+			},
+			errAssertFunc: require.NoError,
+		},
+		{
+			name: "预扣积分成功_用户积分充足_归为零",
+			before: func(t *testing.T) {
+				t.Helper()
+
+				// 创建已有用户
+				uid := int64(7002)
+				err := s.svc.AddCredits(context.Background(), domain.Credit{
+					Uid:          uid,
+					ChangeAmount: 100,
+					Logs: []domain.CreditLog{
+						{
+							Key:    "key-7002-1",
+							BizId:  2,
+							Biz:    2,
+							Action: "首次注册",
+						},
+					},
+				})
+				require.NoError(t, err)
+			},
+			credit: domain.Credit{
+				Uid:          7002,
+				ChangeAmount: 100,
+				Logs: []domain.CreditLog{
+					{
+						Key:    "key-7002-2",
+						BizId:  7,
+						Biz:    7,
+						Action: "购买项目",
+					},
+				},
+			},
+			after: func(t *testing.T) {
+				t.Helper()
+
+				uid := int64(7002)
+				expectedTotalAmount := uint64(0)
+				c, err := s.svc.GetCreditsByUID(context.Background(), uid)
+				require.NoError(t, err)
+
+				require.Equal(t, uid, c.Uid)
+				require.Equal(t, expectedTotalAmount, c.TotalAmount)
+				require.Equal(t, c.Logs, []domain.CreditLog{
+					{
+						Key:    "key-7002-1",
+						BizId:  2,
+						Biz:    2,
+						Action: "首次注册",
+					},
+				})
+			},
+			errAssertFunc: require.NoError,
+		},
+		{
+			name: "预扣积分失败_用户积分不足",
+			before: func(t *testing.T) {
+				t.Helper()
+
+				// 创建已有用户
+				uid := int64(7003)
+				err := s.svc.AddCredits(context.Background(), domain.Credit{
+					Uid:          uid,
+					ChangeAmount: 100,
+					Logs: []domain.CreditLog{
+						{
+							Key:    "key-7003-1",
+							BizId:  4,
+							Biz:    4,
+							Action: "首次注册",
+						},
+					},
+				})
+				require.NoError(t, err)
+			},
+			credit: domain.Credit{
+				Uid:          7003,
+				ChangeAmount: 101,
+				Logs: []domain.CreditLog{
+					{
+						Key:    "key-7003-2",
+						BizId:  8,
+						Biz:    8,
+						Action: "购买专栏",
+					},
+				},
+			},
+			after: func(t *testing.T) {
+				t.Helper()
+
+				uid := int64(7003)
+				expectedTotalAmount := uint64(100)
+				c, err := s.svc.GetCreditsByUID(context.Background(), uid)
+				require.NoError(t, err)
+
+				require.Equal(t, uid, c.Uid)
+				require.Equal(t, expectedTotalAmount, c.TotalAmount)
+				require.Equal(t, c.Logs, []domain.CreditLog{
+					{
+						Key:    "key-7003-1",
+						BizId:  4,
+						Biz:    4,
+						Action: "首次注册",
+					},
+				})
+			},
+			errAssertFunc: func(t require.TestingT, err error, i ...interface{}) {
+				require.ErrorIs(t, err, service.ErrCreditNotEnough)
+			},
+		},
+		{
+			name:   "预扣积分失败_用户无记录",
+			before: func(t *testing.T) {},
+			credit: domain.Credit{
+				Uid:          7004,
+				ChangeAmount: 10,
+				Logs: []domain.CreditLog{
+					{
+						Key:    "key-7004-1",
+						BizId:  9,
+						Biz:    9,
+						Action: "购买专栏",
+					},
+				},
+			},
+			after:         func(t *testing.T) {},
+			errAssertFunc: require.Error,
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			tc.before(t)
+			id, err := s.svc.TryDeductCredits(context.Background(), tc.credit)
+			tc.errAssertFunc(t, err)
+			if err == nil {
+				require.NotZero(t, id)
+			}
+			tc.after(t)
+		})
+	}
+}
+
+func (s *ModuleTestSuite) TestService_ConfirmDeductCredits() {
+	t := s.T()
+
+	testCases := []struct {
+		name          string
+		getUIDAndTID  func(t *testing.T) (int64, int64)
+		after         func(t *testing.T)
+		errAssertFunc require.ErrorAssertionFunc
+	}{
+		{
+			name: "确认预扣成功_ID有效",
+			getUIDAndTID: func(t *testing.T) (int64, int64) {
+				t.Helper()
+				// 创建已有用户
+				uid := int64(8001)
+				err := s.svc.AddCredits(context.Background(), domain.Credit{
+					Uid:          uid,
+					ChangeAmount: 100,
+					Logs: []domain.CreditLog{
+						{
+							Key:    "key-8001-1",
+							BizId:  1,
+							Biz:    1,
+							Action: "注册",
+						},
+					},
+				})
+				require.NoError(t, err)
+				// 预扣
+				id, err := s.svc.TryDeductCredits(context.Background(), domain.Credit{
+					Uid:          uid,
+					ChangeAmount: 50,
+					Logs: []domain.CreditLog{
+						{
+							Key:    "key-8001-2",
+							BizId:  9,
+							Biz:    9,
+							Action: "购买面试",
+						},
+					},
+				})
+				require.NoError(t, err)
+				return uid, id
+			},
+			after: func(t *testing.T) {
+				t.Helper()
+
+				uid := int64(8001)
+				expectedTotalAmount := uint64(50)
+				c, err := s.svc.GetCreditsByUID(context.Background(), uid)
+				require.NoError(t, err)
+
+				require.Equal(t, uid, c.Uid)
+				require.Equal(t, expectedTotalAmount, c.TotalAmount)
+				require.Equal(t, c.Logs, []domain.CreditLog{
+					{
+						Key:    "key-8001-2",
+						BizId:  9,
+						Biz:    9,
+						Action: "购买面试",
+					},
+					{
+						Key:    "key-8001-1",
+						BizId:  1,
+						Biz:    1,
+						Action: "注册",
+					},
+				})
+			},
+			errAssertFunc: require.NoError,
+		},
+		{
+			name: "确认预扣失败_ID有效但非法",
+			getUIDAndTID: func(t *testing.T) (int64, int64) {
+				t.Helper()
+				// 创建已有用户
+				uid := int64(8002)
+				err := s.svc.AddCredits(context.Background(), domain.Credit{
+					Uid:          uid,
+					ChangeAmount: 100,
+					Logs: []domain.CreditLog{
+						{
+							Key:    "key-8002-1",
+							BizId:  1,
+							Biz:    1,
+							Action: "注册",
+						},
+					},
+				})
+				require.NoError(t, err)
+				return uid, int64(1)
+			},
+			after: func(t *testing.T) {
+				t.Helper()
+
+				uid := int64(8002)
+				expectedTotalAmount := uint64(100)
+				c, err := s.svc.GetCreditsByUID(context.Background(), uid)
+				require.NoError(t, err)
+
+				require.Equal(t, uid, c.Uid)
+				require.Equal(t, expectedTotalAmount, c.TotalAmount)
+				require.Equal(t, c.Logs, []domain.CreditLog{
+					{
+						Key:    "key-8002-1",
+						BizId:  1,
+						Biz:    1,
+						Action: "注册",
+					},
+				})
+			},
+			errAssertFunc: require.Error,
+		},
+		{
+			name:          "确认预扣失败_ID非法",
+			getUIDAndTID:  func(t *testing.T) (int64, int64) { return int64(8002), int64(1000) },
+			after:         func(t *testing.T) {},
+			errAssertFunc: require.Error,
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			uid, tid := tc.getUIDAndTID(t)
+			err := s.svc.ConfirmDeductCredits(context.Background(), uid, tid)
+			tc.errAssertFunc(t, err)
+			tc.after(t)
+		})
+	}
+}
+
+func (s *ModuleTestSuite) TestService_CancelDeductCredits() {
+	t := s.T()
+
+	testCases := []struct {
+		name          string
+		getUIDAndTID  func(t *testing.T) (int64, int64)
+		after         func(t *testing.T)
+		errAssertFunc require.ErrorAssertionFunc
+	}{
+		{
+			name: "取消预扣成功_ID有效",
+			getUIDAndTID: func(t *testing.T) (int64, int64) {
+				t.Helper()
+				// 创建已有用户
+				uid := int64(9001)
+				err := s.svc.AddCredits(context.Background(), domain.Credit{
+					Uid:          uid,
+					ChangeAmount: 100,
+					Logs: []domain.CreditLog{
+						{
+							Key:    "key-9001-1",
+							BizId:  1,
+							Biz:    1,
+							Action: "注册",
+						},
+					},
+				})
+				require.NoError(t, err)
+				// 预扣
+				tid, err := s.svc.TryDeductCredits(context.Background(), domain.Credit{
+					Uid:          uid,
+					ChangeAmount: 50,
+					Logs: []domain.CreditLog{
+						{
+							Key:    "key-9001-2",
+							BizId:  9,
+							Biz:    9,
+							Action: "购买面试",
+						},
+					},
+				})
+				require.NoError(t, err)
+				return uid, tid
+			},
+			after: func(t *testing.T) {
+				t.Helper()
+
+				uid := int64(9001)
+				expectedTotalAmount := uint64(100)
+				c, err := s.svc.GetCreditsByUID(context.Background(), uid)
+				require.NoError(t, err)
+
+				require.Equal(t, uid, c.Uid)
+				require.Equal(t, expectedTotalAmount, c.TotalAmount)
+				require.Equal(t, c.Logs, []domain.CreditLog{
+					{
+						Key:    "key-9001-1",
+						BizId:  1,
+						Biz:    1,
+						Action: "注册",
+					},
+				})
+			},
+			errAssertFunc: require.NoError,
+		},
+		{
+			name: "取消预扣失败_ID有效但非法",
+			getUIDAndTID: func(t *testing.T) (int64, int64) {
+				t.Helper()
+				// 创建已有用户
+				uid := int64(9002)
+				err := s.svc.AddCredits(context.Background(), domain.Credit{
+					Uid:          uid,
+					ChangeAmount: 100,
+					Logs: []domain.CreditLog{
+						{
+							Key:    "key-9002-1",
+							BizId:  1,
+							Biz:    1,
+							Action: "注册",
+						},
+					},
+				})
+				require.NoError(t, err)
+				return uid, int64(1)
+			},
+			after: func(t *testing.T) {
+				t.Helper()
+
+				uid := int64(9002)
+				expectedTotalAmount := uint64(100)
+				c, err := s.svc.GetCreditsByUID(context.Background(), uid)
+				require.NoError(t, err)
+
+				require.Equal(t, uid, c.Uid)
+				require.Equal(t, expectedTotalAmount, c.TotalAmount)
+				require.Equal(t, c.Logs, []domain.CreditLog{
+					{
+						Key:    "key-9002-1",
+						BizId:  1,
+						Biz:    1,
+						Action: "注册",
+					},
+				})
+			},
+			errAssertFunc: require.Error,
+		},
+		{
+			name:          "取消预扣失败_ID非法",
+			getUIDAndTID:  func(t *testing.T) (int64, int64) { return int64(9002), int64(2000) },
+			after:         func(t *testing.T) {},
+			errAssertFunc: require.Error,
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			uid, tid := tc.getUIDAndTID(t)
+			err := s.svc.CancelDeductCredits(context.Background(), uid, tid)
+			tc.errAssertFunc(t, err)
+			tc.after(t)
+		})
+	}
 }

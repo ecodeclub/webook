@@ -20,22 +20,19 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/ecodeclub/ecache"
 	"github.com/ecodeclub/mq-api"
 	"github.com/ecodeclub/webook/internal/credit/internal/domain"
-	"github.com/ecodeclub/webook/internal/credit/internal/event/cache"
 	"github.com/ecodeclub/webook/internal/credit/internal/service"
 	"github.com/gotomicro/ego/core/elog"
 )
 
 type CreditIncreaseConsumer struct {
 	svc      service.Service
-	cache    cache.CreditCache
 	consumer mq.Consumer
 	logger   *elog.Component
 }
 
-func NewCreditIncreaseConsumer(svc service.Service, q mq.MQ, e ecache.Cache) (*CreditIncreaseConsumer, error) {
+func NewCreditIncreaseConsumer(svc service.Service, q mq.MQ) (*CreditIncreaseConsumer, error) {
 	groupID := "credit"
 	consumer, err := q.Consumer(creditIncreaseEvents, groupID)
 	if err != nil {
@@ -43,7 +40,6 @@ func NewCreditIncreaseConsumer(svc service.Service, q mq.MQ, e ecache.Cache) (*C
 	}
 	return &CreditIncreaseConsumer{
 		svc:      svc,
-		cache:    cache.NewCreditECache(e),
 		consumer: consumer,
 		logger:   elog.DefaultLogger,
 	}, nil
@@ -73,26 +69,15 @@ func (c *CreditIncreaseConsumer) Consume(ctx context.Context) error {
 		return fmt.Errorf("解析消息失败: %w", err)
 	}
 
-	defer func() {
-		log.Printf("Consumer evt = %#v\n", evt)
-	}()
-
-	ok, err := c.cache.SetNXEventKey(ctx, evt.Key)
-	if err != nil {
-		return fmt.Errorf("设置去重key失败: %w", err)
-	}
-	if !ok {
-		return nil
-	}
-
 	err = c.svc.AddCredits(ctx, domain.Credit{
 		Uid:          evt.Uid,
 		ChangeAmount: evt.Amount,
 		Logs: []domain.CreditLog{
 			{
-				BizId:   evt.BizId,
-				BizType: evt.BizType,
-				Action:  evt.Action,
+				Key:    evt.Key,
+				BizId:  evt.BizId,
+				Biz:    evt.Biz,
+				Action: evt.Action,
 			},
 		},
 	})
@@ -103,7 +88,7 @@ func (c *CreditIncreaseConsumer) Consume(ctx context.Context) error {
 			elog.Any("消息体", evt),
 		)
 	}
-
+	log.Printf("Consumer evt = %#v\n", evt)
 	return nil
 }
 

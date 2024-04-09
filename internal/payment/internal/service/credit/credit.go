@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/ecodeclub/ekit/retry"
@@ -129,7 +130,7 @@ func (p *PaymentService) Prepay(ctx context.Context, pmt domain.Payment) (domain
 	}
 	pmt.SN = paymentSN
 
-	paymentNO3rd, _, err := p.tryDeductCredits(ctx, r.Amount)
+	paymentNO3rd, err := p.tryDeductCredits(ctx, pmt.PayerID, uint64(r.Amount))
 	if err != nil {
 		return domain.Payment{}, fmt.Errorf("预扣积分失败")
 	}
@@ -138,7 +139,7 @@ func (p *PaymentService) Prepay(ctx context.Context, pmt domain.Payment) (domain
 	pmt.Status = domain.PaymentStatusUnpaid
 	pmt.Records = []domain.PaymentRecord{
 		{
-			PaymentNO3rd: paymentNO3rd,
+			PaymentNO3rd: strconv.FormatInt(paymentNO3rd, 10),
 			Description:  pmt.OrderDescription,
 			Channel:      domain.ChannelTypeCredit,
 			Amount:       r.Amount,
@@ -149,7 +150,7 @@ func (p *PaymentService) Prepay(ctx context.Context, pmt domain.Payment) (domain
 	pp, err2 := p.repo.CreatePayment(ctx, pmt)
 	if err2 != nil {
 		// 取消预扣
-		err3 := p.cancelDeductCredits(ctx, paymentNO3rd)
+		err3 := p.cancelDeductCredits(ctx, pmt.PayerID, paymentNO3rd)
 		if err3 != nil {
 			return domain.Payment{}, fmt.Errorf("创建支付主记录及积分渠道支付记录失败: %w: %w", err2, err3)
 		}
@@ -158,26 +159,26 @@ func (p *PaymentService) Prepay(ctx context.Context, pmt domain.Payment) (domain
 	return pp, nil
 }
 
-func (p *PaymentService) tryDeductCredits(ctx context.Context, amount int64) (sn string, availableCredits int64, err error) {
+func (p *PaymentService) tryDeductCredits(ctx context.Context, uid int64, amount uint64) (txID int64, err error) {
 	strategy, _ := retry.NewExponentialBackoffRetryStrategy(p.initialInterval, p.maxInterval, p.maxRetries)
 	for {
 
-		s, c, err2 := p.svc.TryDeductCredits(ctx, amount)
-		if err2 == nil {
-			return s, c, nil
+		txID, err := p.svc.TryDeductCredits(ctx, credit.Credit{Uid: uid, ChangeAmount: amount})
+		if err == nil {
+			return txID, nil
 		}
 		next, ok := strategy.Next()
 		if !ok {
-			return "", 0, fmt.Errorf("预扣积分超时失败: %w", ErrExceedTheMaximumNumberOfRetries)
+			return 0, fmt.Errorf("预扣积分超时失败: %w", ErrExceedTheMaximumNumberOfRetries)
 		}
 		time.Sleep(next)
 	}
 }
 
-func (p *PaymentService) cancelDeductCredits(ctx context.Context, sn string) error {
+func (p *PaymentService) cancelDeductCredits(ctx context.Context, uid, tid int64) error {
 	strategy, _ := retry.NewExponentialBackoffRetryStrategy(p.initialInterval, p.maxInterval, p.maxRetries)
 	for {
-		err := p.svc.CancelDeductCredits(ctx, sn)
+		err := p.svc.CancelDeductCredits(ctx, uid, tid)
 		if err == nil {
 			return nil
 		}
@@ -203,9 +204,10 @@ func (p *PaymentService) HandleCallback(ctx context.Context, pmt domain.Payment)
 		return src
 	})
 
-	err := p.confirmDeductCredits(ctx, paymentNO3rd)
+	txID, _ := strconv.ParseInt(paymentNO3rd, 10, 64)
+	err := p.confirmDeductCredits(ctx, pmt.PayerID, txID)
 	if err != nil {
-		err2 := p.cancelDeductCredits(ctx, paymentNO3rd)
+		err2 := p.cancelDeductCredits(ctx, pmt.PayerID, txID)
 		if err2 != nil {
 			return fmt.Errorf("积分支付失败: %w: %w", err, err2)
 		}
@@ -229,11 +231,11 @@ func (p *PaymentService) HandleCallback(ctx context.Context, pmt domain.Payment)
 	return nil
 }
 
-func (p *PaymentService) confirmDeductCredits(ctx context.Context, sn string) error {
+func (p *PaymentService) confirmDeductCredits(ctx context.Context, uid, tid int64) error {
 	strategy, _ := retry.NewExponentialBackoffRetryStrategy(p.initialInterval, p.maxInterval, p.maxRetries)
 	for {
 
-		err := p.svc.ConfirmDeductCredits(ctx, sn)
+		err := p.svc.ConfirmDeductCredits(ctx, uid, tid)
 		if err == nil {
 			return nil
 		}

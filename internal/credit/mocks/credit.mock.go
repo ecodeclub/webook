@@ -54,31 +54,31 @@ func (mr *MockServiceMockRecorder) AddCredits(ctx, credit any) *gomock.Call {
 }
 
 // CancelDeductCredits mocks base method.
-func (m *MockService) CancelDeductCredits(ctx context.Context, sn string) error {
+func (m *MockService) CancelDeductCredits(ctx context.Context, tid int64) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CancelDeductCredits", ctx, sn)
+	ret := m.ctrl.Call(m, "CancelDeductCredits", ctx, tid)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // CancelDeductCredits indicates an expected call of CancelDeductCredits.
-func (mr *MockServiceMockRecorder) CancelDeductCredits(ctx, sn any) *gomock.Call {
+func (mr *MockServiceMockRecorder) CancelDeductCredits(ctx, tid any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CancelDeductCredits", reflect.TypeOf((*MockService)(nil).CancelDeductCredits), ctx, sn)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CancelDeductCredits", reflect.TypeOf((*MockService)(nil).CancelDeductCredits), ctx, tid)
 }
 
 // ConfirmDeductCredits mocks base method.
-func (m *MockService) ConfirmDeductCredits(ctx context.Context, sn string) error {
+func (m *MockService) ConfirmDeductCredits(ctx context.Context, tid int64) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ConfirmDeductCredits", ctx, sn)
+	ret := m.ctrl.Call(m, "ConfirmDeductCredits", ctx, tid)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // ConfirmDeductCredits indicates an expected call of ConfirmDeductCredits.
-func (mr *MockServiceMockRecorder) ConfirmDeductCredits(ctx, sn any) *gomock.Call {
+func (mr *MockServiceMockRecorder) ConfirmDeductCredits(ctx, tid any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ConfirmDeductCredits", reflect.TypeOf((*MockService)(nil).ConfirmDeductCredits), ctx, sn)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ConfirmDeductCredits", reflect.TypeOf((*MockService)(nil).ConfirmDeductCredits), ctx, tid)
 }
 
 // GetCreditsByUID mocks base method.
@@ -97,17 +97,16 @@ func (mr *MockServiceMockRecorder) GetCreditsByUID(ctx, uid any) *gomock.Call {
 }
 
 // TryDeductCredits mocks base method.
-func (m *MockService) TryDeductCredits(ctx context.Context, amount int64) (string, int64, error) {
+func (m *MockService) TryDeductCredits(ctx context.Context, credit domain.Credit) (int64, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "TryDeductCredits", ctx, amount)
-	ret0, _ := ret[0].(string)
-	ret1, _ := ret[1].(int64)
-	ret2, _ := ret[2].(error)
-	return ret0, ret1, ret2
+	ret := m.ctrl.Call(m, "TryDeductCredits", ctx, credit)
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // TryDeductCredits indicates an expected call of TryDeductCredits.
-func (mr *MockServiceMockRecorder) TryDeductCredits(ctx, amount any) *gomock.Call {
+func (mr *MockServiceMockRecorder) TryDeductCredits(ctx, credit any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TryDeductCredits", reflect.TypeOf((*MockService)(nil).TryDeductCredits), ctx, amount)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TryDeductCredits", reflect.TypeOf((*MockService)(nil).TryDeductCredits), ctx, credit)
 }

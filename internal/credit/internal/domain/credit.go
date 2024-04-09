@@ -22,14 +22,14 @@ const (
 
 type Credit struct {
 	Uid          int64
-	ChangeAmount int64
-	TotalAmount  int64
+	ChangeAmount uint64
+	TotalAmount  uint64
 	Logs         []CreditLog
 }
 
 type CreditLog struct {
-	BizId   int64
-	BizType int64
-	Action  string
-	Status  int64
+	Key    string
+	BizId  int64
+	Biz    int64
+	Action string
 }

@@ -25,7 +25,7 @@ import (
 
 func InitModule(db *gorm.DB, q mq.MQ, e ecache.Cache) (*Module, error) {
 	service := InitService(db)
-	creditIncreaseConsumer := initCreditConsumer(service, q, e)
+	creditIncreaseConsumer := initCreditConsumer(service, q)
 	module := &Module{
 		Svc: service,
 		c:   creditIncreaseConsumer,
@@ -54,8 +54,8 @@ func InitService(db *egorm.Component) Service {
 	return svc
 }
 
-func initCreditConsumer(svc2 service.Service, q mq.MQ, e ecache.Cache) *event.CreditIncreaseConsumer {
-	c, err := event.NewCreditIncreaseConsumer(svc2, q, e)
+func initCreditConsumer(svc2 service.Service, q mq.MQ) *event.CreditIncreaseConsumer {
+	c, err := event.NewCreditIncreaseConsumer(svc2, q)
 	if err != nil {
 		panic(err)
 	}
