@@ -1,3 +1,17 @@
+// Copyright 2023 ecodeclub
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 //go:build e2e
 
 package integration
@@ -26,22 +40,22 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-const uid = 2051
+const uid = int64(2051)
 
 type HandlerTestSuite struct {
 	suite.Suite
 	server *egin.Component
 	db     *egorm.Component
-	dao    dao.FeedBackDAO
+	dao    dao.FeedbackDAO
 }
 
 func (s *HandlerTestSuite) TearDownSuite() {
-	err := s.db.Exec("DROP TABLE `feed_back`").Error
+	err := s.db.Exec("DROP TABLE `feedbacks`").Error
 	require.NoError(s.T(), err)
 }
 
 func (s *HandlerTestSuite) TearDownTest() {
-	err := s.db.Exec("TRUNCATE TABLE `feed_back`").Error
+	err := s.db.Exec("TRUNCATE TABLE `feedbacks`").Error
 	require.NoError(s.T(), err)
 }
 
@@ -81,7 +95,7 @@ func (s *HandlerTestSuite) TestCreate() {
 				defer cancel()
 				feedBack, err := s.dao.Info(ctx, 1)
 				require.NoError(t, err)
-				s.assertFeedBack(t, dao.FeedBack{
+				s.assertFeedBack(t, dao.Feedback{
 					UID:     uid,
 					Biz:     "case",
 					BizID:   1,
@@ -111,7 +125,7 @@ func (s *HandlerTestSuite) TestCreate() {
 			require.Equal(t, tc.wantCode, recorder.Code)
 			tc.after(t)
 			// 清理 的数据
-			err = s.db.Exec("TRUNCATE table `feed_back`").Error
+			err = s.db.Exec("TRUNCATE table `feedbacks`").Error
 			require.NoError(t, err)
 		})
 	}
@@ -128,7 +142,7 @@ func (s *HandlerTestSuite) TestUpdateStatus() {
 		{
 			name: "拒绝",
 			before: func(t *testing.T) {
-				err := s.db.Create(&dao.FeedBack{
+				err := s.db.Create(&dao.Feedback{
 					ID:      2,
 					BizID:   1,
 					Biz:     "que",
@@ -145,7 +159,7 @@ func (s *HandlerTestSuite) TestUpdateStatus() {
 				defer cancel()
 				feedBack, err := s.dao.Info(ctx, 2)
 				require.NoError(t, err)
-				s.assertFeedBack(t, dao.FeedBack{
+				s.assertFeedBack(t, dao.Feedback{
 					UID:     uid,
 					Biz:     "que",
 					BizID:   1,
@@ -162,7 +176,7 @@ func (s *HandlerTestSuite) TestUpdateStatus() {
 		{
 			name: "采纳",
 			before: func(t *testing.T) {
-				err := s.db.Create(&dao.FeedBack{
+				err := s.db.Create(&dao.Feedback{
 					ID:      3,
 					BizID:   1,
 					Biz:     "skill",
@@ -179,7 +193,7 @@ func (s *HandlerTestSuite) TestUpdateStatus() {
 				defer cancel()
 				feedBack, err := s.dao.Info(ctx, 3)
 				require.NoError(t, err)
-				s.assertFeedBack(t, dao.FeedBack{
+				s.assertFeedBack(t, dao.Feedback{
 					UID:     uid,
 					Biz:     "skill",
 					BizID:   1,
@@ -206,7 +220,7 @@ func (s *HandlerTestSuite) TestUpdateStatus() {
 			require.Equal(t, tc.wantCode, recorder.Code)
 			tc.after(t)
 			// 清理 的数据
-			err = s.db.Exec("TRUNCATE table `feed_back`").Error
+			err = s.db.Exec("TRUNCATE table `feedbacks`").Error
 			require.NoError(t, err)
 		})
 	}
@@ -214,7 +228,7 @@ func (s *HandlerTestSuite) TestUpdateStatus() {
 
 func (s *HandlerTestSuite) TestInfo() {
 	t := s.T()
-	err := s.db.Create(&dao.FeedBack{
+	err := s.db.Create(&dao.Feedback{
 		ID:      4,
 		BizID:   3,
 		Biz:     "cases",
@@ -250,15 +264,15 @@ func (s *HandlerTestSuite) TestInfo() {
 	actualResp.Data.Utime = ""
 	actualResp.Data.Ctime = ""
 	assert.Equal(t, wantResp, actualResp)
-	err = s.db.Exec("TRUNCATE table `feed_back`").Error
+	err = s.db.Exec("TRUNCATE table `feedbacks`").Error
 	require.NoError(t, err)
 }
 
 func (s *HandlerTestSuite) TestList() {
-	data := make([]dao.FeedBack, 0, 100)
+	data := make([]dao.Feedback, 0, 100)
 	for idx := 1; idx < 10; idx++ {
 		// 创建采纳的case
-		data = append(data, dao.FeedBack{
+		data = append(data, dao.Feedback{
 			ID:     int64(idx),
 			UID:    uid,
 			Biz:    "case",
@@ -269,7 +283,7 @@ func (s *HandlerTestSuite) TestList() {
 	}
 	for idx := 10; idx < 20; idx++ {
 		// 创建未处理的case
-		data = append(data, dao.FeedBack{
+		data = append(data, dao.Feedback{
 			ID:     int64(idx),
 			UID:    uid,
 			Biz:    "case",
@@ -280,7 +294,7 @@ func (s *HandlerTestSuite) TestList() {
 	}
 	for idx := 20; idx < 30; idx++ {
 		// 创建未处理的que
-		data = append(data, dao.FeedBack{
+		data = append(data, dao.Feedback{
 			ID:     int64(idx),
 			UID:    uid,
 			Biz:    "que",
@@ -289,7 +303,7 @@ func (s *HandlerTestSuite) TestList() {
 			Utime:  0,
 		})
 	}
-	err := s.db.Model(&dao.FeedBack{}).Create(&data).Error
+	err := s.db.Model(&dao.Feedback{}).Create(&data).Error
 	require.NoError(s.T(), err)
 	testCases := []struct {
 		name     string
@@ -426,17 +440,17 @@ func (s *HandlerTestSuite) TestList() {
 		})
 	}
 	// 清理 的数据
-	err = s.db.Exec("TRUNCATE table `feed_back`").Error
+	err = s.db.Exec("TRUNCATE table `feedbacks`").Error
 	require.NoError(s.T(), err)
 
 }
 
 func (s *HandlerTestSuite) TestPendingCount() {
 	t := s.T()
-	data := make([]dao.FeedBack, 0, 100)
+	data := make([]dao.Feedback, 0, 100)
 	for idx := 1; idx < 10; idx++ {
 		// 创建采纳的case
-		data = append(data, dao.FeedBack{
+		data = append(data, dao.Feedback{
 			ID:     int64(idx),
 			UID:    uid,
 			Biz:    "case",
@@ -447,7 +461,7 @@ func (s *HandlerTestSuite) TestPendingCount() {
 	}
 	for idx := 10; idx < 20; idx++ {
 		// 创建未处理的case
-		data = append(data, dao.FeedBack{
+		data = append(data, dao.Feedback{
 			ID:     int64(idx),
 			UID:    uid,
 			Biz:    "case",
@@ -456,7 +470,7 @@ func (s *HandlerTestSuite) TestPendingCount() {
 			Utime:  0,
 		})
 	}
-	err := s.db.Model(&dao.FeedBack{}).Create(&data).Error
+	err := s.db.Model(&dao.Feedback{}).Create(&data).Error
 	require.NoError(s.T(), err)
 	req, err := http.NewRequest(http.MethodGet,
 		"/feedback/pending-count", iox.NewJSONReader(nil))
@@ -469,7 +483,7 @@ func (s *HandlerTestSuite) TestPendingCount() {
 }
 
 // assertFeedBack 不比较 id
-func (s *HandlerTestSuite) assertFeedBack(t *testing.T, expect dao.FeedBack, feedBack dao.FeedBack) {
+func (s *HandlerTestSuite) assertFeedBack(t *testing.T, expect dao.Feedback, feedBack dao.Feedback) {
 	assert.True(t, feedBack.ID > 0)
 	assert.True(t, feedBack.Ctime > 0)
 	assert.True(t, feedBack.Utime > 0)

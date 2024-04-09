@@ -8,33 +8,31 @@ import (
 	"github.com/ecodeclub/webook/internal/feedback/internal/repository/dao"
 )
 
-type FeedBackRepo interface {
-	// 管理端
-	// 列表 根据交互来, 先是未处理，然后是通过，最后是拒绝
+type FeedbackRepository interface {
+	// List 管理端: 列表 根据交互来, 先是未处理，然后是通过，最后是拒绝
 	List(ctx context.Context, feedBack domain.FeedBack, offset, limit int) ([]domain.FeedBack, error)
-	// 未处理的数量
+	// PendingCount 未处理的数量
 	PendingCount(ctx context.Context) (int64, error)
-	// 详情
+	// Info 详情
 	Info(ctx context.Context, id int64) (domain.FeedBack, error)
-	// 处理 反馈
+	// UpdateStatus 处理 反馈
 	UpdateStatus(ctx context.Context, id int64, status domain.FeedBackStatus) error
-	//	c端
-	// 添加
+	// Create c端: 添加
 	Create(ctx context.Context, feedback domain.FeedBack) error
 }
 
-type feedBackRepo struct {
-	feedBackDao dao.FeedBackDAO
+type feedbackRepo struct {
+	dao dao.FeedbackDAO
 }
 
-func NewFeedBackRepo(feedBackDao dao.FeedBackDAO) FeedBackRepo {
-	return &feedBackRepo{
-		feedBackDao: feedBackDao,
+func NewFeedBackRepo(feedBackDao dao.FeedbackDAO) FeedbackRepository {
+	return &feedbackRepo{
+		dao: feedBackDao,
 	}
 }
 
-func (f *feedBackRepo) List(ctx context.Context, feedBack domain.FeedBack, offset, limit int) ([]domain.FeedBack, error) {
-	feedBackList, err := f.feedBackDao.List(ctx, f.toEntity(feedBack), offset, limit)
+func (f *feedbackRepo) List(ctx context.Context, feedBack domain.FeedBack, offset, limit int) ([]domain.FeedBack, error) {
+	feedBackList, err := f.dao.List(ctx, f.toEntity(feedBack), offset, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -45,24 +43,24 @@ func (f *feedBackRepo) List(ctx context.Context, feedBack domain.FeedBack, offse
 	return ans, err
 }
 
-func (f *feedBackRepo) PendingCount(ctx context.Context) (int64, error) {
-	return f.feedBackDao.PendingCount(ctx)
+func (f *feedbackRepo) PendingCount(ctx context.Context) (int64, error) {
+	return f.dao.PendingCount(ctx)
 }
 
-func (f *feedBackRepo) Info(ctx context.Context, id int64) (domain.FeedBack, error) {
-	feedBack, err := f.feedBackDao.Info(ctx, id)
+func (f *feedbackRepo) Info(ctx context.Context, id int64) (domain.FeedBack, error) {
+	feedBack, err := f.dao.Info(ctx, id)
 	return f.toDomain(feedBack), err
 }
 
-func (f *feedBackRepo) UpdateStatus(ctx context.Context, id int64, status domain.FeedBackStatus) error {
-	return f.feedBackDao.UpdateStatus(ctx, id, int32(status))
+func (f *feedbackRepo) UpdateStatus(ctx context.Context, id int64, status domain.FeedBackStatus) error {
+	return f.dao.UpdateStatus(ctx, id, int32(status))
 }
 
-func (f *feedBackRepo) Create(ctx context.Context, feedback domain.FeedBack) error {
-	return f.feedBackDao.Create(ctx, f.toEntity(feedback))
+func (f *feedbackRepo) Create(ctx context.Context, feedback domain.FeedBack) error {
+	return f.dao.Create(ctx, f.toEntity(feedback))
 }
 
-func (f *feedBackRepo) toDomain(feedBack dao.FeedBack) domain.FeedBack {
+func (f *feedbackRepo) toDomain(feedBack dao.Feedback) domain.FeedBack {
 	return domain.FeedBack{
 		ID:      feedBack.ID,
 		Biz:     feedBack.Biz,
@@ -75,8 +73,8 @@ func (f *feedBackRepo) toDomain(feedBack dao.FeedBack) domain.FeedBack {
 	}
 }
 
-func (f *feedBackRepo) toEntity(feedBack domain.FeedBack) dao.FeedBack {
-	return dao.FeedBack{
+func (f *feedbackRepo) toEntity(feedBack domain.FeedBack) dao.Feedback {
+	return dao.Feedback{
 		ID:      feedBack.ID,
 		Biz:     feedBack.Biz,
 		BizID:   feedBack.BizID,

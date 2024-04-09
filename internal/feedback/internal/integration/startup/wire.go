@@ -17,13 +17,13 @@
 package startup
 
 import (
-	baguwen "github.com/ecodeclub/webook/internal/feedback"
+	"github.com/ecodeclub/webook/internal/feedback"
 	"github.com/ecodeclub/webook/internal/feedback/internal/web"
 	testioc "github.com/ecodeclub/webook/internal/test/ioc"
 	"github.com/google/wire"
 )
 
 func InitHandler() (*web.Handler, error) {
-	wire.Build(testioc.BaseSet, baguwen.InitHandler)
+	wire.Build(testioc.BaseSet, feedback.InitHandler)
 	return new(web.Handler), nil
 }
