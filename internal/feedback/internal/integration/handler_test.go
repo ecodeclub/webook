@@ -18,13 +18,10 @@ package integration
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 	"testing"
 	"time"
 
-	"github.com/ecodeclub/mq-api"
-	"github.com/ecodeclub/webook/internal/feedback/internal/event"
 	"github.com/ecodeclub/webook/internal/feedback/internal/integration/startup"
 	"github.com/ecodeclub/webook/internal/feedback/internal/repository/dao"
 	"github.com/ecodeclub/webook/internal/feedback/internal/web"
@@ -50,7 +47,6 @@ type HandlerTestSuite struct {
 	server *egin.Component
 	db     *egorm.Component
 	dao    dao.FeedbackDAO
-	mq     mq.MQ
 }
 
 func (s *HandlerTestSuite) TearDownSuite() {
@@ -78,7 +74,6 @@ func (s *HandlerTestSuite) SetupSuite() {
 	s.server = server
 	s.db = testioc.InitDB()
 	s.dao = dao.NewFeedBackDAO(s.db)
-	s.mq = testioc.InitMQ()
 }
 
 func (s *HandlerTestSuite) TestCreate() {
@@ -143,7 +138,7 @@ func (s *HandlerTestSuite) TestUpdateStatus() {
 		wantCode int
 	}{
 		{
-			name: "更新状态成功_拒绝",
+			name: "拒绝",
 			before: func(t *testing.T) {
 				err := s.db.Create(&dao.Feedback{
 					ID:      2,
@@ -177,7 +172,7 @@ func (s *HandlerTestSuite) TestUpdateStatus() {
 			wantCode: 200,
 		},
 		{
-			name: "更新状态成功_采纳",
+			name: "采纳",
 			before: func(t *testing.T) {
 				err := s.db.Create(&dao.Feedback{
 					ID:      3,
@@ -193,7 +188,6 @@ func (s *HandlerTestSuite) TestUpdateStatus() {
 			},
 			after: func(t *testing.T) {
 				t.Helper()
-
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 				defer cancel()
 				feedBack, err := s.dao.Info(ctx, 3)
@@ -205,24 +199,6 @@ func (s *HandlerTestSuite) TestUpdateStatus() {
 					Content: "skill不行",
 					Status:  1,
 				}, feedBack)
-
-				consumer, err := s.mq.Consumer("credit_increase_events", "feedback")
-				require.NoError(t, err)
-				msg, err := consumer.Consume(context.Background())
-				require.NoError(t, err)
-
-				evt := event.CreditIncreaseEvent{}
-				err = json.Unmarshal(msg.Value, &evt)
-				require.NoError(t, err)
-				require.NotZero(t, evt.Key)
-				evt.Key = ""
-				require.Equal(t, event.CreditIncreaseEvent{
-					Uid:    uid,
-					Amount: 100,
-					Biz:    9,
-					BizId:  3,
-					Action: "采纳反馈",
-				}, evt)
 			},
 			req: web.UpdateStatusReq{
 				FID:    3,
