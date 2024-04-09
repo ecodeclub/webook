@@ -12,10 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package dao
+//go:build wireinject
 
-import "github.com/ego-component/egorm"
+package startup
 
-func InitTables(db *egorm.Component) error {
-	return db.AutoMigrate(&Credit{}, &CreditLog{})
+import (
+	"github.com/ecodeclub/webook/internal/credit"
+	testioc "github.com/ecodeclub/webook/internal/test/ioc"
+	"github.com/google/wire"
+)
+
+func InitService() credit.Service {
+	wire.Build(testioc.BaseSet, credit.InitService)
+	return nil
 }

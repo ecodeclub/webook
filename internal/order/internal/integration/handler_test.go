@@ -26,6 +26,7 @@ import (
 	"github.com/ecodeclub/ekit/iox"
 	"github.com/ecodeclub/ginx/session"
 	"github.com/ecodeclub/webook/internal/credit"
+	creditmocks "github.com/ecodeclub/webook/internal/credit/mocks"
 	"github.com/ecodeclub/webook/internal/order/internal/domain"
 	"github.com/ecodeclub/webook/internal/order/internal/errs"
 	"github.com/ecodeclub/webook/internal/order/internal/integration/startup"
@@ -42,14 +43,14 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+	"go.uber.org/mock/gomock"
 )
 
 const (
-	testUID = 234
+	testUID = int64(234)
 )
 
 type fakePaymentService struct {
-	credit  *fakeCreditService
 	counter atomic.Int64
 }
 
@@ -64,7 +65,7 @@ func (f *fakePaymentService) CreatePayment(ctx context.Context, p payment.Paymen
 			OrderID:     p.OrderID,
 			OrderSN:     p.OrderSN,
 			TotalAmount: p.TotalAmount,
-			Deadline:    p.Deadline,
+			PayDDL:      p.PayDDL,
 			Records: []payment.Record{
 				{
 					PaymentNO3rd: "credit-1",
@@ -80,7 +81,7 @@ func (f *fakePaymentService) CreatePayment(ctx context.Context, p payment.Paymen
 			OrderID:     p.OrderID,
 			OrderSN:     p.OrderSN,
 			TotalAmount: p.TotalAmount,
-			Deadline:    p.Deadline,
+			PayDDL:      p.PayDDL,
 			Records: []payment.Record{
 				{
 					PaymentNO3rd: "credit-1",
@@ -186,28 +187,24 @@ func (f *fakeProductService) FindBySN(_ context.Context, sn string) (product.Pro
 	return products[sn], nil
 }
 
-type fakeCreditService struct{}
-
-func (f *fakeCreditService) GetByUID(ctx context.Context, uid int64) (credit.Credit, error) {
-	credits := map[int64]credit.Credit{
-		testUID: {Amount: 1000},
-	}
-	if _, ok := credits[uid]; !ok {
-		return credit.Credit{}, nil
-	}
-	return credits[uid], nil
-}
-
 type HandlerTestSuite struct {
 	suite.Suite
 	server *egin.Component
 	db     *egorm.Component
 	dao    dao.OrderDAO
+	ctrl   *gomock.Controller
 }
 
 func (s *HandlerTestSuite) SetupSuite() {
-	creditSvc := &fakeCreditService{}
-	handler, err := startup.InitHandler(&fakePaymentService{credit: creditSvc}, &fakeProductService{}, creditSvc)
+
+	s.ctrl = gomock.NewController(s.T())
+
+	mockedCreditSvc := creditmocks.NewMockService(s.ctrl)
+	mockedCreditSvc.EXPECT().GetCreditsByUID(gomock.Any(), testUID).AnyTimes().Return(credit.Credit{
+		TotalAmount: 1000,
+	}, nil)
+
+	handler, err := startup.InitHandler(&fakePaymentService{}, &fakeProductService{}, mockedCreditSvc)
 	require.NoError(s.T(), err)
 
 	econf.Set("server", map[string]any{"contextTimeout": "1s"})
@@ -231,6 +228,8 @@ func (s *HandlerTestSuite) TearDownSuite() {
 	require.NoError(s.T(), err)
 	err = s.db.Exec("DROP TABLE `order_items`").Error
 	require.NoError(s.T(), err)
+
+	s.ctrl.Finish()
 }
 
 func (s *HandlerTestSuite) TearDownTest() {

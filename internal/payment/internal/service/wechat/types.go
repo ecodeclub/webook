@@ -12,10 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package dao
+package wechat
 
-import "github.com/ego-component/egorm"
+import (
+	"context"
 
-func InitTables(db *egorm.Component) error {
-	return db.AutoMigrate(&Credit{}, &CreditLog{})
+	"github.com/wechatpay-apiv3/wechatpay-go/core"
+	"github.com/wechatpay-apiv3/wechatpay-go/services/payments"
+	"github.com/wechatpay-apiv3/wechatpay-go/services/payments/native"
+)
+
+type NativeAPIService interface {
+	Prepay(ctx context.Context, req native.PrepayRequest) (resp *native.PrepayResponse, result *core.APIResult, err error)
+	QueryOrderByOutTradeNo(ctx context.Context, req native.QueryOrderByOutTradeNoRequest) (resp *payments.Transaction, result *core.APIResult, err error)
 }
