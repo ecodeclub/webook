@@ -19,42 +19,48 @@ package feedback
 import (
 	"sync"
 
+	"github.com/ecodeclub/mq-api"
+	"github.com/ecodeclub/webook/internal/feedback/internal/event"
 	"github.com/ecodeclub/webook/internal/feedback/internal/repository"
 	"github.com/ecodeclub/webook/internal/feedback/internal/repository/dao"
 	"github.com/ecodeclub/webook/internal/feedback/internal/service"
 	"github.com/ecodeclub/webook/internal/feedback/internal/web"
-
-	"github.com/ecodeclub/ecache"
 
 	"github.com/ego-component/egorm"
 	"github.com/google/wire"
 	"gorm.io/gorm"
 )
 
-func InitHandler(db *egorm.Component, ec ecache.Cache) (*Handler, error) {
+func InitHandler(db *egorm.Component, q mq.MQ) (*Handler, error) {
 	wire.Build(
-		InitFeedBackDAO,
-		repository.NewFeedBackRepo,
-		service.NewService,
+		initFeedbackDAO,
+		repository.NewFeedbackRepository,
+		initIncreaseCreditsEventProducer,
+		service.NewFeedbackService,
 		web.NewHandler,
 	)
 	return new(Handler), nil
 }
 
-var daoOnce = sync.Once{}
+var (
+	daoOnce = sync.Once{}
+	d       dao.FeedbackDAO
+)
 
-func InitTableOnce(db *gorm.DB) {
+func initFeedbackDAO(db *gorm.DB) dao.FeedbackDAO {
 	daoOnce.Do(func() {
-		err := dao.InitTables(db)
-		if err != nil {
-			panic(err)
-		}
+		_ = dao.InitTables(db)
+		d = dao.NewFeedBackDAO(db)
 	})
+	return d
 }
 
-func InitFeedBackDAO(db *egorm.Component) dao.FeedbackDAO {
-	InitTableOnce(db)
-	return dao.NewFeedBackDAO(db)
+func initIncreaseCreditsEventProducer(q mq.MQ) *event.IncreaseCreditsEventProducer {
+	producer, err := event.NewIncreaseCreditsEventProducer(q)
+	if err != nil {
+		panic(err)
+	}
+	return producer
 }
 
 type Handler = web.Handler

@@ -16,8 +16,8 @@ import (
 
 func InitHandler() (*web.Handler, error) {
 	db := testioc.InitDB()
-	cache := testioc.InitCache()
-	handler, err := feedback.InitHandler(db, cache)
+	mq := testioc.InitMQ()
+	handler, err := feedback.InitHandler(db, mq)
 	if err != nil {
 		return nil, err
 	}

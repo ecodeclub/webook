@@ -44,7 +44,7 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	server.POST("/feedback/list", ginx.S(h.Permission), ginx.B[ListReq](h.List))
 	// 未处理的个数
 	server.GET("/feedback/pending-count", ginx.S(h.Permission), ginx.W(h.PendingCount))
-	server.POST("/feedback/info", ginx.S(h.Permission), ginx.B[FeedBackID](h.Info))
+	server.POST("/feedback/info", ginx.S(h.Permission), ginx.B[FeedbackID](h.Info))
 	server.POST("/feedback/update-status", ginx.S(h.Permission),
 		ginx.B[UpdateStatusReq](h.UpdateStatus))
 	server.POST("/feedback/create", ginx.BS[CreateReq](h.Create))
@@ -61,7 +61,7 @@ func (h *Handler) PendingCount(ctx *ginx.Context) (ginx.Result, error) {
 }
 
 func (h *Handler) List(ctx *ginx.Context, req ListReq) (ginx.Result, error) {
-	data, err := h.svc.List(ctx, domain.FeedBack{
+	data, err := h.svc.List(ctx, domain.Feedback{
 		BizID: req.BizID,
 		Biz:   req.Biz,
 	}, req.Offset, req.Limit)
@@ -72,19 +72,19 @@ func (h *Handler) List(ctx *ginx.Context, req ListReq) (ginx.Result, error) {
 		Data: h.toFeedBackList(data),
 	}, nil
 }
-func (h *Handler) Info(ctx *ginx.Context, req FeedBackID) (ginx.Result, error) {
+func (h *Handler) Info(ctx *ginx.Context, req FeedbackID) (ginx.Result, error) {
 	detail, err := h.svc.Info(ctx, req.FID)
 	if err != nil {
 		return systemErrorResult, err
 	}
 	return ginx.Result{
-		Data: newFeedBack(detail),
+		Data: newFeedback(detail),
 	}, err
 }
 func (h *Handler) UpdateStatus(ctx *ginx.Context, req UpdateStatusReq) (ginx.Result, error) {
-	err := h.svc.UpdateStatus(ctx, domain.FeedBack{
+	err := h.svc.UpdateStatus(ctx, domain.Feedback{
 		ID:     req.FID,
-		Status: domain.FeedBackStatus(req.Status),
+		Status: domain.FeedbackStatus(req.Status),
 	})
 	if err != nil {
 		return systemErrorResult, err
@@ -93,7 +93,7 @@ func (h *Handler) UpdateStatus(ctx *ginx.Context, req UpdateStatusReq) (ginx.Res
 }
 
 func (h *Handler) Create(ctx *ginx.Context, req CreateReq, sess session.Session) (ginx.Result, error) {
-	feedBack := req.FeedBack.toDomain()
+	feedBack := req.Feedback.toDomain()
 	feedBack.UID = sess.Claims().Uid
 	feedBack.Status = 0
 	err := h.svc.Create(ctx, feedBack)
@@ -111,10 +111,10 @@ func (h *Handler) Permission(ctx *ginx.Context, sess session.Session) (ginx.Resu
 	return ginx.Result{}, ginx.ErrNoResponse
 }
 
-func (h *Handler) toFeedBackList(data []domain.FeedBack) FeedBackList {
+func (h *Handler) toFeedBackList(data []domain.Feedback) FeedBackList {
 	return FeedBackList{
-		FeedBacks: slice.Map(data, func(idx int, feedBack domain.FeedBack) FeedBack {
-			return newFeedBack(feedBack)
+		FeedBacks: slice.Map(data, func(idx int, feedBack domain.Feedback) Feedback {
+			return newFeedback(feedBack)
 		}),
 	}
 }

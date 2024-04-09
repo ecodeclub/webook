@@ -16,24 +16,24 @@ package domain
 
 import "time"
 
-type FeedBack struct {
+type Feedback struct {
 	ID      int64
 	UID     int64
 	Biz     string
 	BizID   int64
 	Content string
-	Status  FeedBackStatus
+	Status  FeedbackStatus
 	Ctime   time.Time
 	Utime   time.Time
 }
 
-type FeedBackStatus int32
+type FeedbackStatus int32
 
 const (
-	// 待处理
-	Pending FeedBackStatus = 0
-	// 通过
-	Access FeedBackStatus = 1
-	// 拒绝
-	Reject FeedBackStatus = 2
+	// Pending 待处理
+	Pending FeedbackStatus = 0
+	// Adopt 采纳
+	Adopt FeedbackStatus = 1
+	// Reject 拒绝
+	Reject FeedbackStatus = 2
 )
