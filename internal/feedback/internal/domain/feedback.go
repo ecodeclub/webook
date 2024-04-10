@@ -2,7 +2,7 @@ package domain
 
 import "time"
 
-type FeedBack struct {
+type Feedback struct {
 	ID      int64
 	BizID   int64
 	Biz     string

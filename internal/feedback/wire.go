@@ -19,7 +19,7 @@ import (
 
 func InitHandler(db *egorm.Component, ec ecache.Cache) (*Handler, error) {
 	wire.Build(
-		InitFeedBackDAO,
+		InitFeedbackDAO,
 		repository.NewFeedBackRepo,
 		service.NewService,
 		web.NewHandler,
@@ -38,9 +38,9 @@ func InitTableOnce(db *gorm.DB) {
 	})
 }
 
-func InitFeedBackDAO(db *egorm.Component) dao.FeedBackDAO {
+func InitFeedbackDAO(db *egorm.Component) dao.FeedbackDAO {
 	InitTableOnce(db)
-	return dao.NewFeedBackDAO(db)
+	return dao.NewFeedbackDAO(db)
 }
 
 type Handler = web.Handler

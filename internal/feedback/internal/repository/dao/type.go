@@ -1,6 +1,6 @@
 package dao
 
-type FeedBack struct {
+type Feeback struct {
 	ID      int64  `gorm:"primaryKey,autoIncrement"`
 	BizID   int64  `gorm:"column:biz_id;type:int;comment:业务ID;not null;index:idx_biz_biz_id;default:0"`
 	Biz     string `gorm:"column:biz;type:varchar(255);comment:业务名称;not null;index:idx_biz_biz_id;default:''"`
@@ -11,6 +11,6 @@ type FeedBack struct {
 	Utime   int64
 }
 
-func (FeedBack) TableName() string {
-	return "feed_back"
+func (Feeback) TableName() string {
+	return "feedbacks"
 }
