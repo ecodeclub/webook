@@ -12,15 +12,15 @@ import (
 type Service interface {
 	// 管理端
 	// 列表 根据交互来
-	List(ctx context.Context, feedBack domain.FeedBack, offset, limit int) ([]domain.FeedBack, error)
+	List(ctx context.Context, offset, limit int) ([]domain.Feedback, error)
 	PendingCount(ctx context.Context) (int64, error)
 	// 详情
-	Info(ctx context.Context, id int64) (domain.FeedBack, error)
+	Info(ctx context.Context, id int64) (domain.Feedback, error)
 	// 处理 反馈
-	UpdateStatus(ctx context.Context, domainFeedback domain.FeedBack) error
+	UpdateStatus(ctx context.Context, domainFeedback domain.Feedback) error
 	//	c端
 	// 添加
-	Create(ctx context.Context, feedback domain.FeedBack) error
+	Create(ctx context.Context, feedback domain.Feedback) error
 }
 
 type service struct {
@@ -33,11 +33,11 @@ func (s *service) PendingCount(ctx context.Context) (int64, error) {
 	return s.repo.PendingCount(ctx)
 }
 
-func (s *service) Info(ctx context.Context, id int64) (domain.FeedBack, error) {
+func (s *service) Info(ctx context.Context, id int64) (domain.Feedback, error) {
 	return s.repo.Info(ctx, id)
 }
 
-func (s *service) UpdateStatus(ctx context.Context, domainFeedback domain.FeedBack) error {
+func (s *service) UpdateStatus(ctx context.Context, domainFeedback domain.Feedback) error {
 	err := s.repo.UpdateStatus(ctx, domainFeedback.ID, domainFeedback.Status)
 	if err != nil {
 		return err
@@ -59,12 +59,12 @@ func (s *service) UpdateStatus(ctx context.Context, domainFeedback domain.FeedBa
 	return nil
 }
 
-func (s *service) Create(ctx context.Context, feedback domain.FeedBack) error {
+func (s *service) Create(ctx context.Context, feedback domain.Feedback) error {
 	return s.repo.Create(ctx, feedback)
 }
 
-func (s *service) List(ctx context.Context, feedBack domain.FeedBack, offset, limit int) ([]domain.FeedBack, error) {
-	return s.repo.List(ctx, feedBack, offset, limit)
+func (s *service) List(ctx context.Context, offset, limit int) ([]domain.Feedback, error) {
+	return s.repo.List(ctx, offset, limit)
 }
 
 func NewService(repo repository.FeedBackRepo) Service {

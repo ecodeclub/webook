@@ -32,16 +32,16 @@ type HandlerTestSuite struct {
 	suite.Suite
 	server *egin.Component
 	db     *egorm.Component
-	dao    dao.FeedBackDAO
+	dao    dao.FeedbackDAO
 }
 
 func (s *HandlerTestSuite) TearDownSuite() {
-	err := s.db.Exec("DROP TABLE `feed_back`").Error
+	err := s.db.Exec("DROP TABLE `feedbacks`").Error
 	require.NoError(s.T(), err)
 }
 
 func (s *HandlerTestSuite) TearDownTest() {
-	err := s.db.Exec("TRUNCATE TABLE `feed_back`").Error
+	err := s.db.Exec("TRUNCATE TABLE `feedbacks`").Error
 	require.NoError(s.T(), err)
 }
 
@@ -56,12 +56,12 @@ func (s *HandlerTestSuite) SetupSuite() {
 			Data: map[string]string{"creator": "true"},
 		}))
 	})
-	handler.PrivateRoutes(server.Engine)
+	handler.MemberRoutes(server.Engine)
 	s.server = server
 	s.db = testioc.InitDB()
 	err = dao.InitTables(s.db)
 	require.NoError(s.T(), err)
-	s.dao = dao.NewFeedBackDAO(s.db)
+	s.dao = dao.NewFeedbackDAO(s.db)
 }
 
 func (s *HandlerTestSuite) TestCreate() {
@@ -81,7 +81,7 @@ func (s *HandlerTestSuite) TestCreate() {
 				defer cancel()
 				feedBack, err := s.dao.Info(ctx, 1)
 				require.NoError(t, err)
-				s.assertFeedBack(t, dao.FeedBack{
+				s.assertFeedBack(t, dao.Feeback{
 					UID:     uid,
 					Biz:     "case",
 					BizID:   1,
@@ -90,7 +90,7 @@ func (s *HandlerTestSuite) TestCreate() {
 				}, feedBack)
 			},
 			req: web.CreateReq{
-				FeedBack: web.FeedBack{
+				Feedback: web.Feedback{
 					BizID:   1,
 					Biz:     "case",
 					Content: "case写的不行",
@@ -111,7 +111,7 @@ func (s *HandlerTestSuite) TestCreate() {
 			require.Equal(t, tc.wantCode, recorder.Code)
 			tc.after(t)
 			// 清理 的数据
-			err = s.db.Exec("TRUNCATE table `feed_back`").Error
+			err = s.db.Exec("TRUNCATE table `feedbacks`").Error
 			require.NoError(t, err)
 		})
 	}
@@ -128,7 +128,7 @@ func (s *HandlerTestSuite) TestUpdateStatus() {
 		{
 			name: "拒绝",
 			before: func(t *testing.T) {
-				err := s.db.Create(&dao.FeedBack{
+				err := s.db.Create(&dao.Feeback{
 					ID:      2,
 					BizID:   1,
 					Biz:     "que",
@@ -145,7 +145,7 @@ func (s *HandlerTestSuite) TestUpdateStatus() {
 				defer cancel()
 				feedBack, err := s.dao.Info(ctx, 2)
 				require.NoError(t, err)
-				s.assertFeedBack(t, dao.FeedBack{
+				s.assertFeedBack(t, dao.Feeback{
 					UID:     uid,
 					Biz:     "que",
 					BizID:   1,
@@ -162,7 +162,7 @@ func (s *HandlerTestSuite) TestUpdateStatus() {
 		{
 			name: "采纳",
 			before: func(t *testing.T) {
-				err := s.db.Create(&dao.FeedBack{
+				err := s.db.Create(&dao.Feeback{
 					ID:      3,
 					BizID:   1,
 					Biz:     "skill",
@@ -179,7 +179,7 @@ func (s *HandlerTestSuite) TestUpdateStatus() {
 				defer cancel()
 				feedBack, err := s.dao.Info(ctx, 3)
 				require.NoError(t, err)
-				s.assertFeedBack(t, dao.FeedBack{
+				s.assertFeedBack(t, dao.Feeback{
 					UID:     uid,
 					Biz:     "skill",
 					BizID:   1,
@@ -206,7 +206,7 @@ func (s *HandlerTestSuite) TestUpdateStatus() {
 			require.Equal(t, tc.wantCode, recorder.Code)
 			tc.after(t)
 			// 清理 的数据
-			err = s.db.Exec("TRUNCATE table `feed_back`").Error
+			err = s.db.Exec("TRUNCATE table `feedbacks`").Error
 			require.NoError(t, err)
 		})
 	}
@@ -214,7 +214,7 @@ func (s *HandlerTestSuite) TestUpdateStatus() {
 
 func (s *HandlerTestSuite) TestInfo() {
 	t := s.T()
-	err := s.db.Create(&dao.FeedBack{
+	err := s.db.Create(&dao.Feeback{
 		ID:      4,
 		BizID:   3,
 		Biz:     "cases",
@@ -224,22 +224,21 @@ func (s *HandlerTestSuite) TestInfo() {
 		Ctime:   1712160000000,
 		Utime:   1712246400000,
 	}).Error
-	actualReq := web.FeedBackID{
+	actualReq := web.FeedbackID{
 		FID: 4,
 	}
 	req, err := http.NewRequest(http.MethodPost,
-		"/feedback/info", iox.NewJSONReader(actualReq))
+		"/feedback/detail", iox.NewJSONReader(actualReq))
 	req.Header.Set("content-type", "application/json")
 	require.NoError(t, err)
-	recorder := test.NewJSONResponseRecorder[web.FeedBack]()
+	recorder := test.NewJSONResponseRecorder[web.Feedback]()
 	s.server.ServeHTTP(recorder, req)
 	require.Equal(t, 200, recorder.Code)
-	wantResp := test.Result[web.FeedBack]{
-		Data: web.FeedBack{
+	wantResp := test.Result[web.Feedback]{
+		Data: web.Feedback{
 			ID:      4,
 			BizID:   3,
 			Biz:     "cases",
-			UID:     uid,
 			Content: "cases",
 			Status:  2,
 		},
@@ -250,15 +249,15 @@ func (s *HandlerTestSuite) TestInfo() {
 	actualResp.Data.Utime = ""
 	actualResp.Data.Ctime = ""
 	assert.Equal(t, wantResp, actualResp)
-	err = s.db.Exec("TRUNCATE table `feed_back`").Error
+	err = s.db.Exec("TRUNCATE table `feedbacks`").Error
 	require.NoError(t, err)
 }
 
 func (s *HandlerTestSuite) TestList() {
-	data := make([]dao.FeedBack, 0, 100)
+	data := make([]dao.Feeback, 0, 100)
 	for idx := 1; idx < 10; idx++ {
 		// 创建采纳的case
-		data = append(data, dao.FeedBack{
+		data = append(data, dao.Feeback{
 			ID:     int64(idx),
 			UID:    uid,
 			Biz:    "case",
@@ -269,7 +268,7 @@ func (s *HandlerTestSuite) TestList() {
 	}
 	for idx := 10; idx < 20; idx++ {
 		// 创建未处理的case
-		data = append(data, dao.FeedBack{
+		data = append(data, dao.Feeback{
 			ID:     int64(idx),
 			UID:    uid,
 			Biz:    "case",
@@ -278,39 +277,26 @@ func (s *HandlerTestSuite) TestList() {
 			Utime:  0,
 		})
 	}
-	for idx := 20; idx < 30; idx++ {
-		// 创建未处理的que
-		data = append(data, dao.FeedBack{
-			ID:     int64(idx),
-			UID:    uid,
-			Biz:    "que",
-			BizID:  int64(idx),
-			Status: 0,
-			Utime:  0,
-		})
-	}
-	err := s.db.Model(&dao.FeedBack{}).Create(&data).Error
+	err := s.db.Model(&dao.Feeback{}).Create(&data).Error
 	require.NoError(s.T(), err)
 	testCases := []struct {
 		name     string
 		req      web.ListReq
-		wantResp test.Result[web.FeedBackList]
+		wantResp test.Result[web.FeedbackList]
 		wantCode int
 	}{
 		{
-			name: "查看case的反馈",
+			name: "查看反馈",
 			req: web.ListReq{
-				Biz:    "case",
 				Offset: 0,
 				Limit:  2,
 			},
 			wantCode: 200,
-			wantResp: test.Result[web.FeedBackList]{
-				Data: web.FeedBackList{
-					FeedBacks: []web.FeedBack{
+			wantResp: test.Result[web.FeedbackList]{
+				Data: web.FeedbackList{
+					Feedbacks: []web.Feedback{
 						{
 							ID:     19,
-							UID:    uid,
 							Biz:    "case",
 							BizID:  19,
 							Status: 0,
@@ -319,91 +305,8 @@ func (s *HandlerTestSuite) TestList() {
 						},
 						{
 							ID:     18,
-							UID:    uid,
 							Biz:    "case",
 							BizID:  18,
-							Status: 0,
-							Utime:  time.UnixMilli(0).Format(time.DateTime),
-							Ctime:  time.UnixMilli(0).Format(time.DateTime),
-						},
-					},
-				},
-			},
-		},
-		{
-			name: "查看biz = case且biz = 11 反馈",
-			req: web.ListReq{
-				Biz:    "case",
-				BizID:  11,
-				Offset: 0,
-				Limit:  2,
-			},
-			wantCode: 200,
-			wantResp: test.Result[web.FeedBackList]{
-				Data: web.FeedBackList{
-					FeedBacks: []web.FeedBack{
-						{
-							ID:     11,
-							UID:    uid,
-							Biz:    "case",
-							BizID:  11,
-							Status: 0,
-							Utime:  time.UnixMilli(0).Format(time.DateTime),
-							Ctime:  time.UnixMilli(0).Format(time.DateTime),
-						},
-					},
-				},
-			},
-		},
-		{
-			name: "查看que的反馈",
-			req: web.ListReq{
-				Biz:    "que",
-				Offset: 0,
-				Limit:  2,
-			},
-			wantCode: 200,
-			wantResp: test.Result[web.FeedBackList]{
-				Data: web.FeedBackList{
-					FeedBacks: []web.FeedBack{
-						{
-							ID:     29,
-							UID:    uid,
-							Biz:    "que",
-							BizID:  29,
-							Status: 0,
-							Utime:  time.UnixMilli(0).Format(time.DateTime),
-							Ctime:  time.UnixMilli(0).Format(time.DateTime),
-						},
-						{
-							ID:     28,
-							UID:    uid,
-							Biz:    "que",
-							BizID:  28,
-							Status: 0,
-							Utime:  time.UnixMilli(0).Format(time.DateTime),
-							Ctime:  time.UnixMilli(0).Format(time.DateTime),
-						},
-					},
-				},
-			},
-		},
-		{
-			name: "查看部分que的反馈",
-			req: web.ListReq{
-				Biz:    "que",
-				Offset: 9,
-				Limit:  2,
-			},
-			wantCode: 200,
-			wantResp: test.Result[web.FeedBackList]{
-				Data: web.FeedBackList{
-					FeedBacks: []web.FeedBack{
-						{
-							ID:     20,
-							UID:    uid,
-							Biz:    "que",
-							BizID:  20,
 							Status: 0,
 							Utime:  time.UnixMilli(0).Format(time.DateTime),
 							Ctime:  time.UnixMilli(0).Format(time.DateTime),
@@ -419,24 +322,24 @@ func (s *HandlerTestSuite) TestList() {
 				"/feedback/list", iox.NewJSONReader(tc.req))
 			req.Header.Set("content-type", "application/json")
 			require.NoError(t, err)
-			recorder := test.NewJSONResponseRecorder[web.FeedBackList]()
+			recorder := test.NewJSONResponseRecorder[web.FeedbackList]()
 			s.server.ServeHTTP(recorder, req)
 			require.Equal(t, tc.wantCode, recorder.Code)
 			assert.Equal(t, tc.wantResp, recorder.MustScan())
 		})
 	}
 	// 清理 的数据
-	err = s.db.Exec("TRUNCATE table `feed_back`").Error
+	err = s.db.Exec("TRUNCATE table `feedbacks`").Error
 	require.NoError(s.T(), err)
 
 }
 
 func (s *HandlerTestSuite) TestPendingCount() {
 	t := s.T()
-	data := make([]dao.FeedBack, 0, 100)
+	data := make([]dao.Feeback, 0, 100)
 	for idx := 1; idx < 10; idx++ {
 		// 创建采纳的case
-		data = append(data, dao.FeedBack{
+		data = append(data, dao.Feeback{
 			ID:     int64(idx),
 			UID:    uid,
 			Biz:    "case",
@@ -447,7 +350,7 @@ func (s *HandlerTestSuite) TestPendingCount() {
 	}
 	for idx := 10; idx < 20; idx++ {
 		// 创建未处理的case
-		data = append(data, dao.FeedBack{
+		data = append(data, dao.Feeback{
 			ID:     int64(idx),
 			UID:    uid,
 			Biz:    "case",
@@ -456,7 +359,7 @@ func (s *HandlerTestSuite) TestPendingCount() {
 			Utime:  0,
 		})
 	}
-	err := s.db.Model(&dao.FeedBack{}).Create(&data).Error
+	err := s.db.Model(&dao.Feeback{}).Create(&data).Error
 	require.NoError(s.T(), err)
 	req, err := http.NewRequest(http.MethodGet,
 		"/feedback/pending-count", iox.NewJSONReader(nil))
@@ -469,7 +372,7 @@ func (s *HandlerTestSuite) TestPendingCount() {
 }
 
 // assertFeedBack 不比较 id
-func (s *HandlerTestSuite) assertFeedBack(t *testing.T, expect dao.FeedBack, feedBack dao.FeedBack) {
+func (s *HandlerTestSuite) assertFeedBack(t *testing.T, expect dao.Feeback, feedBack dao.Feeback) {
 	assert.True(t, feedBack.ID > 0)
 	assert.True(t, feedBack.Ctime > 0)
 	assert.True(t, feedBack.Utime > 0)

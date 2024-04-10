@@ -7,62 +7,53 @@ import (
 	"github.com/ego-component/egorm"
 )
 
-type FeedBackDAO interface {
-	// 管理端
-	// 列表 根据交互来
-	List(ctx context.Context, f FeedBack, offset, limit int) ([]FeedBack, error)
-	// 未处理的个数
+type FeedbackDAO interface {
+	// List 列表 根据交互来
+	List(ctx context.Context, offset, limit int) ([]Feeback, error)
+	// PendingCount 未处理的个数
 	PendingCount(ctx context.Context) (int64, error)
-	// 详情
-	Info(ctx context.Context, id int64) (FeedBack, error)
-	// 处理 反馈，返回反馈人的id
+	// Info 详情
+	Info(ctx context.Context, id int64) (Feeback, error)
+	// UpdateStatus 处理 反馈，反馈人的id
 	UpdateStatus(ctx context.Context, id int64, status int32) error
-	//	c端
-	// 添加
-	Create(ctx context.Context, feedback FeedBack) error
+	// Create 添加
+	Create(ctx context.Context, feedback Feeback) error
 }
 type feedBackDAO struct {
 	db *egorm.Component
 }
 
-func NewFeedBackDAO(db *egorm.Component) FeedBackDAO {
+func NewFeedbackDAO(db *egorm.Component) FeedbackDAO {
 	return &feedBackDAO{
 		db: db,
 	}
 }
 
-func (f *feedBackDAO) List(ctx context.Context, feedBack FeedBack, offset, limit int) ([]FeedBack, error) {
-	var feedBackList []FeedBack
-	builder := f.db.WithContext(ctx).
-		Select([]string{"id", "biz_id", "biz", "uid", "status", "utime"})
-	if feedBack.Biz != "" {
-		builder = builder.Where("biz = ?", feedBack.Biz)
-		if feedBack.BizID != 0 {
-			builder = builder.Where("biz_id = ?", feedBack.BizID)
-		}
-	}
-	err := builder.Order("status asc,id desc").
-		Offset(offset).Limit(limit).Find(&feedBackList).Error
-	return feedBackList, err
+func (f *feedBackDAO) List(ctx context.Context, offset, limit int) ([]Feeback, error) {
+	var res []Feeback
+	err := f.db.WithContext(ctx).
+		Select("id", "biz_id", "biz", "uid", "status", "utime").
+		Order("status asc,id desc").
+		Offset(offset).Limit(limit).Find(&res).Error
+	return res, err
 }
 
 func (f *feedBackDAO) PendingCount(ctx context.Context) (int64, error) {
 	var count int64
-	builder := f.db.WithContext(ctx).Model(&FeedBack{}).Where("status = ?", 0)
+	builder := f.db.WithContext(ctx).Model(&Feeback{}).Where("status = ?", 0)
 	err := builder.Count(&count).Error
 	return count, err
 }
 
-func (f *feedBackDAO) Info(ctx context.Context, id int64) (FeedBack, error) {
-	var feedBack FeedBack
+func (f *feedBackDAO) Info(ctx context.Context, id int64) (Feeback, error) {
+	var feedBack Feeback
 	err := f.db.WithContext(ctx).Where("id = ?", id).First(&feedBack).Error
 	return feedBack, err
 }
 
 func (f *feedBackDAO) UpdateStatus(ctx context.Context, id int64, status int32) error {
-
 	err := f.db.WithContext(ctx).
-		Model(&FeedBack{}).
+		Model(&Feeback{}).
 		Where("id = ?", id).Updates(map[string]any{
 		"status": status,
 		"utime":  time.Now().UnixMilli(),
@@ -71,7 +62,7 @@ func (f *feedBackDAO) UpdateStatus(ctx context.Context, id int64, status int32) 
 
 }
 
-func (f *feedBackDAO) Create(ctx context.Context, feedback FeedBack) error {
+func (f *feedBackDAO) Create(ctx context.Context, feedback Feeback) error {
 	feedback.Ctime = time.Now().UnixMilli()
 	feedback.Utime = time.Now().UnixMilli()
 	return f.db.WithContext(ctx).Create(&feedback).Error

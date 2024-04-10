@@ -6,38 +6,26 @@ import (
 	"github.com/ecodeclub/webook/internal/feedback/internal/domain"
 )
 
-type FeedBack struct {
+type Feedback struct {
 	ID      int64          `json:"id,omitempty"`
 	BizID   int64          `json:"bizID,omitempty"`
 	Biz     string         `json:"biz,omitempty"`
-	UID     int64          `json:"uid,omitempty"`
 	Content string         `json:"content,omitempty"`
-	Status  FeedBackStatus `json:"status,omitempty"`
+	Status  FeedbackStatus `json:"status,omitempty"`
 	Utime   string         `json:"utime,omitempty"`
 	Ctime   string         `json:"ctime,omitempty"`
 }
 type ListReq struct {
-	Biz    string `json:"biz,omitempty"`
-	BizID  int64  `json:"bizID,omitempty"`
-	Offset int    `json:"offset,omitempty"`
-	Limit  int    `json:"limit,omitempty"`
+	Offset int `json:"offset,omitempty"`
+	Limit  int `json:"limit,omitempty"`
 }
-type FeedBackList struct {
-	FeedBacks []FeedBack `json:"feedBacks,omitempty"`
+type FeedbackList struct {
+	Feedbacks []Feedback `json:"feedbacks,omitempty"`
 }
 
-type FeedBackStatus int32
+type FeedbackStatus int32
 
-const (
-	// 待处理
-	Pending FeedBackStatus = 0
-	// 通过
-	Access FeedBackStatus = 1
-	// 拒绝
-	Reject FeedBackStatus = 2
-)
-
-type FeedBackID struct {
+type FeedbackID struct {
 	FID int64 `json:"fid"`
 }
 type UpdateStatusReq struct {
@@ -45,26 +33,25 @@ type UpdateStatusReq struct {
 	Status int32 `json:"status"`
 }
 type CreateReq struct {
-	FeedBack FeedBack `json:"feedBack,omitempty"`
+	Feedback Feedback `json:"feedback,omitempty"`
 }
 
-func (c FeedBack) toDomain() domain.FeedBack {
-	return domain.FeedBack{
+func (c Feedback) toDomain() domain.Feedback {
+	return domain.Feedback{
 		BizID:   c.BizID,
 		Biz:     c.Biz,
 		Content: c.Content,
 	}
 }
 
-func newFeedBack(feedBack domain.FeedBack) FeedBack {
-	return FeedBack{
-		ID:      feedBack.ID,
-		Biz:     feedBack.Biz,
-		BizID:   feedBack.BizID,
-		Content: feedBack.Content,
-		UID:     feedBack.UID,
-		Status:  FeedBackStatus(feedBack.Status),
-		Utime:   feedBack.Utime.Format(time.DateTime),
-		Ctime:   feedBack.Ctime.Format(time.DateTime),
+func newFeedback(fb domain.Feedback) Feedback {
+	return Feedback{
+		ID:      fb.ID,
+		Biz:     fb.Biz,
+		BizID:   fb.BizID,
+		Content: fb.Content,
+		Status:  FeedbackStatus(fb.Status),
+		Utime:   fb.Utime.Format(time.DateTime),
+		Ctime:   fb.Ctime.Format(time.DateTime),
 	}
 }

@@ -37,11 +37,13 @@ func NewCheckMembershipMiddlewareBuilder(svc member.Service) *CheckMembershipMid
 	return &CheckMembershipMiddlewareBuilder{
 		svc:    svc,
 		logger: elog.DefaultLogger,
-		sp:     session.DefaultProvider(),
 	}
 }
 
 func (c *CheckMembershipMiddlewareBuilder) Build() gin.HandlerFunc {
+	if c.sp == nil {
+		c.sp = session.DefaultProvider()
+	}
 	return func(ctx *gin.Context) {
 		gctx := &ginx.Context{Context: ctx}
 		sess, err := c.sp.Get(gctx)
