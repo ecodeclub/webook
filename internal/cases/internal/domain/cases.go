@@ -20,7 +20,18 @@ type Case struct {
 	Highlight string
 	// 引导点
 	Guidance string
-
-	Ctime time.Time
-	Utime time.Time
+	Status   CaseStatus
+	Ctime    time.Time
+	Utime    time.Time
 }
+
+type CaseStatus int32
+
+const (
+	// UnknownStatus 未知
+	UnknownStatus CaseStatus = 0
+	// UnPublishStatus 未发布
+	UnPublishStatus CaseStatus = 1
+	// PublishStatus 发布
+	PublishedStatus CaseStatus = 2
+)
