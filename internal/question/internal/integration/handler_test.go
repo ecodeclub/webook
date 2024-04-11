@@ -800,7 +800,7 @@ func (s *HandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 					},
 				}
 				for _, q := range questions {
-					require.NoError(t, s.db.WithContext(ctx).Create(q).Error)
+					require.NoError(t, s.db.WithContext(ctx).Create(&q).Error)
 				}
 
 				// 题集中题目为0
@@ -817,11 +817,13 @@ func (s *HandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 				expected := []dao.Question{
 					{
 						Uid:     uid + 1,
+						Status:  1,
 						Title:   "oss问题1",
 						Content: "oss问题1",
 					},
 					{
 						Uid:     uid + 2,
+						Status:  1,
 						Title:   "oss问题2",
 						Content: "oss问题2",
 					},
@@ -889,7 +891,7 @@ func (s *HandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 					},
 				}
 				for _, q := range questions {
-					require.NoError(t, s.db.WithContext(ctx).Create(q).Error)
+					require.NoError(t, s.db.WithContext(ctx).Create(&q).Error)
 				}
 
 				require.NoError(t, s.questionSetDAO.UpdateQuestionsByID(ctx, id, []int64{14}))
@@ -908,16 +910,19 @@ func (s *HandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 				expected := []dao.Question{
 					{
 						Uid:     uid + 1,
+						Status:  1,
 						Title:   "Go问题1",
 						Content: "Go问题1",
 					},
 					{
 						Uid:     uid + 2,
+						Status:  1,
 						Title:   "Go问题2",
 						Content: "Go问题2",
 					},
 					{
 						Uid:     uid + 3,
+						Status:  1,
 						Title:   "Go问题3",
 						Content: "Go问题3",
 					},
@@ -985,7 +990,7 @@ func (s *HandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 					},
 				}
 				for _, q := range questions {
-					require.NoError(t, s.db.WithContext(ctx).Create(q).Error)
+					require.NoError(t, s.db.WithContext(ctx).Create(&q).Error)
 				}
 
 				require.NoError(t, s.questionSetDAO.UpdateQuestionsByID(ctx, id, []int64{214, 215, 216}))
@@ -1057,7 +1062,7 @@ func (s *HandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 					},
 				}
 				for _, q := range questions {
-					require.NoError(t, s.db.WithContext(ctx).Create(q).Error)
+					require.NoError(t, s.db.WithContext(ctx).Create(&q).Error)
 				}
 
 				require.NoError(t, s.questionSetDAO.UpdateQuestionsByID(ctx, id, []int64{314, 315, 316}))
@@ -1076,6 +1081,7 @@ func (s *HandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 				require.Equal(t, 1, len(qs))
 				s.assertQuestion(t, dao.Question{
 					Uid:     uid + 2,
+					Status:  1,
 					Title:   "Go问题2",
 					Content: "Go问题2",
 				}, qs[0])
@@ -1142,7 +1148,7 @@ func (s *HandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 					},
 				}
 				for _, q := range questions {
-					require.NoError(t, s.db.WithContext(ctx).Create(q).Error)
+					require.NoError(t, s.db.WithContext(ctx).Create(&q).Error)
 				}
 
 				qids := []int64{414, 415}
@@ -1160,16 +1166,19 @@ func (s *HandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 				expected := []dao.Question{
 					{
 						Uid:     uid + 2,
+						Status:  1,
 						Title:   "Go问题2",
 						Content: "Go问题2",
 					},
 					{
 						Uid:     uid + 3,
+						Status:  1,
 						Title:   "Go问题3",
 						Content: "Go问题3",
 					},
 					{
 						Uid:     uid + 4,
+						Status:  1,
 						Title:   "Go问题4",
 						Content: "Go问题4",
 					},
