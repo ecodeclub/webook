@@ -15,8 +15,17 @@
 package domain
 
 type Member struct {
-	ID      int64
-	UID     int64
-	StartAt int64
+	ID      int64 // todo: 是否有必要?
+	Uid     int64
+	StartAt int64 // todo: 去掉
 	EndAt   int64
+	Records []MemberRecord
+}
+
+type MemberRecord struct {
+	Key   string
+	Biz   int64
+	BizId int64
+	Desc  string
+	Days  uint64
 }

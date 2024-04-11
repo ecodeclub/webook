@@ -39,13 +39,50 @@ func (m *MockService) EXPECT() *MockServiceMockRecorder {
 	return m.recorder
 }
 
+// ActivateMembership mocks base method.
+func (m *MockService) ActivateMembership(ctx context.Context, member domain.Member) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ActivateMembership", ctx, member)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ActivateMembership indicates an expected call of ActivateMembership.
+func (mr *MockServiceMockRecorder) ActivateMembership(ctx, member any) *ServiceActivateMembershipCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ActivateMembership", reflect.TypeOf((*MockService)(nil).ActivateMembership), ctx, member)
+	return &ServiceActivateMembershipCall{Call: call}
+}
+
+// ServiceActivateMembershipCall wrap *gomock.Call
+type ServiceActivateMembershipCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *ServiceActivateMembershipCall) Return(arg0 error) *ServiceActivateMembershipCall {
+	c.Call = c.Call.Return(arg0)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *ServiceActivateMembershipCall) Do(f func(context.Context, domain.Member) error) *ServiceActivateMembershipCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *ServiceActivateMembershipCall) DoAndReturn(f func(context.Context, domain.Member) error) *ServiceActivateMembershipCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // CreateNewMembership mocks base method.
-func (m *MockService) CreateNewMembership(ctx context.Context, member domain.Member) (int64, error) {
+func (m *MockService) CreateNewMembership(ctx context.Context, member domain.Member) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateNewMembership", ctx, member)
-	ret0, _ := ret[0].(int64)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	ret0, _ := ret[0].(error)
+	return ret0
 }
 
 // CreateNewMembership indicates an expected call of CreateNewMembership.
@@ -61,19 +98,19 @@ type ServiceCreateNewMembershipCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *ServiceCreateNewMembershipCall) Return(arg0 int64, arg1 error) *ServiceCreateNewMembershipCall {
-	c.Call = c.Call.Return(arg0, arg1)
+func (c *ServiceCreateNewMembershipCall) Return(arg0 error) *ServiceCreateNewMembershipCall {
+	c.Call = c.Call.Return(arg0)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *ServiceCreateNewMembershipCall) Do(f func(context.Context, domain.Member) (int64, error)) *ServiceCreateNewMembershipCall {
+func (c *ServiceCreateNewMembershipCall) Do(f func(context.Context, domain.Member) error) *ServiceCreateNewMembershipCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *ServiceCreateNewMembershipCall) DoAndReturn(f func(context.Context, domain.Member) (int64, error)) *ServiceCreateNewMembershipCall {
+func (c *ServiceCreateNewMembershipCall) DoAndReturn(f func(context.Context, domain.Member) error) *ServiceCreateNewMembershipCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

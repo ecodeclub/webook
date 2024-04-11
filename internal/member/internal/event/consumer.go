@@ -24,13 +24,14 @@ import (
 	"github.com/ecodeclub/webook/internal/member/internal/domain"
 	"github.com/ecodeclub/webook/internal/member/internal/service"
 	"github.com/gotomicro/ego/core/elog"
+	"github.com/lithammer/shortuuid/v4"
 )
 
 type RegistrationEventConsumer struct {
-	svc      service.Service
-	consumer mq.Consumer
-	endAt    int64
-	logger   *elog.Component
+	svc       service.Service
+	consumer  mq.Consumer
+	endAtDate time.Time
+	logger    *elog.Component
 }
 
 func NewRegistrationEventConsumer(svc service.Service,
@@ -41,10 +42,10 @@ func NewRegistrationEventConsumer(svc service.Service,
 		return nil, err
 	}
 	return &RegistrationEventConsumer{
-		svc:      svc,
-		consumer: consumer,
-		endAt:    time.Date(2024, 6, 30, 23, 59, 59, 0, time.UTC).UnixMilli(),
-		logger:   elog.DefaultLogger,
+		svc:       svc,
+		consumer:  consumer,
+		endAtDate: time.Date(2024, 6, 30, 23, 59, 59, 0, time.UTC),
+		logger:    elog.DefaultLogger,
 	}, nil
 }
 
@@ -71,12 +72,19 @@ func (c *RegistrationEventConsumer) Consume(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("解析消息失败: %w", err)
 	}
-	_, err = c.svc.CreateNewMembership(ctx, domain.Member{
-		UID:     evt.Uid,
-		StartAt: time.Now().UnixMilli(),
-		EndAt:   c.endAt,
-	})
 
+	err = c.svc.CreateNewMembership(ctx, domain.Member{
+		Uid: evt.Uid,
+		Records: []domain.MemberRecord{
+			{
+				Key:   shortuuid.New(),
+				Biz:   1,
+				BizId: evt.Uid,
+				Desc:  "注册福利",
+				Days:  uint64(time.Until(c.endAtDate) / (24 * time.Hour)),
+			},
+		},
+	})
 	if err != nil {
 		c.logger.Error("创建会员记录失败",
 			elog.FieldErr(err),
