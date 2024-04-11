@@ -18,7 +18,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 
 	"github.com/ecodeclub/mq-api"
 	"github.com/ecodeclub/webook/internal/credit/internal/domain"
@@ -88,7 +87,6 @@ func (c *CreditIncreaseConsumer) Consume(ctx context.Context) error {
 			elog.Any("消息体", evt),
 		)
 	}
-	log.Printf("Consumer evt = %#v\n", evt)
 	return nil
 }
 

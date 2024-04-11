@@ -52,6 +52,9 @@ func (g *creditDAO) Upsert(ctx context.Context, uid int64, amount uint64, l Cred
 		now := time.Now().UnixMilli()
 		c := Credit{TotalCredits: amount, Version: 1, Ctime: now, Utime: now}
 		res := tx.Where(Credit{Uid: uid}).Attrs(c).FirstOrCreate(&c)
+		if res.Error != nil {
+			return fmt.Errorf("创建/查找积分主记录失败: %w", res.Error)
+		}
 		if res.RowsAffected == 0 {
 			// 找到积分主记录, 更新可用积分
 			version := c.Version
@@ -143,6 +146,7 @@ func (g *creditDAO) CreateCreditLockLog(ctx context.Context, uid int64, amount u
 	return lid, err
 }
 
+// ConfirmCreditLockLog 确认预扣积分
 func (g *creditDAO) ConfirmCreditLockLog(ctx context.Context, uid, tid int64) error {
 	res := g.db.WithContext(ctx).
 		Model(&CreditLog{}).
@@ -160,6 +164,7 @@ func (g *creditDAO) ConfirmCreditLockLog(ctx context.Context, uid, tid int64) er
 	return nil
 }
 
+// CancelCreditLockLog 取消积分预扣
 func (g *creditDAO) CancelCreditLockLog(ctx context.Context, uid, tid int64) error {
 	return g.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		// 更新

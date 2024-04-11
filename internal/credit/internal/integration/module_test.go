@@ -50,17 +50,17 @@ func (s *ModuleTestSuite) SetupTest() {
 }
 
 func (s *ModuleTestSuite) TearDownSuite() {
-	// err := s.db.Exec("DROP TABLE `credits`").Error
-	// s.NoError(err)
-	// err = s.db.Exec("DROP TABLE `credit_logs`").Error
-	// s.NoError(err)
+	err := s.db.Exec("DROP TABLE `credits`").Error
+	s.NoError(err)
+	err = s.db.Exec("DROP TABLE `credit_logs`").Error
+	s.NoError(err)
 }
 
 func (s *ModuleTestSuite) TearDownTest() {
-	// err := s.db.Exec("TRUNCATE TABLE `credits`").Error
-	// s.NoError(err)
-	// err = s.db.Exec("TRUNCATE TABLE `credit_logs`").Error
-	// s.NoError(err)
+	err := s.db.Exec("TRUNCATE TABLE `credits`").Error
+	s.NoError(err)
+	err = s.db.Exec("TRUNCATE TABLE `credit_logs`").Error
+	s.NoError(err)
 }
 
 func (s *ModuleTestSuite) TestConsumer_ConsumeCreditIncreaseEvent() {
