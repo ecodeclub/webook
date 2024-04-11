@@ -60,6 +60,7 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 func (h *Handler) PublicRoutes(server *gin.Engine) {
 	oauth2 := server.Group("/oauth2")
 	oauth2.GET("/wechat/auth_url", ginx.W(h.WechatAuthURL))
+	oauth2.GET("/mock/login", ginx.W(h.MockLogin))
 	oauth2.Any("/wechat/callback", ginx.B[WechatCallback](h.Callback))
 	oauth2.Any("/wechat/token/refresh", ginx.W(h.RefreshAccessToken))
 }
