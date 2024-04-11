@@ -1,9 +1,26 @@
+// Copyright 2023 ecodeclub
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package ioc
 
 import (
 	"net/http"
 	"strings"
 
+	"github.com/ecodeclub/webook/internal/feedback"
+
+	"github.com/ecodeclub/webook/internal/pkg/middleware"
 	"github.com/ecodeclub/webook/internal/skill"
 
 	"github.com/ecodeclub/webook-private/nonsense"
@@ -25,6 +42,7 @@ import (
 )
 
 func initGinxServer(sp session.Provider,
+	checkMembershipMiddleware *middleware.CheckMembershipMiddlewareBuilder,
 	qh *baguwen.Handler,
 	qsh *baguwen.QuestionSetHandler,
 	lhdl *label.Handler,
@@ -32,6 +50,7 @@ func initGinxServer(sp session.Provider,
 	cosHdl *cos.Handler,
 	caseHdl *cases.Handler,
 	skillHdl *skill.Handler,
+	fbHdl *feedback.Handler,
 ) *egin.Component {
 	session.SetDefaultProvider(sp)
 	res := egin.Load("web").Build()
@@ -69,5 +88,11 @@ func initGinxServer(sp session.Provider,
 	cosHdl.PrivateRoutes(res.Engine)
 	caseHdl.PrivateRoutes(res.Engine)
 	skillHdl.PrivateRoutes(res.Engine)
+	// 会员校验
+	res.Use(checkMembershipMiddleware.Build())
+	qh.MemberRoutes(res.Engine)
+	qsh.MemberRoutes(res.Engine)
+	caseHdl.MemberRoutes(res.Engine)
+	fbHdl.MemberRoutes(res.Engine)
 	return res
 }

@@ -21,7 +21,7 @@ type PreviewOrderReq struct {
 }
 
 type PreviewOrderResp struct {
-	Credits  int64     `json:"credits"`  // 积分总数
+	Credits  uint64    `json:"credits"`  // 积分总数
 	Payments []Payment `json:"payments"` // 支付通道
 	Products []Product `json:"products"` // 商品信息
 	Policy   string    `json:"policy"`   // 政策信息

@@ -32,6 +32,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+var _ ginx.Handler = &Handler{}
+
 type Handler struct {
 	svc         service.Service
 	paymentSvc  payment.Service
@@ -59,6 +61,8 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g.POST("/close", ginx.B[CloseTimeoutOrdersReq](h.CloseTimeoutOrders))
 }
 
+func (h *Handler) PublicRoutes(_ *gin.Engine) {}
+
 // RetrievePreviewOrder 获取订单预览信息, 此时订单尚未创建
 func (h *Handler) RetrievePreviewOrder(ctx *ginx.Context, req PreviewOrderReq, sess session.Session) (ginx.Result, error) {
 	p, err := h.productSvc.FindBySN(ctx.Request.Context(), req.ProductSKUSN)
@@ -69,13 +73,13 @@ func (h *Handler) RetrievePreviewOrder(ctx *ginx.Context, req PreviewOrderReq, s
 		// todo: 重新审视stockLimit的意义及用法
 		return systemErrorResult, fmt.Errorf("要购买的商品数量非法")
 	}
-	c, err := h.creditSvc.GetByUID(ctx.Request.Context(), sess.Claims().Uid)
+	c, err := h.creditSvc.GetCreditsByUID(ctx.Request.Context(), sess.Claims().Uid)
 	if err != nil {
 		return systemErrorResult, fmt.Errorf("获取用户积分失败: %w", err)
 	}
 	return ginx.Result{
 		Data: PreviewOrderResp{
-			Credits:  c.Amount,
+			Credits:  c.TotalAmount,
 			Payments: h.toPaymentChannelVO(ctx),
 			Products: h.toProductVO(p, req.Quantity),
 			Policy:   "请注意: 虚拟商品、一旦支持成功不退、不换,请谨慎操作",
@@ -237,15 +241,15 @@ func (h *Handler) createPayment(ctx context.Context, order domain.Order, payment
 			return payment.Payment{}, fmt.Errorf("支付渠道非法")
 		}
 		records = append(records, payment.Record{
-			// 每个支付渠道具体分摊多少金额留给payment模块自己决定
+			Amount:  pc.Amount,
 			Channel: pc.Type,
 		})
 	}
 	return h.paymentSvc.CreatePayment(ctx, payment.Payment{
 		OrderID:     order.ID,
 		OrderSN:     order.SN,
+		PayerID:     order.BuyerID,
 		TotalAmount: order.RealTotalPrice,
-		Deadline:    time.Now().Add(30 * time.Minute).UnixMilli(),
 		Records:     records,
 	})
 }

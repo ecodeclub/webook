@@ -8,6 +8,9 @@ package user
 
 import (
 	"github.com/ecodeclub/ecache"
+	"github.com/ecodeclub/mq-api"
+	"github.com/ecodeclub/webook/internal/member"
+	"github.com/ecodeclub/webook/internal/user/internal/event"
 	"github.com/ecodeclub/webook/internal/user/internal/repository"
 	"github.com/ecodeclub/webook/internal/user/internal/repository/cache"
 	"github.com/ecodeclub/webook/internal/user/internal/repository/dao"
@@ -21,20 +24,23 @@ import (
 
 // Injectors from wire.go:
 
-func InitHandler(db *gorm.DB, cache2 ecache.Cache, creators []string) *web.Handler {
+func InitHandler(db *gorm.DB, cache2 ecache.Cache, q mq.MQ, creators []string, memberSvc *member.Module) *web.Handler {
 	oAuth2Service := InitWechatService()
 	userDAO := InitDAO(db)
 	userCache := cache.NewUserECache(cache2)
 	userRepository := repository.NewCachedUserRepository(userDAO, userCache)
-	userService := service.NewUserService(userRepository)
-	handler := web.NewHandler(oAuth2Service, userService, creators)
+	registrationEventProducer := InitRegistrationEventProducer(q)
+	userService := service.NewUserService(userRepository, registrationEventProducer)
+	serviceService := memberSvc.Svc
+	handler := web.NewHandler(oAuth2Service, userService, serviceService, creators)
 	return handler
 }
 
 // wire.go:
 
 var ProviderSet = wire.NewSet(web.NewHandler, cache.NewUserECache, InitDAO,
-	InitWechatService, service.NewUserService, repository.NewCachedUserRepository,
+	InitWechatService,
+	InitRegistrationEventProducer, service.NewUserService, repository.NewCachedUserRepository,
 )
 
 func InitWechatService() service.OAuth2Service {
@@ -57,6 +63,14 @@ func InitDAO(db *egorm.Component) dao.UserDAO {
 		panic(err)
 	}
 	return dao.NewGORMUserDAO(db)
+}
+
+func InitRegistrationEventProducer(q mq.MQ) *event.RegistrationEventProducer {
+	producer, err := q.Producer("user_registration_events")
+	if err != nil {
+		panic(err)
+	}
+	return event.NewRegistrationEventProducer(producer)
 }
 
 // Handler 暴露出去给 ioc 使用

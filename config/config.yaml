@@ -22,3 +22,5 @@ kafka:
   topics:
     - name: payment_successful
       partitions: 2
+    - name: user_registration_events
+      partitions: 2

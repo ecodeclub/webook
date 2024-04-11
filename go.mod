@@ -5,8 +5,8 @@ go 1.21.0
 require (
 	github.com/ecodeclub/ecache v0.0.0-20240111145855-75679834beca
 	github.com/ecodeclub/ekit v0.0.9-0.20240331142359-871f65136a9b
-	github.com/ecodeclub/ginx v0.0.0-20240330050527-80840e6a01ba
-	github.com/ecodeclub/mq-api v0.0.0-20231030023724-b3c489cdada2
+	github.com/ecodeclub/ginx v0.0.0-20240407090958-53f744f58112
+	github.com/ecodeclub/mq-api v0.0.0-20240406140940-b7e27bcf1d5f
 	github.com/ecodeclub/webook-private v0.0.0-20240328102016-f96c72f49853
 	github.com/ego-component/egorm v1.1.1
 	github.com/gin-contrib/cors v1.5.0
@@ -20,6 +20,7 @@ require (
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/stretchr/testify v1.9.0
 	github.com/tencentyun/qcloud-cos-sts-sdk v0.0.0-20231121073521-dd65d8941a16
+	github.com/wechatpay-apiv3/wechatpay-go v0.2.18
 	go.uber.org/mock v0.3.0
 	golang.org/x/sync v0.6.0
 	gorm.io/gorm v1.25.1
@@ -77,7 +78,7 @@ require (
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
-	github.com/klauspost/compress v1.16.3 // indirect
+	github.com/klauspost/compress v1.17.7 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.7 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
@@ -87,7 +88,7 @@ require (
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.0 // indirect
-	github.com/pierrec/lz4/v4 v4.1.15 // indirect
+	github.com/pierrec/lz4/v4 v4.1.21 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/prometheus/client_golang v1.12.1 // indirect
@@ -117,9 +118,9 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.26.0 // indirect
 	golang.org/x/arch v0.7.0 // indirect
-	golang.org/x/crypto v0.21.0 // indirect
-	golang.org/x/net v0.22.0 // indirect
-	golang.org/x/sys v0.18.0 // indirect
+	golang.org/x/crypto v0.22.0 // indirect
+	golang.org/x/net v0.24.0 // indirect
+	golang.org/x/sys v0.19.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20230711160842-782d3b101e98 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20230711160842-782d3b101e98 // indirect
