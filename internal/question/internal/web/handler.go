@@ -111,6 +111,7 @@ func (h *Handler) toQuestionList(data []domain.Question, cnt int64) QuestionList
 				Title:   src.Title,
 				Content: src.Content,
 				Labels:  src.Labels,
+				Status:  int32(src.Status),
 				Utime:   src.Utime.Format(time.DateTime),
 			}
 		}),

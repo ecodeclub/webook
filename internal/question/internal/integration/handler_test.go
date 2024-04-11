@@ -151,6 +151,7 @@ func (s *HandlerTestSuite) TestSave() {
 					Uid:     uid,
 					Title:   "面试题1",
 					Content: "面试题内容",
+					Status:  1,
 					Labels: sqlx.JsonColumn[[]string]{
 						Valid: true,
 						Val:   []string{"MySQL"},
@@ -201,6 +202,7 @@ func (s *HandlerTestSuite) TestSave() {
 					Uid:     uid,
 					Title:   "老的标题",
 					Content: "老的内容",
+					Status:  1,
 					Ctime:   123,
 					Utime:   234,
 				}).Error
@@ -226,6 +228,7 @@ func (s *HandlerTestSuite) TestSave() {
 				require.NoError(t, err)
 				s.assertQuestion(t, dao.Question{
 					Uid:     uid,
+					Status:  1,
 					Title:   "面试题1",
 					Content: "新的内容",
 				}, q)
@@ -324,12 +327,14 @@ func (s *HandlerTestSuite) TestList() {
 							Id:      100,
 							Title:   "这是标题 99",
 							Content: "这是解析 99",
+							Status:  1,
 							Utime:   time.UnixMilli(0).Format(time.DateTime),
 						},
 						{
 							Id:      99,
 							Title:   "这是标题 98",
 							Content: "这是解析 98",
+							Status:  1,
 							Utime:   time.UnixMilli(0).Format(time.DateTime),
 						},
 					},
@@ -351,6 +356,7 @@ func (s *HandlerTestSuite) TestList() {
 							Id:      1,
 							Title:   "这是标题 0",
 							Content: "这是解析 0",
+							Status:  1,
 							Utime:   time.UnixMilli(0).Format(time.DateTime),
 						},
 					},
@@ -401,6 +407,7 @@ func (s *HandlerTestSuite) TestSync() {
 				s.assertQuestion(t, dao.Question{
 					Uid:     uid,
 					Title:   "面试题1",
+					Status:  2,
 					Content: "面试题内容",
 				}, dao.Question(q))
 				assert.Equal(t, 4, len(eles))
@@ -456,6 +463,7 @@ func (s *HandlerTestSuite) TestSync() {
 				require.NoError(t, err)
 				s.assertQuestion(t, dao.Question{
 					Uid:     uid,
+					Status:  2,
 					Title:   "面试题1",
 					Content: "新的内容",
 				}, q)
@@ -475,6 +483,7 @@ func (s *HandlerTestSuite) TestSync() {
 
 				s.assertQuestion(t, dao.Question{
 					Uid:     uid,
+					Status:  2,
 					Title:   "面试题1",
 					Content: "新的内容",
 				}, dao.Question(pq))
@@ -546,6 +555,7 @@ func (s *HandlerTestSuite) TestPubDetail() {
 		data = append(data, dao.PublishQuestion{
 			Id:      int64(idx + 1),
 			Uid:     uid,
+			Status:  2,
 			Title:   fmt.Sprintf("这是标题 %d", idx),
 			Content: fmt.Sprintf("这是解析 %d", idx),
 		})
@@ -569,6 +579,7 @@ func (s *HandlerTestSuite) TestPubDetail() {
 				Data: web.Question{
 					Id:      2,
 					Title:   "这是标题 1",
+					Status:  2,
 					Content: "这是解析 1",
 					Utime:   time.UnixMilli(0).Format(time.DateTime),
 				},

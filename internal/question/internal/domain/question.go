@@ -24,9 +24,9 @@ type Question struct {
 	// 属于系统标签
 	Labels  []string
 	Content string
-
-	Answer Answer
-	Utime  time.Time
+	Status  QuestionStatus
+	Answer  Answer
+	Utime   time.Time
 }
 
 type Answer struct {
@@ -53,3 +53,14 @@ type AnswerElement struct {
 	// 引导点
 	Guidance string
 }
+
+type QuestionStatus int32
+
+const (
+	// UnknownStatus 未知
+	UnknownStatus QuestionStatus = 0
+	// UnPublishStatus 未发布
+	UnPublishStatus QuestionStatus = 1
+	// PublishStatus 发布
+	PublishedStatus QuestionStatus = 2
+)

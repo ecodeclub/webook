@@ -71,6 +71,7 @@ func (g *GORMQuestionDAO) Update(ctx context.Context, q Question, eles []AnswerE
 			"title":   q.Title,
 			"content": q.Content,
 			"utime":   now,
+			"status":  q.Status,
 		})
 		if res.Error != nil {
 			return res.Error
@@ -85,6 +86,7 @@ func (g *GORMQuestionDAO) update(tx *gorm.DB, q Question, eles []AnswerElement) 
 	res := tx.Model(&q).Where("id = ?", q.Id).Updates(map[string]any{
 		"title":   q.Title,
 		"content": q.Content,
+		"status":  q.Status,
 		"utime":   now,
 	})
 	if res.Error != nil {
