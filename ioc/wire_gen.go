@@ -51,7 +51,7 @@ func InitApp() (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	handler6, err := feedback.InitHandler(db, cache)
+	handler6, err := feedback.InitHandler(db, mq)
 	if err != nil {
 		return nil, err
 	}

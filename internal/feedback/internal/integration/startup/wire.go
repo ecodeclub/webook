@@ -17,13 +17,14 @@
 package startup
 
 import (
-	baguwen "github.com/ecodeclub/webook/internal/feedback"
+	"github.com/ecodeclub/webook/internal/feedback"
+	"github.com/ecodeclub/webook/internal/feedback/internal/event"
 	"github.com/ecodeclub/webook/internal/feedback/internal/web"
 	testioc "github.com/ecodeclub/webook/internal/test/ioc"
 	"github.com/google/wire"
 )
 
-func InitHandler() (*web.Handler, error) {
-	wire.Build(testioc.BaseSet, baguwen.InitHandler)
+func InitHandler(p event.IncreaseCreditsEventProducer) (*web.Handler, error) {
+	wire.Build(testioc.BaseSet, feedback.InitService, web.NewHandler)
 	return new(web.Handler), nil
 }

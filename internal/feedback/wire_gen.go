@@ -9,41 +9,52 @@ package feedback
 import (
 	"sync"
 
-	"github.com/ecodeclub/ecache"
+	"github.com/ecodeclub/mq-api"
+	"github.com/ecodeclub/webook/internal/feedback/internal/event"
 	"github.com/ecodeclub/webook/internal/feedback/internal/repository"
 	"github.com/ecodeclub/webook/internal/feedback/internal/repository/dao"
 	"github.com/ecodeclub/webook/internal/feedback/internal/service"
 	"github.com/ecodeclub/webook/internal/feedback/internal/web"
-	"github.com/ego-component/egorm"
 	"gorm.io/gorm"
 )
 
 // Injectors from wire.go:
 
-func InitHandler(db *gorm.DB, ec ecache.Cache) (*web.Handler, error) {
-	feedbackDAO := InitFeedbackDAO(db)
-	feedBackRepo := repository.NewFeedBackRepo(feedbackDAO)
-	serviceService := service.NewService(feedBackRepo)
-	handler := web.NewHandler(serviceService)
+func InitHandler(db *gorm.DB, q mq.MQ) (*web.Handler, error) {
+	increaseCreditsEventProducer := initIncreaseCreditsEventProducer(q)
+	service := InitService(db, increaseCreditsEventProducer)
+	handler := web.NewHandler(service)
 	return handler, nil
+}
+
+func InitService(db *gorm.DB, p event.IncreaseCreditsEventProducer) service.Service {
+	feedbackDAO := initFeedbackDAO(db)
+	feedbackRepository := repository.NewFeedBackRepository(feedbackDAO)
+	serviceService := service.NewFeedbackService(feedbackRepository, p)
+	return serviceService
 }
 
 // wire.go:
 
-var daoOnce = sync.Once{}
+var (
+	daoOnce = sync.Once{}
+	d       dao.FeedbackDAO
+)
 
-func InitTableOnce(db *gorm.DB) {
+func initFeedbackDAO(db *gorm.DB) dao.FeedbackDAO {
 	daoOnce.Do(func() {
-		err := dao.InitTables(db)
-		if err != nil {
-			panic(err)
-		}
+		_ = dao.InitTables(db)
+		d = dao.NewFeedbackDAO(db)
 	})
+	return d
 }
 
-func InitFeedbackDAO(db *egorm.Component) dao.FeedbackDAO {
-	InitTableOnce(db)
-	return dao.NewFeedbackDAO(db)
+func initIncreaseCreditsEventProducer(q mq.MQ) event.IncreaseCreditsEventProducer {
+	producer, err := event.NewIncreaseCreditsEventProducer(q)
+	if err != nil {
+		panic(err)
+	}
+	return producer
 }
 
 type Handler = web.Handler
