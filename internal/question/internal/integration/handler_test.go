@@ -1348,7 +1348,7 @@ func (s *HandlerTestSuite) TestQuestionSet_RetrieveQuestionSetDetail() {
 					},
 				}
 				for _, q := range questions {
-					require.NoError(t, s.db.WithContext(ctx).Create(q).Error)
+					require.NoError(t, s.db.WithContext(ctx).Create(&q).Error)
 				}
 
 				qids := []int64{614, 615, 616}
