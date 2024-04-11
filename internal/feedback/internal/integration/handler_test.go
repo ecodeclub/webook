@@ -1,3 +1,17 @@
+// Copyright 2023 ecodeclub
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 //go:build e2e
 
 package integration
@@ -8,9 +22,11 @@ import (
 	"testing"
 	"time"
 
+	evtmocks "github.com/ecodeclub/webook/internal/feedback/internal/event/mocks"
 	"github.com/ecodeclub/webook/internal/feedback/internal/integration/startup"
 	"github.com/ecodeclub/webook/internal/feedback/internal/repository/dao"
 	"github.com/ecodeclub/webook/internal/feedback/internal/web"
+	"go.uber.org/mock/gomock"
 
 	"github.com/ecodeclub/ekit/iox"
 	"github.com/ecodeclub/ginx/session"
@@ -30,14 +46,18 @@ const uid = 2051
 
 type HandlerTestSuite struct {
 	suite.Suite
-	server *egin.Component
-	db     *egorm.Component
-	dao    dao.FeedbackDAO
+	server   *egin.Component
+	db       *egorm.Component
+	dao      dao.FeedbackDAO
+	ctrl     *gomock.Controller
+	producer *evtmocks.MockIncreaseCreditsEventProducer
 }
 
 func (s *HandlerTestSuite) TearDownSuite() {
 	err := s.db.Exec("DROP TABLE `feedbacks`").Error
 	require.NoError(s.T(), err)
+
+	s.ctrl.Finish()
 }
 
 func (s *HandlerTestSuite) TearDownTest() {
@@ -46,7 +66,9 @@ func (s *HandlerTestSuite) TearDownTest() {
 }
 
 func (s *HandlerTestSuite) SetupSuite() {
-	handler, err := startup.InitHandler()
+	s.ctrl = gomock.NewController(s.T())
+	s.producer = evtmocks.NewMockIncreaseCreditsEventProducer(s.ctrl)
+	handler, err := startup.InitHandler(s.producer)
 	require.NoError(s.T(), err)
 	econf.Set("server", map[string]any{"contextTimeout": "1s"})
 	server := egin.Load("server").Build()
@@ -59,8 +81,6 @@ func (s *HandlerTestSuite) SetupSuite() {
 	handler.MemberRoutes(server.Engine)
 	s.server = server
 	s.db = testioc.InitDB()
-	err = dao.InitTables(s.db)
-	require.NoError(s.T(), err)
 	s.dao = dao.NewFeedbackDAO(s.db)
 }
 
@@ -81,7 +101,7 @@ func (s *HandlerTestSuite) TestCreate() {
 				defer cancel()
 				feedBack, err := s.dao.Info(ctx, 1)
 				require.NoError(t, err)
-				s.assertFeedBack(t, dao.Feeback{
+				s.assertFeedBack(t, dao.Feedback{
 					UID:     uid,
 					Biz:     "case",
 					BizID:   1,
@@ -128,7 +148,7 @@ func (s *HandlerTestSuite) TestUpdateStatus() {
 		{
 			name: "拒绝",
 			before: func(t *testing.T) {
-				err := s.db.Create(&dao.Feeback{
+				err := s.db.Create(&dao.Feedback{
 					ID:      2,
 					BizID:   1,
 					Biz:     "que",
@@ -145,7 +165,7 @@ func (s *HandlerTestSuite) TestUpdateStatus() {
 				defer cancel()
 				feedBack, err := s.dao.Info(ctx, 2)
 				require.NoError(t, err)
-				s.assertFeedBack(t, dao.Feeback{
+				s.assertFeedBack(t, dao.Feedback{
 					UID:     uid,
 					Biz:     "que",
 					BizID:   1,
@@ -162,7 +182,8 @@ func (s *HandlerTestSuite) TestUpdateStatus() {
 		{
 			name: "采纳",
 			before: func(t *testing.T) {
-				err := s.db.Create(&dao.Feeback{
+				t.Helper()
+				err := s.db.Create(&dao.Feedback{
 					ID:      3,
 					BizID:   1,
 					Biz:     "skill",
@@ -173,13 +194,15 @@ func (s *HandlerTestSuite) TestUpdateStatus() {
 					Utime:   321,
 				}).Error
 				require.NoError(t, err)
+
+				s.producer.EXPECT().Produce(gomock.Any(), gomock.Any()).Return(nil)
 			},
 			after: func(t *testing.T) {
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 				defer cancel()
 				feedBack, err := s.dao.Info(ctx, 3)
 				require.NoError(t, err)
-				s.assertFeedBack(t, dao.Feeback{
+				s.assertFeedBack(t, dao.Feedback{
 					UID:     uid,
 					Biz:     "skill",
 					BizID:   1,
@@ -214,7 +237,7 @@ func (s *HandlerTestSuite) TestUpdateStatus() {
 
 func (s *HandlerTestSuite) TestInfo() {
 	t := s.T()
-	err := s.db.Create(&dao.Feeback{
+	err := s.db.Create(&dao.Feedback{
 		ID:      4,
 		BizID:   3,
 		Biz:     "cases",
@@ -254,10 +277,10 @@ func (s *HandlerTestSuite) TestInfo() {
 }
 
 func (s *HandlerTestSuite) TestList() {
-	data := make([]dao.Feeback, 0, 100)
+	data := make([]dao.Feedback, 0, 100)
 	for idx := 1; idx < 10; idx++ {
 		// 创建采纳的case
-		data = append(data, dao.Feeback{
+		data = append(data, dao.Feedback{
 			ID:     int64(idx),
 			UID:    uid,
 			Biz:    "case",
@@ -268,7 +291,7 @@ func (s *HandlerTestSuite) TestList() {
 	}
 	for idx := 10; idx < 20; idx++ {
 		// 创建未处理的case
-		data = append(data, dao.Feeback{
+		data = append(data, dao.Feedback{
 			ID:     int64(idx),
 			UID:    uid,
 			Biz:    "case",
@@ -277,7 +300,7 @@ func (s *HandlerTestSuite) TestList() {
 			Utime:  0,
 		})
 	}
-	err := s.db.Model(&dao.Feeback{}).Create(&data).Error
+	err := s.db.Model(&dao.Feedback{}).Create(&data).Error
 	require.NoError(s.T(), err)
 	testCases := []struct {
 		name     string
@@ -336,10 +359,10 @@ func (s *HandlerTestSuite) TestList() {
 
 func (s *HandlerTestSuite) TestPendingCount() {
 	t := s.T()
-	data := make([]dao.Feeback, 0, 100)
+	data := make([]dao.Feedback, 0, 100)
 	for idx := 1; idx < 10; idx++ {
 		// 创建采纳的case
-		data = append(data, dao.Feeback{
+		data = append(data, dao.Feedback{
 			ID:     int64(idx),
 			UID:    uid,
 			Biz:    "case",
@@ -350,7 +373,7 @@ func (s *HandlerTestSuite) TestPendingCount() {
 	}
 	for idx := 10; idx < 20; idx++ {
 		// 创建未处理的case
-		data = append(data, dao.Feeback{
+		data = append(data, dao.Feedback{
 			ID:     int64(idx),
 			UID:    uid,
 			Biz:    "case",
@@ -359,7 +382,7 @@ func (s *HandlerTestSuite) TestPendingCount() {
 			Utime:  0,
 		})
 	}
-	err := s.db.Model(&dao.Feeback{}).Create(&data).Error
+	err := s.db.Model(&dao.Feedback{}).Create(&data).Error
 	require.NoError(s.T(), err)
 	req, err := http.NewRequest(http.MethodGet,
 		"/feedback/pending-count", iox.NewJSONReader(nil))
@@ -372,7 +395,7 @@ func (s *HandlerTestSuite) TestPendingCount() {
 }
 
 // assertFeedBack 不比较 id
-func (s *HandlerTestSuite) assertFeedBack(t *testing.T, expect dao.Feeback, feedBack dao.Feeback) {
+func (s *HandlerTestSuite) assertFeedBack(t *testing.T, expect dao.Feedback, feedBack dao.Feedback) {
 	assert.True(t, feedBack.ID > 0)
 	assert.True(t, feedBack.Ctime > 0)
 	assert.True(t, feedBack.Utime > 0)

@@ -12,19 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:build wireinject
+//go:build !mock
 
-package startup
+package web
 
-import (
-	"github.com/ecodeclub/webook/internal/feedback"
-	"github.com/ecodeclub/webook/internal/feedback/internal/event"
-	"github.com/ecodeclub/webook/internal/feedback/internal/web"
-	testioc "github.com/ecodeclub/webook/internal/test/ioc"
-	"github.com/google/wire"
-)
+import "github.com/ecodeclub/ginx"
 
-func InitHandler(p event.IncreaseCreditsEventProducer) (*web.Handler, error) {
-	wire.Build(testioc.BaseSet, feedback.InitService, web.NewHandler)
-	return new(web.Handler), nil
+func (h *Handler) MockLogin(ctx *ginx.Context) (ginx.Result, error) {
+	return ginx.Result{
+		Msg: "小伙子，你想干啥？",
+	}, nil
 }
