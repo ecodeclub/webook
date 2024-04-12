@@ -84,10 +84,10 @@ func (c *CreditIncreaseConsumer) Consume(ctx context.Context) error {
 	if err != nil {
 		c.logger.Error("变更积分失败",
 			elog.FieldErr(err),
-			elog.Any("消息体", evt),
+			elog.Any("CreditIncreaseEvent", evt),
 		)
 	}
-	return nil
+	return err
 }
 
 func (c *CreditIncreaseConsumer) Stop(_ context.Context) error {
