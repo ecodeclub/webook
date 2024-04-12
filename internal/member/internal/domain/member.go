@@ -15,7 +15,6 @@
 package domain
 
 type Member struct {
-	ID      int64 // todo: 是否有必要?
 	Uid     int64
 	StartAt int64 // todo: 去掉
 	EndAt   int64

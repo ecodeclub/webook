@@ -37,7 +37,6 @@ func (m *memberRepository) FindByUID(ctx context.Context, uid int64) (domain.Mem
 
 func (m *memberRepository) toDomain(d dao.Member, r []dao.MemberRecord) domain.Member {
 	return domain.Member{
-		ID:      d.Id,
 		Uid:     d.Uid,
 		StartAt: d.StartAt,
 		EndAt:   d.EndAt,
@@ -60,7 +59,6 @@ func (m *memberRepository) Upsert(ctx context.Context, member domain.Member) err
 
 func (m *memberRepository) toEntity(d domain.Member) (dao.Member, dao.MemberRecord) {
 	member := dao.Member{
-		Id:      d.ID,
 		Uid:     d.Uid,
 		StartAt: d.StartAt,
 		EndAt:   d.EndAt,
