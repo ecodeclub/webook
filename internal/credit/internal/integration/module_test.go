@@ -83,7 +83,7 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeCreditIncreaseEvent() {
 		after  func(t *testing.T, evt event.CreditIncreaseEvent)
 		evt    event.CreditIncreaseEvent
 
-		errAssertFunc require.ErrorAssertionFunc
+		errRequireFunc require.ErrorAssertionFunc
 	}{
 		{
 			name: "增加积分成功_新增用户",
@@ -122,7 +122,7 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeCreditIncreaseEvent() {
 				Biz:    1,
 				Action: "注册",
 			},
-			errAssertFunc: require.NoError,
+			errRequireFunc: require.NoError,
 		},
 		{
 			name: "增加积分成功_已有用户_无预扣积分",
@@ -184,7 +184,7 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeCreditIncreaseEvent() {
 				Biz:    3,
 				Action: "购买商品",
 			},
-			errAssertFunc: require.NoError,
+			errRequireFunc: require.NoError,
 		},
 		// todo: 增加积分成功_已有用户_有预扣积分
 	}
@@ -196,10 +196,12 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeCreditIncreaseEvent() {
 			tc.before(t, producer, message)
 
 			err := consumer.Consume(context.Background())
+			tc.errRequireFunc(t, err)
+
 			// 模拟重复消费
 			err = consumer.Consume(context.Background())
+			require.Error(t, err)
 
-			tc.errAssertFunc(t, err)
 			tc.after(t, tc.evt)
 		})
 	}
