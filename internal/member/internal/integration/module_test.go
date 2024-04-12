@@ -123,13 +123,13 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeRegistrationEvent() {
 				startAt := time.Date(nowDate.Year(), nowDate.Month(), nowDate.Day(), 23, 59, 59, 0, time.UTC).UnixMilli()
 				endAt := time.Date(2024, 6, 30, 23, 59, 59, 0, time.UTC).UnixMilli()
 
-				err := s.svc.CreateNewMembership(context.Background(), domain.Member{
+				err := s.svc.ActivateMembership(context.Background(), domain.Member{
 					Uid: 1993,
 					Records: []domain.MemberRecord{
 						{
 							Key:   "member-key-1993",
 							Biz:   1,
-							BizId: 1,
+							BizId: 1993,
 							Desc:  "注册福利",
 							Days:  uint64(time.Duration(endAt-startAt) * time.Millisecond / (time.Hour * 24)),
 						},

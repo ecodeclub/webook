@@ -16,7 +16,6 @@ package service
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/ecodeclub/webook/internal/member/internal/domain"
 	"github.com/ecodeclub/webook/internal/member/internal/repository"
@@ -24,8 +23,7 @@ import (
 
 //go:generate mockgen -source=./service.go -package=membermocks --destination=../../mocks/member.mock.go -typed Service
 type Service interface {
-	GetMembershipInfo(ctx context.Context, userID int64) (domain.Member, error)
-	CreateNewMembership(ctx context.Context, member domain.Member) error
+	GetMembershipInfo(ctx context.Context, uid int64) (domain.Member, error)
 	ActivateMembership(ctx context.Context, member domain.Member) error
 }
 
@@ -37,16 +35,8 @@ func NewMemberService(repo repository.MemberRepository) Service {
 	return &service{repo: repo}
 }
 
-func (s *service) GetMembershipInfo(ctx context.Context, userID int64) (domain.Member, error) {
-	return s.repo.FindByUID(ctx, userID)
-}
-
-func (s *service) CreateNewMembership(ctx context.Context, member domain.Member) error {
-	_, err := s.repo.FindByUID(ctx, member.Uid)
-	if err == nil {
-		return fmt.Errorf("用户已有会员主记录")
-	}
-	return s.repo.Upsert(ctx, member)
+func (s *service) GetMembershipInfo(ctx context.Context, uid int64) (domain.Member, error) {
+	return s.repo.FindByUID(ctx, uid)
 }
 
 func (s *service) ActivateMembership(ctx context.Context, member domain.Member) error {

@@ -73,7 +73,12 @@ func (c *RegistrationEventConsumer) Consume(ctx context.Context) error {
 		return fmt.Errorf("解析消息失败: %w", err)
 	}
 
-	err = c.svc.CreateNewMembership(ctx, domain.Member{
+	_, err = c.svc.GetMembershipInfo(ctx, evt.Uid)
+	if err == nil {
+		return fmt.Errorf("用户已有会员主记录")
+	}
+
+	err = c.svc.ActivateMembership(ctx, domain.Member{
 		Uid: evt.Uid,
 		Records: []domain.MemberRecord{
 			{
