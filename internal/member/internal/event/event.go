@@ -19,3 +19,16 @@ const userRegistrationEvents = "user_registration_events"
 type RegistrationEvent struct {
 	Uid int64 `json:"uid"`
 }
+
+// todo: member_events?
+const memberUpdateEvents = "member_update_events"
+
+type MemberEvent struct {
+	Key  string `json:"key"`
+	Uid  int64  `json:"uid"`  // 用户A       用户C
+	Days uint64 `json:"days"` // 31天会员     365天会员
+	// todo: Biz 是int64 就用readme中错误的编号表示模块号?
+	Biz    int64  `json:"biz"`    // 用户模块     订单模块
+	BizId  int64  `json:"biz_id"` // user_id=A   order_id
+	Action string `json:"action"` // 首次注册     购买会员
+}

@@ -24,8 +24,8 @@ type Member struct {
 
 type MemberRecord struct {
 	Key   string
+	Days  uint64
 	Biz   int64
 	BizId int64
 	Desc  string
-	Days  uint64
 }

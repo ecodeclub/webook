@@ -16,6 +16,7 @@ package dao
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/ego-component/egorm"
@@ -24,7 +25,6 @@ import (
 type MemberDAO interface {
 	FindMemberByUID(ctx context.Context, uid int64) (Member, error)
 	FindMemberRecordsByUID(ctx context.Context, uid int64) ([]MemberRecord, error)
-	Create(ctx context.Context, member Member) (int64, error)
 	Upsert(ctx context.Context, d Member, r MemberRecord) error
 }
 
@@ -46,15 +46,6 @@ func (g *memberGROMDAO) FindMemberRecordsByUID(ctx context.Context, uid int64) (
 	var r []MemberRecord
 	err := g.db.WithContext(ctx).Order("ctime DESC").Find(&r, "uid", uid).Error
 	return r, err
-}
-
-func (g *memberGROMDAO) Create(ctx context.Context, member Member) (int64, error) {
-	now := time.Now().UnixMilli()
-	member.Ctime, member.Utime = now, now
-	if err := g.db.WithContext(ctx).Create(&member).Error; err != nil {
-		return 0, err
-	}
-	return member.Id, nil
 }
 
 func (g *memberGROMDAO) Upsert(ctx context.Context, d Member, r MemberRecord) error {
@@ -80,7 +71,6 @@ func (g *memberGROMDAO) Upsert(ctx context.Context, d Member, r MemberRecord) er
 		}
 		if res.RowsAffected == 0 {
 			// 更新主记录
-			version := member.Version
 			if member.EndAt < now.UnixMilli() {
 				// 激活
 				member.StartAt = startAt
@@ -92,9 +82,13 @@ func (g *memberGROMDAO) Upsert(ctx context.Context, d Member, r MemberRecord) er
 			}
 			member.Version += 1
 			member.Utime = now.UnixMilli()
-			if err := tx.Model(Member{}).
-				Where("uid = ? AND version = ?", member.Uid, version).Updates(&member).Error; err != nil {
-				return err
+			res = tx.Model(&Member{}).
+				Where("uid = ? AND version = ?", member.Uid, member.Version-1).Updates(&member)
+			if res.Error != nil {
+				return res.Error
+			}
+			if res.RowsAffected != 1 {
+				return fmt.Errorf("更新会员主记录失败")
 			}
 		}
 		// 创建会员记录
