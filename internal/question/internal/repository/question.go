@@ -165,7 +165,7 @@ func (c *CachedRepository) toEntity(que *domain.Question) (dao.Question, []dao.A
 		Title:   que.Title,
 		Labels:  sqlx.JsonColumn[[]string]{Val: que.Labels, Valid: len(que.Labels) != 0},
 		Content: que.Content,
-		Status:  int32(que.Status),
+		Status:  que.Status.ToUint8(),
 		Ctime:   now,
 		Utime:   now,
 	}

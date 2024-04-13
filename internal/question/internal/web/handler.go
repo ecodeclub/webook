@@ -17,7 +17,6 @@ package web
 import (
 	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/ecodeclub/ginx"
@@ -111,8 +110,8 @@ func (h *Handler) toQuestionList(data []domain.Question, cnt int64) QuestionList
 				Title:   src.Title,
 				Content: src.Content,
 				Labels:  src.Labels,
-				Status:  int32(src.Status),
-				Utime:   src.Utime.Format(time.DateTime),
+				Status:  src.Status.ToUint8(),
+				Utime:   src.Utime.UnixMilli(),
 			}
 		}),
 	}

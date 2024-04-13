@@ -17,7 +17,6 @@ package web
 import (
 	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/ecodeclub/ginx"
@@ -103,7 +102,7 @@ func (h *Handler) PubList(ctx *ginx.Context, req Page) (ginx.Result, error) {
 					Id:     ca.Id,
 					Title:  ca.Title,
 					Labels: ca.Labels,
-					Utime:  ca.Utime.Format(time.DateTime),
+					Utime:  ca.Utime.UnixMilli(),
 				}
 			}),
 		},
@@ -152,8 +151,8 @@ func newCase(ca domain.Case) Case {
 		Shorthand: ca.Shorthand,
 		Highlight: ca.Highlight,
 		Guidance:  ca.Guidance,
-		Status:    int32(ca.Status),
-		Utime:     ca.Utime.Format(time.DateTime),
+		Status:    ca.Status.ToUint8(),
+		Utime:     ca.Utime.UnixMilli(),
 	}
 }
 

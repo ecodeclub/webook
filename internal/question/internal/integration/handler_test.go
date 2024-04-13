@@ -153,7 +153,7 @@ func (s *HandlerTestSuite) TestSave() {
 					Uid:     uid,
 					Title:   "面试题1",
 					Content: "面试题内容",
-					Status:  int32(domain.UnPublishedStatus),
+					Status:  domain.UnPublishedStatus.ToUint8(),
 					Labels: sqlx.JsonColumn[[]string]{
 						Valid: true,
 						Val:   []string{"MySQL"},
@@ -204,7 +204,7 @@ func (s *HandlerTestSuite) TestSave() {
 					Uid:     uid,
 					Title:   "老的标题",
 					Content: "老的内容",
-					Status:  int32(domain.UnPublishedStatus),
+					Status:  domain.UnPublishedStatus.ToUint8(),
 					Ctime:   123,
 					Utime:   234,
 				}).Error
@@ -230,7 +230,7 @@ func (s *HandlerTestSuite) TestSave() {
 				require.NoError(t, err)
 				s.assertQuestion(t, dao.Question{
 					Uid:     uid,
-					Status:  int32(domain.UnPublishedStatus),
+					Status:  domain.UnPublishedStatus.ToUint8(),
 					Title:   "面试题1",
 					Content: "新的内容",
 				}, q)
@@ -301,7 +301,7 @@ func (s *HandlerTestSuite) TestList() {
 	for idx := 0; idx < 100; idx++ {
 		data = append(data, dao.PublishQuestion{
 			Uid:     uid,
-			Status:  int32(domain.UnPublishedStatus),
+			Status:  domain.UnPublishedStatus.ToUint8(),
 			Title:   fmt.Sprintf("这是标题 %d", idx),
 			Content: fmt.Sprintf("这是解析 %d", idx),
 		})
@@ -330,15 +330,15 @@ func (s *HandlerTestSuite) TestList() {
 							Id:      100,
 							Title:   "这是标题 99",
 							Content: "这是解析 99",
-							Status:  int32(domain.UnPublishedStatus),
-							Utime:   time.UnixMilli(0).Format(time.DateTime),
+							Status:  domain.UnPublishedStatus.ToUint8(),
+							Utime:   0,
 						},
 						{
 							Id:      99,
 							Title:   "这是标题 98",
 							Content: "这是解析 98",
-							Status:  int32(domain.UnPublishedStatus),
-							Utime:   time.UnixMilli(0).Format(time.DateTime),
+							Status:  domain.UnPublishedStatus.ToUint8(),
+							Utime:   0,
 						},
 					},
 				},
@@ -359,8 +359,8 @@ func (s *HandlerTestSuite) TestList() {
 							Id:      1,
 							Title:   "这是标题 0",
 							Content: "这是解析 0",
-							Status:  int32(domain.UnPublishedStatus),
-							Utime:   time.UnixMilli(0).Format(time.DateTime),
+							Status:  domain.UnPublishedStatus.ToUint8(),
+							Utime:   0,
 						},
 					},
 				},
@@ -410,7 +410,7 @@ func (s *HandlerTestSuite) TestSync() {
 				s.assertQuestion(t, dao.Question{
 					Uid:     uid,
 					Title:   "面试题1",
-					Status:  int32(domain.PublishedStatus),
+					Status:  domain.PublishedStatus.ToUint8(),
 					Content: "面试题内容",
 				}, dao.Question(q))
 				assert.Equal(t, 4, len(eles))
@@ -467,7 +467,7 @@ func (s *HandlerTestSuite) TestSync() {
 				require.NoError(t, err)
 				s.assertQuestion(t, dao.Question{
 					Uid:     uid,
-					Status:  int32(domain.PublishedStatus),
+					Status:  domain.PublishedStatus.ToUint8(),
 					Title:   "面试题1",
 					Content: "新的内容",
 				}, q)
@@ -487,7 +487,7 @@ func (s *HandlerTestSuite) TestSync() {
 
 				s.assertQuestion(t, dao.Question{
 					Uid:     uid,
-					Status:  int32(domain.PublishedStatus),
+					Status:  domain.PublishedStatus.ToUint8(),
 					Title:   "面试题1",
 					Content: "新的内容",
 				}, dao.Question(pq))
@@ -559,7 +559,7 @@ func (s *HandlerTestSuite) TestPubDetail() {
 		data = append(data, dao.PublishQuestion{
 			Id:      int64(idx + 1),
 			Uid:     uid,
-			Status:  int32(domain.PublishedStatus),
+			Status:  domain.PublishedStatus.ToUint8(),
 			Title:   fmt.Sprintf("这是标题 %d", idx),
 			Content: fmt.Sprintf("这是解析 %d", idx),
 		})
@@ -583,9 +583,9 @@ func (s *HandlerTestSuite) TestPubDetail() {
 				Data: web.Question{
 					Id:      2,
 					Title:   "这是标题 1",
-					Status:  int32(domain.PublishedStatus),
+					Status:  domain.PublishedStatus.ToUint8(),
 					Content: "这是解析 1",
-					Utime:   time.UnixMilli(0).Format(time.DateTime),
+					Utime:   0,
 				},
 			},
 		},
@@ -790,7 +790,7 @@ func (s *HandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 						Id:      4,
 						Uid:     uid + 1,
 						Title:   "oss问题1",
-						Status:  int32(domain.UnPublishedStatus),
+						Status:  domain.UnPublishedStatus.ToUint8(),
 						Content: "oss问题1",
 						Ctime:   123,
 						Utime:   234,
@@ -798,7 +798,7 @@ func (s *HandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 					{
 						Id:      5,
 						Uid:     uid + 2,
-						Status:  int32(domain.UnPublishedStatus),
+						Status:  domain.UnPublishedStatus.ToUint8(),
 						Title:   "oss问题2",
 						Content: "oss问题2",
 						Ctime:   1234,
@@ -823,13 +823,13 @@ func (s *HandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 				expected := []dao.Question{
 					{
 						Uid:     uid + 1,
-						Status:  int32(domain.UnPublishedStatus),
+						Status:  domain.UnPublishedStatus.ToUint8(),
 						Title:   "oss问题1",
 						Content: "oss问题1",
 					},
 					{
 						Uid:     uid + 2,
-						Status:  int32(domain.UnPublishedStatus),
+						Status:  domain.UnPublishedStatus.ToUint8(),
 						Title:   "oss问题2",
 						Content: "oss问题2",
 					},
@@ -874,7 +874,7 @@ func (s *HandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 					{
 						Id:      14,
 						Uid:     uid + 1,
-						Status:  int32(domain.UnPublishedStatus),
+						Status:  domain.UnPublishedStatus.ToUint8(),
 						Title:   "Go问题1",
 						Content: "Go问题1",
 						Ctime:   123,
@@ -883,7 +883,7 @@ func (s *HandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 					{
 						Id:      15,
 						Uid:     uid + 2,
-						Status:  int32(domain.UnPublishedStatus),
+						Status:  domain.UnPublishedStatus.ToUint8(),
 						Title:   "Go问题2",
 						Content: "Go问题2",
 						Ctime:   1234,
@@ -892,7 +892,7 @@ func (s *HandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 					{
 						Id:      16,
 						Uid:     uid + 3,
-						Status:  int32(domain.UnPublishedStatus),
+						Status:  domain.UnPublishedStatus.ToUint8(),
 						Title:   "Go问题3",
 						Content: "Go问题3",
 						Ctime:   1234,
@@ -919,19 +919,19 @@ func (s *HandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 				expected := []dao.Question{
 					{
 						Uid:     uid + 1,
-						Status:  int32(domain.UnPublishedStatus),
+						Status:  domain.UnPublishedStatus.ToUint8(),
 						Title:   "Go问题1",
 						Content: "Go问题1",
 					},
 					{
 						Uid:     uid + 2,
-						Status:  int32(domain.UnPublishedStatus),
+						Status:  domain.UnPublishedStatus.ToUint8(),
 						Title:   "Go问题2",
 						Content: "Go问题2",
 					},
 					{
 						Uid:     uid + 3,
-						Status:  int32(domain.UnPublishedStatus),
+						Status:  domain.UnPublishedStatus.ToUint8(),
 						Title:   "Go问题3",
 						Content: "Go问题3",
 					},
@@ -1048,7 +1048,7 @@ func (s *HandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 					{
 						Id:      314,
 						Uid:     uid + 1,
-						Status:  int32(domain.UnPublishedStatus),
+						Status:  domain.UnPublishedStatus.ToUint8(),
 						Title:   "Go问题1",
 						Content: "Go问题1",
 						Ctime:   123,
@@ -1057,7 +1057,7 @@ func (s *HandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 					{
 						Id:      315,
 						Uid:     uid + 2,
-						Status:  int32(domain.UnPublishedStatus),
+						Status:  domain.UnPublishedStatus.ToUint8(),
 						Title:   "Go问题2",
 						Content: "Go问题2",
 						Ctime:   1234,
@@ -1066,7 +1066,7 @@ func (s *HandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 					{
 						Id:      316,
 						Uid:     uid + 2,
-						Status:  int32(domain.UnPublishedStatus),
+						Status:  domain.UnPublishedStatus.ToUint8(),
 						Title:   "Go问题3",
 						Content: "Go问题3",
 						Ctime:   1234,
@@ -1093,7 +1093,7 @@ func (s *HandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 				require.Equal(t, 1, len(qs))
 				s.assertQuestion(t, dao.Question{
 					Uid:     uid + 2,
-					Status:  int32(domain.UnPublishedStatus),
+					Status:  domain.UnPublishedStatus.ToUint8(),
 					Title:   "Go问题2",
 					Content: "Go问题2",
 				}, qs[0])
@@ -1129,7 +1129,7 @@ func (s *HandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 					{
 						Id:      414,
 						Uid:     uid + 1,
-						Status:  int32(domain.UnPublishedStatus),
+						Status:  domain.UnPublishedStatus.ToUint8(),
 						Title:   "Go问题1",
 						Content: "Go问题1",
 						Ctime:   123,
@@ -1138,7 +1138,7 @@ func (s *HandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 					{
 						Id:      415,
 						Uid:     uid + 2,
-						Status:  int32(domain.UnPublishedStatus),
+						Status:  domain.UnPublishedStatus.ToUint8(),
 						Title:   "Go问题2",
 						Content: "Go问题2",
 						Ctime:   1234,
@@ -1147,7 +1147,7 @@ func (s *HandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 					{
 						Id:      416,
 						Uid:     uid + 3,
-						Status:  int32(domain.UnPublishedStatus),
+						Status:  domain.UnPublishedStatus.ToUint8(),
 						Title:   "Go问题3",
 						Content: "Go问题3",
 						Ctime:   1234,
@@ -1156,7 +1156,7 @@ func (s *HandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 					{
 						Id:      417,
 						Uid:     uid + 4,
-						Status:  int32(domain.UnPublishedStatus),
+						Status:  domain.UnPublishedStatus.ToUint8(),
 						Title:   "Go问题4",
 						Content: "Go问题4",
 						Ctime:   1234,
@@ -1182,19 +1182,19 @@ func (s *HandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 				expected := []dao.Question{
 					{
 						Uid:     uid + 2,
-						Status:  int32(domain.UnPublishedStatus),
+						Status:  domain.UnPublishedStatus.ToUint8(),
 						Title:   "Go问题2",
 						Content: "Go问题2",
 					},
 					{
 						Uid:     uid + 3,
-						Status:  int32(domain.UnPublishedStatus),
+						Status:  domain.UnPublishedStatus.ToUint8(),
 						Title:   "Go问题3",
 						Content: "Go问题3",
 					},
 					{
 						Uid:     uid + 4,
-						Status:  int32(domain.UnPublishedStatus),
+						Status:  domain.UnPublishedStatus.ToUint8(),
 						Title:   "Go问题4",
 						Content: "Go问题4",
 					},
@@ -1280,7 +1280,6 @@ func (s *HandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 func (s *HandlerTestSuite) TestQuestionSet_RetrieveQuestionSetDetail() {
 
 	now := time.Now().UnixMilli()
-	formattedUtime := time.Unix(0, now*int64(time.Millisecond)).Format(time.DateTime)
 
 	testCases := []struct {
 		name   string
@@ -1322,7 +1321,7 @@ func (s *HandlerTestSuite) TestQuestionSet_RetrieveQuestionSetDetail() {
 					Id:          321,
 					Title:       "Go",
 					Description: "Go题集",
-					Utime:       formattedUtime,
+					Utime:       now,
 				},
 			},
 		},
@@ -1401,22 +1400,19 @@ func (s *HandlerTestSuite) TestQuestionSet_RetrieveQuestionSetDetail() {
 							Id:      614,
 							Title:   "Go问题1",
 							Content: "Go问题1",
-							Utime:   formattedUtime,
 						},
 						{
 							Id:      615,
 							Title:   "Go问题2",
 							Content: "Go问题2",
-							Utime:   formattedUtime,
 						},
 						{
 							Id:      616,
 							Title:   "Go问题3",
 							Content: "Go问题3",
-							Utime:   formattedUtime,
 						},
 					},
-					Utime: formattedUtime,
+					Utime: now,
 				},
 			},
 		},
@@ -1544,13 +1540,13 @@ func (s *HandlerTestSuite) TestQuestionSet_ListPrivateQuestionSets() {
 							Id:          100,
 							Title:       "题集标题 99",
 							Description: "题集简介 99",
-							Utime:       time.UnixMilli(0).Format(time.DateTime),
+							Utime:       0,
 						},
 						{
 							Id:          99,
 							Title:       "题集标题 98",
 							Description: "题集简介 98",
-							Utime:       time.UnixMilli(0).Format(time.DateTime),
+							Utime:       0,
 						},
 					},
 				},
@@ -1571,7 +1567,7 @@ func (s *HandlerTestSuite) TestQuestionSet_ListPrivateQuestionSets() {
 							Id:          1,
 							Title:       "题集标题 0",
 							Description: "题集简介 0",
-							Utime:       time.UnixMilli(0).Format(time.DateTime),
+							Utime:       0,
 						},
 					},
 				},
@@ -1631,13 +1627,13 @@ func (s *HandlerTestSuite) TestQuestionSet_ListAllQuestionSets() {
 							Id:          100,
 							Title:       "题集标题 99",
 							Description: "题集简介 99",
-							Utime:       time.UnixMilli(0).Format(time.DateTime),
+							Utime:       0,
 						},
 						{
 							Id:          99,
 							Title:       "题集标题 98",
 							Description: "题集简介 98",
-							Utime:       time.UnixMilli(0).Format(time.DateTime),
+							Utime:       0,
 						},
 					},
 				},
@@ -1658,7 +1654,7 @@ func (s *HandlerTestSuite) TestQuestionSet_ListAllQuestionSets() {
 							Id:          1,
 							Title:       "题集标题 0",
 							Description: "题集简介 0",
-							Utime:       time.UnixMilli(0).Format(time.DateTime),
+							Utime:       0,
 						},
 					},
 				},
