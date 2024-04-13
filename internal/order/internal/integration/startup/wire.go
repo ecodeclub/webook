@@ -27,6 +27,6 @@ import (
 )
 
 func InitHandler(paymentSvc payment.Service, productSvc product.Service, creditSvc credit.Service) (*web.Handler, error) {
-	wire.Build(testioc.BaseSet, order.InitHandler)
+	wire.Build(testioc.BaseSet, order.InitService, order.InitHandler)
 	return new(web.Handler), nil
 }

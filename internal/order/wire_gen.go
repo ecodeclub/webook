@@ -8,12 +8,11 @@ package order
 
 import (
 	"sync"
-	"time"
 
 	"github.com/ecodeclub/ecache"
 	"github.com/ecodeclub/mq-api"
-	"github.com/ecodeclub/webook/internal/credit"
-	"github.com/ecodeclub/webook/internal/order/internal/consumer"
+	service3 "github.com/ecodeclub/webook/internal/credit"
+	"github.com/ecodeclub/webook/internal/order/internal/event"
 	"github.com/ecodeclub/webook/internal/order/internal/job"
 	"github.com/ecodeclub/webook/internal/order/internal/repository"
 	"github.com/ecodeclub/webook/internal/order/internal/repository/dao"
@@ -21,46 +20,46 @@ import (
 	"github.com/ecodeclub/webook/internal/order/internal/web"
 	"github.com/ecodeclub/webook/internal/payment"
 	"github.com/ecodeclub/webook/internal/pkg/sequencenumber"
-	"github.com/ecodeclub/webook/internal/product"
-	"github.com/ego-component/egorm"
+	service2 "github.com/ecodeclub/webook/internal/product"
 	"github.com/google/wire"
 	"gorm.io/gorm"
 )
 
 // Injectors from wire.go:
 
-func InitHandler(db *gorm.DB, paymentSvc payment.Service, productSvc product.Service, creditSvc credit.Service, cache ecache.Cache) *web.Handler {
-	serviceService := initService(db)
-	generator := sequencenumber.NewGenerator()
-	handler := web.NewHandler(serviceService, paymentSvc, productSvc, creditSvc, generator, cache)
-	return handler
+func InitModule(db *gorm.DB, cache ecache.Cache, q mq.MQ, paymentSvc payment.Service, productSvc service2.Service, creditSvc service3.Service) (*Module, error) {
+	serviceService := InitService(db)
+	handler := InitHandler(cache, serviceService, paymentSvc, productSvc, creditSvc)
+	completeOrderConsumer := initCompleteOrderConsumer(serviceService, q)
+	module := &Module{
+		Hdl: handler,
+		c:   completeOrderConsumer,
+	}
+	return module, nil
 }
 
-func InitCompleteOrderConsumer(db *gorm.DB, q mq.MQ) *consumer.CompleteOrderConsumer {
-	serviceService := initService(db)
-	v := InitMQConsumer(q)
-	completeOrderConsumer := consumer.NewCompleteOrderConsumer(serviceService, v)
-	return completeOrderConsumer
+func InitHandler(cache ecache.Cache, svc2 service4.Service, paymentSvc payment.Service, productSvc service2.Service, creditSvc service3.Service) *web.Handler {
+	generator := sequencenumber.NewGenerator()
+	handler := web.NewHandler(svc2, paymentSvc, productSvc, creditSvc, generator, cache)
+	return handler
 }
 
 // wire.go:
 
 type Handler = web.Handler
 
-type CompleteOrderConsumer = consumer.CompleteOrderConsumer
+type Service = service4.Service
 
 type CloseExpiredOrdersJob = job.CloseExpiredOrdersJob
 
-var HandlerSet = wire.NewSet(
-	initService, sequencenumber.NewGenerator, web.NewHandler,
-)
+var HandlerSet = wire.NewSet(sequencenumber.NewGenerator, web.NewHandler)
 
 var (
 	once = &sync.Once{}
 	svc  service4.Service
 )
 
-func initService(db *gorm.DB) service4.Service {
+func InitService(db *gorm.DB) service4.Service {
 	once.Do(func() {
 		_ = dao.InitTables(db)
 		orderDAO := dao.NewOrderGORMDAO(db)
@@ -70,16 +69,10 @@ func initService(db *gorm.DB) service4.Service {
 	return svc
 }
 
-func InitMQConsumer(q mq.MQ) []mq.Consumer {
-	topic := "payment_successful"
-	groupID := "OrderConsumerGroup"
-	c, err := q.Consumer(topic, groupID)
+func initCompleteOrderConsumer(svc2 service4.Service, q mq.MQ) *event.CompleteOrderConsumer {
+	consumer, err := event.NewCompleteOrderConsumer(svc2, q)
 	if err != nil {
 		panic(err)
 	}
-	return []mq.Consumer{c}
-}
-
-func InitCloseExpiredOrdersJob(db *egorm.Component) *CloseExpiredOrdersJob {
-	return job.NewCloseExpiredOrdersJob(initService(db), 10, 31, time.Hour)
+	return consumer
 }

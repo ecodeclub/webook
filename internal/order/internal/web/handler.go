@@ -386,6 +386,7 @@ func (h *Handler) CancelOrder(ctx *ginx.Context, req CancelOrderReq, sess sessio
 	if err != nil {
 		return systemErrorResult, fmt.Errorf("查找订单失败: %w", err)
 	}
+	// todo: order.Status == paid 忽略
 	err = h.svc.CancelOrder(ctx.Request.Context(), order)
 	if err != nil {
 		return systemErrorResult, fmt.Errorf("取消订单失败: %w", err)
