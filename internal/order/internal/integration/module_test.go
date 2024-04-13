@@ -1010,7 +1010,7 @@ func (s *OrderModuleTestSuite) TestHandler_CancelOrder() {
 				},
 				after: func(t *testing.T) {
 					t.Helper()
-					order, err := s.dao.FindOrderBySNAndBuyerID(context.Background(), "orderSN-44", testUID)
+					order, err := s.dao.FindOrderByUIDAndSN(context.Background(), testUID, "orderSN-44")
 					assert.NoError(t, err)
 					assert.Equal(t, int64(domain.OrderStatusCanceled), order.Status)
 				},
@@ -1122,7 +1122,7 @@ func (s *OrderModuleTestSuite) TestCompleteOrder() {
 			},
 			after: func(t *testing.T) {
 				t.Helper()
-				order, err := s.dao.FindOrderBySNAndBuyerID(context.Background(), "orderSN-22", testUID)
+				order, err := s.dao.FindOrderByUIDAndSN(context.Background(), testUID, "orderSN-22")
 				assert.NoError(t, err)
 				assert.Equal(t, int64(domain.OrderStatusCompleted), order.Status)
 			},

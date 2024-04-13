@@ -29,11 +29,11 @@ type Order struct {
 	PaymentSN          string
 	OriginalTotalPrice int64
 	RealTotalPrice     int64
-	ClosedAt           int64
-	Status             int64
-	Items              []OrderItem
-	Ctime              int64
-	Utime              int64
+	// ClosedAt           int64
+	Status int64
+	Items  []OrderItem
+	Ctime  int64
+	Utime  int64
 }
 
 type OrderItem struct {

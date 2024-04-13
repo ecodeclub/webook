@@ -67,22 +67,23 @@ func (c *CompleteOrderConsumer) Consume(ctx context.Context) error {
 		return fmt.Errorf("解析消息失败: %w", err)
 	}
 	// 收到该消息表示用户支付成功,所以不管订单当前的状态是什么都要设置为“已支付完成”
-	order, err := c.svc.FindOrder(ctx, evt.OrderSN, evt.BuyerID)
+	order, err := c.svc.FindOrderByUIDAndOrderSN(ctx, evt.BuyerID, evt.OrderSN)
 	if err != nil {
 		c.logger.Error("订单未找到",
 			elog.FieldErr(err),
-			elog.Int64("uid", evt.BuyerID),
+			elog.Int64("buyer_id", evt.BuyerID),
+			elog.String("order_sn", evt.OrderSN),
 		)
 		return fmt.Errorf("订单未找到: %w", err)
 	}
 
-	err = c.svc.CompleteOrder(ctx, order)
+	err = c.svc.CompleteOrder(ctx, order.BuyerID, order.ID)
 	if err != nil {
-		c.logger.Error("完成订单失败",
+		c.logger.Warn("完成订单失败",
 			elog.FieldErr(err),
-			elog.Int64("uid", evt.BuyerID),
+			elog.Int64("buyer_id", order.BuyerID),
+			elog.Int64("order_id", order.ID),
 		)
-		return fmt.Errorf("完成订单失败: %w", err)
 	}
 	return err
 }

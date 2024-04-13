@@ -42,9 +42,11 @@ func (c *CloseExpiredOrdersJob) Name() string {
 func (c *CloseExpiredOrdersJob) Run() error {
 	ctx, cancelFunc := context.WithTimeout(context.Background(), c.timeout)
 	defer cancelFunc()
+	// 冗余10秒
+	ctime := time.Now().Add(time.Duration(-c.minute)*time.Minute + 10*time.Second).UnixMilli()
 
 	for {
-		orders, total, err := c.svc.ListExpiredOrders(ctx, 0, c.limit, time.Now().Add(time.Duration(-c.minute)*time.Minute).UnixMilli())
+		orders, total, err := c.svc.FindExpiredOrders(ctx, 0, c.limit, ctime)
 		if err != nil {
 			return fmt.Errorf("获取过期订单失败: %w", err)
 		}
@@ -53,7 +55,7 @@ func (c *CloseExpiredOrdersJob) Run() error {
 			return src.ID
 		})
 
-		err = c.svc.CloseExpiredOrders(ctx, ids)
+		err = c.svc.CloseExpiredOrders(ctx, ids, ctime)
 		if err != nil {
 			return fmt.Errorf("关闭过期订单失败: %w", err)
 		}
