@@ -17,6 +17,7 @@ package event
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/ecodeclub/mq-api"
@@ -81,10 +82,20 @@ func (c *MemberEventConsumer) Consume(ctx context.Context) error {
 	})
 
 	if err != nil {
+		if errors.Is(err, service.ErrUpdateMemberFailed) {
+			// retry
+		}
+
+		if errors.Is(err, service.ErrDuplicatedMemberRecord) {
+			c.logger.Warn("重复消费",
+				elog.FieldErr(err),
+				elog.Any("MemberEvent", evt),
+			)
+		}
+		// 其他错误
 		c.logger.Error("创建/更新会员相关记录失败",
 			elog.FieldErr(err),
 			elog.Int64("uid", evt.Uid),
-			elog.Any("MemberEvent", evt),
 		)
 	}
 	return err

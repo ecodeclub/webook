@@ -16,10 +16,17 @@ package dao
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/ego-component/egorm"
+	"github.com/go-sql-driver/mysql"
+)
+
+var (
+	ErrUpdateMemberFailed     = errors.New("更新会员主记录失败")
+	ErrDuplicatedMemberRecord = errors.New("会员记录重复")
 )
 
 type MemberDAO interface {
@@ -87,14 +94,22 @@ func (g *memberGROMDAO) Upsert(ctx context.Context, d Member, r MemberRecord) er
 			if res.Error != nil {
 				return res.Error
 			}
-			if res.RowsAffected != 1 {
-				return fmt.Errorf("更新会员主记录失败")
+			if res.RowsAffected == 0 {
+				// version被其他并发事务更新
+				return fmt.Errorf("更新会员主记录失败: %w", ErrUpdateMemberFailed)
 			}
 		}
 		// 创建会员记录
 		r.Uid = d.Uid
 		r.Ctime, r.Utime = now.UnixMilli(), now.UnixMilli()
 		if err := tx.Create(&r).Error; err != nil {
+			var me *mysql.MySQLError
+			if errors.As(err, &me) {
+				const uniqueIndexErrNo uint16 = 1062
+				if me.Number == uniqueIndexErrNo {
+					return ErrDuplicatedMemberRecord
+				}
+			}
 			return err
 		}
 		return nil

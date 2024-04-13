@@ -21,6 +21,11 @@ import (
 	"github.com/ecodeclub/webook/internal/member/internal/repository"
 )
 
+var (
+	ErrUpdateMemberFailed     = repository.ErrUpdateMemberFailed
+	ErrDuplicatedMemberRecord = repository.ErrDuplicatedMemberRecord
+)
+
 //go:generate mockgen -source=./service.go -package=membermocks --destination=../../mocks/member.mock.go -typed Service
 type Service interface {
 	GetMembershipInfo(ctx context.Context, uid int64) (domain.Member, error)

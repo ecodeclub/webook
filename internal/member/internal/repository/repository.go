@@ -8,6 +8,11 @@ import (
 	"github.com/ecodeclub/webook/internal/member/internal/repository/dao"
 )
 
+var (
+	ErrUpdateMemberFailed     = dao.ErrUpdateMemberFailed
+	ErrDuplicatedMemberRecord = dao.ErrDuplicatedMemberRecord
+)
+
 type MemberRepository interface {
 	FindByUID(ctx context.Context, uid int64) (domain.Member, error)
 	Upsert(ctx context.Context, member domain.Member) error
