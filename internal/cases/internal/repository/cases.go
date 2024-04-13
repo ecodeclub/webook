@@ -131,7 +131,7 @@ func (c *caseRepo) toEntity(caseDomain *domain.Case) dao.Case {
 		Shorthand: caseDomain.Shorthand,
 		Highlight: caseDomain.Highlight,
 		Guidance:  caseDomain.Guidance,
-		Status:    int32(caseDomain.Status),
+		Status:    caseDomain.Status.ToUint8(),
 	}
 }
 

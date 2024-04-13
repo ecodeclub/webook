@@ -54,7 +54,11 @@ type AnswerElement struct {
 	Guidance string
 }
 
-type QuestionStatus int32
+type QuestionStatus uint8
+
+func (s QuestionStatus) ToUint8() uint8 {
+	return uint8(s)
+}
 
 const (
 	// UnknownStatus 未知

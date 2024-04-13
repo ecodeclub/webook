@@ -119,8 +119,8 @@ func (h *QuestionSetHandler) toQuestionSetList(data []domain.QuestionSet, total 
 			dm2vo, _ := copier.NewReflectCopier[domain.QuestionSet, QuestionSet](
 				// 忽略题集中的问题列表
 				copier.IgnoreFields("Questions"),
-				copier.ConvertField[time.Time, string]("Utime", converter.ConverterFunc[time.Time, string](func(src time.Time) (string, error) {
-					return src.Format(time.DateTime), nil
+				copier.ConvertField[time.Time, int64]("Utime", converter.ConverterFunc[time.Time, int64](func(src time.Time) (int64, error) {
+					return src.UnixMilli(), nil
 				})),
 			)
 			dst, err := dm2vo.Copy(&src)
@@ -161,7 +161,7 @@ func (h *QuestionSetHandler) toQuestionSetVO(set domain.QuestionSet) QuestionSet
 		Title:       set.Title,
 		Description: set.Description,
 		Questions:   h.toQuestionVO(set.Questions),
-		Utime:       set.Utime.Format(time.DateTime),
+		Utime:       set.Utime.UnixMilli(),
 	}
 }
 

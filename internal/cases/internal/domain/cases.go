@@ -25,7 +25,11 @@ type Case struct {
 	Utime    time.Time
 }
 
-type CaseStatus int32
+type CaseStatus uint8
+
+func (s CaseStatus) ToUint8() uint8 {
+	return uint8(s)
+}
 
 const (
 	// UnknownStatus 未知
