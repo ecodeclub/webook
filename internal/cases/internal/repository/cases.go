@@ -131,6 +131,7 @@ func (c *caseRepo) toEntity(caseDomain *domain.Case) dao.Case {
 		Shorthand: caseDomain.Shorthand,
 		Highlight: caseDomain.Highlight,
 		Guidance:  caseDomain.Guidance,
+		Status:    int32(caseDomain.Status),
 	}
 }
 
@@ -147,6 +148,7 @@ func (c *caseRepo) toDomain(caseDao dao.Case) domain.Case {
 		Highlight: caseDao.Highlight,
 		Guidance:  caseDao.Guidance,
 		Utime:     time.UnixMilli(caseDao.Utime),
+		Status:    domain.CaseStatus(caseDao.Status),
 	}
 }
 

@@ -33,7 +33,7 @@ type Question struct {
 	// 面试题目内容
 	Content string `json:"content,omitempty"`
 	Utime   string `json:"utime,omitempty"`
-
+	Status  int32  `json:"status,omitempty"`
 	// 题集 ID
 	Sets []QuestionSet `json:"sets"`
 
@@ -67,6 +67,7 @@ func newQuestion(que domain.Question) Question {
 		Title:        que.Title,
 		Content:      que.Content,
 		Labels:       que.Labels,
+		Status:       int32(que.Status),
 		Analysis:     newAnswerElement(que.Answer.Analysis),
 		Basic:        newAnswerElement(que.Answer.Basic),
 		Intermediate: newAnswerElement(que.Answer.Intermediate),

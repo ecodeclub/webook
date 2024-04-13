@@ -24,6 +24,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ecodeclub/webook/internal/question/internal/domain"
+
 	"github.com/ecodeclub/ekit/sqlx"
 	"github.com/ecodeclub/webook/internal/pkg/middleware"
 
@@ -151,6 +153,7 @@ func (s *HandlerTestSuite) TestSave() {
 					Uid:     uid,
 					Title:   "面试题1",
 					Content: "面试题内容",
+					Status:  int32(domain.UnPublishedStatus),
 					Labels: sqlx.JsonColumn[[]string]{
 						Valid: true,
 						Val:   []string{"MySQL"},
@@ -201,6 +204,7 @@ func (s *HandlerTestSuite) TestSave() {
 					Uid:     uid,
 					Title:   "老的标题",
 					Content: "老的内容",
+					Status:  int32(domain.UnPublishedStatus),
 					Ctime:   123,
 					Utime:   234,
 				}).Error
@@ -226,6 +230,7 @@ func (s *HandlerTestSuite) TestSave() {
 				require.NoError(t, err)
 				s.assertQuestion(t, dao.Question{
 					Uid:     uid,
+					Status:  int32(domain.UnPublishedStatus),
 					Title:   "面试题1",
 					Content: "新的内容",
 				}, q)
@@ -296,6 +301,7 @@ func (s *HandlerTestSuite) TestList() {
 	for idx := 0; idx < 100; idx++ {
 		data = append(data, dao.PublishQuestion{
 			Uid:     uid,
+			Status:  int32(domain.UnPublishedStatus),
 			Title:   fmt.Sprintf("这是标题 %d", idx),
 			Content: fmt.Sprintf("这是解析 %d", idx),
 		})
@@ -324,12 +330,14 @@ func (s *HandlerTestSuite) TestList() {
 							Id:      100,
 							Title:   "这是标题 99",
 							Content: "这是解析 99",
+							Status:  int32(domain.UnPublishedStatus),
 							Utime:   time.UnixMilli(0).Format(time.DateTime),
 						},
 						{
 							Id:      99,
 							Title:   "这是标题 98",
 							Content: "这是解析 98",
+							Status:  int32(domain.UnPublishedStatus),
 							Utime:   time.UnixMilli(0).Format(time.DateTime),
 						},
 					},
@@ -351,6 +359,7 @@ func (s *HandlerTestSuite) TestList() {
 							Id:      1,
 							Title:   "这是标题 0",
 							Content: "这是解析 0",
+							Status:  int32(domain.UnPublishedStatus),
 							Utime:   time.UnixMilli(0).Format(time.DateTime),
 						},
 					},
@@ -401,6 +410,7 @@ func (s *HandlerTestSuite) TestSync() {
 				s.assertQuestion(t, dao.Question{
 					Uid:     uid,
 					Title:   "面试题1",
+					Status:  int32(domain.PublishedStatus),
 					Content: "面试题内容",
 				}, dao.Question(q))
 				assert.Equal(t, 4, len(eles))
@@ -431,8 +441,9 @@ func (s *HandlerTestSuite) TestSync() {
 					Uid:     uid,
 					Title:   "老的标题",
 					Content: "老的内容",
-					Ctime:   123,
-					Utime:   234,
+
+					Ctime: 123,
+					Utime: 234,
 				}).Error
 				require.NoError(t, err)
 				err = s.db.Create(&dao.AnswerElement{
@@ -456,6 +467,7 @@ func (s *HandlerTestSuite) TestSync() {
 				require.NoError(t, err)
 				s.assertQuestion(t, dao.Question{
 					Uid:     uid,
+					Status:  int32(domain.PublishedStatus),
 					Title:   "面试题1",
 					Content: "新的内容",
 				}, q)
@@ -475,6 +487,7 @@ func (s *HandlerTestSuite) TestSync() {
 
 				s.assertQuestion(t, dao.Question{
 					Uid:     uid,
+					Status:  int32(domain.PublishedStatus),
 					Title:   "面试题1",
 					Content: "新的内容",
 				}, dao.Question(pq))
@@ -546,6 +559,7 @@ func (s *HandlerTestSuite) TestPubDetail() {
 		data = append(data, dao.PublishQuestion{
 			Id:      int64(idx + 1),
 			Uid:     uid,
+			Status:  int32(domain.PublishedStatus),
 			Title:   fmt.Sprintf("这是标题 %d", idx),
 			Content: fmt.Sprintf("这是解析 %d", idx),
 		})
@@ -569,6 +583,7 @@ func (s *HandlerTestSuite) TestPubDetail() {
 				Data: web.Question{
 					Id:      2,
 					Title:   "这是标题 1",
+					Status:  int32(domain.PublishedStatus),
 					Content: "这是解析 1",
 					Utime:   time.UnixMilli(0).Format(time.DateTime),
 				},
@@ -775,6 +790,7 @@ func (s *HandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 						Id:      4,
 						Uid:     uid + 1,
 						Title:   "oss问题1",
+						Status:  int32(domain.UnPublishedStatus),
 						Content: "oss问题1",
 						Ctime:   123,
 						Utime:   234,
@@ -782,6 +798,7 @@ func (s *HandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 					{
 						Id:      5,
 						Uid:     uid + 2,
+						Status:  int32(domain.UnPublishedStatus),
 						Title:   "oss问题2",
 						Content: "oss问题2",
 						Ctime:   1234,
@@ -789,7 +806,7 @@ func (s *HandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 					},
 				}
 				for _, q := range questions {
-					require.NoError(t, s.db.WithContext(ctx).Create(q).Error)
+					require.NoError(t, s.db.WithContext(ctx).Create(&q).Error)
 				}
 
 				// 题集中题目为0
@@ -806,11 +823,13 @@ func (s *HandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 				expected := []dao.Question{
 					{
 						Uid:     uid + 1,
+						Status:  int32(domain.UnPublishedStatus),
 						Title:   "oss问题1",
 						Content: "oss问题1",
 					},
 					{
 						Uid:     uid + 2,
+						Status:  int32(domain.UnPublishedStatus),
 						Title:   "oss问题2",
 						Content: "oss问题2",
 					},
@@ -855,6 +874,7 @@ func (s *HandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 					{
 						Id:      14,
 						Uid:     uid + 1,
+						Status:  int32(domain.UnPublishedStatus),
 						Title:   "Go问题1",
 						Content: "Go问题1",
 						Ctime:   123,
@@ -863,6 +883,7 @@ func (s *HandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 					{
 						Id:      15,
 						Uid:     uid + 2,
+						Status:  int32(domain.UnPublishedStatus),
 						Title:   "Go问题2",
 						Content: "Go问题2",
 						Ctime:   1234,
@@ -871,6 +892,7 @@ func (s *HandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 					{
 						Id:      16,
 						Uid:     uid + 3,
+						Status:  int32(domain.UnPublishedStatus),
 						Title:   "Go问题3",
 						Content: "Go问题3",
 						Ctime:   1234,
@@ -878,7 +900,7 @@ func (s *HandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 					},
 				}
 				for _, q := range questions {
-					require.NoError(t, s.db.WithContext(ctx).Create(q).Error)
+					require.NoError(t, s.db.WithContext(ctx).Create(&q).Error)
 				}
 
 				require.NoError(t, s.questionSetDAO.UpdateQuestionsByID(ctx, id, []int64{14}))
@@ -897,16 +919,19 @@ func (s *HandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 				expected := []dao.Question{
 					{
 						Uid:     uid + 1,
+						Status:  int32(domain.UnPublishedStatus),
 						Title:   "Go问题1",
 						Content: "Go问题1",
 					},
 					{
 						Uid:     uid + 2,
+						Status:  int32(domain.UnPublishedStatus),
 						Title:   "Go问题2",
 						Content: "Go问题2",
 					},
 					{
 						Uid:     uid + 3,
+						Status:  int32(domain.UnPublishedStatus),
 						Title:   "Go问题3",
 						Content: "Go问题3",
 					},
@@ -974,7 +999,7 @@ func (s *HandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 					},
 				}
 				for _, q := range questions {
-					require.NoError(t, s.db.WithContext(ctx).Create(q).Error)
+					require.NoError(t, s.db.WithContext(ctx).Create(&q).Error)
 				}
 
 				require.NoError(t, s.questionSetDAO.UpdateQuestionsByID(ctx, id, []int64{214, 215, 216}))
@@ -1023,6 +1048,7 @@ func (s *HandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 					{
 						Id:      314,
 						Uid:     uid + 1,
+						Status:  int32(domain.UnPublishedStatus),
 						Title:   "Go问题1",
 						Content: "Go问题1",
 						Ctime:   123,
@@ -1031,6 +1057,7 @@ func (s *HandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 					{
 						Id:      315,
 						Uid:     uid + 2,
+						Status:  int32(domain.UnPublishedStatus),
 						Title:   "Go问题2",
 						Content: "Go问题2",
 						Ctime:   1234,
@@ -1039,6 +1066,7 @@ func (s *HandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 					{
 						Id:      316,
 						Uid:     uid + 2,
+						Status:  int32(domain.UnPublishedStatus),
 						Title:   "Go问题3",
 						Content: "Go问题3",
 						Ctime:   1234,
@@ -1046,7 +1074,7 @@ func (s *HandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 					},
 				}
 				for _, q := range questions {
-					require.NoError(t, s.db.WithContext(ctx).Create(q).Error)
+					require.NoError(t, s.db.WithContext(ctx).Create(&q).Error)
 				}
 
 				require.NoError(t, s.questionSetDAO.UpdateQuestionsByID(ctx, id, []int64{314, 315, 316}))
@@ -1065,6 +1093,7 @@ func (s *HandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 				require.Equal(t, 1, len(qs))
 				s.assertQuestion(t, dao.Question{
 					Uid:     uid + 2,
+					Status:  int32(domain.UnPublishedStatus),
 					Title:   "Go问题2",
 					Content: "Go问题2",
 				}, qs[0])
@@ -1100,6 +1129,7 @@ func (s *HandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 					{
 						Id:      414,
 						Uid:     uid + 1,
+						Status:  int32(domain.UnPublishedStatus),
 						Title:   "Go问题1",
 						Content: "Go问题1",
 						Ctime:   123,
@@ -1108,6 +1138,7 @@ func (s *HandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 					{
 						Id:      415,
 						Uid:     uid + 2,
+						Status:  int32(domain.UnPublishedStatus),
 						Title:   "Go问题2",
 						Content: "Go问题2",
 						Ctime:   1234,
@@ -1116,6 +1147,7 @@ func (s *HandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 					{
 						Id:      416,
 						Uid:     uid + 3,
+						Status:  int32(domain.UnPublishedStatus),
 						Title:   "Go问题3",
 						Content: "Go问题3",
 						Ctime:   1234,
@@ -1124,6 +1156,7 @@ func (s *HandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 					{
 						Id:      417,
 						Uid:     uid + 4,
+						Status:  int32(domain.UnPublishedStatus),
 						Title:   "Go问题4",
 						Content: "Go问题4",
 						Ctime:   1234,
@@ -1131,7 +1164,7 @@ func (s *HandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 					},
 				}
 				for _, q := range questions {
-					require.NoError(t, s.db.WithContext(ctx).Create(q).Error)
+					require.NoError(t, s.db.WithContext(ctx).Create(&q).Error)
 				}
 
 				qids := []int64{414, 415}
@@ -1149,16 +1182,19 @@ func (s *HandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 				expected := []dao.Question{
 					{
 						Uid:     uid + 2,
+						Status:  int32(domain.UnPublishedStatus),
 						Title:   "Go问题2",
 						Content: "Go问题2",
 					},
 					{
 						Uid:     uid + 3,
+						Status:  int32(domain.UnPublishedStatus),
 						Title:   "Go问题3",
 						Content: "Go问题3",
 					},
 					{
 						Uid:     uid + 4,
+						Status:  int32(domain.UnPublishedStatus),
 						Title:   "Go问题4",
 						Content: "Go问题4",
 					},
@@ -1337,7 +1373,7 @@ func (s *HandlerTestSuite) TestQuestionSet_RetrieveQuestionSetDetail() {
 					},
 				}
 				for _, q := range questions {
-					require.NoError(t, s.db.WithContext(ctx).Create(q).Error)
+					require.NoError(t, s.db.WithContext(ctx).Create(&q).Error)
 				}
 
 				qids := []int64{614, 615, 616}

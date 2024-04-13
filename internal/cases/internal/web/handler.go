@@ -152,6 +152,7 @@ func newCase(ca domain.Case) Case {
 		Shorthand: ca.Shorthand,
 		Highlight: ca.Highlight,
 		Guidance:  ca.Guidance,
+		Status:    int32(ca.Status),
 		Utime:     ca.Utime.Format(time.DateTime),
 	}
 }

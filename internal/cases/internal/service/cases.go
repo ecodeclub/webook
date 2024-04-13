@@ -30,6 +30,7 @@ func (s *service) GetPubByIDs(ctx context.Context, ids []int64) ([]domain.Case, 
 }
 
 func (s *service) Save(ctx context.Context, ca *domain.Case) (int64, error) {
+	ca.Status = domain.UnPublishedStatus
 	if ca.Id > 0 {
 		return ca.Id, s.repo.Update(ctx, ca)
 	}
@@ -37,6 +38,7 @@ func (s *service) Save(ctx context.Context, ca *domain.Case) (int64, error) {
 }
 
 func (s *service) Publish(ctx context.Context, ca *domain.Case) (int64, error) {
+	ca.Status = domain.PublishedStatus
 	return s.repo.Sync(ctx, ca)
 }
 

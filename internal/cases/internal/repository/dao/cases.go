@@ -54,6 +54,7 @@ func (ca *caseDAO) Update(ctx context.Context, c Case) error {
 		"shorthand": c.Shorthand,
 		"highlight": c.Highlight,
 		"guidance":  c.Guidance,
+		"status":    c.Status,
 		"utime":     now,
 	}).Error
 }
@@ -69,6 +70,7 @@ func (ca *caseDAO) update(ctx context.Context, tx *gorm.DB, c Case) error {
 		"shorthand": c.Shorthand,
 		"highlight": c.Highlight,
 		"labels":    c.Labels,
+		"status":    c.Status,
 		"guidance":  c.Guidance,
 		"utime":     now,
 	}).Error
@@ -84,7 +86,7 @@ func (ca *caseDAO) GetCaseByID(ctx context.Context, id int64) (Case, error) {
 func (ca *caseDAO) List(ctx context.Context, offset, limit int) ([]Case, error) {
 	var caseList []Case
 	err := ca.db.WithContext(ctx).
-		Select("id", "title", "content", "utime").
+		Select("id", "title", "status", "content", "utime").
 		Order("id desc").
 		Offset(offset).
 		Limit(limit).
