@@ -26,7 +26,7 @@ type Question struct {
 	Title string `gorm:"type=varchar(512)"`
 	// 面试题目内容
 	Content string
-	Status  int32 `gorm:"type:tinyint(3);comment:0-未知 1-未发表 2-已发表;default:1"`
+	Status  int32 `gorm:"type:tinyint(3);comment:0-未知 1-未发表 2-已发表"`
 	Ctime   int64
 	Utime   int64 `gorm:"index"`
 }

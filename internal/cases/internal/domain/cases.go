@@ -30,8 +30,8 @@ type CaseStatus int32
 const (
 	// UnknownStatus 未知
 	UnknownStatus CaseStatus = 0
-	// UnPublishStatus 未发布
-	UnPublishStatus CaseStatus = 1
-	// PublishStatus 发布
+	// UnPublishedStatus 未发布
+	UnPublishedStatus CaseStatus = 1
+	// PublishedStatus 发布
 	PublishedStatus CaseStatus = 2
 )

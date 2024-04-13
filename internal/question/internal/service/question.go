@@ -94,7 +94,7 @@ func (s *service) PubList(ctx context.Context, offset int, limit int) ([]domain.
 }
 
 func (s *service) Save(ctx context.Context, question *domain.Question) (int64, error) {
-	question.Status = domain.UnPublishStatus
+	question.Status = domain.UnPublishedStatus
 	if question.Id > 0 {
 		return question.Id, s.repo.Update(ctx, question)
 	}

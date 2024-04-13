@@ -24,6 +24,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ecodeclub/webook/internal/cases/internal/domain"
+
 	"github.com/ecodeclub/ecache"
 	"github.com/ecodeclub/ekit/iox"
 	"github.com/ecodeclub/ekit/sqlx"
@@ -122,7 +124,7 @@ func (s *HandlerTestSuite) TestSave() {
 						Valid: true,
 						Val:   []string{"MySQL"},
 					},
-					Status:    1,
+					Status:    int32(domain.UnPublishedStatus),
 					CodeRepo:  "www.github.com",
 					Keywords:  "mysql_keywords",
 					Shorthand: "mysql_shorthand",
@@ -185,7 +187,7 @@ func (s *HandlerTestSuite) TestSave() {
 						Valid: true,
 						Val:   []string{"MySQL"},
 					},
-					Status:    1,
+					Status:    int32(domain.UnPublishedStatus),
 					CodeRepo:  "www.github.com",
 					Keywords:  "mysql_keywords",
 					Shorthand: "mysql_shorthand",
@@ -241,6 +243,7 @@ func (s *HandlerTestSuite) TestList() {
 			Uid:     uid,
 			Title:   fmt.Sprintf("这是案例标题 %d", idx),
 			Content: fmt.Sprintf("这是案例内容 %d", idx),
+			Status:  int32(domain.UnPublishedStatus),
 			Utime:   0,
 		})
 	}
@@ -267,14 +270,14 @@ func (s *HandlerTestSuite) TestList() {
 							Id:      100,
 							Title:   "这是案例标题 99",
 							Content: "这是案例内容 99",
-							Status:  1,
+							Status:  int32(domain.UnPublishedStatus),
 							Utime:   time.UnixMilli(0).Format(time.DateTime),
 						},
 						{
 							Id:      99,
 							Title:   "这是案例标题 98",
 							Content: "这是案例内容 98",
-							Status:  1,
+							Status:  int32(domain.UnPublishedStatus),
 							Utime:   time.UnixMilli(0).Format(time.DateTime),
 						},
 					},
@@ -296,7 +299,7 @@ func (s *HandlerTestSuite) TestList() {
 							Id:      1,
 							Title:   "这是案例标题 0",
 							Content: "这是案例内容 0",
-							Status:  1,
+							Status:  int32(domain.UnPublishedStatus),
 							Utime:   time.UnixMilli(0).Format(time.DateTime),
 						},
 					},
@@ -331,7 +334,7 @@ func (s *HandlerTestSuite) TestDetail() {
 			Valid: true,
 			Val:   []string{"Redis"},
 		},
-		Status:    2,
+		Status:    int32(domain.PublishedStatus),
 		Title:     "redis案例标题",
 		Content:   "redis案例内容",
 		CodeRepo:  "redis仓库",
@@ -362,7 +365,7 @@ func (s *HandlerTestSuite) TestDetail() {
 					Title:     "redis案例标题",
 					Content:   "redis案例内容",
 					CodeRepo:  "redis仓库",
-					Status:    2,
+					Status:    int32(domain.PublishedStatus),
 					Keywords:  "redis_keywords",
 					Shorthand: "redis_shorthand",
 					Highlight: "redis_highlight",
@@ -414,7 +417,7 @@ func (s *HandlerTestSuite) TestPublish() {
 						Valid: true,
 						Val:   []string{"MySQL"},
 					},
-					Status:    2,
+					Status:    int32(domain.PublishedStatus),
 					CodeRepo:  "www.github.com",
 					Keywords:  "mysql_keywords",
 					Shorthand: "mysql_shorthand",
@@ -481,7 +484,7 @@ func (s *HandlerTestSuite) TestPublish() {
 						Valid: true,
 						Val:   []string{"MySQL"},
 					},
-					Status:    2,
+					Status:    int32(domain.PublishedStatus),
 					CodeRepo:  "www.github.com",
 					Keywords:  "mysql_keywords",
 					Shorthand: "mysql_shorthand",
@@ -569,7 +572,7 @@ func (s *HandlerTestSuite) TestPublish() {
 						Valid: true,
 						Val:   []string{"MySQL"},
 					},
-					Status:    2,
+					Status:    int32(domain.PublishedStatus),
 					CodeRepo:  "www.github.com",
 					Keywords:  "mysql_keywords",
 					Shorthand: "mysql_shorthand",
@@ -712,7 +715,7 @@ func (s *HandlerTestSuite) TestPubDetail() {
 			Valid: true,
 			Val:   []string{"Redis"},
 		},
-		Status:    2,
+		Status:    int32(domain.PublishedStatus),
 		Title:     "redis案例标题",
 		Content:   "redis案例内容",
 		CodeRepo:  "redis仓库",
@@ -743,7 +746,7 @@ func (s *HandlerTestSuite) TestPubDetail() {
 					Title:     "redis案例标题",
 					Content:   "redis案例内容",
 					CodeRepo:  "redis仓库",
-					Status:    2,
+					Status:    int32(domain.PublishedStatus),
 					Keywords:  "redis_keywords",
 					Shorthand: "redis_shorthand",
 					Highlight: "redis_highlight",

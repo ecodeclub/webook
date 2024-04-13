@@ -59,8 +59,8 @@ type QuestionStatus int32
 const (
 	// UnknownStatus 未知
 	UnknownStatus QuestionStatus = 0
-	// UnPublishStatus 未发布
-	UnPublishStatus QuestionStatus = 1
+	// UnPublishedStatus 未发布
+	UnPublishedStatus QuestionStatus = 1
 	// PublishStatus 发布
 	PublishedStatus QuestionStatus = 2
 )
