@@ -22,28 +22,34 @@ import (
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/ecodeclub/webook/internal/order/internal/domain"
 	"github.com/ecodeclub/webook/internal/order/internal/service"
+	"github.com/gotomicro/ego/task/ecron"
 )
+
+var _ ecron.NamedJob = (*CloseExpiredOrdersJob)(nil)
 
 type CloseExpiredOrdersJob struct {
 	svc     service.Service
+	minutes int64
+	seconds int64
 	limit   int
-	minute  int64
-	timeout time.Duration
 }
 
-func NewCloseExpiredOrdersJob(svc service.Service, limit int, minute int64, timeout time.Duration) *CloseExpiredOrdersJob {
-	return &CloseExpiredOrdersJob{svc: svc, limit: limit, minute: minute, timeout: timeout}
+func NewCloseExpiredOrdersJob(svc service.Service, minutes, seconds int64, limit int) *CloseExpiredOrdersJob {
+	return &CloseExpiredOrdersJob{
+		svc:     svc,
+		minutes: minutes,
+		seconds: seconds,
+		limit:   limit,
+	}
 }
 
 func (c *CloseExpiredOrdersJob) Name() string {
 	return "CloseExpiredOrdersJob"
 }
 
-func (c *CloseExpiredOrdersJob) Run() error {
-	ctx, cancelFunc := context.WithTimeout(context.Background(), c.timeout)
-	defer cancelFunc()
+func (c *CloseExpiredOrdersJob) Run(ctx context.Context) error {
 	// 冗余10秒
-	ctime := time.Now().Add(time.Duration(-c.minute)*time.Minute + 10*time.Second).UnixMilli()
+	ctime := time.Now().Add(time.Duration(-c.minutes)*time.Minute + time.Duration(-c.seconds)*time.Second).UnixMilli()
 
 	for {
 		orders, total, err := c.svc.FindExpiredOrders(ctx, 0, c.limit, ctime)

@@ -14,11 +14,17 @@
 
 package domain
 
+type OrderStatus uint8
+
+func (s OrderStatus) ToUint8() uint8 {
+	return uint8(s)
+}
+
 const (
-	OrderStatusUnpaid    = iota + 1 // 未支付
-	OrderStatusCompleted            // 已完成(已支付)
-	OrderStatusCanceled             // 已取消
-	OrderStatusExpired              // 已超时
+	StatusUnpaid    OrderStatus = 1
+	StatusCompleted OrderStatus = 2
+	StatusCanceled  OrderStatus = 3
+	StatusExpired   OrderStatus = 4
 )
 
 type Order struct {
@@ -29,11 +35,10 @@ type Order struct {
 	PaymentSN          string
 	OriginalTotalPrice int64
 	RealTotalPrice     int64
-	// ClosedAt           int64
-	Status int64
-	Items  []OrderItem
-	Ctime  int64
-	Utime  int64
+	Status             OrderStatus
+	Items              []OrderItem
+	Ctime              int64
+	Utime              int64
 }
 
 type OrderItem struct {

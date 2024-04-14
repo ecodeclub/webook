@@ -69,7 +69,7 @@ func (g *gormOrderDAO) CreateOrder(ctx context.Context, order Order, items []Ord
 
 func (g *gormOrderDAO) UpdateOrderPaymentIDAndPaymentSN(ctx context.Context, uid, oid, pid int64, psn string) error {
 	order := Order{PaymentId: pid, PaymentSn: psn, Utime: time.Now().UnixMilli()}
-	return g.db.WithContext(ctx).Where("buyer_id = ? AND id = ? AND status = ?", uid, oid, domain.OrderStatusUnpaid).Updates(order).Error
+	return g.db.WithContext(ctx).Where("buyer_id = ? AND id = ? AND status = ?", uid, oid, domain.StatusUnpaid.ToUint8()).Updates(order).Error
 }
 
 func (g *gormOrderDAO) FindOrderByUIDAndSN(ctx context.Context, uid int64, sn string) (Order, error) {
@@ -97,27 +97,27 @@ func (g *gormOrderDAO) FindOrdersByUID(ctx context.Context, uid int64, offset, l
 }
 
 func (g *gormOrderDAO) CancelOrder(ctx context.Context, uid, oid int64) error {
-	order := Order{Status: domain.OrderStatusCanceled, Utime: time.Now().UnixMilli()}
-	return g.db.WithContext(ctx).Where("buyer_id = ? AND id = ? AND status = ?", uid, oid, domain.OrderStatusUnpaid).Updates(order).Error
+	order := Order{Status: domain.StatusCanceled.ToUint8(), Utime: time.Now().UnixMilli()}
+	return g.db.WithContext(ctx).Where("buyer_id = ? AND id = ? AND status = ?", uid, oid, domain.StatusUnpaid.ToUint8()).Updates(order).Error
 }
 
 func (g *gormOrderDAO) CompleteOrder(ctx context.Context, uid, oid int64) error {
 	// 已收到用户的付款,不管当前处于什么状态一律标记为已完成
-	order := Order{Status: domain.OrderStatusCompleted, Utime: time.Now().UnixMilli()}
+	order := Order{Status: domain.StatusCompleted.ToUint8(), Utime: time.Now().UnixMilli()}
 	return g.db.WithContext(ctx).Where("buyer_id = ? AND id = ?", uid, oid).Updates(order).Error
 }
 
 func (g *gormOrderDAO) FindExpiredOrders(ctx context.Context, offset, limit int, ctime int64) ([]Order, error) {
 	var res []Order
 	err := g.db.WithContext(ctx).Offset(offset).Limit(limit).Order("id DESC").
-		Find(&res, "status = ? AND Ctime <= ?", domain.OrderStatusUnpaid, ctime).Error
+		Find(&res, "status = ? AND Ctime <= ?", domain.StatusUnpaid.ToUint8(), ctime).Error
 	return res, err
 }
 
 func (g *gormOrderDAO) CountExpiredOrders(ctx context.Context, ctime int64) (int64, error) {
 	var res int64
 	err := g.db.WithContext(ctx).Model(&Order{}).
-		Where("status = ? AND Ctime <= ?", domain.OrderStatusUnpaid, ctime).
+		Where("status = ? AND Ctime <= ?", domain.StatusUnpaid.ToUint8(), ctime).
 		Select("COUNT(id)").Count(&res).Error
 	return res, err
 }
@@ -125,11 +125,10 @@ func (g *gormOrderDAO) CountExpiredOrders(ctx context.Context, ctime int64) (int
 func (g *gormOrderDAO) CloseExpiredOrders(ctx context.Context, orderIDs []int64, ctime int64) error {
 	timestamp := time.Now().UnixMilli()
 	return g.db.WithContext(ctx).Model(&Order{}).
-		Where("status = ? AND Ctime <= ? AND id IN ?", domain.OrderStatusUnpaid, ctime, orderIDs).
+		Where("status = ? AND Ctime <= ? AND id IN ?", domain.StatusUnpaid.ToUint8(), ctime, orderIDs).
 		Updates(map[string]any{
-			"status": domain.OrderStatusExpired,
-			// "closed_at": timestamp,
-			"utime": timestamp,
+			"status": domain.StatusExpired.ToUint8(),
+			"utime":  timestamp,
 		}).Error
 }
 
@@ -147,10 +146,9 @@ type Order struct {
 	PaymentSn          string `gorm:"type:varchar(255);uniqueIndex:uniq_payment_sn;comment:支付序列号,冗余允许为NULL"`
 	OriginalTotalPrice int64  `gorm:"not null;comment:原始总价;单位为分, 999表示9.99元"`
 	RealTotalPrice     int64  `gorm:"not null;comment:实付总价;单位为分, 999表示9.99元"`
-	// ClosedAt           int64  `gorm:"comment:订单关闭时间"`
-	Status int64 `gorm:"type:tinyint unsigned;not null;default:1;comment:订单状态 1=未支付 2=已完成(用户支付完成) 3=已关闭(用户主动取消) 4=已超时(订单超时关闭)"`
-	Ctime  int64
-	Utime  int64
+	Status             uint8  `gorm:"type:tinyint unsigned;not null;default:1;comment:订单状态 1=未支付 2=已完成(用户支付完成) 3=已关闭(用户主动取消) 4=已超时(订单超时关闭)"`
+	Ctime              int64
+	Utime              int64
 }
 
 type OrderItem struct {

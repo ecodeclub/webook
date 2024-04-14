@@ -65,8 +65,7 @@ func (o *orderRepository) toOrderEntity(order domain.Order) dao.Order {
 		PaymentSn:          order.PaymentSN,
 		OriginalTotalPrice: order.OriginalTotalPrice,
 		RealTotalPrice:     order.RealTotalPrice,
-		// ClosedAt:           order.ClosedAt,
-		Status: order.Status,
+		Status:             order.Status.ToUint8(),
 	}
 }
 
@@ -110,8 +109,7 @@ func (o *orderRepository) toOrderDomain(order dao.Order, orderItems []dao.OrderI
 		PaymentSN:          order.PaymentSn,
 		OriginalTotalPrice: order.OriginalTotalPrice,
 		RealTotalPrice:     order.RealTotalPrice,
-		// ClosedAt:           order.ClosedAt,
-		Status: order.Status,
+		Status:             domain.OrderStatus(order.Status),
 		Items: slice.Map(orderItems, func(idx int, src dao.OrderItem) domain.OrderItem {
 			return domain.OrderItem{
 				OrderID:          src.OrderId,

@@ -257,7 +257,7 @@ func (h *Handler) RetrieveOrderStatus(ctx *ginx.Context, req RetrieveOrderStatus
 	}
 	return ginx.Result{
 		Data: RetrieveOrderStatusResp{
-			OrderStatus: order.Status,
+			OrderStatus: order.Status.ToUint8(),
 		},
 	}, nil
 }
@@ -284,7 +284,7 @@ func (h *Handler) toOrderVO(order domain.Order) Order {
 		PaymentSN:          order.PaymentSN,
 		OriginalTotalPrice: order.OriginalTotalPrice,
 		RealTotalPrice:     order.RealTotalPrice,
-		Status:             order.Status,
+		Status:             order.Status.ToUint8(),
 		Items: slice.Map(order.Items, func(idx int, src domain.OrderItem) OrderItem {
 			return OrderItem{
 				SPUID:            src.SPUID,

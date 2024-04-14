@@ -749,7 +749,7 @@ func (s *OrderModuleTestSuite) TestHandler_ListOrders() {
 							PaymentSN:          fmt.Sprintf("PaymentSN-list-%d", 199),
 							OriginalTotalPrice: 100,
 							RealTotalPrice:     100,
-							Status:             domain.OrderStatusUnpaid,
+							Status:             domain.StatusUnpaid.ToUint8(),
 							Items: []web.OrderItem{
 								{
 									SPUID:            int64(199),
@@ -767,7 +767,7 @@ func (s *OrderModuleTestSuite) TestHandler_ListOrders() {
 							PaymentSN:          fmt.Sprintf("PaymentSN-list-%d", 198),
 							OriginalTotalPrice: 100,
 							RealTotalPrice:     100,
-							Status:             domain.OrderStatusUnpaid,
+							Status:             domain.StatusUnpaid.ToUint8(),
 							Items: []web.OrderItem{
 								{
 									SPUID:            int64(198),
@@ -800,7 +800,7 @@ func (s *OrderModuleTestSuite) TestHandler_ListOrders() {
 							PaymentSN:          fmt.Sprintf("PaymentSN-list-%d", 100),
 							OriginalTotalPrice: 100,
 							RealTotalPrice:     100,
-							Status:             domain.OrderStatusUnpaid,
+							Status:             domain.StatusUnpaid.ToUint8(),
 							Items: []web.OrderItem{
 								{
 									SPUID:            int64(100),
@@ -893,7 +893,7 @@ func (s *OrderModuleTestSuite) TestHandler_RetrieveOrderDetail() {
 						PaymentSN:          "paymentSN-33",
 						OriginalTotalPrice: 9900,
 						RealTotalPrice:     9900,
-						Status:             domain.OrderStatusUnpaid,
+						Status:             domain.StatusUnpaid.ToUint8(),
 						Items: []web.OrderItem{
 							{
 								SPUID:            1,
@@ -1012,7 +1012,7 @@ func (s *OrderModuleTestSuite) TestHandler_CancelOrder() {
 					t.Helper()
 					order, err := s.dao.FindOrderByUIDAndSN(context.Background(), testUID, "orderSN-44")
 					assert.NoError(t, err)
-					assert.Equal(t, int64(domain.OrderStatusCanceled), order.Status)
+					assert.Equal(t, domain.StatusCanceled.ToUint8(), order.Status)
 				},
 				req: web.CancelOrderReq{
 					OrderSN: "orderSN-44",
@@ -1124,7 +1124,7 @@ func (s *OrderModuleTestSuite) TestCompleteOrder() {
 				t.Helper()
 				order, err := s.dao.FindOrderByUIDAndSN(context.Background(), testUID, "orderSN-22")
 				assert.NoError(t, err)
-				assert.Equal(t, int64(domain.OrderStatusCompleted), order.Status)
+				assert.Equal(t, domain.StatusCompleted.ToUint8(), order.Status)
 			},
 			req: web.CompleteOrderReq{
 				OrderSN: "orderSN-22",
@@ -1263,7 +1263,7 @@ func (s *OrderModuleTestSuite) TestCloseTimeoutOrders() {
 					id := int64(200 + idx)
 					order, err := s.dao.FindOrderBySN(context.Background(), fmt.Sprintf("OrderSN-close-%d", id))
 					assert.NoError(t, err)
-					assert.Equal(t, int64(domain.OrderStatusExpired), order.Status)
+					assert.Equal(t, domain.StatusExpired.ToUint8(), order.Status)
 				}
 			},
 			req: web.CloseTimeoutOrdersReq{
@@ -1311,7 +1311,7 @@ func (s *OrderModuleTestSuite) TestCloseTimeoutOrders() {
 					id := int64(300 + idx)
 					order, err := s.dao.FindOrderBySN(context.Background(), fmt.Sprintf("OrderSN-close-%d", id))
 					assert.NoError(t, err)
-					assert.Equal(t, int64(domain.OrderStatusExpired), order.Status)
+					assert.Equal(t, domain.StatusExpired.ToUint8(), order.Status)
 				}
 			},
 			req: web.CloseTimeoutOrdersReq{

@@ -50,6 +50,7 @@ func InitModule(db *egorm.Component, cache ecache.Cache, q mq.MQ, paymentSvc pay
 		InitService,
 		InitHandler,
 		initCompleteOrderConsumer,
+		initCloseExpiredOrdersJob,
 	)
 	return new(Module), nil
 }
@@ -82,4 +83,11 @@ func initCompleteOrderConsumer(svc service.Service, q mq.MQ) *event.CompleteOrde
 		panic(err)
 	}
 	return consumer
+}
+
+func initCloseExpiredOrdersJob(svc service.Service) *job.CloseExpiredOrdersJob {
+	minutes := int64(30)
+	seconds := int64(10)
+	limit := int(100)
+	return job.NewCloseExpiredOrdersJob(svc, minutes, seconds, limit)
 }
