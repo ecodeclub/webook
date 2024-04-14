@@ -91,6 +91,7 @@ type ProductSKU struct {
 	// SaleStart    sql.NullInt64   `gorm:"comment:销售开始时间,无限期销售为NULL"`
 	// SaleEnd      sql.NullInt64   `gorm:"comment:销售结束时间,无限期和预售为NULL"`
 	Attrs  sql.NullString `gorm:"comment:商品销售属性,JSON格式"`
+	Image  string         `gorm:"type:varchar(512);not null;comment:商品缩略图,CDN绝对路径"`
 	Status uint8          `gorm:"type:tinyint unsigned;not null;default:1;comment:状态 1=下架 2=上架"`
 	Ctime  int64
 	Utime  int64

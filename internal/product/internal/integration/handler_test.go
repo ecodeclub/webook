@@ -116,6 +116,7 @@ func (s *HandlerTestSuite) TestProductDetail() {
 						StockLimit:   100000000,
 						Status:       domain.StatusOnShelf.ToUint8(),
 						Attrs:        sql.NullString{String: `{"days":7}`, Valid: true},
+						Image:        "image-SKU001",
 					},
 				}
 				for i := 0; i < len(skus); i++ {
@@ -141,6 +142,7 @@ func (s *HandlerTestSuite) TestProductDetail() {
 						StockLimit: 100000000,
 						SaleType:   domain.SaleTypeUnlimited.ToUint8(),
 						Attrs:      `{"days":7}`,
+						Image:      "image-SKU001",
 					},
 				},
 			},
@@ -204,6 +206,7 @@ func (s *HandlerTestSuite) TestProductDetailFailed() {
 						StockLimit:   100000000,
 						Status:       domain.StatusOffShelf.ToUint8(),
 						Attrs:        sql.NullString{String: `{"days":31}`, Valid: true},
+						Image:        "image-SKU002",
 					},
 				}
 				for i := 0; i < len(skus); i++ {
@@ -242,6 +245,7 @@ func (s *HandlerTestSuite) TestProductDetailFailed() {
 						StockLimit:   100000000,
 						Status:       domain.StatusOnShelf.ToUint8(),
 						Attrs:        sql.NullString{String: `{"days":100}`, Valid: true},
+						Image:        "image-SKU003",
 					},
 				}
 				for i := 0; i < len(skus); i++ {
@@ -281,6 +285,7 @@ func (s *HandlerTestSuite) TestProductDetailFailed() {
 						StockLimit:   100000000,
 						Status:       domain.StatusOffShelf.ToUint8(),
 						Attrs:        sql.NullString{String: `{"days":366}`, Valid: true},
+						Image:        "image-SKU004",
 					},
 				}
 				for i := 0; i < len(skus); i++ {

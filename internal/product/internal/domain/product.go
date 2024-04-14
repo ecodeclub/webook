@@ -64,5 +64,6 @@ type SKU struct {
 	// SaleStart int64
 	// SaleEnd   int64
 	Attrs  string
+	Image  string
 	Status Status
 }

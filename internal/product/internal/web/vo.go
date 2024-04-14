@@ -38,6 +38,7 @@ type ProductSKU struct {
 	StockLimit int64  `json:"stockLimit"`
 	SaleType   uint8  `json:"saleType"`
 	Attrs      string `json:"attrs,omitempty"`
+	Image      string `json:"image"`
 	// SaleStart  int64  `json:"saleStart"`
 	// SaleEnd    int64  `json:"saleEnd"`
 }

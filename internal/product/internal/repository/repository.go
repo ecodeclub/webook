@@ -68,6 +68,7 @@ func (p *productRepository) toDomainProduct(spu dao.ProductSPU, sku dao.ProductS
 			StockLimit: sku.StockLimit,
 			SaleType:   domain.SaleType(sku.SaleType),
 			Attrs:      sku.Attrs.String,
+			Image:      sku.Image,
 			Status:     domain.Status(sku.Status),
 		},
 	}
