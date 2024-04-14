@@ -32,7 +32,7 @@ type OrderRepository interface {
 	CancelOrder(ctx context.Context, uid, oid int64) error
 	CompleteOrder(ctx context.Context, uid int64, oid int64) error
 
-	ListExpiredOrders(ctx context.Context, offset, limit int, ctime int64) ([]domain.Order, error)
+	FindExpiredOrders(ctx context.Context, offset, limit int, ctime int64) ([]domain.Order, error)
 	TotalExpiredOrders(ctx context.Context, ctime int64) (int64, error)
 	CloseExpiredOrders(ctx context.Context, orderIDs []int64, ctime int64) error
 }
@@ -153,7 +153,7 @@ func (o *orderRepository) CompleteOrder(ctx context.Context, uid int64, oid int6
 	return o.dao.CompleteOrder(ctx, uid, oid)
 }
 
-func (o *orderRepository) ListExpiredOrders(ctx context.Context, offset, limit int, ctime int64) ([]domain.Order, error) {
+func (o *orderRepository) FindExpiredOrders(ctx context.Context, offset, limit int, ctime int64) ([]domain.Order, error) {
 	os, err := o.dao.FindExpiredOrders(ctx, offset, limit, ctime)
 	if err != nil {
 		return nil, err

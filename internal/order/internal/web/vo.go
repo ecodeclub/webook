@@ -65,18 +65,6 @@ type RetrieveOrderStatusResp struct {
 	OrderStatus uint8 `json:"status"`
 }
 
-// CompleteOrderReq 完成订单
-type CompleteOrderReq struct {
-	OrderSN string `json:"sn"`
-	BuyerID int64  `json:"buyerId"`
-}
-
-// CloseTimeoutOrdersReq 关闭超时订单
-type CloseTimeoutOrdersReq struct {
-	Limit  int   `json:"limit,omitempty"`
-	Minute int64 `json:"minute"`
-}
-
 // ListOrdersReq 分页查询用户所有订单
 type ListOrdersReq struct {
 	Offset int `json:"offset,omitempty"`

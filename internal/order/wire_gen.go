@@ -7,6 +7,7 @@
 package order
 
 import (
+	"context"
 	"sync"
 
 	"github.com/ecodeclub/ecache"
@@ -76,6 +77,7 @@ func initCompleteOrderConsumer(svc2 service4.Service, q mq.MQ) *event.CompleteOr
 	if err != nil {
 		panic(err)
 	}
+	consumer.Start(context.Background())
 	return consumer
 }
 

@@ -18,6 +18,7 @@ package integration
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"sync/atomic"
@@ -25,11 +26,15 @@ import (
 
 	"github.com/ecodeclub/ekit/iox"
 	"github.com/ecodeclub/ginx/session"
+	"github.com/ecodeclub/mq-api"
 	"github.com/ecodeclub/webook/internal/credit"
 	creditmocks "github.com/ecodeclub/webook/internal/credit/mocks"
+	"github.com/ecodeclub/webook/internal/order"
 	"github.com/ecodeclub/webook/internal/order/internal/domain"
 	"github.com/ecodeclub/webook/internal/order/internal/errs"
+	"github.com/ecodeclub/webook/internal/order/internal/event"
 	"github.com/ecodeclub/webook/internal/order/internal/integration/startup"
+	"github.com/ecodeclub/webook/internal/order/internal/job"
 	"github.com/ecodeclub/webook/internal/order/internal/repository/dao"
 	"github.com/ecodeclub/webook/internal/order/internal/web"
 	"github.com/ecodeclub/webook/internal/payment"
@@ -54,7 +59,7 @@ type fakePaymentService struct {
 	counter atomic.Int64
 }
 
-func (f *fakePaymentService) CreatePayment(ctx context.Context, p payment.Payment) (payment.Payment, error) {
+func (f *fakePaymentService) CreatePayment(_ context.Context, p payment.Payment) (payment.Payment, error) {
 	f.counter.Add(1)
 	id := f.counter.Load()
 
@@ -106,14 +111,14 @@ func (f *fakePaymentService) CreatePayment(ctx context.Context, p payment.Paymen
 	return r, nil
 }
 
-func (f *fakePaymentService) GetPaymentChannels(ctx context.Context) []payment.Channel {
+func (f *fakePaymentService) GetPaymentChannels(_ context.Context) []payment.Channel {
 	return []payment.Channel{
 		{Type: 1, Desc: "积分"},
 		{Type: 2, Desc: "微信"},
 	}
 }
 
-func (f *fakePaymentService) FindPaymentByID(ctx context.Context, paymentID int64) (payment.Payment, error) {
+func (f *fakePaymentService) FindPaymentByID(_ context.Context, paymentID int64) (payment.Payment, error) {
 	payments := map[int64]payment.Payment{
 		33: {
 			ID:      33,
@@ -195,7 +200,9 @@ type OrderModuleTestSuite struct {
 	suite.Suite
 	server *egin.Component
 	db     *egorm.Component
+	mq     mq.MQ
 	dao    dao.OrderDAO
+	svc    order.Service
 	ctrl   *gomock.Controller
 }
 
@@ -225,6 +232,8 @@ func (s *OrderModuleTestSuite) SetupSuite() {
 	err = dao.InitTables(s.db)
 	require.NoError(s.T(), err)
 	s.dao = dao.NewOrderGORMDAO(s.db)
+	s.svc = order.InitService(s.db)
+	s.mq = testioc.InitMQ()
 }
 
 func (s *OrderModuleTestSuite) TearDownSuite() {
@@ -702,7 +711,7 @@ func (s *OrderModuleTestSuite) TestHandler_ListOrders() {
 	total := 100
 	for idx := 0; idx < total; idx++ {
 		id := int64(100 + idx)
-		order := dao.Order{
+		orderEntity := dao.Order{
 			Id:                 id,
 			SN:                 fmt.Sprintf("OrderSN-list-%d", id),
 			PaymentId:          id,
@@ -722,7 +731,7 @@ func (s *OrderModuleTestSuite) TestHandler_ListOrders() {
 				Quantity:         1,
 			},
 		}
-		_, err := s.dao.CreateOrder(context.Background(), order, items)
+		_, err := s.dao.CreateOrder(context.Background(), orderEntity, items)
 		require.NoError(s.T(), err)
 	}
 
@@ -1010,9 +1019,9 @@ func (s *OrderModuleTestSuite) TestHandler_CancelOrder() {
 				},
 				after: func(t *testing.T) {
 					t.Helper()
-					order, err := s.dao.FindOrderByUIDAndSN(context.Background(), testUID, "orderSN-44")
+					orderEntity, err := s.dao.FindOrderByUIDAndSN(context.Background(), testUID, "orderSN-44")
 					assert.NoError(t, err)
-					assert.Equal(t, domain.StatusCanceled.ToUint8(), order.Status)
+					assert.Equal(t, domain.StatusCanceled.ToUint8(), orderEntity.Status)
 				},
 				req: web.CancelOrderReq{
 					OrderSN: "orderSN-44",
@@ -1085,22 +1094,21 @@ func (s *OrderModuleTestSuite) TestHandler_CancelOrderFailed() {
 
 func (s *OrderModuleTestSuite) TestConsumer_ConsumeCompleteOrder() {
 	t := s.T()
-	t.Skip()
-}
 
-func (s *OrderModuleTestSuite) TestCompleteOrder() {
+	producer, er := s.mq.Producer("order_complete_events")
+	require.NoError(t, er)
+
 	var testCases = []struct {
 		name string
 
-		before   func(t *testing.T)
-		after    func(t *testing.T)
-		req      web.CompleteOrderReq
-		wantCode int
-		wantResp test.Result[any]
+		before         func(t *testing.T, producer mq.Producer, message *mq.Message)
+		evt            event.CompleteOrderEvent
+		after          func(t *testing.T)
+		errRequireFunc require.ErrorAssertionFunc
 	}{
 		{
 			name: "完成订单成功",
-			before: func(t *testing.T) {
+			before: func(t *testing.T, producer mq.Producer, message *mq.Message) {
 				t.Helper()
 				_, err := s.dao.CreateOrder(context.Background(), dao.Order{
 					SN:        "orderSN-22",
@@ -1119,113 +1127,112 @@ func (s *OrderModuleTestSuite) TestCompleteOrder() {
 					},
 				})
 				require.NoError(t, err)
+
+				_, err = producer.Produce(context.Background(), message)
+				require.NoError(t, err)
+
+				// 模拟重试
+				_, err = producer.Produce(context.Background(), message)
+				require.NoError(t, err)
 			},
-			after: func(t *testing.T) {
-				t.Helper()
-				order, err := s.dao.FindOrderByUIDAndSN(context.Background(), testUID, "orderSN-22")
-				assert.NoError(t, err)
-				assert.Equal(t, domain.StatusCompleted.ToUint8(), order.Status)
-			},
-			req: web.CompleteOrderReq{
+			evt: event.CompleteOrderEvent{
 				OrderSN: "orderSN-22",
 				BuyerID: testUID,
 			},
-			wantCode: 200,
-			wantResp: test.Result[any]{
-				Msg: "OK",
+			after: func(t *testing.T) {
+				t.Helper()
+				orderEntity, err := s.dao.FindOrderByUIDAndSN(context.Background(), testUID, "orderSN-22")
+				assert.NoError(t, err)
+				assert.Equal(t, domain.StatusCompleted.ToUint8(), orderEntity.Status)
 			},
+			errRequireFunc: require.NoError,
+		},
+		{
+			name: "完成订单失败_订单序列号为空",
+			before: func(t *testing.T, producer mq.Producer, message *mq.Message) {
+				_, err := producer.Produce(context.Background(), message)
+				require.NoError(t, err)
+				// 模拟重试
+				_, err = producer.Produce(context.Background(), message)
+				require.NoError(t, err)
+			},
+			evt: event.CompleteOrderEvent{
+				OrderSN: "",
+				BuyerID: testUID,
+			},
+			after:          func(t *testing.T) {},
+			errRequireFunc: require.Error,
+		},
+		{
+			name: "完成订单失败_订单序列号非法",
+			before: func(t *testing.T, producer mq.Producer, message *mq.Message) {
+				_, err := producer.Produce(context.Background(), message)
+				require.NoError(t, err)
+				// 模拟重试
+				_, err = producer.Produce(context.Background(), message)
+				require.NoError(t, err)
+			},
+			evt: event.CompleteOrderEvent{
+				OrderSN: "InvalidOrderSN",
+				BuyerID: testUID,
+			},
+			after:          func(t *testing.T) {},
+			errRequireFunc: require.Error,
+		},
+		{
+			name: "完成订单失败_买家ID非法",
+			before: func(t *testing.T, producer mq.Producer, message *mq.Message) {
+				_, err := producer.Produce(context.Background(), message)
+				require.NoError(t, err)
+				// 模拟重试
+				_, err = producer.Produce(context.Background(), message)
+				require.NoError(t, err)
+			},
+			evt: event.CompleteOrderEvent{
+				OrderSN: "OrderSN-3",
+				BuyerID: 0,
+			},
+			after:          func(t *testing.T) {},
+			errRequireFunc: require.Error,
 		},
 	}
+
+	consumer, err := event.NewCompleteOrderConsumer(s.svc, s.mq)
+	require.NoError(t, err)
+
 	for _, tc := range testCases {
-		s.T().Run(tc.name, func(t *testing.T) {
-			tc.before(t)
-			req, err := http.NewRequest(http.MethodPost,
-				"/order/complete", iox.NewJSONReader(tc.req))
-			req.Header.Set("content-type", "application/json")
-			require.NoError(t, err)
-			recorder := test.NewJSONResponseRecorder[web.RetrieveOrderDetailResp]()
-			s.server.ServeHTTP(recorder, req)
-			require.Equal(t, tc.wantCode, recorder.Code)
+		t.Run(tc.name, func(t *testing.T) {
+			message := s.newOrderCompleteEvent(t, tc.evt)
+			tc.before(t, producer, message)
+
+			err = consumer.Consume(context.Background())
+			tc.errRequireFunc(t, err)
+
+			err = consumer.Consume(context.Background())
+			tc.errRequireFunc(t, err)
+
 			tc.after(t)
 		})
 	}
 }
 
-func (s *OrderModuleTestSuite) TestCompleteOrderFailed() {
-	testCases := []struct {
-		name     string
-		req      web.CompleteOrderReq
-		wantCode int
-		wantResp test.Result[any]
-	}{
-		{
-			name: "订单序列号为空",
-			req: web.CompleteOrderReq{
-				OrderSN: "",
-				BuyerID: testUID,
-			},
-			wantCode: 500,
-			wantResp: test.Result[any]{
-				Code: errs.SystemError.Code,
-				Msg:  errs.SystemError.Msg,
-			},
-		},
-		{
-			name: "订单序列号非法",
-			req: web.CompleteOrderReq{
-				OrderSN: "InvalidOrderSN",
-				BuyerID: testUID,
-			},
-			wantCode: 500,
-			wantResp: test.Result[any]{
-				Code: errs.SystemError.Code,
-				Msg:  errs.SystemError.Msg,
-			},
-		},
-		{
-			name: "买家ID非法",
-			req: web.CompleteOrderReq{
-				OrderSN: "OrderSN-3",
-				BuyerID: 0,
-			},
-			wantCode: 500,
-			wantResp: test.Result[any]{
-				Code: errs.SystemError.Code,
-				Msg:  errs.SystemError.Msg,
-			},
-		},
-	}
-	for _, tc := range testCases {
-		s.T().Run(tc.name, func(t *testing.T) {
-			req, err := http.NewRequest(http.MethodPost,
-				"/order/complete", iox.NewJSONReader(tc.req))
-			req.Header.Set("content-type", "application/json")
-			require.NoError(t, err)
-			recorder := test.NewJSONResponseRecorder[any]()
-			s.server.ServeHTTP(recorder, req)
-			require.Equal(t, tc.wantCode, recorder.Code)
-			assert.Equal(t, tc.wantResp, recorder.MustScan())
-		})
-	}
+func (s *OrderModuleTestSuite) newOrderCompleteEvent(t *testing.T, evt event.CompleteOrderEvent) *mq.Message {
+	t.Helper()
+	marshal, err := json.Marshal(evt)
+	require.NoError(t, err)
+	return &mq.Message{Value: marshal}
 }
 
 func (s *OrderModuleTestSuite) TestJob_CloseTimeoutOrders() {
 	t := s.T()
-	t.Skip()
-}
-
-func (s *OrderModuleTestSuite) TestCloseTimeoutOrders() {
 
 	total := 15
 
 	testCases := []struct {
-		name string
-		req  web.CloseTimeoutOrdersReq
-
-		before   func(t *testing.T)
-		after    func(t *testing.T)
-		wantCode int
-		wantResp test.Result[any]
+		name       string
+		before     func(t *testing.T)
+		getJobFunc func(t *testing.T) *job.CloseExpiredOrdersJob
+		after      func(t *testing.T)
 	}{
 		{
 			name: "关闭超时订单成功_正常情况",
@@ -1233,7 +1240,7 @@ func (s *OrderModuleTestSuite) TestCloseTimeoutOrders() {
 				t.Helper()
 				for idx := 0; idx < total; idx++ {
 					id := int64(200 + idx)
-					order := dao.Order{
+					orderEntity := dao.Order{
 						Id:                 id,
 						SN:                 fmt.Sprintf("OrderSN-close-%d", id),
 						PaymentId:          id,
@@ -1253,26 +1260,22 @@ func (s *OrderModuleTestSuite) TestCloseTimeoutOrders() {
 							Quantity:         1,
 						},
 					}
-					_, err := s.dao.CreateOrder(context.Background(), order, items)
+					_, err := s.dao.CreateOrder(context.Background(), orderEntity, items)
 					require.NoError(s.T(), err)
 				}
+			},
+			getJobFunc: func(t *testing.T) *job.CloseExpiredOrdersJob {
+				t.Helper()
+				return job.NewCloseExpiredOrdersJob(s.svc, 0, 0, 10)
 			},
 			after: func(t *testing.T) {
 				t.Helper()
 				for idx := 0; idx < total; idx++ {
 					id := int64(200 + idx)
-					order, err := s.dao.FindOrderBySN(context.Background(), fmt.Sprintf("OrderSN-close-%d", id))
+					orderEntity, err := s.dao.FindOrderBySN(context.Background(), fmt.Sprintf("OrderSN-close-%d", id))
 					assert.NoError(t, err)
-					assert.Equal(t, domain.StatusExpired.ToUint8(), order.Status)
+					assert.Equal(t, domain.StatusExpired.ToUint8(), orderEntity.Status)
 				}
-			},
-			req: web.CloseTimeoutOrdersReq{
-				Limit:  10,
-				Minute: 0,
-			},
-			wantCode: 200,
-			wantResp: test.Result[any]{
-				Msg: "OK",
 			},
 		},
 		{
@@ -1281,7 +1284,7 @@ func (s *OrderModuleTestSuite) TestCloseTimeoutOrders() {
 				t.Helper()
 				for idx := 0; idx < total; idx++ {
 					id := int64(300 + idx)
-					order := dao.Order{
+					orderEntity := dao.Order{
 						Id:                 id,
 						SN:                 fmt.Sprintf("OrderSN-close-%d", id),
 						PaymentId:          id,
@@ -1301,41 +1304,32 @@ func (s *OrderModuleTestSuite) TestCloseTimeoutOrders() {
 							Quantity:         1,
 						},
 					}
-					_, err := s.dao.CreateOrder(context.Background(), order, items)
+					_, err := s.dao.CreateOrder(context.Background(), orderEntity, items)
 					require.NoError(s.T(), err)
 				}
+			},
+			getJobFunc: func(t *testing.T) *job.CloseExpiredOrdersJob {
+				t.Helper()
+				return job.NewCloseExpiredOrdersJob(s.svc, 0, 0, total)
 			},
 			after: func(t *testing.T) {
 				t.Helper()
 				for idx := 0; idx < total; idx++ {
 					id := int64(300 + idx)
-					order, err := s.dao.FindOrderBySN(context.Background(), fmt.Sprintf("OrderSN-close-%d", id))
+					orderEntity, err := s.dao.FindOrderBySN(context.Background(), fmt.Sprintf("OrderSN-close-%d", id))
 					assert.NoError(t, err)
-					assert.Equal(t, domain.StatusExpired.ToUint8(), order.Status)
+					assert.Equal(t, domain.StatusExpired.ToUint8(), orderEntity.Status)
 				}
-			},
-			req: web.CloseTimeoutOrdersReq{
-				Limit:  total,
-				Minute: 0,
-			},
-			wantCode: 200,
-			wantResp: test.Result[any]{
-				Msg: "OK",
 			},
 		},
 	}
 
 	for _, tc := range testCases {
-		s.T().Run(tc.name, func(t *testing.T) {
+		t.Run(tc.name, func(t *testing.T) {
 			tc.before(t)
-			req, err := http.NewRequest(http.MethodPost,
-				"/order/close", iox.NewJSONReader(tc.req))
-			req.Header.Set("content-type", "application/json")
-			require.NoError(t, err)
-			recorder := test.NewJSONResponseRecorder[any]()
-			s.server.ServeHTTP(recorder, req)
-			require.Equal(t, tc.wantCode, recorder.Code)
-			require.Equal(t, tc.wantResp, recorder.MustScan())
+			j := tc.getJobFunc(t)
+			require.NotZero(t, j.Name())
+			require.NoError(t, j.Run(context.Background()))
 			tc.after(t)
 		})
 	}

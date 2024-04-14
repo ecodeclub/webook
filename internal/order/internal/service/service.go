@@ -99,7 +99,7 @@ func (s *service) FindExpiredOrders(ctx context.Context, offset, limit int, ctim
 	)
 	eg.Go(func() error {
 		var err error
-		os, err = s.repo.ListExpiredOrders(ctx, offset, limit, ctime)
+		os, err = s.repo.FindExpiredOrders(ctx, offset, limit, ctime)
 		return err
 	})
 

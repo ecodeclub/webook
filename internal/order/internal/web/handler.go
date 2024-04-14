@@ -17,7 +17,6 @@ package web
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/ecodeclub/ecache"
 	"github.com/ecodeclub/ekit/slice"
@@ -55,10 +54,6 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g.POST("/list", ginx.BS[ListOrdersReq](h.ListOrders))
 	g.POST("/detail", ginx.BS[RetrieveOrderDetailReq](h.RetrieveOrderDetail))
 	g.POST("/cancel", ginx.BS[CancelOrderReq](h.CancelOrder))
-
-	// todo: 重构为event和cronjob并添加相关测试后,需要去掉下面这两个方法及相关测试
-	g.POST("/complete", ginx.B[CompleteOrderReq](h.CompleteOrder))
-	g.POST("/close", ginx.B[CloseTimeoutOrdersReq](h.CloseTimeoutOrders))
 }
 
 func (h *Handler) PublicRoutes(_ *gin.Engine) {}
@@ -338,53 +333,6 @@ func (h *Handler) CancelOrder(ctx *ginx.Context, req CancelOrderReq, sess sessio
 	err = h.svc.CancelOrder(ctx.Request.Context(), order.BuyerID, order.ID)
 	if err != nil {
 		return systemErrorResult, fmt.Errorf("取消订单失败: %w", err)
-	}
-	return ginx.Result{Msg: "OK"}, nil
-}
-
-// CompleteOrder 完成订单 Consumer调用
-func (h *Handler) CompleteOrder(ctx *ginx.Context, req CompleteOrderReq) (ginx.Result, error) {
-	// todo: 是否加入RequestID去重, 支付模块发送的消息可能重复, 当然订单这边是幂等的
-	//       所以连查询出的order的状态都不用判断(可能是已完成),直接设置为已完成即可
-	order, err := h.svc.FindOrderByUIDAndOrderSN(ctx.Request.Context(), req.BuyerID, req.OrderSN)
-	if err != nil {
-		return systemErrorResult, fmt.Errorf("订单未找到: %w", err)
-	}
-	// todo: 通过消息将paymentID和paymentSN带回给订单模块?
-	// order.PaymentID = req.PaymentID
-	// order.PaymentSN = req.PaymentSN
-	err = h.svc.CompleteOrder(ctx.Request.Context(), order.BuyerID, order.ID)
-	if err != nil {
-		return systemErrorResult, fmt.Errorf("完成订单失败: %w", err)
-	}
-	return ginx.Result{Msg: "OK"}, nil
-}
-
-// CloseTimeoutOrders 关闭超时订单 job定时任务
-func (h *Handler) CloseTimeoutOrders(ctx *ginx.Context, req CloseTimeoutOrdersReq) (ginx.Result, error) {
-	ctime := time.Now().Add(time.Duration(-req.Minute)*time.Minute + 10*time.Second).UnixMilli()
-	for {
-		orders, total, err := h.svc.FindExpiredOrders(ctx.Request.Context(), 0, req.Limit, ctime)
-		if err != nil {
-			return systemErrorResult, fmt.Errorf("获取过期订单失败: %w", err)
-		}
-
-		ids := slice.Map(orders, func(idx int, src domain.Order) int64 {
-			return src.ID
-		})
-
-		err = h.svc.CloseExpiredOrders(ctx.Request.Context(), ids, ctime)
-		if err != nil {
-			return systemErrorResult, fmt.Errorf("关闭过期订单失败: %w", err)
-		}
-
-		if len(orders) < req.Limit {
-			break
-		}
-
-		if int64(req.Limit) >= total {
-			break
-		}
 	}
 	return ginx.Result{Msg: "OK"}, nil
 }

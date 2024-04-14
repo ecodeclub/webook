@@ -52,7 +52,6 @@ func (c *CompleteOrderConsumer) Start(ctx context.Context) {
 			}
 		}
 	}()
-
 }
 
 func (c *CompleteOrderConsumer) Consume(ctx context.Context) error {
@@ -71,8 +70,8 @@ func (c *CompleteOrderConsumer) Consume(ctx context.Context) error {
 	if err != nil {
 		c.logger.Error("订单未找到",
 			elog.FieldErr(err),
-			elog.Int64("buyer_id", evt.BuyerID),
 			elog.String("order_sn", evt.OrderSN),
+			elog.Int64("buyer_id", evt.BuyerID),
 		)
 		return fmt.Errorf("订单未找到: %w", err)
 	}
@@ -81,9 +80,8 @@ func (c *CompleteOrderConsumer) Consume(ctx context.Context) error {
 	if err != nil {
 		c.logger.Warn("完成订单失败",
 			elog.FieldErr(err),
-			elog.Int64("buyer_id", order.BuyerID),
 			elog.Int64("order_id", order.ID),
-		)
+			elog.Int64("buyer_id", order.BuyerID))
 	}
 	return err
 }
