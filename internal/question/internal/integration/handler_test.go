@@ -20,10 +20,14 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strconv"
 	"testing"
 	"time"
 
+	"github.com/ecodeclub/webook/internal/question/internal/domain"
+
 	"github.com/ecodeclub/ekit/sqlx"
+	"github.com/ecodeclub/webook/internal/pkg/middleware"
 
 	"github.com/ecodeclub/ecache"
 	"github.com/ecodeclub/ekit/iox"
@@ -97,15 +101,23 @@ func (s *HandlerTestSuite) SetupSuite() {
 
 	econf.Set("server", map[string]any{"contextTimeout": "1s"})
 	server := egin.Load("server").Build()
+
+	handler.PublicRoutes(server.Engine)
+	questionSetHandler.PublicRoutes(server.Engine)
 	server.Use(func(ctx *gin.Context) {
 		ctx.Set("_session", session.NewMemorySession(session.Claims{
-			Uid:  uid,
-			Data: map[string]string{"creator": "true"},
+			Uid: uid,
+			Data: map[string]string{
+				"creator":   "true",
+				"memberDDL": strconv.FormatInt(time.Now().Add(time.Hour).UnixMilli(), 10),
+			},
 		}))
 	})
 	handler.PrivateRoutes(server.Engine)
-	handler.PublicRoutes(server.Engine)
 	questionSetHandler.PrivateRoutes(server.Engine)
+	server.Use(middleware.NewCheckMembershipMiddlewareBuilder(nil).Build())
+	handler.MemberRoutes(server.Engine)
+	questionSetHandler.MemberRoutes(server.Engine)
 
 	s.server = server
 	s.db = testioc.InitDB()
@@ -141,12 +153,29 @@ func (s *HandlerTestSuite) TestSave() {
 					Uid:     uid,
 					Title:   "面试题1",
 					Content: "面试题内容",
+					Status:  domain.UnPublishedStatus.ToUint8(),
 					Labels: sqlx.JsonColumn[[]string]{
 						Valid: true,
 						Val:   []string{"MySQL"},
 					},
 				}, q)
 				assert.Equal(t, 4, len(eles))
+				wantEles := []dao.AnswerElement{
+					s.buildDAOAnswerEle(1, 0, dao.AnswerElementTypeAnalysis),
+					s.buildDAOAnswerEle(1, 1, dao.AnswerElementTypeBasic),
+					s.buildDAOAnswerEle(1, 2, dao.AnswerElementTypeIntermedia),
+					s.buildDAOAnswerEle(1, 3, dao.AnswerElementTypeAdvanced),
+				}
+				for i := range eles {
+					ele := &(eles[i])
+					assert.True(t, ele.Id > 0)
+					assert.True(t, ele.Ctime > 0)
+					assert.True(t, ele.Utime > 0)
+					ele.Id = 0
+					ele.Ctime = 0
+					ele.Utime = 0
+				}
+				assert.ElementsMatch(t, wantEles, eles)
 			},
 			req: web.SaveReq{
 				Question: web.Question{
@@ -175,6 +204,7 @@ func (s *HandlerTestSuite) TestSave() {
 					Uid:     uid,
 					Title:   "老的标题",
 					Content: "老的内容",
+					Status:  domain.UnPublishedStatus.ToUint8(),
 					Ctime:   123,
 					Utime:   234,
 				}).Error
@@ -200,6 +230,7 @@ func (s *HandlerTestSuite) TestSave() {
 				require.NoError(t, err)
 				s.assertQuestion(t, dao.Question{
 					Uid:     uid,
+					Status:  domain.UnPublishedStatus.ToUint8(),
 					Title:   "面试题1",
 					Content: "新的内容",
 				}, q)
@@ -241,59 +272,6 @@ func (s *HandlerTestSuite) TestSave() {
 				Data: 2,
 			},
 		},
-		//{
-		//	name: "非法访问",
-		//	before: func(t *testing.T) {
-		//		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-		//		defer cancel()
-		//		err := s.db.WithContext(ctx).Create(&dao.Question{
-		//			Id:      3,
-		//			Uid:     234,
-		//			Title:   "老的标题",
-		//			Content: "老的内容",
-		//			Ctime:   123,
-		//			Utime:   234,
-		//		}).Error
-		//		require.NoError(t, err)
-		//	},
-		//	after: func(t *testing.T) {
-		//		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-		//		defer cancel()
-		//		q, _, err := s.dao.GetByID(ctx, 3)
-		//		require.NoError(t, err)
-		//		s.assertQuestion(t, dao.Question{
-		//			Uid:     234,
-		//			Title:   "老的标题",
-		//			Content: "老的内容",
-		//		}, q)
-		//	},
-		//	req: func() web.SaveReq {
-		//		analysis := web.AnswerElement{
-		//			Id:        1,
-		//			Content:   "新的分析",
-		//			Keywords:  "新的 keyword",
-		//			Shorthand: "新的速记",
-		//			Highlight: "新的亮点",
-		//			Guidance:  "新的引导点",
-		//		}
-		//		return web.SaveReq{
-		//			Question: web.Question{
-		//				Id:           3,
-		//				Title:        "面试题1",
-		//				Content:      "新的内容",
-		//				Analysis:     analysis,
-		//				Basic:        s.buildAnswerEle(1),
-		//				Intermediate: s.buildAnswerEle(2),
-		//				Advanced:     s.buildAnswerEle(3),
-		//			},
-		//		}
-		//	}(),
-		//	wantCode: 500,
-		//	wantResp: test.Result[int64]{
-		//		Code: 502001,
-		//		Msg:  "系统错误",
-		//	},
-		//},
 	}
 
 	for _, tc := range testCases {
@@ -323,6 +301,7 @@ func (s *HandlerTestSuite) TestList() {
 	for idx := 0; idx < 100; idx++ {
 		data = append(data, dao.PublishQuestion{
 			Uid:     uid,
+			Status:  domain.UnPublishedStatus.ToUint8(),
 			Title:   fmt.Sprintf("这是标题 %d", idx),
 			Content: fmt.Sprintf("这是解析 %d", idx),
 		})
@@ -351,13 +330,15 @@ func (s *HandlerTestSuite) TestList() {
 							Id:      100,
 							Title:   "这是标题 99",
 							Content: "这是解析 99",
-							Utime:   time.UnixMilli(0).Format(time.DateTime),
+							Status:  domain.UnPublishedStatus.ToUint8(),
+							Utime:   0,
 						},
 						{
 							Id:      99,
 							Title:   "这是标题 98",
 							Content: "这是解析 98",
-							Utime:   time.UnixMilli(0).Format(time.DateTime),
+							Status:  domain.UnPublishedStatus.ToUint8(),
+							Utime:   0,
 						},
 					},
 				},
@@ -378,7 +359,8 @@ func (s *HandlerTestSuite) TestList() {
 							Id:      1,
 							Title:   "这是标题 0",
 							Content: "这是解析 0",
-							Utime:   time.UnixMilli(0).Format(time.DateTime),
+							Status:  domain.UnPublishedStatus.ToUint8(),
+							Utime:   0,
 						},
 					},
 				},
@@ -400,7 +382,7 @@ func (s *HandlerTestSuite) TestList() {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-	_, err = s.rdb.Delete(ctx, "webook:question:total")
+	_, err = s.rdb.Delete(ctx, "question:total")
 	require.NoError(s.T(), err)
 }
 
@@ -428,6 +410,7 @@ func (s *HandlerTestSuite) TestSync() {
 				s.assertQuestion(t, dao.Question{
 					Uid:     uid,
 					Title:   "面试题1",
+					Status:  domain.PublishedStatus.ToUint8(),
 					Content: "面试题内容",
 				}, dao.Question(q))
 				assert.Equal(t, 4, len(eles))
@@ -458,8 +441,9 @@ func (s *HandlerTestSuite) TestSync() {
 					Uid:     uid,
 					Title:   "老的标题",
 					Content: "老的内容",
-					Ctime:   123,
-					Utime:   234,
+
+					Ctime: 123,
+					Utime: 234,
 				}).Error
 				require.NoError(t, err)
 				err = s.db.Create(&dao.AnswerElement{
@@ -483,6 +467,7 @@ func (s *HandlerTestSuite) TestSync() {
 				require.NoError(t, err)
 				s.assertQuestion(t, dao.Question{
 					Uid:     uid,
+					Status:  domain.PublishedStatus.ToUint8(),
 					Title:   "面试题1",
 					Content: "新的内容",
 				}, q)
@@ -502,6 +487,7 @@ func (s *HandlerTestSuite) TestSync() {
 
 				s.assertQuestion(t, dao.Question{
 					Uid:     uid,
+					Status:  domain.PublishedStatus.ToUint8(),
 					Title:   "面试题1",
 					Content: "新的内容",
 				}, dao.Question(pq))
@@ -573,6 +559,7 @@ func (s *HandlerTestSuite) TestPubDetail() {
 		data = append(data, dao.PublishQuestion{
 			Id:      int64(idx + 1),
 			Uid:     uid,
+			Status:  domain.PublishedStatus.ToUint8(),
 			Title:   fmt.Sprintf("这是标题 %d", idx),
 			Content: fmt.Sprintf("这是解析 %d", idx),
 		})
@@ -596,8 +583,9 @@ func (s *HandlerTestSuite) TestPubDetail() {
 				Data: web.Question{
 					Id:      2,
 					Title:   "这是标题 1",
+					Status:  domain.PublishedStatus.ToUint8(),
 					Content: "这是解析 1",
-					Utime:   time.UnixMilli(0).Format(time.DateTime),
+					Utime:   0,
 				},
 			},
 		},
@@ -613,6 +601,21 @@ func (s *HandlerTestSuite) TestPubDetail() {
 			require.Equal(t, tc.wantCode, recorder.Code)
 			assert.Equal(t, tc.wantResp, recorder.MustScan())
 		})
+	}
+}
+
+func (s *HandlerTestSuite) buildDAOAnswerEle(
+	qid int64,
+	idx int,
+	typ uint8) dao.AnswerElement {
+	return dao.AnswerElement{
+		Qid:       qid,
+		Type:      typ,
+		Content:   fmt.Sprintf("这是解析 %d", idx),
+		Keywords:  fmt.Sprintf("关键字 %d", idx),
+		Shorthand: fmt.Sprintf("快速记忆法 %d", idx),
+		Highlight: fmt.Sprintf("亮点 %d", idx),
+		Guidance:  fmt.Sprintf("引导点 %d", idx),
 	}
 }
 
@@ -787,6 +790,7 @@ func (s *HandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 						Id:      4,
 						Uid:     uid + 1,
 						Title:   "oss问题1",
+						Status:  domain.UnPublishedStatus.ToUint8(),
 						Content: "oss问题1",
 						Ctime:   123,
 						Utime:   234,
@@ -794,6 +798,7 @@ func (s *HandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 					{
 						Id:      5,
 						Uid:     uid + 2,
+						Status:  domain.UnPublishedStatus.ToUint8(),
 						Title:   "oss问题2",
 						Content: "oss问题2",
 						Ctime:   1234,
@@ -801,7 +806,7 @@ func (s *HandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 					},
 				}
 				for _, q := range questions {
-					require.NoError(t, s.db.WithContext(ctx).Create(q).Error)
+					require.NoError(t, s.db.WithContext(ctx).Create(&q).Error)
 				}
 
 				// 题集中题目为0
@@ -818,11 +823,13 @@ func (s *HandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 				expected := []dao.Question{
 					{
 						Uid:     uid + 1,
+						Status:  domain.UnPublishedStatus.ToUint8(),
 						Title:   "oss问题1",
 						Content: "oss问题1",
 					},
 					{
 						Uid:     uid + 2,
+						Status:  domain.UnPublishedStatus.ToUint8(),
 						Title:   "oss问题2",
 						Content: "oss问题2",
 					},
@@ -867,6 +874,7 @@ func (s *HandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 					{
 						Id:      14,
 						Uid:     uid + 1,
+						Status:  domain.UnPublishedStatus.ToUint8(),
 						Title:   "Go问题1",
 						Content: "Go问题1",
 						Ctime:   123,
@@ -875,6 +883,7 @@ func (s *HandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 					{
 						Id:      15,
 						Uid:     uid + 2,
+						Status:  domain.UnPublishedStatus.ToUint8(),
 						Title:   "Go问题2",
 						Content: "Go问题2",
 						Ctime:   1234,
@@ -883,6 +892,7 @@ func (s *HandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 					{
 						Id:      16,
 						Uid:     uid + 3,
+						Status:  domain.UnPublishedStatus.ToUint8(),
 						Title:   "Go问题3",
 						Content: "Go问题3",
 						Ctime:   1234,
@@ -890,7 +900,7 @@ func (s *HandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 					},
 				}
 				for _, q := range questions {
-					require.NoError(t, s.db.WithContext(ctx).Create(q).Error)
+					require.NoError(t, s.db.WithContext(ctx).Create(&q).Error)
 				}
 
 				require.NoError(t, s.questionSetDAO.UpdateQuestionsByID(ctx, id, []int64{14}))
@@ -909,16 +919,19 @@ func (s *HandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 				expected := []dao.Question{
 					{
 						Uid:     uid + 1,
+						Status:  domain.UnPublishedStatus.ToUint8(),
 						Title:   "Go问题1",
 						Content: "Go问题1",
 					},
 					{
 						Uid:     uid + 2,
+						Status:  domain.UnPublishedStatus.ToUint8(),
 						Title:   "Go问题2",
 						Content: "Go问题2",
 					},
 					{
 						Uid:     uid + 3,
+						Status:  domain.UnPublishedStatus.ToUint8(),
 						Title:   "Go问题3",
 						Content: "Go问题3",
 					},
@@ -986,7 +999,7 @@ func (s *HandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 					},
 				}
 				for _, q := range questions {
-					require.NoError(t, s.db.WithContext(ctx).Create(q).Error)
+					require.NoError(t, s.db.WithContext(ctx).Create(&q).Error)
 				}
 
 				require.NoError(t, s.questionSetDAO.UpdateQuestionsByID(ctx, id, []int64{214, 215, 216}))
@@ -1035,6 +1048,7 @@ func (s *HandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 					{
 						Id:      314,
 						Uid:     uid + 1,
+						Status:  domain.UnPublishedStatus.ToUint8(),
 						Title:   "Go问题1",
 						Content: "Go问题1",
 						Ctime:   123,
@@ -1043,6 +1057,7 @@ func (s *HandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 					{
 						Id:      315,
 						Uid:     uid + 2,
+						Status:  domain.UnPublishedStatus.ToUint8(),
 						Title:   "Go问题2",
 						Content: "Go问题2",
 						Ctime:   1234,
@@ -1051,6 +1066,7 @@ func (s *HandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 					{
 						Id:      316,
 						Uid:     uid + 2,
+						Status:  domain.UnPublishedStatus.ToUint8(),
 						Title:   "Go问题3",
 						Content: "Go问题3",
 						Ctime:   1234,
@@ -1058,7 +1074,7 @@ func (s *HandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 					},
 				}
 				for _, q := range questions {
-					require.NoError(t, s.db.WithContext(ctx).Create(q).Error)
+					require.NoError(t, s.db.WithContext(ctx).Create(&q).Error)
 				}
 
 				require.NoError(t, s.questionSetDAO.UpdateQuestionsByID(ctx, id, []int64{314, 315, 316}))
@@ -1077,6 +1093,7 @@ func (s *HandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 				require.Equal(t, 1, len(qs))
 				s.assertQuestion(t, dao.Question{
 					Uid:     uid + 2,
+					Status:  domain.UnPublishedStatus.ToUint8(),
 					Title:   "Go问题2",
 					Content: "Go问题2",
 				}, qs[0])
@@ -1112,6 +1129,7 @@ func (s *HandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 					{
 						Id:      414,
 						Uid:     uid + 1,
+						Status:  domain.UnPublishedStatus.ToUint8(),
 						Title:   "Go问题1",
 						Content: "Go问题1",
 						Ctime:   123,
@@ -1120,6 +1138,7 @@ func (s *HandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 					{
 						Id:      415,
 						Uid:     uid + 2,
+						Status:  domain.UnPublishedStatus.ToUint8(),
 						Title:   "Go问题2",
 						Content: "Go问题2",
 						Ctime:   1234,
@@ -1128,6 +1147,7 @@ func (s *HandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 					{
 						Id:      416,
 						Uid:     uid + 3,
+						Status:  domain.UnPublishedStatus.ToUint8(),
 						Title:   "Go问题3",
 						Content: "Go问题3",
 						Ctime:   1234,
@@ -1136,6 +1156,7 @@ func (s *HandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 					{
 						Id:      417,
 						Uid:     uid + 4,
+						Status:  domain.UnPublishedStatus.ToUint8(),
 						Title:   "Go问题4",
 						Content: "Go问题4",
 						Ctime:   1234,
@@ -1143,7 +1164,7 @@ func (s *HandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 					},
 				}
 				for _, q := range questions {
-					require.NoError(t, s.db.WithContext(ctx).Create(q).Error)
+					require.NoError(t, s.db.WithContext(ctx).Create(&q).Error)
 				}
 
 				qids := []int64{414, 415}
@@ -1161,16 +1182,19 @@ func (s *HandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 				expected := []dao.Question{
 					{
 						Uid:     uid + 2,
+						Status:  domain.UnPublishedStatus.ToUint8(),
 						Title:   "Go问题2",
 						Content: "Go问题2",
 					},
 					{
 						Uid:     uid + 3,
+						Status:  domain.UnPublishedStatus.ToUint8(),
 						Title:   "Go问题3",
 						Content: "Go问题3",
 					},
 					{
 						Uid:     uid + 4,
+						Status:  domain.UnPublishedStatus.ToUint8(),
 						Title:   "Go问题4",
 						Content: "Go问题4",
 					},
@@ -1207,7 +1231,7 @@ func (s *HandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 			wantCode: 500,
 			wantResp: test.Result[int64]{Code: 502001, Msg: "系统错误"},
 		},
-		//{
+		// {
 		//	name: "当前用户并非题集的创建者",
 		//	before: func(t *testing.T) {
 		//		t.Helper()
@@ -1234,7 +1258,7 @@ func (s *HandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 		//	},
 		//	wantCode: 500,
 		//	wantResp: test.Result[int64]{Code: 502001, Msg: "系统错误"},
-		//},
+		// },
 	}
 
 	for _, tc := range testCases {
@@ -1256,7 +1280,6 @@ func (s *HandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 func (s *HandlerTestSuite) TestQuestionSet_RetrieveQuestionSetDetail() {
 
 	now := time.Now().UnixMilli()
-	formattedUtime := time.Unix(0, now*int64(time.Millisecond)).Format(time.DateTime)
 
 	testCases := []struct {
 		name   string
@@ -1298,7 +1321,7 @@ func (s *HandlerTestSuite) TestQuestionSet_RetrieveQuestionSetDetail() {
 					Id:          321,
 					Title:       "Go",
 					Description: "Go题集",
-					Utime:       formattedUtime,
+					Utime:       now,
 				},
 			},
 		},
@@ -1349,7 +1372,7 @@ func (s *HandlerTestSuite) TestQuestionSet_RetrieveQuestionSetDetail() {
 					},
 				}
 				for _, q := range questions {
-					require.NoError(t, s.db.WithContext(ctx).Create(q).Error)
+					require.NoError(t, s.db.WithContext(ctx).Create(&q).Error)
 				}
 
 				qids := []int64{614, 615, 616}
@@ -1377,22 +1400,19 @@ func (s *HandlerTestSuite) TestQuestionSet_RetrieveQuestionSetDetail() {
 							Id:      614,
 							Title:   "Go问题1",
 							Content: "Go问题1",
-							Utime:   formattedUtime,
 						},
 						{
 							Id:      615,
 							Title:   "Go问题2",
 							Content: "Go问题2",
-							Utime:   formattedUtime,
 						},
 						{
 							Id:      616,
 							Title:   "Go问题3",
 							Content: "Go问题3",
-							Utime:   formattedUtime,
 						},
 					},
-					Utime: formattedUtime,
+					Utime: now,
 				},
 			},
 		},
@@ -1438,7 +1458,7 @@ func (s *HandlerTestSuite) TestQuestionSet_RetrieveQuestionSetDetail_Failed() {
 			wantCode: 500,
 			wantResp: test.Result[int64]{Code: 502001, Msg: "系统错误"},
 		},
-		//{
+		// {
 		//	name: "题集ID非法_题集ID与UID不匹配",
 		//	before: func(t *testing.T) {
 		//		t.Helper()
@@ -1464,7 +1484,7 @@ func (s *HandlerTestSuite) TestQuestionSet_RetrieveQuestionSetDetail_Failed() {
 		//	},
 		//	wantCode: 500,
 		//	wantResp: test.Result[int64]{Code: 502001, Msg: "系统错误"},
-		//},
+		// },
 	}
 	for _, tc := range testCases {
 		s.T().Run(tc.name, func(t *testing.T) {
@@ -1520,13 +1540,13 @@ func (s *HandlerTestSuite) TestQuestionSet_ListPrivateQuestionSets() {
 							Id:          100,
 							Title:       "题集标题 99",
 							Description: "题集简介 99",
-							Utime:       time.UnixMilli(0).Format(time.DateTime),
+							Utime:       0,
 						},
 						{
 							Id:          99,
 							Title:       "题集标题 98",
 							Description: "题集简介 98",
-							Utime:       time.UnixMilli(0).Format(time.DateTime),
+							Utime:       0,
 						},
 					},
 				},
@@ -1547,7 +1567,7 @@ func (s *HandlerTestSuite) TestQuestionSet_ListPrivateQuestionSets() {
 							Id:          1,
 							Title:       "题集标题 0",
 							Description: "题集简介 0",
-							Utime:       time.UnixMilli(0).Format(time.DateTime),
+							Utime:       0,
 						},
 					},
 				},
@@ -1607,13 +1627,13 @@ func (s *HandlerTestSuite) TestQuestionSet_ListAllQuestionSets() {
 							Id:          100,
 							Title:       "题集标题 99",
 							Description: "题集简介 99",
-							Utime:       time.UnixMilli(0).Format(time.DateTime),
+							Utime:       0,
 						},
 						{
 							Id:          99,
 							Title:       "题集标题 98",
 							Description: "题集简介 98",
-							Utime:       time.UnixMilli(0).Format(time.DateTime),
+							Utime:       0,
 						},
 					},
 				},
@@ -1634,7 +1654,7 @@ func (s *HandlerTestSuite) TestQuestionSet_ListAllQuestionSets() {
 							Id:          1,
 							Title:       "题集标题 0",
 							Description: "题集简介 0",
-							Utime:       time.UnixMilli(0).Format(time.DateTime),
+							Utime:       0,
 						},
 					},
 				},

@@ -1,9 +1,24 @@
+// Copyright 2023 ecodeclub
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package service
 
 import (
 	"context"
 	"errors"
 
+	"github.com/ecodeclub/webook/internal/user/internal/event"
 	"github.com/lithammer/shortuuid/v4"
 
 	"github.com/ecodeclub/webook/internal/user/internal/domain"
@@ -24,14 +39,16 @@ type UserService interface {
 }
 
 type userService struct {
-	repo   repository.UserRepository
-	logger *elog.Component
+	repo     repository.UserRepository
+	producer *event.RegistrationEventProducer
+	logger   *elog.Component
 }
 
-func NewUserService(repo repository.UserRepository) UserService {
+func NewUserService(repo repository.UserRepository, p *event.RegistrationEventProducer) UserService {
 	return &userService{
-		repo:   repo,
-		logger: elog.DefaultLogger,
+		repo:     repo,
+		producer: p,
+		logger:   elog.DefaultLogger,
 	}
 }
 
@@ -54,10 +71,25 @@ func (svc *userService) FindOrCreateByWechat(ctx context.Context,
 		SN:         sn,
 		Nickname:   sn[:4],
 	})
+
+	if err != nil {
+		return domain.User{}, err
+	}
+
+	// 发送注册成功消息
+	evt := event.RegistrationEvent{Uid: id}
+	if e := svc.producer.Produce(ctx, evt); e != nil {
+		svc.logger.Error("发送注册成功消息失败",
+			elog.FieldErr(e),
+			elog.FieldKey("event"),
+			elog.FieldValueAny(evt),
+		)
+	}
+
 	return domain.User{
 		Id:         id,
 		WechatInfo: info,
-	}, err
+	}, nil
 }
 
 func (svc *userService) Profile(ctx context.Context,

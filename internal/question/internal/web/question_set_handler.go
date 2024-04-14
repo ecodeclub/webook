@@ -28,6 +28,8 @@ import (
 	"github.com/gotomicro/ego/core/elog"
 )
 
+var _ ginx.Handler = (*QuestionSetHandler)(nil)
+
 type QuestionSetHandler struct {
 	dm2vo  copier.Copier[domain.QuestionSet, QuestionSet]
 	svc    service.QuestionSetService
@@ -50,6 +52,8 @@ func NewQuestionSetHandler(svc service.QuestionSetService) (*QuestionSetHandler,
 	}, nil
 }
 
+func (h *QuestionSetHandler) PublicRoutes(server *gin.Engine) {}
+
 func (h *QuestionSetHandler) PrivateRoutes(server *gin.Engine) {
 	g := server.Group("/question-sets")
 	g.POST("/save", ginx.BS[SaveQuestionSetReq](h.SaveQuestionSet))
@@ -57,7 +61,10 @@ func (h *QuestionSetHandler) PrivateRoutes(server *gin.Engine) {
 	g.POST("/list", ginx.B[Page](h.ListPrivateQuestionSets))
 	g.POST("/detail", ginx.B[QuestionSetID](h.RetrieveQuestionSetDetail))
 
-	g.POST("/pub/list", ginx.B[Page](h.ListAllQuestionSets))
+}
+
+func (h *QuestionSetHandler) MemberRoutes(server *gin.Engine) {
+	server.POST("/question-sets/pub/list", ginx.B[Page](h.ListAllQuestionSets))
 }
 
 // SaveQuestionSet 保存
@@ -112,8 +119,8 @@ func (h *QuestionSetHandler) toQuestionSetList(data []domain.QuestionSet, total 
 			dm2vo, _ := copier.NewReflectCopier[domain.QuestionSet, QuestionSet](
 				// 忽略题集中的问题列表
 				copier.IgnoreFields("Questions"),
-				copier.ConvertField[time.Time, string]("Utime", converter.ConverterFunc[time.Time, string](func(src time.Time) (string, error) {
-					return src.Format(time.DateTime), nil
+				copier.ConvertField[time.Time, int64]("Utime", converter.ConverterFunc[time.Time, int64](func(src time.Time) (int64, error) {
+					return src.UnixMilli(), nil
 				})),
 			)
 			dst, err := dm2vo.Copy(&src)
@@ -154,7 +161,7 @@ func (h *QuestionSetHandler) toQuestionSetVO(set domain.QuestionSet) QuestionSet
 		Title:       set.Title,
 		Description: set.Description,
 		Questions:   h.toQuestionVO(set.Questions),
-		Utime:       set.Utime.Format(time.DateTime),
+		Utime:       set.Utime.UnixMilli(),
 	}
 }
 

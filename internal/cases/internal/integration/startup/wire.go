@@ -17,7 +17,7 @@
 package startup
 
 import (
-	baguwen "github.com/ecodeclub/webook/internal/cases"
+	"github.com/ecodeclub/webook/internal/cases"
 	"github.com/ecodeclub/webook/internal/cases/internal/web"
 
 	testioc "github.com/ecodeclub/webook/internal/test/ioc"
@@ -25,6 +25,7 @@ import (
 )
 
 func InitHandler() (*web.Handler, error) {
-	wire.Build(testioc.BaseSet, baguwen.InitHandler)
+	wire.Build(testioc.BaseSet, cases.InitModule,
+		wire.FieldsOf(new(*cases.Module), "Hdl"))
 	return new(web.Handler), nil
 }

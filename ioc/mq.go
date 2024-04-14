@@ -15,42 +15,56 @@
 package ioc
 
 import (
-	"context"
-	"fmt"
+	"sync"
 	"time"
 
+	"github.com/ecodeclub/ekit/retry"
 	"github.com/ecodeclub/mq-api"
 	"github.com/ecodeclub/mq-api/kafka"
 	"github.com/gotomicro/ego/core/econf"
 )
 
+var (
+	q          mq.MQ
+	mqInitOnce sync.Once
+)
+
 func InitMQ() mq.MQ {
+	mqInitOnce.Do(func() {
+		const maxInterval = 10 * time.Second
+		const maxRetries = 10
+		strategy, err := retry.NewExponentialBackoffRetryStrategy(time.Second, maxInterval, maxRetries)
+		if err != nil {
+			panic(err)
+		}
+		for {
+			q, err = initMQ()
+			if err == nil {
+				break
+			}
+			next, ok := strategy.Next()
+			if !ok {
+				panic("InitMQ 重试失败......")
+			}
+			time.Sleep(next)
+		}
+	})
+	return q
+}
+
+func initMQ() (mq.MQ, error) {
 	type Config struct {
 		Network   string   `yaml:"network"`
 		Addresses []string `yaml:"addresses"`
-		Topics    []struct {
-			Name       string `yaml:"name"`
-			Partitions int    `yaml:"partitions"`
-		} `yaml:"topics"`
 	}
-
 	var cfg Config
 	err := econf.UnmarshalKey("kafka", &cfg)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
-
-	q, err := kafka.NewMQ(cfg.Network, cfg.Addresses)
+	qq, err := kafka.NewMQ(cfg.Network, cfg.Addresses)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
-
-	ctx, cancelFunc := context.WithTimeout(context.Background(), 15*time.Second)
-	defer cancelFunc()
-	for i := 0; i < len(cfg.Topics); i++ {
-		if e := q.CreateTopic(ctx, cfg.Topics[i].Name, cfg.Topics[i].Partitions); e != nil {
-			panic(fmt.Sprintf("创建Topic失败: %s : Topic = %s, Partitions = %d", e.Error(), cfg.Topics[i].Name, cfg.Topics[i].Partitions))
-		}
-	}
-	return q
+	return qq, nil
 }

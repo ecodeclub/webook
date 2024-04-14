@@ -27,8 +27,8 @@ type Case struct {
 	Highlight string `json:"highlight,omitempty"`
 	// 引导点
 	Guidance string `json:"guidance,omitempty"`
-
-	Utime string `json:"utime,omitempty"`
+	Status   uint8  `json:"status,omitempty"`
+	Utime    int64  `json:"utime,omitempty"`
 }
 
 type CaseId struct {

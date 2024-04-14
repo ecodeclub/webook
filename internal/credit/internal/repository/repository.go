@@ -14,5 +14,81 @@
 
 package repository
 
+import (
+	"context"
+
+	"github.com/ecodeclub/ekit/slice"
+	"github.com/ecodeclub/webook/internal/credit/internal/domain"
+	"github.com/ecodeclub/webook/internal/credit/internal/repository/dao"
+)
+
 type CreditRepository interface {
+	AddCredits(ctx context.Context, credit domain.Credit) error
+	GetCreditByUID(ctx context.Context, uid int64) (domain.Credit, error)
+	TryDeductCredits(ctx context.Context, credit domain.Credit) (int64, error)
+	ConfirmDeductCredits(ctx context.Context, uid, tid int64) error
+	CancelDeductCredits(ctx context.Context, uid, tid int64) error
+}
+
+type creditRepository struct {
+	dao dao.CreditDAO
+}
+
+func NewCreditRepository(dao dao.CreditDAO) CreditRepository {
+	return &creditRepository{dao: dao}
+}
+
+func (r *creditRepository) AddCredits(ctx context.Context, credit domain.Credit) error {
+	cl := r.toCreditLogsEntity(credit.Logs)
+	_, err := r.dao.Upsert(ctx, credit.Uid, credit.ChangeAmount, cl[0])
+	return err
+}
+
+func (r *creditRepository) toCreditLogsEntity(cl []domain.CreditLog) []dao.CreditLog {
+	return slice.Map(cl, func(idx int, src domain.CreditLog) dao.CreditLog {
+		return dao.CreditLog{
+			Key:   src.Key,
+			BizId: src.BizId,
+			Biz:   src.Biz,
+			Desc:  src.Action,
+		}
+	})
+}
+
+func (r *creditRepository) GetCreditByUID(ctx context.Context, uid int64) (domain.Credit, error) {
+	c, err := r.dao.FindCreditByUID(ctx, uid)
+	if err != nil {
+		return domain.Credit{}, err
+	}
+	cl, err := r.dao.FindCreditLogsByUID(ctx, uid)
+	return r.toDomain(c, cl), err
+}
+
+func (r *creditRepository) toDomain(d dao.Credit, l []dao.CreditLog) domain.Credit {
+	return domain.Credit{
+		Uid:         d.Uid,
+		TotalAmount: d.TotalCredits,
+		Logs: slice.Map(l, func(idx int, src dao.CreditLog) domain.CreditLog {
+			return domain.CreditLog{
+				Key:    src.Key,
+				BizId:  src.BizId,
+				Biz:    src.Biz,
+				Action: src.Desc,
+			}
+		}),
+	}
+}
+
+func (r *creditRepository) TryDeductCredits(ctx context.Context, credit domain.Credit) (int64, error) {
+	cl := r.toCreditLogsEntity(credit.Logs)
+	id, err := r.dao.CreateCreditLockLog(ctx, credit.Uid, credit.ChangeAmount, cl[0])
+	return id, err
+}
+
+func (r *creditRepository) ConfirmDeductCredits(ctx context.Context, uid, tid int64) error {
+	return r.dao.ConfirmCreditLockLog(ctx, uid, tid)
+}
+
+func (r *creditRepository) CancelDeductCredits(ctx context.Context, uid, tid int64) error {
+	return r.dao.CancelCreditLockLog(ctx, uid, tid)
 }

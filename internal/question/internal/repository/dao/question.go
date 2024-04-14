@@ -37,10 +37,18 @@ type QuestionDAO interface {
 	PubList(ctx context.Context, offset int, limit int) ([]PublishQuestion, error)
 	PubCount(ctx context.Context) (int64, error)
 	GetPubByID(ctx context.Context, qid int64) (PublishQuestion, []PublishAnswerElement, error)
+	GetPubByIDs(ctx context.Context, qids []int64) ([]PublishQuestion, error)
 }
 
 type GORMQuestionDAO struct {
 	db *egorm.Component
+}
+
+func (g *GORMQuestionDAO) GetPubByIDs(ctx context.Context, qids []int64) ([]PublishQuestion, error) {
+	var qs []PublishQuestion
+	db := g.db.WithContext(ctx)
+	err := db.Where("id IN ?", qids).Find(&qs).Error
+	return qs, err
 }
 
 func (g *GORMQuestionDAO) GetPubByID(ctx context.Context, qid int64) (PublishQuestion, []PublishAnswerElement, error) {
@@ -63,6 +71,7 @@ func (g *GORMQuestionDAO) Update(ctx context.Context, q Question, eles []AnswerE
 			"title":   q.Title,
 			"content": q.Content,
 			"utime":   now,
+			"status":  q.Status,
 		})
 		if res.Error != nil {
 			return res.Error
@@ -77,6 +86,7 @@ func (g *GORMQuestionDAO) update(tx *gorm.DB, q Question, eles []AnswerElement) 
 	res := tx.Model(&q).Where("id = ?", q.Id).Updates(map[string]any{
 		"title":   q.Title,
 		"content": q.Content,
+		"status":  q.Status,
 		"utime":   now,
 	})
 	if res.Error != nil {

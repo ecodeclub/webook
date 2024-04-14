@@ -1,9 +1,22 @@
+// Copyright 2023 ecodeclub
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package web
 
 import (
 	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/ecodeclub/ginx"
@@ -26,16 +39,19 @@ func NewHandler(svc service.Service) *Handler {
 	}
 }
 
+func (h *Handler) PublicRoutes(server *gin.Engine) {
+	server.POST("/case/pub/list", ginx.B[Page](h.PubList))
+}
+
 func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	server.POST("/case/save", ginx.S(h.Permission), ginx.BS[SaveReq](h.Save))
 	server.POST("/case/list", ginx.S(h.Permission), ginx.B[Page](h.List))
 	server.POST("/case/detail", ginx.S(h.Permission), ginx.B[CaseId](h.Detail))
 	server.POST("/case/publish", ginx.S(h.Permission), ginx.BS[SaveReq](h.Publish))
-	server.POST("/case/pub/detail", ginx.B[CaseId](h.PubDetail))
 }
 
-func (h *Handler) PublicRoutes(server *gin.Engine) {
-	server.POST("/case/pub/list", ginx.B[Page](h.PubList))
+func (h *Handler) MemberRoutes(server *gin.Engine) {
+	server.POST("/case/pub/detail", ginx.B[CaseId](h.PubDetail))
 }
 
 func (h *Handler) Save(ctx *ginx.Context,
@@ -86,7 +102,7 @@ func (h *Handler) PubList(ctx *ginx.Context, req Page) (ginx.Result, error) {
 					Id:     ca.Id,
 					Title:  ca.Title,
 					Labels: ca.Labels,
-					Utime:  ca.Utime.Format(time.DateTime),
+					Utime:  ca.Utime.UnixMilli(),
 				}
 			}),
 		},
@@ -135,7 +151,8 @@ func newCase(ca domain.Case) Case {
 		Shorthand: ca.Shorthand,
 		Highlight: ca.Highlight,
 		Guidance:  ca.Guidance,
-		Utime:     ca.Utime.Format(time.DateTime),
+		Status:    ca.Status.ToUint8(),
+		Utime:     ca.Utime.UnixMilli(),
 	}
 }
 

@@ -23,6 +23,7 @@ import (
 	"github.com/ecodeclub/webook/internal/question/internal/repository"
 )
 
+//go:generate mockgen -source=./question.go -destination=../../mocks/question.mock.go -package=quemocks -typed=true Service
 type Service interface {
 	// Save 保存数据，question 绝对不会为 nil
 	Save(ctx context.Context, question *domain.Question) (int64, error)
@@ -30,12 +31,18 @@ type Service interface {
 	List(ctx context.Context, offset int, limit int) ([]domain.Question, int64, error)
 
 	PubList(ctx context.Context, offset int, limit int) ([]domain.Question, int64, error)
+	// GetPubByIDs 目前只会获取基础信息，也就是不包括答案在内的信息
+	GetPubByIDs(ctx context.Context, ids []int64) ([]domain.Question, error)
 	Detail(ctx context.Context, qid int64) (domain.Question, error)
 	PubDetail(ctx context.Context, qid int64) (domain.Question, error)
 }
 
 type service struct {
 	repo repository.Repository
+}
+
+func (s *service) GetPubByIDs(ctx context.Context, ids []int64) ([]domain.Question, error) {
+	return s.repo.GetPubByIDs(ctx, ids)
 }
 
 func (s *service) PubDetail(ctx context.Context, qid int64) (domain.Question, error) {
@@ -87,6 +94,7 @@ func (s *service) PubList(ctx context.Context, offset int, limit int) ([]domain.
 }
 
 func (s *service) Save(ctx context.Context, question *domain.Question) (int64, error) {
+	question.Status = domain.UnPublishedStatus
 	if question.Id > 0 {
 		return question.Id, s.repo.Update(ctx, question)
 	}
@@ -94,6 +102,7 @@ func (s *service) Save(ctx context.Context, question *domain.Question) (int64, e
 }
 
 func (s *service) Publish(ctx context.Context, question *domain.Question) (int64, error) {
+	question.Status = domain.PublishedStatus
 	return s.repo.Sync(ctx, question)
 }
 

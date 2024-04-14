@@ -31,3 +31,6 @@ logs/
 cover.out
 /internal/label/internal/integration/logs/
 /internal/product/internal/integration/logs/
+/internal/cases/internal/integration/logs
+/internal/skill/internal/integration/logs
+/internal/feedback/internal/integration/logs

@@ -17,13 +17,13 @@
 package order
 
 import (
+	"context"
 	"sync"
-	"time"
 
 	"github.com/ecodeclub/ecache"
 	"github.com/ecodeclub/mq-api"
 	"github.com/ecodeclub/webook/internal/credit"
-	"github.com/ecodeclub/webook/internal/order/internal/consumer"
+	"github.com/ecodeclub/webook/internal/order/internal/event"
 	"github.com/ecodeclub/webook/internal/order/internal/job"
 	"github.com/ecodeclub/webook/internal/order/internal/repository"
 	"github.com/ecodeclub/webook/internal/order/internal/repository/dao"
@@ -38,16 +38,28 @@ import (
 )
 
 type Handler = web.Handler
-type CompleteOrderConsumer = consumer.CompleteOrderConsumer
+type Service = service.Service
 type CloseExpiredOrdersJob = job.CloseExpiredOrdersJob
 
 var HandlerSet = wire.NewSet(
-	initService,
 	sequencenumber.NewGenerator,
 	web.NewHandler)
 
-func InitHandler(db *egorm.Component, paymentSvc payment.Service, productSvc product.Service, creditSvc credit.Service, cache ecache.Cache) *Handler {
-	wire.Build(HandlerSet)
+func InitModule(db *egorm.Component, cache ecache.Cache, q mq.MQ, paymentSvc payment.Service, productSvc product.Service, creditSvc credit.Service) (*Module, error) {
+	wire.Build(
+		wire.Struct(new(Module), "*"),
+		InitService,
+		InitHandler,
+		initCompleteOrderConsumer,
+		initCloseExpiredOrdersJob,
+	)
+	return new(Module), nil
+}
+
+func InitHandler(cache ecache.Cache, svc service.Service, paymentSvc payment.Service, productSvc product.Service, creditSvc credit.Service) *Handler {
+	wire.Build(
+		sequencenumber.NewGenerator,
+		web.NewHandler)
 	return new(Handler)
 }
 
@@ -56,7 +68,7 @@ var (
 	svc  service.Service
 )
 
-func initService(db *gorm.DB) service.Service {
+func InitService(db *gorm.DB) service.Service {
 	once.Do(func() {
 		_ = dao.InitTables(db)
 		orderDAO := dao.NewOrderGORMDAO(db)
@@ -66,21 +78,18 @@ func initService(db *gorm.DB) service.Service {
 	return svc
 }
 
-func InitCompleteOrderConsumer(db *egorm.Component, q mq.MQ) *CompleteOrderConsumer {
-	wire.Build(initService, InitMQConsumer, consumer.NewCompleteOrderConsumer)
-	return new(CompleteOrderConsumer)
-}
-
-func InitMQConsumer(q mq.MQ) []mq.Consumer {
-	topic := "payment_successful"
-	groupID := "OrderConsumerGroup"
-	c, err := q.Consumer(topic, groupID)
+func initCompleteOrderConsumer(svc service.Service, q mq.MQ) *event.CompleteOrderConsumer {
+	consumer, err := event.NewCompleteOrderConsumer(svc, q)
 	if err != nil {
 		panic(err)
 	}
-	return []mq.Consumer{c}
+	consumer.Start(context.Background())
+	return consumer
 }
 
-func InitCloseExpiredOrdersJob(db *egorm.Component) *CloseExpiredOrdersJob {
-	return job.NewCloseExpiredOrdersJob(initService(db), 10, 31, time.Hour)
+func initCloseExpiredOrdersJob(svc service.Service) *job.CloseExpiredOrdersJob {
+	minutes := int64(30)
+	seconds := int64(10)
+	limit := int(100)
+	return job.NewCloseExpiredOrdersJob(svc, minutes, seconds, limit)
 }

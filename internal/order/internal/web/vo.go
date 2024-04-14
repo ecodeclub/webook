@@ -21,7 +21,7 @@ type PreviewOrderReq struct {
 }
 
 type PreviewOrderResp struct {
-	Credits  int64     `json:"credits"`  // 积分总数
+	Credits  uint64    `json:"credits"`  // 积分总数
 	Payments []Payment `json:"payments"` // 支付通道
 	Products []Product `json:"products"` // 商品信息
 	Policy   string    `json:"policy"`   // 政策信息
@@ -62,19 +62,7 @@ type RetrieveOrderStatusReq struct {
 }
 
 type RetrieveOrderStatusResp struct {
-	OrderStatus int64 `json:"status"`
-}
-
-// CompleteOrderReq 完成订单
-type CompleteOrderReq struct {
-	OrderSN string `json:"sn"`
-	BuyerID int64  `json:"buyerId"`
-}
-
-// CloseTimeoutOrdersReq 关闭超时订单
-type CloseTimeoutOrdersReq struct {
-	Limit  int   `json:"limit,omitempty"`
-	Minute int64 `json:"minute"`
+	OrderStatus uint8 `json:"status"`
 }
 
 // ListOrdersReq 分页查询用户所有订单
@@ -102,7 +90,7 @@ type Order struct {
 	PaymentSN          string      `json:"paymentSn"`
 	OriginalTotalPrice int64       `json:"originalPrice"`
 	RealTotalPrice     int64       `json:"realPrice"`
-	Status             int64       `json:"status"`
+	Status             uint8       `json:"status"`
 	Items              []OrderItem `json:"items"`
 	Payments           []Payment   `json:"payments"`
 	Ctime              int64       `json:"ctime"`

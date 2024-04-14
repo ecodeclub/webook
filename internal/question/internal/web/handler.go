@@ -17,7 +17,6 @@ package web
 import (
 	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/ecodeclub/ginx"
@@ -40,16 +39,19 @@ func NewHandler(svc service.Service) *Handler {
 	}
 }
 
+func (h *Handler) PublicRoutes(server *gin.Engine) {
+	server.POST("/question/pub/list", ginx.B[Page](h.PubList))
+}
+
 func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	server.POST("/question/save", ginx.S(h.Permission), ginx.BS[SaveReq](h.Save))
 	server.POST("/question/list", ginx.S(h.Permission), ginx.B[Page](h.List))
 	server.POST("/question/detail", ginx.S(h.Permission), ginx.B[Qid](h.Detail))
 	server.POST("/question/publish", ginx.S(h.Permission), ginx.BS[SaveReq](h.Publish))
-	server.POST("/question/pub/detail", ginx.B[Qid](h.PubDetail))
 }
 
-func (h *Handler) PublicRoutes(server *gin.Engine) {
-	server.POST("/question/pub/list", ginx.B[Page](h.PubList))
+func (h *Handler) MemberRoutes(server *gin.Engine) {
+	server.POST("/question/pub/detail", ginx.B[Qid](h.PubDetail))
 }
 
 func (h *Handler) Save(ctx *ginx.Context,
@@ -108,7 +110,8 @@ func (h *Handler) toQuestionList(data []domain.Question, cnt int64) QuestionList
 				Title:   src.Title,
 				Content: src.Content,
 				Labels:  src.Labels,
-				Utime:   src.Utime.Format(time.DateTime),
+				Status:  src.Status.ToUint8(),
+				Utime:   src.Utime.UnixMilli(),
 			}
 		}),
 	}

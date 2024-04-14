@@ -17,6 +17,13 @@
 ## 缓存的 key 设计
 基本上遵循了：`webook:$module:xxxxxxx` 的形式。即第一段是 webook，代表本体；第二段是 webook 内部的 module，代表模块。后面的就是 key，可以进一步细分。
 
+## HTTP 响应码
+- 大多数情况下是 200
+- 未登录是 401
+- 没有权限是 403
+
+> 这里比较蛋疼的是 401 和 403 的语义。所以我也没什么好纠结的，只是做一个简单的区分
+
 ## 错误码
 - user - 01
 - question - 02
@@ -24,4 +31,7 @@
 - product - 04
 - case - 05
 - order - 06
+- skill - 07
+- label - 08
+- feedback -09
 

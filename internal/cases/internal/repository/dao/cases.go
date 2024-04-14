@@ -22,17 +22,13 @@ type CaseDAO interface {
 	PublishCaseList(ctx context.Context, offset, limit int) ([]PublishCase, error)
 	PublishCaseCount(ctx context.Context) (int64, error)
 	GetPublishCase(ctx context.Context, caseId int64) (PublishCase, error)
+	GetPubByIDs(ctx context.Context, ids []int64) ([]PublishCase, error)
 }
 
 type caseDAO struct {
 	db *egorm.Component
 }
 
-func NewCaseDao(db *egorm.Component) CaseDAO {
-	return &caseDAO{
-		db: db,
-	}
-}
 func (ca *caseDAO) Count(ctx context.Context) (int64, error) {
 	var res int64
 	err := ca.db.WithContext(ctx).Model(&Case{}).Select("COUNT(id)").Count(&res).Error
@@ -58,6 +54,7 @@ func (ca *caseDAO) Update(ctx context.Context, c Case) error {
 		"shorthand": c.Shorthand,
 		"highlight": c.Highlight,
 		"guidance":  c.Guidance,
+		"status":    c.Status,
 		"utime":     now,
 	}).Error
 }
@@ -73,6 +70,7 @@ func (ca *caseDAO) update(ctx context.Context, tx *gorm.DB, c Case) error {
 		"shorthand": c.Shorthand,
 		"highlight": c.Highlight,
 		"labels":    c.Labels,
+		"status":    c.Status,
 		"guidance":  c.Guidance,
 		"utime":     now,
 	}).Error
@@ -88,7 +86,7 @@ func (ca *caseDAO) GetCaseByID(ctx context.Context, id int64) (Case, error) {
 func (ca *caseDAO) List(ctx context.Context, offset, limit int) ([]Case, error) {
 	var caseList []Case
 	err := ca.db.WithContext(ctx).
-		Select("id", "title", "content", "utime").
+		Select("id", "title", "status", "content", "utime").
 		Order("id desc").
 		Offset(offset).
 		Limit(limit).
@@ -140,4 +138,17 @@ func (ca *caseDAO) GetPublishCase(ctx context.Context, caseId int64) (PublishCas
 	db := ca.db.WithContext(ctx)
 	err := db.Where("id = ?", caseId).First(&c).Error
 	return c, err
+}
+
+func (ca *caseDAO) GetPubByIDs(ctx context.Context, ids []int64) ([]PublishCase, error) {
+	var c []PublishCase
+	db := ca.db.WithContext(ctx)
+	err := db.Where("id IN ?", ids).Find(&c).Error
+	return c, err
+}
+
+func NewCaseDao(db *egorm.Component) CaseDAO {
+	return &caseDAO{
+		db: db,
+	}
 }

@@ -16,20 +16,33 @@ package dao
 
 import (
 	"context"
+	"time"
 
 	"github.com/ego-component/egorm"
 )
 
 type LabelDAO interface {
 	UidLabels(ctx context.Context, uid int64) ([]Label, error)
+	CreateLabel(ctx context.Context, label Label) (int64, error)
+	GetByID(ctx context.Context, id int64) (Label, error)
 }
 
 type LabelGORMDAO struct {
 	db *egorm.Component
 }
 
-func NewLabelGORMDAO(db *egorm.Component) LabelDAO {
-	return &LabelGORMDAO{db: db}
+func (dao *LabelGORMDAO) GetByID(ctx context.Context, id int64) (Label, error) {
+	var res Label
+	err := dao.db.WithContext(ctx).Where("id = ?", id).First(&res).Error
+	return res, err
+}
+
+func (dao *LabelGORMDAO) CreateLabel(ctx context.Context, label Label) (int64, error) {
+	now := time.Now().UnixMilli()
+	label.Ctime = now
+	label.Utime = now
+	err := dao.db.WithContext(ctx).Create(&label).Error
+	return label.Id, err
 }
 
 func (dao *LabelGORMDAO) UidLabels(ctx context.Context, uid int64) ([]Label, error) {
@@ -39,10 +52,14 @@ func (dao *LabelGORMDAO) UidLabels(ctx context.Context, uid int64) ([]Label, err
 	return res, err
 }
 
+func NewLabelGORMDAO(db *egorm.Component) LabelDAO {
+	return &LabelGORMDAO{db: db}
+}
+
 type Label struct {
 	Id    int64 `gorm:"primaryKey,autoIncrement"`
 	Name  string
-	Uid   int64
+	Uid   int64 `gorm:"index"`
 	Ctime int64
 	Utime int64
 }

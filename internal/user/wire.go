@@ -1,9 +1,26 @@
+// Copyright 2023 ecodeclub
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 //go:build wireinject
 
 package user
 
 import (
 	"github.com/ecodeclub/ecache"
+	"github.com/ecodeclub/mq-api"
+	"github.com/ecodeclub/webook/internal/member"
+	"github.com/ecodeclub/webook/internal/user/internal/event"
 	"github.com/ecodeclub/webook/internal/user/internal/repository"
 	"github.com/ecodeclub/webook/internal/user/internal/repository/cache"
 	"github.com/ecodeclub/webook/internal/user/internal/repository/dao"
@@ -18,11 +35,16 @@ var ProviderSet = wire.NewSet(web.NewHandler,
 	cache.NewUserECache,
 	InitDAO,
 	InitWechatService,
+	InitRegistrationEventProducer,
 	service.NewUserService,
 	repository.NewCachedUserRepository)
 
-func InitHandler(db *egorm.Component, cache ecache.Cache, creators []string) *Handler {
-	wire.Build(ProviderSet)
+func InitHandler(db *egorm.Component, cache ecache.Cache,
+	q mq.MQ, creators []string, memberSvc *member.Module) *Handler {
+	wire.Build(
+		ProviderSet,
+		wire.FieldsOf(new(*member.Module), "Svc"),
+	)
 	return new(Handler)
 }
 
@@ -46,6 +68,14 @@ func InitDAO(db *egorm.Component) dao.UserDAO {
 		panic(err)
 	}
 	return dao.NewGORMUserDAO(db)
+}
+
+func InitRegistrationEventProducer(q mq.MQ) *event.RegistrationEventProducer {
+	producer, err := q.Producer("user_registration_events")
+	if err != nil {
+		panic(err)
+	}
+	return event.NewRegistrationEventProducer(producer)
 }
 
 // Handler 暴露出去给 ioc 使用

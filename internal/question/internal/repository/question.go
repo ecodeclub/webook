@@ -39,6 +39,7 @@ type Repository interface {
 	Create(ctx context.Context, question *domain.Question) (int64, error)
 	GetById(ctx context.Context, qid int64) (domain.Question, error)
 	GetPubByID(ctx context.Context, qid int64) (domain.Question, error)
+	GetPubByIDs(ctx context.Context, ids []int64) ([]domain.Question, error)
 }
 
 // CachedRepository 支持缓存的 repository 实现
@@ -47,6 +48,13 @@ type CachedRepository struct {
 	dao    dao.QuestionDAO
 	cache  cache.QuestionCache
 	logger *elog.Component
+}
+
+func (c *CachedRepository) GetPubByIDs(ctx context.Context, qids []int64) ([]domain.Question, error) {
+	data, err := c.dao.GetPubByIDs(ctx, qids)
+	return slice.Map(data, func(idx int, src dao.PublishQuestion) domain.Question {
+		return c.toDomain(dao.Question(src))
+	}), err
 }
 
 func (c *CachedRepository) GetPubByID(ctx context.Context, qid int64) (domain.Question, error) {
@@ -144,6 +152,7 @@ func (c *CachedRepository) toDomain(que dao.Question) domain.Question {
 		Title:   que.Title,
 		Content: que.Content,
 		Labels:  que.Labels.Val,
+		Status:  domain.QuestionStatus(que.Status),
 		Utime:   time.UnixMilli(que.Utime),
 	}
 }
@@ -156,6 +165,7 @@ func (c *CachedRepository) toEntity(que *domain.Question) (dao.Question, []dao.A
 		Title:   que.Title,
 		Labels:  sqlx.JsonColumn[[]string]{Val: que.Labels, Valid: len(que.Labels) != 0},
 		Content: que.Content,
+		Status:  que.Status.ToUint8(),
 		Ctime:   now,
 		Utime:   now,
 	}

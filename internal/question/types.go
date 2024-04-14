@@ -12,9 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package job
+package baguwen
 
-type Job interface {
-	Name() string
-	Run() error
-}
+import (
+	"github.com/ecodeclub/webook/internal/question/internal/domain"
+	"github.com/ecodeclub/webook/internal/question/internal/service"
+	"github.com/ecodeclub/webook/internal/question/internal/web"
+)
+
+type Handler = web.Handler
+type QuestionSetHandler = web.QuestionSetHandler
+
+type Service = service.Service
+type Question = domain.Question

@@ -15,8 +15,6 @@
 package web
 
 import (
-	"time"
-
 	"github.com/ecodeclub/webook/internal/question/internal/domain"
 )
 
@@ -32,8 +30,8 @@ type Question struct {
 	Labels []string `json:"labels,omitempty"`
 	// 面试题目内容
 	Content string `json:"content,omitempty"`
-	Utime   string `json:"utime,omitempty"`
-
+	Utime   int64  `json:"utime,omitempty"`
+	Status  uint8  `json:"status,omitempty"`
 	// 题集 ID
 	Sets []QuestionSet `json:"sets"`
 
@@ -56,7 +54,7 @@ func (que Question) toDomain() domain.Question {
 			Analysis:     que.Analysis.toDomain(),
 			Basic:        que.Basic.toDomain(),
 			Intermediate: que.Intermediate.toDomain(),
-			Advanced:     que.Intermediate.toDomain(),
+			Advanced:     que.Advanced.toDomain(),
 		},
 	}
 }
@@ -67,11 +65,12 @@ func newQuestion(que domain.Question) Question {
 		Title:        que.Title,
 		Content:      que.Content,
 		Labels:       que.Labels,
+		Status:       que.Status.ToUint8(),
 		Analysis:     newAnswerElement(que.Answer.Analysis),
 		Basic:        newAnswerElement(que.Answer.Basic),
 		Intermediate: newAnswerElement(que.Answer.Intermediate),
 		Advanced:     newAnswerElement(que.Answer.Advanced),
-		Utime:        que.Utime.Format(time.DateTime),
+		Utime:        que.Utime.UnixMilli(),
 	}
 }
 
@@ -147,7 +146,7 @@ type QuestionSet struct {
 	Title       string     `json:"title,omitempty"`
 	Description string     `json:"description,omitempty"`
 	Questions   []Question `json:"questions,omitempty"`
-	Utime       string     `json:"utime,omitempty"`
+	Utime       int64      `json:"utime,omitempty"`
 }
 
 type QuestionSetList struct {

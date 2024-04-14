@@ -20,7 +20,22 @@ type Case struct {
 	Highlight string
 	// 引导点
 	Guidance string
-
-	Ctime time.Time
-	Utime time.Time
+	Status   CaseStatus
+	Ctime    time.Time
+	Utime    time.Time
 }
+
+type CaseStatus uint8
+
+func (s CaseStatus) ToUint8() uint8 {
+	return uint8(s)
+}
+
+const (
+	// UnknownStatus 未知
+	UnknownStatus CaseStatus = 0
+	// UnPublishedStatus 未发布
+	UnPublishedStatus CaseStatus = 1
+	// PublishedStatus 发布
+	PublishedStatus CaseStatus = 2
+)

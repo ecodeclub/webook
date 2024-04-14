@@ -24,9 +24,9 @@ type Question struct {
 	// 属于系统标签
 	Labels  []string
 	Content string
-
-	Answer Answer
-	Utime  time.Time
+	Status  QuestionStatus
+	Answer  Answer
+	Utime   time.Time
 }
 
 type Answer struct {
@@ -53,3 +53,18 @@ type AnswerElement struct {
 	// 引导点
 	Guidance string
 }
+
+type QuestionStatus uint8
+
+func (s QuestionStatus) ToUint8() uint8 {
+	return uint8(s)
+}
+
+const (
+	// UnknownStatus 未知
+	UnknownStatus QuestionStatus = 0
+	// UnPublishedStatus 未发布
+	UnPublishedStatus QuestionStatus = 1
+	// PublishStatus 发布
+	PublishedStatus QuestionStatus = 2
+)

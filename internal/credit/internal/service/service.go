@@ -16,13 +16,24 @@ package service
 
 import (
 	"context"
+	"errors"
+	"fmt"
 
 	"github.com/ecodeclub/webook/internal/credit/internal/domain"
 	"github.com/ecodeclub/webook/internal/credit/internal/repository"
 )
 
+var (
+	ErrCreditNotEnough = errors.New("积分不足")
+)
+
+//go:generate mockgen -source=./service.go -destination=../../mocks/credit.mock.go -package=creditmocks Service
 type Service interface {
-	GetByUID(ctx context.Context, uid int64) (domain.Credit, error)
+	AddCredits(ctx context.Context, credit domain.Credit) error
+	GetCreditsByUID(ctx context.Context, uid int64) (domain.Credit, error)
+	TryDeductCredits(ctx context.Context, credit domain.Credit) (id int64, err error)
+	ConfirmDeductCredits(ctx context.Context, uid, tid int64) error
+	CancelDeductCredits(ctx context.Context, uid, tid int64) error
 }
 
 func NewService(repo repository.CreditRepository) Service {
@@ -33,6 +44,33 @@ type service struct {
 	repo repository.CreditRepository
 }
 
-func (s *service) GetByUID(ctx context.Context, uid int64) (domain.Credit, error) {
-	return domain.Credit{}, nil
+func NewCreditService(repo repository.CreditRepository) Service {
+	return &service{repo: repo}
+}
+
+func (s *service) AddCredits(ctx context.Context, credit domain.Credit) error {
+	return s.repo.AddCredits(ctx, credit)
+}
+
+func (s *service) GetCreditsByUID(ctx context.Context, uid int64) (domain.Credit, error) {
+	return s.repo.GetCreditByUID(ctx, uid)
+}
+
+func (s *service) TryDeductCredits(ctx context.Context, credit domain.Credit) (id int64, err error) {
+	c, err := s.repo.GetCreditByUID(ctx, credit.Uid)
+	if err != nil {
+		return 0, err
+	}
+	if credit.ChangeAmount > c.TotalAmount {
+		return 0, fmt.Errorf("%w", ErrCreditNotEnough)
+	}
+	return s.repo.TryDeductCredits(ctx, credit)
+}
+
+func (s *service) ConfirmDeductCredits(ctx context.Context, uid, tid int64) error {
+	return s.repo.ConfirmDeductCredits(ctx, uid, tid)
+}
+
+func (s *service) CancelDeductCredits(ctx context.Context, uid, tid int64) error {
+	return s.repo.CancelDeductCredits(ctx, uid, tid)
 }

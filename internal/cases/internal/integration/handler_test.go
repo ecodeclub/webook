@@ -1,3 +1,17 @@
+// Copyright 2023 ecodeclub
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 //go:build e2e
 
 package integration
@@ -6,8 +20,11 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strconv"
 	"testing"
 	"time"
+
+	"github.com/ecodeclub/webook/internal/cases/internal/domain"
 
 	"github.com/ecodeclub/ecache"
 	"github.com/ecodeclub/ekit/iox"
@@ -16,6 +33,7 @@ import (
 	"github.com/ecodeclub/webook/internal/cases/internal/integration/startup"
 	"github.com/ecodeclub/webook/internal/cases/internal/repository/dao"
 	"github.com/ecodeclub/webook/internal/cases/internal/web"
+	"github.com/ecodeclub/webook/internal/pkg/middleware"
 	"github.com/ecodeclub/webook/internal/test"
 	testioc "github.com/ecodeclub/webook/internal/test/ioc"
 	"github.com/ego-component/egorm"
@@ -56,14 +74,21 @@ func (s *HandlerTestSuite) SetupSuite() {
 	require.NoError(s.T(), err)
 	econf.Set("server", map[string]any{"contextTimeout": "1s"})
 	server := egin.Load("server").Build()
+
+	handler.PublicRoutes(server.Engine)
 	server.Use(func(ctx *gin.Context) {
 		ctx.Set("_session", session.NewMemorySession(session.Claims{
-			Uid:  uid,
-			Data: map[string]string{"creator": "true"},
+			Uid: uid,
+			Data: map[string]string{
+				"creator":   "true",
+				"memberDDL": strconv.FormatInt(time.Now().Add(time.Hour).UnixMilli(), 10),
+			},
 		}))
 	})
 	handler.PrivateRoutes(server.Engine)
-	handler.PublicRoutes(server.Engine)
+	server.Use(middleware.NewCheckMembershipMiddlewareBuilder(nil).Build())
+	handler.MemberRoutes(server.Engine)
+
 	s.server = server
 	s.db = testioc.InitDB()
 	err = dao.InitTables(s.db)
@@ -99,6 +124,7 @@ func (s *HandlerTestSuite) TestSave() {
 						Valid: true,
 						Val:   []string{"MySQL"},
 					},
+					Status:    domain.UnPublishedStatus.ToUint8(),
 					CodeRepo:  "www.github.com",
 					Keywords:  "mysql_keywords",
 					Shorthand: "mysql_shorthand",
@@ -137,6 +163,7 @@ func (s *HandlerTestSuite) TestSave() {
 						Valid: true,
 						Val:   []string{"old-MySQL"},
 					},
+
 					CodeRepo:  "old-github.com",
 					Keywords:  "old_mysql_keywords",
 					Shorthand: "old_mysql_shorthand",
@@ -160,6 +187,7 @@ func (s *HandlerTestSuite) TestSave() {
 						Valid: true,
 						Val:   []string{"MySQL"},
 					},
+					Status:    domain.UnPublishedStatus.ToUint8(),
 					CodeRepo:  "www.github.com",
 					Keywords:  "mysql_keywords",
 					Shorthand: "mysql_shorthand",
@@ -215,6 +243,7 @@ func (s *HandlerTestSuite) TestList() {
 			Uid:     uid,
 			Title:   fmt.Sprintf("这是案例标题 %d", idx),
 			Content: fmt.Sprintf("这是案例内容 %d", idx),
+			Status:  domain.UnPublishedStatus.ToUint8(),
 			Utime:   0,
 		})
 	}
@@ -241,13 +270,15 @@ func (s *HandlerTestSuite) TestList() {
 							Id:      100,
 							Title:   "这是案例标题 99",
 							Content: "这是案例内容 99",
-							Utime:   time.UnixMilli(0).Format(time.DateTime),
+							Status:  domain.UnPublishedStatus.ToUint8(),
+							Utime:   0,
 						},
 						{
 							Id:      99,
 							Title:   "这是案例标题 98",
 							Content: "这是案例内容 98",
-							Utime:   time.UnixMilli(0).Format(time.DateTime),
+							Status:  domain.UnPublishedStatus.ToUint8(),
+							Utime:   0,
 						},
 					},
 				},
@@ -268,7 +299,8 @@ func (s *HandlerTestSuite) TestList() {
 							Id:      1,
 							Title:   "这是案例标题 0",
 							Content: "这是案例内容 0",
-							Utime:   time.UnixMilli(0).Format(time.DateTime),
+							Status:  domain.UnPublishedStatus.ToUint8(),
+							Utime:   0,
 						},
 					},
 				},
@@ -302,6 +334,7 @@ func (s *HandlerTestSuite) TestDetail() {
 			Valid: true,
 			Val:   []string{"Redis"},
 		},
+		Status:    domain.PublishedStatus.ToUint8(),
 		Title:     "redis案例标题",
 		Content:   "redis案例内容",
 		CodeRepo:  "redis仓库",
@@ -310,6 +343,7 @@ func (s *HandlerTestSuite) TestDetail() {
 		Highlight: "redis_highlight",
 		Guidance:  "redis_guidance",
 		Ctime:     12,
+		Utime:     12,
 	}).Error
 	require.NoError(s.T(), err)
 	testCases := []struct {
@@ -332,11 +366,12 @@ func (s *HandlerTestSuite) TestDetail() {
 					Title:     "redis案例标题",
 					Content:   "redis案例内容",
 					CodeRepo:  "redis仓库",
+					Status:    domain.PublishedStatus.ToUint8(),
 					Keywords:  "redis_keywords",
 					Shorthand: "redis_shorthand",
 					Highlight: "redis_highlight",
 					Guidance:  "redis_guidance",
-					Utime:     time.UnixMilli(12).Format(time.DateTime),
+					Utime:     12,
 				},
 			},
 		},
@@ -383,6 +418,7 @@ func (s *HandlerTestSuite) TestPublish() {
 						Valid: true,
 						Val:   []string{"MySQL"},
 					},
+					Status:    domain.PublishedStatus.ToUint8(),
 					CodeRepo:  "www.github.com",
 					Keywords:  "mysql_keywords",
 					Shorthand: "mysql_shorthand",
@@ -449,6 +485,7 @@ func (s *HandlerTestSuite) TestPublish() {
 						Valid: true,
 						Val:   []string{"MySQL"},
 					},
+					Status:    domain.PublishedStatus.ToUint8(),
 					CodeRepo:  "www.github.com",
 					Keywords:  "mysql_keywords",
 					Shorthand: "mysql_shorthand",
@@ -512,6 +549,7 @@ func (s *HandlerTestSuite) TestPublish() {
 						Valid: true,
 						Val:   []string{"old-MySQL"},
 					},
+
 					CodeRepo:  "old-github.com",
 					Keywords:  "old_mysql_keywords",
 					Shorthand: "old_mysql_shorthand",
@@ -535,6 +573,7 @@ func (s *HandlerTestSuite) TestPublish() {
 						Valid: true,
 						Val:   []string{"MySQL"},
 					},
+					Status:    domain.PublishedStatus.ToUint8(),
 					CodeRepo:  "www.github.com",
 					Keywords:  "mysql_keywords",
 					Shorthand: "mysql_shorthand",
@@ -618,12 +657,12 @@ func (s *HandlerTestSuite) TestPublist() {
 						{
 							Id:    100,
 							Title: "这是发布的案例标题 99",
-							Utime: time.UnixMilli(0).Format(time.DateTime),
+							Utime: 0,
 						},
 						{
 							Id:    99,
 							Title: "这是发布的案例标题 98",
-							Utime: time.UnixMilli(0).Format(time.DateTime),
+							Utime: 0,
 						},
 					},
 				},
@@ -643,7 +682,7 @@ func (s *HandlerTestSuite) TestPublist() {
 						{
 							Id:    1,
 							Title: "这是发布的案例标题 0",
-							Utime: time.UnixMilli(0).Format(time.DateTime),
+							Utime: 0,
 						},
 					},
 				},
@@ -677,6 +716,7 @@ func (s *HandlerTestSuite) TestPubDetail() {
 			Valid: true,
 			Val:   []string{"Redis"},
 		},
+		Status:    domain.PublishedStatus.ToUint8(),
 		Title:     "redis案例标题",
 		Content:   "redis案例内容",
 		CodeRepo:  "redis仓库",
@@ -707,11 +747,12 @@ func (s *HandlerTestSuite) TestPubDetail() {
 					Title:     "redis案例标题",
 					Content:   "redis案例内容",
 					CodeRepo:  "redis仓库",
+					Status:    domain.PublishedStatus.ToUint8(),
 					Keywords:  "redis_keywords",
 					Shorthand: "redis_shorthand",
 					Highlight: "redis_highlight",
 					Guidance:  "redis_guidance",
-					Utime:     time.UnixMilli(13).Format(time.DateTime),
+					Utime:     13,
 				},
 			},
 		},
