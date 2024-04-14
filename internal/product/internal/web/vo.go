@@ -36,7 +36,8 @@ type ProductSKU struct {
 	Price      int64  `json:"price"`
 	Stock      int64  `json:"stock"`
 	StockLimit int64  `json:"stockLimit"`
-	SaleType   int64  `json:"saleType"`
+	SaleType   uint8  `json:"saleType"`
+	Attrs      string `json:"attrs,omitempty"`
 	// SaleStart  int64  `json:"saleStart"`
 	// SaleEnd    int64  `json:"saleEnd"`
 }

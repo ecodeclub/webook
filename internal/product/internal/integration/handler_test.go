@@ -18,11 +18,13 @@ package integration
 
 import (
 	"context"
+	"database/sql"
 	"net/http"
 	"testing"
 
 	"github.com/ecodeclub/ekit/iox"
 	"github.com/ecodeclub/ginx/session"
+	"github.com/ecodeclub/webook/internal/product/internal/domain"
 	"github.com/ecodeclub/webook/internal/product/internal/errs"
 	"github.com/ecodeclub/webook/internal/product/internal/integration/startup"
 	"github.com/ecodeclub/webook/internal/product/internal/repository/dao"
@@ -38,7 +40,7 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-const uid = 123
+const uid = int64(123)
 
 type HandlerTestSuite struct {
 	suite.Suite
@@ -94,29 +96,26 @@ func (s *HandlerTestSuite) TestProductDetail() {
 		{
 			name: "查找成功",
 			before: func(t *testing.T) {
-				spus := []dao.ProductSPU{
-					{
-						SN:          "SPU001",
-						Name:        "会员服务",
-						Description: "提供不同期限的会员服务",
-						Status:      dao.StatusOnShelf,
-					},
+				spu := dao.ProductSPU{
+					SN:          "SPU001",
+					Name:        "会员服务",
+					Description: "提供不同期限的会员服务",
+					Status:      domain.StatusOnShelf.ToUint8(),
 				}
-				for i := 0; i < len(spus); i++ {
-					_, err := s.dao.CreateSPU(context.Background(), spus[i])
-					require.NoError(t, err)
-				}
+				id, err := s.dao.CreateSPU(context.Background(), spu)
+				require.NoError(t, err)
 
 				skus := []dao.ProductSKU{
 					{
 						SN:           "SKU001",
-						ProductSPUID: 1,
+						ProductSPUID: id,
 						Name:         "星期会员",
 						Description:  "提供一周的会员服务",
 						Price:        799,
 						Stock:        1000,
 						StockLimit:   100000000,
-						Status:       dao.StatusOnShelf,
+						Status:       domain.StatusOnShelf.ToUint8(),
+						Attrs:        sql.NullString{String: `{"days":7}`, Valid: true},
 					},
 				}
 				for i := 0; i < len(skus); i++ {
@@ -140,7 +139,8 @@ func (s *HandlerTestSuite) TestProductDetail() {
 						Price:      799,
 						Stock:      1000,
 						StockLimit: 100000000,
-						SaleType:   1,
+						SaleType:   domain.SaleTypeUnlimited.ToUint8(),
+						Attrs:      `{"days":7}`,
 					},
 				},
 			},
@@ -183,29 +183,27 @@ func (s *HandlerTestSuite) TestProductDetailFailed() {
 		{
 			name: "SPU上架_SKU下架",
 			before: func(t *testing.T) {
-				spus := []dao.ProductSPU{
-					{
-						SN:          "SPU001",
-						Name:        "会员服务",
-						Description: "提供不同期限的会员服务",
-						Status:      dao.StatusOnShelf,
-					},
+				t.Helper()
+				spu := dao.ProductSPU{
+					SN:          "SPU002",
+					Name:        "会员服务",
+					Description: "提供不同期限的会员服务",
+					Status:      domain.StatusOnShelf.ToUint8(),
 				}
-				for i := 0; i < len(spus); i++ {
-					_, err := s.dao.CreateSPU(context.Background(), spus[i])
-					require.NoError(t, err)
-				}
+				id, err := s.dao.CreateSPU(context.Background(), spu)
+				require.NoError(t, err)
 
 				skus := []dao.ProductSKU{
 					{
 						SN:           "SKU002",
-						ProductSPUID: 1,
+						ProductSPUID: id,
 						Name:         "月会员",
 						Description:  "提供一个月的会员服务",
 						Price:        999,
 						Stock:        1000,
 						StockLimit:   100000000,
-						Status:       dao.StatusOffShelf,
+						Status:       domain.StatusOffShelf.ToUint8(),
+						Attrs:        sql.NullString{String: `{"days":31}`, Valid: true},
 					},
 				}
 				for i := 0; i < len(skus); i++ {
@@ -223,29 +221,27 @@ func (s *HandlerTestSuite) TestProductDetailFailed() {
 		{
 			name: "SPU下架_SKU上架",
 			before: func(t *testing.T) {
-				spus := []dao.ProductSPU{
-					{
-						SN:          "SPU002",
-						Name:        "会员服务",
-						Description: "提供不同期限的会员服务",
-						Status:      dao.StatusOffShelf,
-					},
+				t.Helper()
+				spu := dao.ProductSPU{
+					SN:          "SPU003",
+					Name:        "会员服务",
+					Description: "提供不同期限的会员服务",
+					Status:      domain.StatusOffShelf.ToUint8(),
 				}
-				for i := 0; i < len(spus); i++ {
-					_, err := s.dao.CreateSPU(context.Background(), spus[i])
-					require.NoError(t, err)
-				}
+				id, err := s.dao.CreateSPU(context.Background(), spu)
+				require.NoError(t, err)
 
 				skus := []dao.ProductSKU{
 					{
 						SN:           "SKU003",
-						ProductSPUID: 2,
+						ProductSPUID: id,
 						Name:         "季度会员",
 						Description:  "提供一个季度的会员服务",
 						Price:        2970,
 						Stock:        1000,
 						StockLimit:   100000000,
-						Status:       dao.StatusOnShelf,
+						Status:       domain.StatusOnShelf.ToUint8(),
+						Attrs:        sql.NullString{String: `{"days":100}`, Valid: true},
 					},
 				}
 				for i := 0; i < len(skus); i++ {
@@ -263,29 +259,28 @@ func (s *HandlerTestSuite) TestProductDetailFailed() {
 		{
 			name: "SPU下架_SKU下架",
 			before: func(t *testing.T) {
-				spus := []dao.ProductSPU{
-					{
-						SN:          "SPU003",
-						Name:        "会员服务",
-						Description: "提供不同期限的会员服务",
-						Status:      dao.StatusOffShelf,
-					},
+				t.Helper()
+				spu := dao.ProductSPU{
+					SN:          "SPU004",
+					Name:        "会员服务",
+					Description: "提供不同期限的会员服务",
+					Status:      domain.StatusOffShelf.ToUint8(),
 				}
-				for i := 0; i < len(spus); i++ {
-					_, err := s.dao.CreateSPU(context.Background(), spus[i])
-					require.NoError(t, err)
-				}
+
+				id, err := s.dao.CreateSPU(context.Background(), spu)
+				require.NoError(t, err)
 
 				skus := []dao.ProductSKU{
 					{
 						SN:           "SKU004",
-						ProductSPUID: 3,
+						ProductSPUID: id,
 						Name:         "年会员",
 						Description:  "提供一年的会员服务",
 						Price:        11880,
 						Stock:        1000,
 						StockLimit:   100000000,
-						Status:       dao.StatusOffShelf,
+						Status:       domain.StatusOffShelf.ToUint8(),
+						Attrs:        sql.NullString{String: `{"days":366}`, Valid: true},
 					},
 				}
 				for i := 0; i < len(skus); i++ {
