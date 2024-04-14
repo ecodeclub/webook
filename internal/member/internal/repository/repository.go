@@ -9,7 +9,6 @@ import (
 )
 
 var (
-	ErrUpdateMemberFailed     = dao.ErrUpdateMemberFailed
 	ErrDuplicatedMemberRecord = dao.ErrDuplicatedMemberRecord
 )
 
@@ -42,9 +41,8 @@ func (m *memberRepository) FindByUID(ctx context.Context, uid int64) (domain.Mem
 
 func (m *memberRepository) toDomain(d dao.Member, r []dao.MemberRecord) domain.Member {
 	return domain.Member{
-		Uid:     d.Uid,
-		StartAt: d.StartAt,
-		EndAt:   d.EndAt,
+		Uid:   d.Uid,
+		EndAt: d.EndAt,
 		Records: slice.Map(r, func(idx int, src dao.MemberRecord) domain.MemberRecord {
 			return domain.MemberRecord{
 				Key:   src.Key,
@@ -64,9 +62,8 @@ func (m *memberRepository) Upsert(ctx context.Context, member domain.Member) err
 
 func (m *memberRepository) toEntity(d domain.Member) (dao.Member, dao.MemberRecord) {
 	member := dao.Member{
-		Uid:     d.Uid,
-		StartAt: d.StartAt,
-		EndAt:   d.EndAt,
+		Uid:   d.Uid,
+		EndAt: d.EndAt,
 	}
 	record := slice.Map(d.Records, func(idx int, src domain.MemberRecord) dao.MemberRecord {
 		return dao.MemberRecord{

@@ -94,7 +94,6 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeRegistrationEvent() {
 				startAt := time.Date(nowDate.Year(), nowDate.Month(), nowDate.Day(), 23, 59, 59, 0, time.UTC).UnixMilli()
 				endAt := time.Date(2024, 6, 30, 23, 59, 59, 0, time.UTC).UnixMilli()
 
-				require.Equal(t, startAt, info.StartAt)
 				require.Equal(t, endAt, info.EndAt)
 
 				require.True(t, startAt <= info.EndAt, fmt.Sprintf("n = %d, e = %d\n", startAt, info.EndAt))
@@ -104,7 +103,7 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeRegistrationEvent() {
 				}
 				require.Equal(t, []domain.MemberRecord{
 					{
-						Biz:   1,
+						Biz:   "user",
 						BizId: uid,
 						Desc:  "注册福利",
 						Days:  uint64(time.Duration(info.EndAt-startAt) * time.Millisecond / (time.Hour * 24)),
@@ -132,7 +131,7 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeRegistrationEvent() {
 					Records: []domain.MemberRecord{
 						{
 							Key:   "member-key-1993",
-							Biz:   1,
+							Biz:   "user",
 							BizId: 1993,
 							Desc:  "注册福利",
 							Days:  uint64(time.Duration(endAt-startAt) * time.Millisecond / (time.Hour * 24)),
@@ -208,13 +207,12 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeMemberEvent() {
 
 				nowDate := time.Now().UTC()
 				startAt := time.Date(nowDate.Year(), nowDate.Month(), nowDate.Day(), 23, 59, 59, 0, time.UTC).UnixMilli()
-				require.Equal(t, startAt, info.StartAt)
 				require.True(t, startAt <= info.EndAt, fmt.Sprintf("n = %d, e = %d\n", startAt, info.EndAt))
 				require.Equal(t, []domain.MemberRecord{
 					{
 						Key:   "member-key-20001",
 						Days:  uint64(time.Duration(info.EndAt-startAt) * time.Millisecond / (time.Hour * 24)),
-						Biz:   1,
+						Biz:   "user",
 						BizId: uid,
 						Desc:  "新注册用户",
 					},
@@ -224,7 +222,7 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeMemberEvent() {
 				Key:    "member-key-20001",
 				Uid:    20001,
 				Days:   30,
-				Biz:    1,
+				Biz:    "user",
 				BizId:  20001,
 				Action: "新注册用户",
 			},
@@ -241,7 +239,6 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeMemberEvent() {
 				now := time.Date(2024, 1, 1, 18, 18, 1, 0, time.UTC).UnixMilli()
 				require.NoError(t, s.db.Create(&dao.Member{
 					Uid:     uid,
-					StartAt: time.Date(2024, 1, 1, 23, 59, 59, 0, time.UTC).UnixMilli(),
 					EndAt:   time.Date(2024, 2, 1, 23, 59, 59, 0, time.UTC).UnixMilli(),
 					Version: 1,
 					Ctime:   now,
@@ -251,7 +248,7 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeMemberEvent() {
 				require.NoError(t, s.db.Create(&dao.MemberRecord{
 					Key:   "member-key-20002-1",
 					Uid:   uid,
-					Biz:   1,
+					Biz:   "user",
 					BizId: uid,
 					Desc:  "首次注册",
 					Days:  31,
@@ -274,20 +271,19 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeMemberEvent() {
 
 				nowDate := time.Now().UTC()
 				startAt := time.Date(nowDate.Year(), nowDate.Month(), nowDate.Day(), 23, 59, 59, 0, time.UTC).UnixMilli()
-				require.Equal(t, startAt, info.StartAt)
 				require.True(t, startAt <= info.EndAt, fmt.Sprintf("n = %d, e = %d\n", startAt, info.EndAt))
 				require.Equal(t, []domain.MemberRecord{
 					{
 						Key:   "member-key-20002-2",
 						Days:  31,
-						Biz:   2,
+						Biz:   "order",
 						BizId: 2,
 						Desc:  "购买月会员",
 					},
 					{
 						Key:   "member-key-20002-1",
 						Days:  31,
-						Biz:   1,
+						Biz:   "user",
 						BizId: uid,
 						Desc:  "首次注册",
 					},
@@ -299,7 +295,7 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeMemberEvent() {
 				Key:    "member-key-20002-2",
 				Uid:    20002,
 				Days:   31,
-				Biz:    2,
+				Biz:    "order",
 				BizId:  2,
 				Action: "购买月会员",
 			},
@@ -316,7 +312,7 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeMemberEvent() {
 					Records: []domain.MemberRecord{
 						{
 							Key:   "member-key-20003-1",
-							Biz:   1,
+							Biz:   "user",
 							BizId: uid,
 							Desc:  "首次注册",
 							Days:  31,
@@ -340,20 +336,19 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeMemberEvent() {
 
 				nowDate := time.Now().UTC()
 				startAt := time.Date(nowDate.Year(), nowDate.Month(), nowDate.Day(), 23, 59, 59, 0, time.UTC).UnixMilli()
-				require.Equal(t, startAt, info.StartAt)
 				require.True(t, startAt <= info.EndAt, fmt.Sprintf("n = %d, e = %d\n", startAt, info.EndAt))
 				require.Equal(t, []domain.MemberRecord{
 					{
 						Key:   "member-key-20003-2",
 						Days:  365,
-						Biz:   2,
+						Biz:   "order",
 						BizId: 2,
 						Desc:  "购买年会员",
 					},
 					{
 						Key:   "member-key-20003-1",
 						Days:  31,
-						Biz:   1,
+						Biz:   "user",
 						BizId: uid,
 						Desc:  "首次注册",
 					},
@@ -365,7 +360,7 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeMemberEvent() {
 				Key:    "member-key-20003-2",
 				Uid:    20003,
 				Days:   365,
-				Biz:    2,
+				Biz:    "order",
 				BizId:  2,
 				Action: "购买年会员",
 			},

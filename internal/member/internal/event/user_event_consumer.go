@@ -17,6 +17,7 @@ package event
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -83,19 +84,24 @@ func (c *RegistrationEventConsumer) Consume(ctx context.Context) error {
 		Records: []domain.MemberRecord{
 			{
 				Key:   shortuuid.New(),
-				Biz:   1,
+				Biz:   "user",
 				BizId: evt.Uid,
 				Desc:  "注册福利",
 				Days:  uint64(time.Until(c.endAtDate) / (24 * time.Hour)),
 			},
 		},
 	})
-	if err != nil {
-		c.logger.Error("创建会员相关记录失败",
+
+	if errors.Is(err, service.ErrDuplicatedMemberRecord) {
+		c.logger.Warn("重复消费",
 			elog.FieldErr(err),
-			elog.Int64("uid", evt.Uid),
-			elog.Any("RegistrationEvent", evt),
+			elog.Any("MemberEvent", evt),
 		)
+		// 重复消费时,吞掉错误
+		return nil
+	}
+	if err != nil {
+		c.logger.Error("创建会员相关记录失败", elog.Any("RegistrationEvent", evt))
 	}
 	return err
 }

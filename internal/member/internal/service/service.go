@@ -22,7 +22,6 @@ import (
 )
 
 var (
-	ErrUpdateMemberFailed     = repository.ErrUpdateMemberFailed
 	ErrDuplicatedMemberRecord = repository.ErrDuplicatedMemberRecord
 )
 

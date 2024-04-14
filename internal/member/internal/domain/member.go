@@ -16,7 +16,6 @@ package domain
 
 type Member struct {
 	Uid     int64
-	StartAt int64 // todo: 去掉
 	EndAt   int64
 	Records []MemberRecord
 }
@@ -24,7 +23,7 @@ type Member struct {
 type MemberRecord struct {
 	Key   string
 	Days  uint64
-	Biz   int64
+	Biz   string
 	BizId int64
 	Desc  string
 }
