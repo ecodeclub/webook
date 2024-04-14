@@ -12,21 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:build wireinject
-
-package startup
+package order
 
 import (
-	"github.com/ecodeclub/webook/internal/credit"
-	"github.com/ecodeclub/webook/internal/order"
-	"github.com/ecodeclub/webook/internal/order/internal/web"
-	"github.com/ecodeclub/webook/internal/payment"
-	"github.com/ecodeclub/webook/internal/product"
-	testioc "github.com/ecodeclub/webook/internal/test/ioc"
-	"github.com/google/wire"
+	"github.com/ecodeclub/webook/internal/order/internal/event"
+	"github.com/ecodeclub/webook/internal/order/internal/job"
 )
 
-func InitHandler(paymentSvc payment.Service, productSvc product.Service, creditSvc credit.Service) (*web.Handler, error) {
-	wire.Build(testioc.BaseSet, order.InitService, order.InitHandler)
-	return new(web.Handler), nil
+type Module struct {
+	Hdl                       *Handler
+	c                         *event.CompleteOrderConsumer
+	CloseExpiredOrdersCronJob *job.CloseExpiredOrdersJob
 }

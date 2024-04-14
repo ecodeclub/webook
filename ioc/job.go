@@ -15,17 +15,38 @@
 package ioc
 
 import (
-	"github.com/ecodeclub/webook/internal/job"
+	"context"
+	"time"
+
 	"github.com/ecodeclub/webook/internal/order"
-	"github.com/robfig/cron/v3"
+	"github.com/gotomicro/ego/core/elog"
+	"github.com/gotomicro/ego/task/ecron"
 )
 
-func InitCronJobs(cjob *order.CloseExpiredOrdersJob) *cron.Cron {
-	builder := job.NewCronJobBuilder()
-	expr := cron.New(cron.WithSeconds())
-	_, err := expr.AddJob("@midnight", builder.Build(cjob))
-	if err != nil {
-		panic(err)
+func InitCronJobs(cjob *order.CloseExpiredOrdersJob) []*ecron.Component {
+	return []*ecron.Component{
+		ecron.Load("cron.order.close").Build(ecron.WithJob(funcJobWrapper(cjob))),
 	}
-	return expr
+}
+
+func funcJobWrapper(job ecron.NamedJob) ecron.FuncJob {
+	name := job.Name()
+	return func(ctx context.Context) error {
+		start := time.Now()
+		elog.DefaultLogger.Debug("开始运行",
+			elog.String("cronjob", name))
+		err := job.Run(ctx)
+		if err != nil {
+			elog.DefaultLogger.Error("执行失败",
+				elog.FieldErr(err),
+				elog.String("cronjob", name))
+			return err
+		}
+		duration := time.Since(start)
+		elog.DefaultLogger.Debug("结束运行",
+			elog.String("cronjob", name),
+			elog.FieldKey("运行时间"),
+			elog.FieldCost(duration))
+		return nil
+	}
 }

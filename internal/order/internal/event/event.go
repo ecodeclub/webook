@@ -12,9 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package job
+package event
 
-type Job interface {
-	Name() string
-	Run() error
+const orderCompleteEvents = "order_complete_events"
+
+type CompleteOrderEvent struct {
+	OrderSN string `json:"sn"`
+	BuyerID int64  `json:"buyerId"`
 }
