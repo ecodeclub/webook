@@ -38,6 +38,7 @@ func InitModule(db *egorm.Component, q mq.MQ) (*Module, error) {
 		new(Module), "*"),
 		InitService,
 		initRegistrationConsumer,
+		initMemberConsumer,
 	)
 	return new(Module), nil
 }
@@ -59,6 +60,15 @@ func InitService(db *egorm.Component, q mq.MQ) Service {
 
 func initRegistrationConsumer(svc service.Service, q mq.MQ) *event.RegistrationEventConsumer {
 	c, err := event.NewRegistrationEventConsumer(svc, q)
+	if err != nil {
+		panic(err)
+	}
+	c.Start(context.Background())
+	return c
+}
+
+func initMemberConsumer(svc service.Service, q mq.MQ) *event.MemberEventConsumer {
+	c, err := event.NewMemberEventConsumer(svc, q)
 	if err != nil {
 		panic(err)
 	}

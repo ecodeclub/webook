@@ -19,4 +19,5 @@ import "github.com/ecodeclub/webook/internal/member/internal/event"
 type Module struct {
 	Svc Service
 	c   *event.RegistrationEventConsumer
+	cc  *event.MemberEventConsumer
 }

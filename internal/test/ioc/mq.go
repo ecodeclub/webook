@@ -83,6 +83,10 @@ func initMQ() (mq.MQ, error) {
 			Name:       "order_complete_events",
 			Partitions: 1,
 		},
+		{
+			Name:       "member_update_events",
+			Partitions: 1,
+		},
 	})
 	err := econf.UnmarshalKey("kafka", &cfg)
 	if err != nil {
