@@ -30,6 +30,7 @@ type PreviewOrderResp struct {
 type Product struct {
 	SPUSN         string `json:"spuSN"`
 	SKUSN         string `json:"skuSN"`
+	Image         string `json:"image"`
 	Name          string `json:"name"`
 	Desc          string `json:"desc"`
 	OriginalPrice int64  `json:"originalPrice"`
@@ -102,13 +103,7 @@ type Payment struct {
 }
 
 type OrderItem struct {
-	SPUID            int64  `json:"spuId"`
-	SKUID            int64  `json:"skuId"`
-	SKUName          string `json:"skuName"`
-	SKUDescription   string `json:"skuDescription"`
-	SKUOriginalPrice int64  `json:"skuOriginalPrice"`
-	SKURealPrice     int64  `json:"skuRealPrice"`
-	Quantity         int64  `json:"quantity"`
+	Product Product `json:"product"`
 }
 
 // CancelOrderReq 取消订单

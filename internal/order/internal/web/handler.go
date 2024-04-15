@@ -96,6 +96,7 @@ func (h *Handler) toProductVO(p product.Product, quantity int64) []Product {
 		{
 			SPUSN:         p.SPU.SN,
 			SKUSN:         p.SKU.SN,
+			Image:         p.SKU.Image,
 			Name:          p.SKU.Name,
 			Desc:          p.SKU.Desc,
 			OriginalPrice: p.SKU.Price,
@@ -162,7 +163,7 @@ func (h *Handler) checkRequestID(ctx context.Context, requestID string) error {
 }
 
 func (h *Handler) createOrderRequestKey(requestID string) string {
-	return fmt.Sprintf("webook:order:create:%s", requestID)
+	return fmt.Sprintf("order:create:%s", requestID)
 }
 
 func (h *Handler) createOrder(ctx context.Context, req CreateOrderReq, buyerID int64) (domain.Order, error) {
@@ -211,6 +212,9 @@ func (h *Handler) getOrderItems(ctx context.Context, req CreateOrderReq) ([]doma
 		item := domain.OrderItem{
 			SPUID:            pp.SPU.ID,
 			SKUID:            pp.SKU.ID,
+			SPUSN:            pp.SPU.SN,
+			SKUSN:            pp.SKU.SN,
+			SKUImage:         pp.SKU.Image,
 			SKUName:          pp.SKU.Name,
 			SKUDescription:   pp.SKU.Desc,
 			SKUOriginalPrice: pp.SKU.Price,
@@ -282,13 +286,16 @@ func (h *Handler) toOrderVO(order domain.Order) Order {
 		Status:             order.Status.ToUint8(),
 		Items: slice.Map(order.Items, func(idx int, src domain.OrderItem) OrderItem {
 			return OrderItem{
-				SPUID:            src.SPUID,
-				SKUID:            src.SKUID,
-				SKUName:          src.SKUName,
-				SKUDescription:   src.SKUDescription,
-				SKUOriginalPrice: src.SKUOriginalPrice,
-				SKURealPrice:     src.SKURealPrice,
-				Quantity:         src.Quantity,
+				Product: Product{
+					SPUSN:         src.SPUSN,
+					SKUSN:         src.SKUSN,
+					Image:         src.SKUImage,
+					Name:          src.SKUName,
+					Desc:          src.SKUDescription,
+					OriginalPrice: src.SKUOriginalPrice,
+					RealPrice:     src.SKURealPrice,
+					Quantity:      src.Quantity,
+				},
 			}
 		}),
 		Ctime: order.Ctime,

@@ -45,6 +45,9 @@ type OrderItem struct {
 	OrderID          int64
 	SPUID            int64
 	SKUID            int64
+	SPUSN            string
+	SKUSN            string
+	SKUImage         string
 	SKUName          string
 	SKUDescription   string
 	SKUOriginalPrice int64
