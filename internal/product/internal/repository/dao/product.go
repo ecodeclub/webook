@@ -16,8 +16,10 @@ package dao
 
 import (
 	"context"
+	"database/sql"
 	"time"
 
+	"github.com/ecodeclub/webook/internal/product/internal/domain"
 	"github.com/ego-component/egorm"
 )
 
@@ -38,19 +40,19 @@ func NewProductGORMDAO(db *egorm.Component) ProductDAO {
 
 func (d *ProductGORMDAO) FindSPUBySN(ctx context.Context, sn string) (ProductSPU, error) {
 	var res ProductSPU
-	err := d.db.WithContext(ctx).Where("sn = ? AND status = ?", sn, StatusOnShelf).First(&res).Error
+	err := d.db.WithContext(ctx).Where("sn = ? AND status = ?", sn, domain.StatusOnShelf.ToUint8()).First(&res).Error
 	return res, err
 }
 
 func (d *ProductGORMDAO) FindSKUBySN(ctx context.Context, sn string) (ProductSKU, error) {
 	var res ProductSKU
-	err := d.db.WithContext(ctx).Where("sn = ? AND status = ?", sn, StatusOnShelf).First(&res).Error
+	err := d.db.WithContext(ctx).Where("sn = ? AND status = ?", sn, domain.StatusOnShelf.ToUint8()).First(&res).Error
 	return res, err
 }
 
 func (d *ProductGORMDAO) FindSPUByID(ctx context.Context, id int64) (ProductSPU, error) {
 	var res ProductSPU
-	err := d.db.WithContext(ctx).Where("id = ? AND status = ?", id, StatusOnShelf).First(&res).Error
+	err := d.db.WithContext(ctx).Where("id = ? AND status = ?", id, domain.StatusOnShelf.ToUint8()).First(&res).Error
 	return res, err
 }
 
@@ -71,7 +73,7 @@ type ProductSPU struct {
 	SN          string `gorm:"type:varchar(255);not null;uniqueIndex:uniq_product_spu_sn;comment:商品SPU序列号"`
 	Name        string `gorm:"type:varchar(255);not null;comment:商品名称"`
 	Description string `gorm:"not null; comment:商品描述"`
-	Status      int64  `gorm:"type:tinyint unsigned;not null;default:1;comment:状态 1=下架 2=上架"`
+	Status      uint8  `gorm:"type:tinyint unsigned;not null;default:1;comment:状态 1=下架 2=上架"`
 	Ctime       int64
 	Utime       int64
 }
@@ -85,15 +87,12 @@ type ProductSKU struct {
 	Price        int64  `gorm:"not null;comment:商品单价;单位为分, 999表示9.99元"`
 	Stock        int64  `gorm:"not null;comment:库存数量"`
 	StockLimit   int64  `gorm:"not null;comment:库存限制"`
-	SaleType     int64  `gorm:"type:tinyint unsigned;not null;default:1;comment:销售类型: 1=无限期 2=限时促销 3=预售"`
+	SaleType     uint8  `gorm:"type:tinyint unsigned;not null;default:1;comment:销售类型: 1=无限期 2=限时促销 3=预售"`
 	// SaleStart    sql.NullInt64   `gorm:"comment:销售开始时间,无限期销售为NULL"`
 	// SaleEnd      sql.NullInt64   `gorm:"comment:销售结束时间,无限期和预售为NULL"`
-	Status int64 `gorm:"type:tinyint unsigned;not null;default:1;comment:状态 1=下架 2=上架"`
+	Attrs  sql.NullString `gorm:"comment:商品销售属性,JSON格式"`
+	Image  string         `gorm:"type:varchar(512);not null;comment:商品缩略图,CDN绝对路径"`
+	Status uint8          `gorm:"type:tinyint unsigned;not null;default:1;comment:状态 1=下架 2=上架"`
 	Ctime  int64
 	Utime  int64
 }
-
-const (
-	StatusOffShelf = iota + 1 // 下架
-	StatusOnShelf             // 上架
-)

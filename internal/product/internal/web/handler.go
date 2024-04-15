@@ -53,7 +53,9 @@ func (h *Handler) RetrieveProductDetail(ctx *ginx.Context, req ProductSNReq, _ s
 				Price:      p.SKU.Price,
 				Stock:      p.SKU.Stock,
 				StockLimit: p.SKU.StockLimit,
-				SaleType:   p.SKU.SaleType,
+				SaleType:   p.SKU.SaleType.ToUint8(),
+				Attrs:      p.SKU.Attrs,
+				Image:      p.SKU.Image,
 			},
 		},
 	}, nil

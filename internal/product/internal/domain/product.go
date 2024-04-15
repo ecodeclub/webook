@@ -14,9 +14,27 @@
 
 package domain
 
+type Status uint8
+
+func (s Status) ToUint8() uint8 {
+	return uint8(s)
+}
+
 const (
-	StatusOffShelf = iota // 下架
-	StatusOnShelf         // 上架
+	StatusOffShelf Status = 1 // 下架
+	StatusOnShelf  Status = 2 // 上架
+)
+
+type SaleType uint8
+
+func (s SaleType) ToUint8() uint8 {
+	return uint8(s)
+}
+
+const (
+	SaleTypeUnlimited SaleType = 1 // 无限期
+	SaleTypePromotion SaleType = 2 // 限时促销
+	SaleTypePresale   SaleType = 3 // 预售
 )
 
 type Product struct {
@@ -29,7 +47,7 @@ type SPU struct {
 	SN     string
 	Name   string
 	Desc   string
-	Status int64
+	Status Status
 }
 
 type SKU struct {
@@ -42,8 +60,10 @@ type SKU struct {
 	Stock      int64
 	StockLimit int64
 
-	SaleType int64
+	SaleType SaleType
 	// SaleStart int64
 	// SaleEnd   int64
-	Status int64
+	Attrs  string
+	Image  string
+	Status Status
 }

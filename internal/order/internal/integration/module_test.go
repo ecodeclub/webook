@@ -143,7 +143,6 @@ func (f *fakePaymentService) FindPaymentByID(_ context.Context, paymentID int64)
 type fakeProductService struct{}
 
 func (f *fakeProductService) FindBySN(_ context.Context, sn string) (product.Product, error) {
-	var StatusOnShelf int64 = 2
 	products := map[string]product.Product{
 		"SKU100": {
 			SPU: product.SPU{
@@ -151,7 +150,7 @@ func (f *fakeProductService) FindBySN(_ context.Context, sn string) (product.Pro
 				SN:     "SPUSN100",
 				Name:   "商品SPU100",
 				Desc:   "商品SPU100描述",
-				Status: StatusOnShelf,
+				Status: product.StatusOnShelf,
 			},
 			SKU: product.SKU{
 				ID:       100,
@@ -160,8 +159,8 @@ func (f *fakeProductService) FindBySN(_ context.Context, sn string) (product.Pro
 				Desc:     "商品SKU100",
 				Price:    990,
 				Stock:    10,
-				SaleType: 1, // 无限制
-				Status:   StatusOnShelf,
+				SaleType: product.SaleTypeUnlimited, // 无限制
+				Status:   product.StatusOnShelf,
 			},
 		},
 		"SKU101": {
@@ -170,7 +169,7 @@ func (f *fakeProductService) FindBySN(_ context.Context, sn string) (product.Pro
 				SN:     "SPUSN101",
 				Name:   "商品SPU101",
 				Desc:   "商品SPU101描述",
-				Status: StatusOnShelf,
+				Status: product.StatusOnShelf,
 			},
 			SKU: product.SKU{
 				ID:       101,
@@ -179,8 +178,8 @@ func (f *fakeProductService) FindBySN(_ context.Context, sn string) (product.Pro
 				Desc:     "商品SKU101",
 				Price:    9900,
 				Stock:    1,
-				SaleType: 1, // 无限制
-				Status:   StatusOnShelf,
+				SaleType: product.SaleTypeUnlimited, // 无限制
+				Status:   product.StatusOnShelf,
 			},
 		},
 	}

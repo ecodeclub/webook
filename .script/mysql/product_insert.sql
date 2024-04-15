@@ -24,6 +24,8 @@ CREATE TABLE IF NOT EXISTS  `product_skus` (
     `stock` bigint NOT NULL COMMENT '库存数量',
     `stock_limit` bigint NOT NULL COMMENT '库存限制',
     `sale_type` tinyint unsigned NOT NULL DEFAULT '1' COMMENT '销售类型: 1=无限期 2=限时促销 3=预售',
+    `attrs` longtext COMMENT '商品销售属性,JSON格式',
+    `image` varchar(512) NOT NULL COMMENT '商品缩略图,CDN绝对路径',
     `status` tinyint unsigned NOT NULL DEFAULT '1' COMMENT '状态 1=下架 2=上架',
     `ctime` bigint DEFAULT NULL,
     `utime` bigint DEFAULT NULL,
@@ -33,11 +35,12 @@ CREATE TABLE IF NOT EXISTS  `product_skus` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 
-INSERT INTO `product_skus` (sn, product_spu_id, name, description, price, stock, stock_limit, sale_type, status, ctime, utime)
+INSERT INTO `product_skus` (sn, product_spu_id, name, description, price, stock, stock_limit, sale_type, attrs, image, status, ctime, utime)
 VALUES
-    ('SKU001', 1, '星期会员', '提供一周的会员服务', 799, 1000, 100000000, 1, 2, UNIX_TIMESTAMP(), UNIX_TIMESTAMP()),
-    ('SKU002', 1, '月会员', '提供一个月的会员服务', 990, 1000, 100000000, 1, 2, UNIX_TIMESTAMP(), UNIX_TIMESTAMP()),
-    ('SKU003', 1, '季度会员', '提供一个季度的会员服务', 2970, 1000, 100000000, 1, 2, UNIX_TIMESTAMP(), UNIX_TIMESTAMP()),
-    ('SKU004', 1, '年会员', '提供一年的会员服务', 11880, 1000, 100000000, 1, 2, UNIX_TIMESTAMP(), UNIX_TIMESTAMP()),
-    ('SKU005', 2, '用户项目', '中小型面试项目', 9999, 1000, 100000000, 1, 2, UNIX_TIMESTAMP(), UNIX_TIMESTAMP()),
-    ('SKU006', 2, '权限项目', '中大型面试项目', 19999, 1000, 100000000, 1, 2, UNIX_TIMESTAMP(), UNIX_TIMESTAMP());
+    ('SKU001', 1, '星期会员', '提供一周的会员服务', 799, 1000, 100000000, 1, '{"days":7}', 'image-SKU001', 2, UNIX_TIMESTAMP(), UNIX_TIMESTAMP()),
+    ('SKU002', 1, '月会员', '提供一个月的会员服务', 990, 1000, 100000000, 1, '{"days":31}', 'image-SKU002',2,  UNIX_TIMESTAMP(), UNIX_TIMESTAMP()),
+    ('SKU003', 1, '季度会员', '提供一个季度的会员服务', 2970, 1000, 100000000, 1, '{"days":100}', 'image-SKU003', 2, UNIX_TIMESTAMP(), UNIX_TIMESTAMP()),
+    ('SKU004', 1, '年会员', '提供一年的会员服务', 11880, 1000, 100000000, 1, '{"days":366}', 'image-SKU004', 2, UNIX_TIMESTAMP(), UNIX_TIMESTAMP()),
+    ('SKU005', 2, '用户项目', '中小型面试项目', 9999, 1000, 100000000, 1, '{"lang":"Go"}', 'image-SKU005', 2, UNIX_TIMESTAMP(), UNIX_TIMESTAMP()),
+    ('SKU006', 2, '权限项目', '中大型面试项目', 19999, 1000, 100000000, 1, '{"lang":"Go"}', 'image-SKU006', 2, UNIX_TIMESTAMP(), UNIX_TIMESTAMP());
+

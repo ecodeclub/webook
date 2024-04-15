@@ -56,7 +56,7 @@ func (p *productRepository) toDomainProduct(spu dao.ProductSPU, sku dao.ProductS
 			SN:     spu.SN,
 			Name:   spu.Name,
 			Desc:   spu.Description,
-			Status: spu.Status,
+			Status: domain.Status(spu.Status),
 		},
 		SKU: domain.SKU{
 			ID:         sku.Id,
@@ -66,8 +66,10 @@ func (p *productRepository) toDomainProduct(spu dao.ProductSPU, sku dao.ProductS
 			Price:      sku.Price,
 			Stock:      sku.Stock,
 			StockLimit: sku.StockLimit,
-			SaleType:   sku.SaleType,
-			Status:     sku.Status,
+			SaleType:   domain.SaleType(sku.SaleType),
+			Attrs:      sku.Attrs.String,
+			Image:      sku.Image,
+			Status:     domain.Status(sku.Status),
 		},
 	}
 }
