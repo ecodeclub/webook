@@ -32,6 +32,7 @@ import (
 )
 
 type Credit = domain.Credit
+type CreditLog = domain.CreditLog
 type Service = service.Service
 
 func InitModule(db *egorm.Component, q mq.MQ, e ecache.Cache) (*Module, error) {
