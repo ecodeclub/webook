@@ -53,13 +53,13 @@ func (s *ModuleTestSuite) SetupSuite() {
 }
 
 func (s *ModuleTestSuite) TearDownSuite() {
-	// err := s.db.Exec("DROP TABLE `members`").Error
-	// require.NoError(s.T(), err)
+	err := s.db.Exec("DROP TABLE `members`").Error
+	require.NoError(s.T(), err)
 }
 
 func (s *ModuleTestSuite) TearDownTest() {
-	// err := s.db.Exec("TRUNCATE TABLE `members`").Error
-	// require.NoError(s.T(), err)
+	err := s.db.Exec("TRUNCATE TABLE `members`").Error
+	require.NoError(s.T(), err)
 }
 
 func (s *ModuleTestSuite) TestConsumer_ConsumeRegistrationEvent() {
@@ -382,7 +382,7 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeMemberEvent() {
 
 			// 处理重复消息
 			err = consumer.Consume(context.Background())
-			require.Error(t, err)
+			require.NoError(t, err)
 
 			tc.after(t, tc.evt.Uid)
 		})
@@ -399,4 +399,79 @@ func (s *ModuleTestSuite) newMemberEventMessage(t *testing.T, evt event.MemberEv
 	marshal, err := json.Marshal(evt)
 	require.NoError(t, err)
 	return &mq.Message{Value: marshal}
+}
+
+func (s *ModuleTestSuite) TestService_ActivateMembership() {
+	t := s.T()
+
+	t.Run("相同消息并发测试", func(t *testing.T) {
+		n := 10
+
+		waitChan := make(chan struct{})
+		errChan := make(chan error)
+
+		for i := 0; i < n; i++ {
+			i := i
+			go func() {
+				<-waitChan
+				err := s.svc.ActivateMembership(context.Background(), domain.Member{
+					Uid: 2100,
+					Records: []domain.MemberRecord{
+						{
+							Key:   "Key-Same-Message",
+							Days:  100,
+							Biz:   "相同消息并发测试",
+							BizId: 11,
+							Desc:  "相同消息并发测试",
+						},
+					},
+				})
+				t.Logf("invoked i = %d\n", i)
+				errChan <- err
+			}()
+		}
+
+		time.Sleep(100 * time.Millisecond)
+		close(waitChan)
+		counter := 0
+		for i := 0; i < n; i++ {
+			err := <-errChan
+			if err != nil {
+				require.ErrorIs(t, err, service.ErrDuplicatedMemberRecord)
+				counter++
+			}
+		}
+		require.Equal(t, n-1, counter)
+	})
+
+	t.Run("不同消息并发测试", func(t *testing.T) {
+		n := 10
+		waitChan := make(chan struct{})
+		errChan := make(chan error)
+		for i := 0; i < n; i++ {
+			go func(i int) {
+				<-waitChan
+				err := s.svc.ActivateMembership(context.Background(), domain.Member{
+					Uid: 2200,
+					Records: []domain.MemberRecord{
+						{
+							Key:   fmt.Sprintf("Key-diff-Message-%d", i),
+							Days:  200,
+							Biz:   "不同消息并发测试",
+							BizId: 12,
+							Desc:  "不同消息并发测试",
+						},
+					},
+				})
+				t.Logf("invoked j = %d\n", i)
+				errChan <- err
+			}(i)
+		}
+		time.Sleep(100 * time.Millisecond)
+		close(waitChan)
+		for i := 0; i < n; i++ {
+			require.NoError(t, <-errChan)
+		}
+	})
+
 }

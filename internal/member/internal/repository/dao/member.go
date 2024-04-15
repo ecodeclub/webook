@@ -57,23 +57,15 @@ func (g *memberGROMDAO) FindMemberRecordsByUID(ctx context.Context, uid int64) (
 }
 
 func (g *memberGROMDAO) Upsert(ctx context.Context, d Member, r MemberRecord) error {
-
-	return g.db.WithContext(ctx).Transaction(func(tx *egorm.Component) error {
-		// 1. first
-		//    找到数据 快路径, 大部分情况,能找到数据, 即 update,
-		//    未找到数据, create, 冲突, 重试,
-		//
-		for {
-			err := g.upsert(tx, d, r)
-			if errors.Is(err, ErrCreateMemberConfict) ||
-				errors.Is(err, ErrUpdateMemberConflict) {
-				continue
-			}
-			if err != nil {
-				return err
-			}
+	for {
+		err := g.db.WithContext(ctx).Transaction(func(tx *egorm.Component) error {
+			return g.upsert(tx, d, r)
+		})
+		if errors.Is(err, ErrCreateMemberConfict) || errors.Is(err, ErrUpdateMemberConflict) {
+			continue
 		}
-	})
+		return err
+	}
 }
 
 func (g *memberGROMDAO) upsert(tx *egorm.Component, d Member, r MemberRecord) error {
@@ -99,15 +91,16 @@ func (g *memberGROMDAO) upsert(tx *egorm.Component, d Member, r MemberRecord) er
 		// 两个协程并发消费,
 		// g1, 执行FirstOrCreate,没找到,create,
 		// g2, 执行FirstOrCreate,没找到,create的瞬间发现g1已创建,应该返回错误
-		//     上层重试,使g2处理的请求走下方更新(续约流程),此时走续约是错误,幸好在创建会员流水记录的时候会失败
-		//     因为Key相同导致唯一索引冲突,导致整合g2重试的事务失败
+		//     上层重试,使g2处理的请求走下方更新(续约流程),此时走续约是错误的(因为是重复请求),
+		//     幸好在创建会员流水记录的时候会失败,因为Key相同导致唯一索引冲突,导致整个g2的事务失败
+		//     此时返回非重试类型的错误,报告给最上层调用者打印日志
 		if g.isMySQLUniqueIndexError(res.Error) {
 			return fmt.Errorf("%w", ErrCreateMemberConfict)
 		}
 		return res.Error
 	}
+	// 更新主记录
 	if res.RowsAffected == 0 {
-		// 更新主记录
 		if member.EndAt < now.UnixMilli() {
 			// 重新激活
 			member.EndAt = g.endAt(today, r.Days)
