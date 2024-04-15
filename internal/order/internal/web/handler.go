@@ -82,11 +82,11 @@ func (h *Handler) RetrievePreviewOrder(ctx *ginx.Context, req PreviewOrderReq, s
 	}, nil
 }
 
-func (h *Handler) toPaymentChannelVO(ctx *ginx.Context) []Payment {
+func (h *Handler) toPaymentChannelVO(ctx *ginx.Context) []PaymentItem {
 	pcs := h.paymentSvc.GetPaymentChannels(ctx.Request.Context())
-	channels := make([]Payment, 0, len(pcs))
+	channels := make([]PaymentItem, 0, len(pcs))
 	for _, pc := range pcs {
-		channels = append(channels, Payment{Type: pc.Type})
+		channels = append(channels, PaymentItem{Type: pc.Type})
 	}
 	return channels
 }
@@ -224,7 +224,7 @@ func (h *Handler) getOrderItems(ctx context.Context, req CreateOrderReq) ([]doma
 	return orderItems, originalTotalPrice, realTotalPrice, nil
 }
 
-func (h *Handler) createPayment(ctx context.Context, order domain.Order, paymentChannels []Payment) (payment.Payment, error) {
+func (h *Handler) createPayment(ctx context.Context, order domain.Order, paymentChannels []PaymentItem) (payment.Payment, error) {
 	records := make([]payment.Record, 0, len(paymentChannels))
 	for _, pc := range paymentChannels {
 		if pc.Type != payment.ChannelTypeCredit && pc.Type != payment.ChannelTypeWechat {
@@ -276,7 +276,7 @@ func (h *Handler) ListOrders(ctx *ginx.Context, req ListOrdersReq, sess session.
 func (h *Handler) toOrderVO(order domain.Order) Order {
 	return Order{
 		SN:                 order.SN,
-		PaymentSN:          order.PaymentSN,
+		Payment:            Payment{SN: order.PaymentSN},
 		OriginalTotalPrice: order.OriginalTotalPrice,
 		RealTotalPrice:     order.RealTotalPrice,
 		Status:             order.Status.ToUint8(),
@@ -315,8 +315,8 @@ func (h *Handler) RetrieveOrderDetail(ctx *ginx.Context, req RetrieveOrderDetail
 
 func (h *Handler) toOrderVOWithPaymentInfo(order domain.Order, pr payment.Payment) Order {
 	vo := h.toOrderVO(order)
-	vo.Payments = slice.Map(pr.Records, func(idx int, src payment.Record) Payment {
-		return Payment{
+	vo.Payment.Items = slice.Map(pr.Records, func(idx int, src payment.Record) PaymentItem {
+		return PaymentItem{
 			Type:   src.Channel,
 			Amount: src.Amount,
 		}

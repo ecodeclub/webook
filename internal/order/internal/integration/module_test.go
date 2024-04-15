@@ -270,7 +270,7 @@ func (s *OrderModuleTestSuite) TestHandler_PreviewOrder() {
 			wantResp: test.Result[web.PreviewOrderResp]{
 				Data: web.PreviewOrderResp{
 					Credits: 1000,
-					Payments: []web.Payment{
+					Payments: []web.PaymentItem{
 						{Type: payment.ChannelTypeCredit},
 						{Type: payment.ChannelTypeWechat},
 					},
@@ -381,7 +381,7 @@ func (s *OrderModuleTestSuite) TestHandler_CreateOrderAndPayment() {
 						Quantity: 1,
 					},
 				},
-				Payments: []web.Payment{
+				Payments: []web.PaymentItem{
 					{Type: payment.ChannelTypeCredit},
 					{Type: payment.ChannelTypeWechat},
 				},
@@ -406,7 +406,7 @@ func (s *OrderModuleTestSuite) TestHandler_CreateOrderAndPayment() {
 						Quantity: 1,
 					},
 				},
-				Payments: []web.Payment{
+				Payments: []web.PaymentItem{
 					{Type: payment.ChannelTypeCredit},
 					{Type: payment.ChannelTypeWechat},
 				},
@@ -561,7 +561,7 @@ func (s *OrderModuleTestSuite) TestHandler_CreateOrderAndPaymentFailed() {
 						Quantity: 10,
 					},
 				},
-				Payments: []web.Payment{
+				Payments: []web.PaymentItem{
 					{
 						Type: 0,
 					},
@@ -753,8 +753,10 @@ func (s *OrderModuleTestSuite) TestHandler_ListOrders() {
 					Total: int64(total),
 					Orders: []web.Order{
 						{
-							SN:                 "OrderSN-list-199",
-							PaymentSN:          fmt.Sprintf("PaymentSN-list-%d", 199),
+							SN: "OrderSN-list-199",
+							Payment: web.Payment{
+								SN: fmt.Sprintf("PaymentSN-list-%d", 199),
+							},
 							OriginalTotalPrice: 100,
 							RealTotalPrice:     100,
 							Status:             domain.StatusUnpaid.ToUint8(),
@@ -771,8 +773,11 @@ func (s *OrderModuleTestSuite) TestHandler_ListOrders() {
 							},
 						},
 						{
-							SN:                 "OrderSN-list-198",
-							PaymentSN:          fmt.Sprintf("PaymentSN-list-%d", 198),
+							SN: "OrderSN-list-198",
+							Payment: web.Payment{
+								SN:    fmt.Sprintf("PaymentSN-list-%d", 198),
+								Items: nil,
+							},
 							OriginalTotalPrice: 100,
 							RealTotalPrice:     100,
 							Status:             domain.StatusUnpaid.ToUint8(),
@@ -804,8 +809,10 @@ func (s *OrderModuleTestSuite) TestHandler_ListOrders() {
 					Total: int64(total),
 					Orders: []web.Order{
 						{
-							SN:                 "OrderSN-list-100",
-							PaymentSN:          fmt.Sprintf("PaymentSN-list-%d", 100),
+							SN: "OrderSN-list-100",
+							Payment: web.Payment{
+								SN: fmt.Sprintf("PaymentSN-list-%d", 100),
+							},
 							OriginalTotalPrice: 100,
 							RealTotalPrice:     100,
 							Status:             domain.StatusUnpaid.ToUint8(),
@@ -897,8 +904,16 @@ func (s *OrderModuleTestSuite) TestHandler_RetrieveOrderDetail() {
 			wantResp: test.Result[web.RetrieveOrderDetailResp]{
 				Data: web.RetrieveOrderDetailResp{
 					Order: web.Order{
-						SN:                 "orderSN-33",
-						PaymentSN:          "paymentSN-33",
+						SN: "orderSN-33",
+						Payment: web.Payment{
+							SN: "paymentSN-33",
+							Items: []web.PaymentItem{
+								{
+									Type:   payment.ChannelTypeCredit,
+									Amount: 9900,
+								},
+							},
+						},
 						OriginalTotalPrice: 9900,
 						RealTotalPrice:     9900,
 						Status:             domain.StatusUnpaid.ToUint8(),
@@ -911,12 +926,6 @@ func (s *OrderModuleTestSuite) TestHandler_RetrieveOrderDetail() {
 								SKUOriginalPrice: 9900,
 								SKURealPrice:     9900,
 								Quantity:         1,
-							},
-						},
-						Payments: []web.Payment{
-							{
-								Type:   payment.ChannelTypeCredit,
-								Amount: 9900,
 							},
 						},
 					},
