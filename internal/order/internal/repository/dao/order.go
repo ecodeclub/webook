@@ -155,8 +155,8 @@ type OrderItem struct {
 	Id               int64  `gorm:"primaryKey;autoIncrement;comment:订单项自增ID"`
 	OrderId          int64  `gorm:"not null;index:idx_order_id;comment:订单自增ID"`
 	SPUId            int64  `gorm:"column:spu_id;not null;index:idx_spu_id;comment:SPU自增ID"`
-	SKUId            int64  `gorm:"column:sku_id;not null;index:idx_sku_id;comment:SKU自增ID"`
 	SPUSN            string `gorm:"column:spu_sn;type:varchar(255);not null;comment:SPU序列号"`
+	SKUId            int64  `gorm:"column:sku_id;not null;index:idx_sku_id;comment:SKU自增ID"`
 	SKUSN            string `gorm:"column:sku_sn;type:varchar(255);not null;comment:SKU序列号"`
 	SKUImage         string `gorm:"type:varchar(512);not null;comment:SKU缩略图,CDN绝对路径"`
 	SKUName          string `gorm:"column:sku_name;type:varchar(255);not null;comment:SKU名称"`

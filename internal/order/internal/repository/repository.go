@@ -72,16 +72,16 @@ func (o *orderRepository) toOrderEntity(order domain.Order) dao.Order {
 func (o *orderRepository) toOrderItemEntities(orderItems []domain.OrderItem) []dao.OrderItem {
 	return slice.Map(orderItems, func(idx int, src domain.OrderItem) dao.OrderItem {
 		return dao.OrderItem{
-			SPUId:            src.Product.SPUID,
-			SKUId:            src.Product.SKUID,
-			SPUSN:            src.Product.SPUSN,
-			SKUSN:            src.Product.SKUSN,
-			SKUName:          src.Product.SKUName,
-			SKUImage:         src.Product.SKUImage,
-			SKUDescription:   src.Product.SKUDescription,
-			SKUOriginalPrice: src.Product.SKUOriginalPrice,
-			SKURealPrice:     src.Product.SKURealPrice,
-			Quantity:         src.Product.Quantity,
+			SPUId:            src.SKU.SPUID,
+			SPUSN:            src.SKU.SPUSN,
+			SKUId:            src.SKU.ID,
+			SKUSN:            src.SKU.SN,
+			SKUName:          src.SKU.Name,
+			SKUImage:         src.SKU.Image,
+			SKUDescription:   src.SKU.Description,
+			SKUOriginalPrice: src.SKU.OriginalPrice,
+			SKURealPrice:     src.SKU.RealPrice,
+			Quantity:         src.SKU.Quantity,
 		}
 	})
 }
@@ -117,17 +117,17 @@ func (o *orderRepository) toOrderDomain(order dao.Order, orderItems []dao.OrderI
 		Status:             domain.OrderStatus(order.Status),
 		Items: slice.Map(orderItems, func(idx int, src dao.OrderItem) domain.OrderItem {
 			return domain.OrderItem{
-				Product: domain.Product{
-					SPUID:            src.SPUId,
-					SKUID:            src.SKUId,
-					SPUSN:            src.SPUSN,
-					SKUSN:            src.SKUSN,
-					SKUImage:         src.SKUImage,
-					SKUName:          src.SKUName,
-					SKUDescription:   src.SKUDescription,
-					SKUOriginalPrice: src.SKUOriginalPrice,
-					SKURealPrice:     src.SKURealPrice,
-					Quantity:         src.Quantity,
+				SKU: domain.SKU{
+					SPUID:         src.SPUId,
+					SPUSN:         src.SPUSN,
+					ID:            src.SKUId,
+					SN:            src.SKUSN,
+					Image:         src.SKUImage,
+					Name:          src.SKUName,
+					Description:   src.SKUDescription,
+					OriginalPrice: src.SKUOriginalPrice,
+					RealPrice:     src.SKURealPrice,
+					Quantity:      src.Quantity,
 				},
 			}
 		}),

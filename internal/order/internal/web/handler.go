@@ -210,21 +210,21 @@ func (h *Handler) getOrderItems(ctx context.Context, req CreateOrderReq) ([]doma
 		}
 
 		item := domain.OrderItem{
-			Product: domain.Product{
-				SPUID:            pp.SPU.ID,
-				SKUID:            pp.SKU.ID,
-				SPUSN:            pp.SPU.SN,
-				SKUSN:            pp.SKU.SN,
-				SKUImage:         pp.SKU.Image,
-				SKUName:          pp.SKU.Name,
-				SKUDescription:   pp.SKU.Desc,
-				SKUOriginalPrice: pp.SKU.Price,
-				SKURealPrice:     pp.SKU.Price, // 引入优惠券时,需要重新计算
-				Quantity:         p.Quantity,
+			SKU: domain.SKU{
+				SPUID:         pp.SPU.ID,
+				SPUSN:         pp.SPU.SN,
+				ID:            pp.SKU.ID,
+				SN:            pp.SKU.SN,
+				Image:         pp.SKU.Image,
+				Name:          pp.SKU.Name,
+				Description:   pp.SKU.Desc,
+				OriginalPrice: pp.SKU.Price,
+				RealPrice:     pp.SKU.Price, // 引入优惠券时,需要重新计算
+				Quantity:      p.Quantity,
 			},
 		}
-		originalTotalPrice += item.Product.SKUOriginalPrice * p.Quantity
-		realTotalPrice += item.Product.SKURealPrice * p.Quantity
+		originalTotalPrice += item.SKU.OriginalPrice * p.Quantity
+		realTotalPrice += item.SKU.RealPrice * p.Quantity
 		orderItems = append(orderItems, item)
 	}
 	return orderItems, originalTotalPrice, realTotalPrice, nil
@@ -289,14 +289,14 @@ func (h *Handler) toOrderVO(order domain.Order) Order {
 		Items: slice.Map(order.Items, func(idx int, src domain.OrderItem) OrderItem {
 			return OrderItem{
 				Product: Product{
-					SPUSN:         src.Product.SPUSN,
-					SKUSN:         src.Product.SKUSN,
-					Image:         src.Product.SKUImage,
-					Name:          src.Product.SKUName,
-					Desc:          src.Product.SKUDescription,
-					OriginalPrice: src.Product.SKUOriginalPrice,
-					RealPrice:     src.Product.SKURealPrice,
-					Quantity:      src.Product.Quantity,
+					SPUSN:         src.SKU.SPUSN,
+					SKUSN:         src.SKU.SN,
+					Image:         src.SKU.Image,
+					Name:          src.SKU.Name,
+					Desc:          src.SKU.Description,
+					OriginalPrice: src.SKU.OriginalPrice,
+					RealPrice:     src.SKU.RealPrice,
+					Quantity:      src.SKU.Quantity,
 				},
 			}
 		}),

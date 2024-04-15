@@ -46,18 +46,18 @@ type Payment struct {
 }
 
 type OrderItem struct {
-	Product Product
+	SKU SKU
 }
 
-type Product struct {
-	SPUID            int64
-	SKUID            int64
-	SPUSN            string
-	SKUSN            string
-	SKUImage         string
-	SKUName          string
-	SKUDescription   string
-	SKUOriginalPrice int64
-	SKURealPrice     int64
-	Quantity         int64
+type SKU struct {
+	SPUID         int64
+	SPUSN         string
+	ID            int64
+	SN            string
+	Image         string
+	Name          string
+	Description   string
+	OriginalPrice int64
+	RealPrice     int64
+	Quantity      int64
 }
