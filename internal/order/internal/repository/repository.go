@@ -61,8 +61,8 @@ func (o *orderRepository) toOrderEntity(order domain.Order) dao.Order {
 		Id:                 order.ID,
 		SN:                 order.SN,
 		BuyerId:            order.BuyerID,
-		PaymentId:          order.PaymentID,
-		PaymentSn:          order.PaymentSN,
+		PaymentId:          order.Payment.ID,
+		PaymentSn:          order.Payment.SN,
 		OriginalTotalPrice: order.OriginalTotalPrice,
 		RealTotalPrice:     order.RealTotalPrice,
 		Status:             order.Status.ToUint8(),
@@ -72,16 +72,16 @@ func (o *orderRepository) toOrderEntity(order domain.Order) dao.Order {
 func (o *orderRepository) toOrderItemEntities(orderItems []domain.OrderItem) []dao.OrderItem {
 	return slice.Map(orderItems, func(idx int, src domain.OrderItem) dao.OrderItem {
 		return dao.OrderItem{
-			SPUId:            src.SPUID,
-			SKUId:            src.SKUID,
-			SPUSN:            src.SPUSN,
-			SKUSN:            src.SKUSN,
-			SKUName:          src.SKUName,
-			SKUImage:         src.SKUImage,
-			SKUDescription:   src.SKUDescription,
-			SKUOriginalPrice: src.SKUOriginalPrice,
-			SKURealPrice:     src.SKURealPrice,
-			Quantity:         src.Quantity,
+			SPUId:            src.Product.SPUID,
+			SKUId:            src.Product.SKUID,
+			SPUSN:            src.Product.SPUSN,
+			SKUSN:            src.Product.SKUSN,
+			SKUName:          src.Product.SKUName,
+			SKUImage:         src.Product.SKUImage,
+			SKUDescription:   src.Product.SKUDescription,
+			SKUOriginalPrice: src.Product.SKUOriginalPrice,
+			SKURealPrice:     src.Product.SKURealPrice,
+			Quantity:         src.Product.Quantity,
 		}
 	})
 }
@@ -105,27 +105,30 @@ func (o *orderRepository) FindOrderUIDAndSN(ctx context.Context, uid int64, sn s
 
 func (o *orderRepository) toOrderDomain(order dao.Order, orderItems []dao.OrderItem) domain.Order {
 	return domain.Order{
-		ID:                 order.Id,
-		SN:                 order.SN,
-		BuyerID:            order.BuyerId,
-		PaymentID:          order.PaymentId,
-		PaymentSN:          order.PaymentSn,
+		ID:      order.Id,
+		SN:      order.SN,
+		BuyerID: order.BuyerId,
+		Payment: domain.Payment{
+			ID: order.PaymentId,
+			SN: order.PaymentSn,
+		},
 		OriginalTotalPrice: order.OriginalTotalPrice,
 		RealTotalPrice:     order.RealTotalPrice,
 		Status:             domain.OrderStatus(order.Status),
 		Items: slice.Map(orderItems, func(idx int, src dao.OrderItem) domain.OrderItem {
 			return domain.OrderItem{
-				OrderID:          src.OrderId,
-				SPUID:            src.SPUId,
-				SKUID:            src.SKUId,
-				SPUSN:            src.SPUSN,
-				SKUSN:            src.SKUSN,
-				SKUImage:         src.SKUImage,
-				SKUName:          src.SKUName,
-				SKUDescription:   src.SKUDescription,
-				SKUOriginalPrice: src.SKUOriginalPrice,
-				SKURealPrice:     src.SKURealPrice,
-				Quantity:         src.Quantity,
+				Product: domain.Product{
+					SPUID:            src.SPUId,
+					SKUID:            src.SKUId,
+					SPUSN:            src.SPUSN,
+					SKUSN:            src.SKUSN,
+					SKUImage:         src.SKUImage,
+					SKUName:          src.SKUName,
+					SKUDescription:   src.SKUDescription,
+					SKUOriginalPrice: src.SKUOriginalPrice,
+					SKURealPrice:     src.SKURealPrice,
+					Quantity:         src.Quantity,
+				},
 			}
 		}),
 		Ctime: order.Ctime,

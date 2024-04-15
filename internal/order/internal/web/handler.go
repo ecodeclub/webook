@@ -210,19 +210,21 @@ func (h *Handler) getOrderItems(ctx context.Context, req CreateOrderReq) ([]doma
 		}
 
 		item := domain.OrderItem{
-			SPUID:            pp.SPU.ID,
-			SKUID:            pp.SKU.ID,
-			SPUSN:            pp.SPU.SN,
-			SKUSN:            pp.SKU.SN,
-			SKUImage:         pp.SKU.Image,
-			SKUName:          pp.SKU.Name,
-			SKUDescription:   pp.SKU.Desc,
-			SKUOriginalPrice: pp.SKU.Price,
-			SKURealPrice:     pp.SKU.Price, // 引入优惠券时,需要重新计算
-			Quantity:         p.Quantity,
+			Product: domain.Product{
+				SPUID:            pp.SPU.ID,
+				SKUID:            pp.SKU.ID,
+				SPUSN:            pp.SPU.SN,
+				SKUSN:            pp.SKU.SN,
+				SKUImage:         pp.SKU.Image,
+				SKUName:          pp.SKU.Name,
+				SKUDescription:   pp.SKU.Desc,
+				SKUOriginalPrice: pp.SKU.Price,
+				SKURealPrice:     pp.SKU.Price, // 引入优惠券时,需要重新计算
+				Quantity:         p.Quantity,
+			},
 		}
-		originalTotalPrice += item.SKUOriginalPrice * p.Quantity
-		realTotalPrice += item.SKURealPrice * p.Quantity
+		originalTotalPrice += item.Product.SKUOriginalPrice * p.Quantity
+		realTotalPrice += item.Product.SKURealPrice * p.Quantity
 		orderItems = append(orderItems, item)
 	}
 	return orderItems, originalTotalPrice, realTotalPrice, nil
@@ -280,21 +282,21 @@ func (h *Handler) ListOrders(ctx *ginx.Context, req ListOrdersReq, sess session.
 func (h *Handler) toOrderVO(order domain.Order) Order {
 	return Order{
 		SN:                 order.SN,
-		Payment:            Payment{SN: order.PaymentSN},
+		Payment:            Payment{SN: order.Payment.SN},
 		OriginalTotalPrice: order.OriginalTotalPrice,
 		RealTotalPrice:     order.RealTotalPrice,
 		Status:             order.Status.ToUint8(),
 		Items: slice.Map(order.Items, func(idx int, src domain.OrderItem) OrderItem {
 			return OrderItem{
 				Product: Product{
-					SPUSN:         src.SPUSN,
-					SKUSN:         src.SKUSN,
-					Image:         src.SKUImage,
-					Name:          src.SKUName,
-					Desc:          src.SKUDescription,
-					OriginalPrice: src.SKUOriginalPrice,
-					RealPrice:     src.SKURealPrice,
-					Quantity:      src.Quantity,
+					SPUSN:         src.Product.SPUSN,
+					SKUSN:         src.Product.SKUSN,
+					Image:         src.Product.SKUImage,
+					Name:          src.Product.SKUName,
+					Desc:          src.Product.SKUDescription,
+					OriginalPrice: src.Product.SKUOriginalPrice,
+					RealPrice:     src.Product.SKURealPrice,
+					Quantity:      src.Product.Quantity,
 				},
 			}
 		}),
@@ -309,7 +311,7 @@ func (h *Handler) RetrieveOrderDetail(ctx *ginx.Context, req RetrieveOrderDetail
 	if err != nil {
 		return systemErrorResult, fmt.Errorf("订单未找到: %w", err)
 	}
-	paymentInfo, err := h.paymentSvc.FindPaymentByID(ctx.Request.Context(), order.PaymentID)
+	paymentInfo, err := h.paymentSvc.FindPaymentByID(ctx.Request.Context(), order.Payment.ID)
 	if err != nil {
 		return systemErrorResult, fmt.Errorf("支付未找到: %w", err)
 	}

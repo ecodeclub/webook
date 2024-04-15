@@ -31,8 +31,7 @@ type Order struct {
 	ID                 int64
 	SN                 string
 	BuyerID            int64
-	PaymentID          int64
-	PaymentSN          string
+	Payment            Payment
 	OriginalTotalPrice int64
 	RealTotalPrice     int64
 	Status             OrderStatus
@@ -41,8 +40,16 @@ type Order struct {
 	Utime              int64
 }
 
+type Payment struct {
+	ID int64
+	SN string
+}
+
 type OrderItem struct {
-	OrderID          int64
+	Product Product
+}
+
+type Product struct {
 	SPUID            int64
 	SKUID            int64
 	SPUSN            string
