@@ -60,11 +60,11 @@ func (h *Handler) PublicRoutes(_ *gin.Engine) {}
 
 // RetrievePreviewOrder 获取订单预览信息, 此时订单尚未创建
 func (h *Handler) RetrievePreviewOrder(ctx *ginx.Context, req PreviewOrderReq, sess session.Session) (ginx.Result, error) {
-	p, err := h.productSvc.FindBySN(ctx.Request.Context(), req.ProductSKUSN)
+	p, err := h.productSvc.FindSKUBySN(ctx.Request.Context(), req.SKUSN)
 	if err != nil {
 		return systemErrorResult, fmt.Errorf("商品SKU序列号非法: %w", err)
 	}
-	if req.Quantity < 1 || req.Quantity > p.SKU.Stock {
+	if req.Quantity < 1 || req.Quantity > p.SKUs[0].Stock {
 		// todo: 重新审视stockLimit的意义及用法
 		return systemErrorResult, fmt.Errorf("要购买的商品数量非法")
 	}
@@ -76,8 +76,18 @@ func (h *Handler) RetrievePreviewOrder(ctx *ginx.Context, req PreviewOrderReq, s
 		Data: PreviewOrderResp{
 			Credits:  c.TotalAmount,
 			Payments: h.toPaymentChannelVO(ctx),
-			Products: h.toProductVO(p, req.Quantity),
-			Policy:   "请注意: 虚拟商品、一旦支持成功不退、不换,请谨慎操作",
+			SKUs: slice.Map(p.SKUs, func(idx int, src product.SKU) SKU {
+				return SKU{
+					SN:            src.SN,
+					Image:         src.Image,
+					Name:          src.Name,
+					Desc:          src.Desc,
+					OriginalPrice: src.Price,
+					RealPrice:     src.Price, // 引入优惠券时, 需要获取用户的优惠信息,动态计算
+					Quantity:      req.Quantity,
+				}
+			}),
+			Policy: "请注意: 虚拟商品、一旦支持成功不退、不换,请谨慎操作",
 		},
 	}, nil
 }
@@ -89,20 +99,6 @@ func (h *Handler) toPaymentChannelVO(ctx *ginx.Context) []PaymentItem {
 		channels = append(channels, PaymentItem{Type: pc.Type})
 	}
 	return channels
-}
-
-func (h *Handler) toProductVO(p product.Product, quantity int64) []SKU {
-	return []SKU{
-		{
-			SN:            p.SKU.SN,
-			Image:         p.SKU.Image,
-			Name:          p.SKU.Name,
-			Desc:          p.SKU.Desc,
-			OriginalPrice: p.SKU.Price,
-			RealPrice:     p.SKU.Price, // 引入优惠券时, 需要获取用户的优惠信息,动态计算
-			Quantity:      quantity,
-		},
-	}
 }
 
 // CreateOrderAndPayment 创建订单和支付
@@ -192,32 +188,32 @@ func (h *Handler) createOrder(ctx context.Context, req CreateOrderReq, buyerID i
 }
 
 func (h *Handler) getOrderItems(ctx context.Context, req CreateOrderReq) ([]domain.OrderItem, int64, int64, error) {
-	if len(req.Products) == 0 {
+	if len(req.SKUs) == 0 {
 		return nil, 0, 0, fmt.Errorf("商品信息非法")
 	}
-	orderItems := make([]domain.OrderItem, 0, len(req.Products))
+	orderItems := make([]domain.OrderItem, 0, len(req.SKUs))
 	originalTotalPrice, realTotalPrice := int64(0), int64(0)
-	for _, p := range req.Products {
-		pp, err := h.productSvc.FindBySN(ctx, p.SN)
+	for _, p := range req.SKUs {
+		pp, err := h.productSvc.FindSKUBySN(ctx, p.SN)
 		if err != nil {
 			// SN非法
 			return nil, 0, 0, fmt.Errorf("商品SKUSN非法: %w", err)
 		}
-		if p.Quantity < 1 || p.Quantity > pp.SKU.Stock {
+		if p.Quantity < 1 || p.Quantity > pp.SKUs[0].Stock {
 			// todo: 重新审视stockLimit的意义及用法
 			return nil, 0, 0, fmt.Errorf("商品数量非法")
 		}
 
 		item := domain.OrderItem{
 			SKU: domain.SKU{
-				SPUID:         pp.SPU.ID,
-				ID:            pp.SKU.ID,
-				SN:            pp.SKU.SN,
-				Image:         pp.SKU.Image,
-				Name:          pp.SKU.Name,
-				Description:   pp.SKU.Desc,
-				OriginalPrice: pp.SKU.Price,
-				RealPrice:     pp.SKU.Price, // 引入优惠券时,需要重新计算
+				SPUID:         pp.ID,
+				ID:            pp.SKUs[0].ID,
+				SN:            pp.SKUs[0].SN,
+				Image:         pp.SKUs[0].Image,
+				Name:          pp.SKUs[0].Name,
+				Description:   pp.SKUs[0].Desc,
+				OriginalPrice: pp.SKUs[0].Price,
+				RealPrice:     pp.SKUs[0].Price, // 引入优惠券时,需要重新计算
 				Quantity:      p.Quantity,
 			},
 		}
@@ -286,7 +282,7 @@ func (h *Handler) toOrderVO(order domain.Order) Order {
 		Status:             order.Status.ToUint8(),
 		Items: slice.Map(order.Items, func(idx int, src domain.OrderItem) OrderItem {
 			return OrderItem{
-				Product: SKU{
+				SKU: SKU{
 					SN:            src.SKU.SN,
 					Image:         src.SKU.Image,
 					Name:          src.SKU.Name,

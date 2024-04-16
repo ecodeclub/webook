@@ -23,6 +23,7 @@ import (
 	"github.com/ecodeclub/webook/internal/label"
 	"github.com/ecodeclub/webook/internal/member"
 	"github.com/ecodeclub/webook/internal/pkg/middleware"
+	"github.com/ecodeclub/webook/internal/product"
 	baguwen "github.com/ecodeclub/webook/internal/question"
 	"github.com/ecodeclub/webook/internal/skill"
 	"github.com/google/wire"
@@ -48,6 +49,7 @@ func InitApp() (*App, error) {
 		wire.FieldsOf(new(*member.Module), "Svc"),
 		// 会员检查中间件
 		middleware.NewCheckMembershipMiddlewareBuilder,
+		product.InitHandler,
 		initGinxServer)
 	return new(App), nil
 }

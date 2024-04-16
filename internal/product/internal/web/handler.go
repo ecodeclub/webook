@@ -15,8 +15,10 @@
 package web
 
 import (
+	"github.com/ecodeclub/ekit/slice"
 	"github.com/ecodeclub/ginx"
 	"github.com/ecodeclub/ginx/session"
+	"github.com/ecodeclub/webook/internal/product/internal/domain"
 	"github.com/ecodeclub/webook/internal/product/internal/service"
 	"github.com/gin-gonic/gin"
 )
@@ -31,32 +33,32 @@ func NewHandler(svc service.Service) *Handler {
 
 func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g := server.Group("/product")
-	g.POST("/detail", ginx.BS[ProductSNReq](h.RetrieveProductDetail))
+	g.POST("/detail", ginx.BS[SKUSNReq](h.RetrieveProductDetail))
 }
 
-func (h *Handler) RetrieveProductDetail(ctx *ginx.Context, req ProductSNReq, _ session.Session) (ginx.Result, error) {
-	p, err := h.svc.FindBySN(ctx.Request.Context(), req.SN)
+func (h *Handler) RetrieveProductDetail(ctx *ginx.Context, req SKUSNReq, _ session.Session) (ginx.Result, error) {
+	p, err := h.svc.FindSKUBySN(ctx.Request.Context(), req.SN)
 	if err != nil {
 		return systemErrorResult, err
 	}
 	return ginx.Result{
-		Data: Product{
-			SPU: ProductSPU{
-				SN:   p.SPU.SN,
-				Name: p.SPU.Name,
-				Desc: p.SPU.Desc,
-			},
-			SKU: ProductSKU{
-				SN:         p.SKU.SN,
-				Name:       p.SKU.Name,
-				Desc:       p.SKU.Desc,
-				Price:      p.SKU.Price,
-				Stock:      p.SKU.Stock,
-				StockLimit: p.SKU.StockLimit,
-				SaleType:   p.SKU.SaleType.ToUint8(),
-				Attrs:      p.SKU.Attrs,
-				Image:      p.SKU.Image,
-			},
+		Data: SPU{
+			SN:   p.SN,
+			Name: p.Name,
+			Desc: p.Desc,
+			SKUs: slice.Map(p.SKUs, func(idx int, src domain.SKU) SKU {
+				return SKU{
+					SN:         src.SN,
+					Name:       src.Name,
+					Desc:       src.Desc,
+					Price:      src.Price,
+					Stock:      src.Stock,
+					StockLimit: src.StockLimit,
+					SaleType:   src.SaleType.ToUint8(),
+					Attrs:      src.Attrs,
+					Image:      src.Image,
+				}
+			}),
 		},
 	}, nil
 }

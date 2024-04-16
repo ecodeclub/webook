@@ -23,7 +23,7 @@ import (
 )
 
 type ProductRepository interface {
-	FindBySN(ctx context.Context, sn string) (domain.Product, error)
+	FindSKUBySN(ctx context.Context, sn string) (domain.SPU, error)
 }
 
 func NewProductRepository(d dao.ProductDAO) ProductRepository {
@@ -37,39 +37,39 @@ type productRepository struct {
 	logger *elog.Component
 }
 
-func (p *productRepository) FindBySN(ctx context.Context, sn string) (domain.Product, error) {
+func (p *productRepository) FindSKUBySN(ctx context.Context, sn string) (domain.SPU, error) {
 	sku, err := p.dao.FindSKUBySN(ctx, sn)
 	if err != nil {
-		return domain.Product{}, err
+		return domain.SPU{}, err
 	}
-	spu, err := p.dao.FindSPUByID(ctx, sku.ProductSPUID)
+	spu, err := p.dao.FindSPUByID(ctx, sku.SPUID)
 	if err != nil {
-		return domain.Product{}, err
+		return domain.SPU{}, err
 	}
 	return p.toDomainProduct(spu, sku), err
 }
 
-func (p *productRepository) toDomainProduct(spu dao.ProductSPU, sku dao.ProductSKU) domain.Product {
-	return domain.Product{
-		SPU: domain.SPU{
-			ID:     spu.Id,
-			SN:     spu.SN,
-			Name:   spu.Name,
-			Desc:   spu.Description,
-			Status: domain.Status(spu.Status),
-		},
-		SKU: domain.SKU{
-			ID:         sku.Id,
-			SN:         sku.SN,
-			Name:       sku.Name,
-			Desc:       sku.Description,
-			Price:      sku.Price,
-			Stock:      sku.Stock,
-			StockLimit: sku.StockLimit,
-			SaleType:   domain.SaleType(sku.SaleType),
-			Attrs:      sku.Attrs.String,
-			Image:      sku.Image,
-			Status:     domain.Status(sku.Status),
+func (p *productRepository) toDomainProduct(spu dao.SPU, sku dao.SKU) domain.SPU {
+	return domain.SPU{
+		ID:     spu.Id,
+		SN:     spu.SN,
+		Name:   spu.Name,
+		Desc:   spu.Description,
+		Status: domain.Status(spu.Status),
+		SKUs: []domain.SKU{
+			{
+				ID:         sku.Id,
+				SN:         sku.SN,
+				Name:       sku.Name,
+				Desc:       sku.Description,
+				Price:      sku.Price,
+				Stock:      sku.Stock,
+				StockLimit: sku.StockLimit,
+				SaleType:   domain.SaleType(sku.SaleType),
+				Attrs:      sku.Attrs.String,
+				Image:      sku.Image,
+				Status:     domain.Status(sku.Status),
+			},
 		},
 	}
 }
