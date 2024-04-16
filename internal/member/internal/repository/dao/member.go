@@ -26,7 +26,7 @@ import (
 
 var (
 	ErrDuplicatedMemberRecord = errors.New("会员记录重复")
-	ErrCreateMemberConfict    = errors.New("创建会员主记录冲突")
+	ErrCreateMemberConflict   = errors.New("创建会员主记录冲突")
 	ErrUpdateMemberConflict   = errors.New("更新会员主记录冲突")
 )
 
@@ -61,7 +61,7 @@ func (g *memberGROMDAO) Upsert(ctx context.Context, d Member, r MemberRecord) er
 		err := g.db.WithContext(ctx).Transaction(func(tx *egorm.Component) error {
 			return g.upsert(tx, d, r)
 		})
-		if errors.Is(err, ErrCreateMemberConfict) || errors.Is(err, ErrUpdateMemberConflict) {
+		if errors.Is(err, ErrCreateMemberConflict) || errors.Is(err, ErrUpdateMemberConflict) {
 			continue
 		}
 		return err
@@ -95,7 +95,7 @@ func (g *memberGROMDAO) upsert(tx *egorm.Component, d Member, r MemberRecord) er
 		//     幸好在创建会员流水记录的时候会失败,因为Key相同导致唯一索引冲突,导致整个g2的事务失败
 		//     此时返回非重试类型的错误,报告给最上层调用者打印日志
 		if g.isMySQLUniqueIndexError(res.Error) {
-			return fmt.Errorf("%w", ErrCreateMemberConfict)
+			return fmt.Errorf("%w", ErrCreateMemberConflict)
 		}
 		return res.Error
 	}
