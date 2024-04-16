@@ -17,13 +17,16 @@ package repository
 import (
 	"context"
 
+	"github.com/ecodeclub/ekit/slice"
 	"github.com/ecodeclub/webook/internal/product/internal/domain"
 	"github.com/ecodeclub/webook/internal/product/internal/repository/dao"
 	"github.com/gotomicro/ego/core/elog"
 )
 
 type ProductRepository interface {
-	FindSKUBySN(ctx context.Context, sn string) (domain.SPU, error)
+	FindSPUBySN(ctx context.Context, sn string) (domain.SPU, error)
+	FindSPUByID(ctx context.Context, id int64) (domain.SPU, error)
+	FindSKUBySN(ctx context.Context, sn string) (domain.SKU, error)
 }
 
 func NewProductRepository(d dao.ProductDAO) ProductRepository {
@@ -37,39 +40,64 @@ type productRepository struct {
 	logger *elog.Component
 }
 
-func (p *productRepository) FindSKUBySN(ctx context.Context, sn string) (domain.SPU, error) {
-	sku, err := p.dao.FindSKUBySN(ctx, sn)
+func (p *productRepository) FindSPUBySN(ctx context.Context, sn string) (domain.SPU, error) {
+	spu, err := p.dao.FindSPUBySN(ctx, sn)
 	if err != nil {
 		return domain.SPU{}, err
 	}
-	spu, err := p.dao.FindSPUByID(ctx, sku.SPUID)
+	skus, err := p.dao.FindSKUsBySPUID(ctx, spu.Id)
 	if err != nil {
 		return domain.SPU{}, err
 	}
-	return p.toDomainProduct(spu, sku), err
+	return p.toDomainSPU(spu, skus), err
 }
 
-func (p *productRepository) toDomainProduct(spu dao.SPU, sku dao.SKU) domain.SPU {
+func (p *productRepository) toDomainSPU(spu dao.SPU, skus []dao.SKU) domain.SPU {
 	return domain.SPU{
 		ID:     spu.Id,
 		SN:     spu.SN,
 		Name:   spu.Name,
 		Desc:   spu.Description,
 		Status: domain.Status(spu.Status),
-		SKUs: []domain.SKU{
-			{
-				ID:         sku.Id,
-				SN:         sku.SN,
-				Name:       sku.Name,
-				Desc:       sku.Description,
-				Price:      sku.Price,
-				Stock:      sku.Stock,
-				StockLimit: sku.StockLimit,
-				SaleType:   domain.SaleType(sku.SaleType),
-				Attrs:      sku.Attrs.String,
-				Image:      sku.Image,
-				Status:     domain.Status(sku.Status),
-			},
-		},
+		SKUs: slice.Map(skus, func(idx int, src dao.SKU) domain.SKU {
+			return p.toDomainSKU(src)
+		}),
 	}
+}
+
+func (p *productRepository) toDomainSKU(sku dao.SKU) domain.SKU {
+	return domain.SKU{
+		ID:         sku.Id,
+		SPUID:      sku.SPUID,
+		SN:         sku.SN,
+		Name:       sku.Name,
+		Desc:       sku.Description,
+		Price:      sku.Price,
+		Stock:      sku.Stock,
+		StockLimit: sku.StockLimit,
+		SaleType:   domain.SaleType(sku.SaleType),
+		Attrs:      sku.Attrs.String,
+		Image:      sku.Image,
+		Status:     domain.Status(sku.Status),
+	}
+}
+
+func (p *productRepository) FindSPUByID(ctx context.Context, id int64) (domain.SPU, error) {
+	spu, err := p.dao.FindSPUByID(ctx, id)
+	if err != nil {
+		return domain.SPU{}, err
+	}
+	skus, err := p.dao.FindSKUsBySPUID(ctx, spu.Id)
+	if err != nil {
+		return domain.SPU{}, err
+	}
+	return p.toDomainSPU(spu, skus), err
+}
+
+func (p *productRepository) FindSKUBySN(ctx context.Context, sn string) (domain.SKU, error) {
+	sku, err := p.dao.FindSKUBySN(ctx, sn)
+	if err != nil {
+		return domain.SKU{}, err
+	}
+	return p.toDomainSKU(sku), err
 }

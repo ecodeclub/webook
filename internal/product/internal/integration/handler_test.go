@@ -28,6 +28,7 @@ import (
 	"github.com/ecodeclub/webook/internal/product/internal/errs"
 	"github.com/ecodeclub/webook/internal/product/internal/integration/startup"
 	"github.com/ecodeclub/webook/internal/product/internal/repository/dao"
+	"github.com/ecodeclub/webook/internal/product/internal/service"
 	"github.com/ecodeclub/webook/internal/product/internal/web"
 	"github.com/ecodeclub/webook/internal/test"
 	testioc "github.com/ecodeclub/webook/internal/test/ioc"
@@ -51,6 +52,7 @@ type HandlerTestSuite struct {
 	server *egin.Component
 	db     *egorm.Component
 	dao    dao.ProductDAO
+	svc    service.Service
 }
 
 func (s *HandlerTestSuite) SetupSuite() {
@@ -71,6 +73,7 @@ func (s *HandlerTestSuite) SetupSuite() {
 	err = dao.InitTables(s.db)
 	require.NoError(s.T(), err)
 	s.dao = dao.NewProductGORMDAO(s.db)
+	s.svc = startup.InitService()
 }
 
 func (s *HandlerTestSuite) TearDownSuite() {
@@ -87,15 +90,17 @@ func (s *HandlerTestSuite) TearDownTest() {
 	require.NoError(s.T(), err)
 }
 
-func (s *HandlerTestSuite) TestProductDetail() {
+func (s *HandlerTestSuite) TestHandler_RetrieveSKUDetail() {
+
+	t := s.T()
 
 	testCases := []struct {
 		name   string
 		before func(t *testing.T)
 
-		req      web.SKUSNReq
+		req      web.SPUSNReq
 		wantCode int
-		wantResp test.Result[web.SPU]
+		wantResp test.Result[web.SKU]
 	}{
 		{
 			name: "查找成功",
@@ -128,38 +133,31 @@ func (s *HandlerTestSuite) TestProductDetail() {
 					require.NoError(t, err)
 				}
 			},
-			req:      web.SKUSNReq{SN: "SKU001"},
+			req:      web.SPUSNReq{SN: "SKU001"},
 			wantCode: 200,
-			wantResp: test.Result[web.SPU]{
-				Data: web.SPU{
-					SN:   "SPU001",
-					Name: "会员服务",
-					Desc: "提供不同期限的会员服务",
-					SKUs: []web.SKU{
-						{
-							SN:         "SKU001",
-							Name:       "星期会员",
-							Desc:       "提供一周的会员服务",
-							Price:      799,
-							Stock:      1000,
-							StockLimit: 100000000,
-							SaleType:   domain.SaleTypeUnlimited.ToUint8(),
-							Attrs:      `{"days":7}`,
-							Image:      "image-SKU001",
-						},
-					},
+			wantResp: test.Result[web.SKU]{
+				Data: web.SKU{
+					SN:         "SKU001",
+					Name:       "星期会员",
+					Desc:       "提供一周的会员服务",
+					Price:      799,
+					Stock:      1000,
+					StockLimit: 100000000,
+					SaleType:   domain.SaleTypeUnlimited.ToUint8(),
+					Attrs:      `{"days":7}`,
+					Image:      "image-SKU001",
 				},
 			},
 		},
 	}
 	for _, tc := range testCases {
-		s.T().Run(tc.name, func(t *testing.T) {
+		t.Run(tc.name, func(t *testing.T) {
 			tc.before(t)
 			req, err := http.NewRequest(http.MethodPost,
-				"/product/detail", iox.NewJSONReader(tc.req))
+				"/product/sku/detail", iox.NewJSONReader(tc.req))
 			req.Header.Set("content-type", "application/json")
 			require.NoError(t, err)
-			recorder := test.NewJSONResponseRecorder[web.SPU]()
+			recorder := test.NewJSONResponseRecorder[web.SKU]()
 			s.server.ServeHTTP(recorder, req)
 			require.Equal(t, tc.wantCode, recorder.Code)
 			assert.Equal(t, tc.wantResp, recorder.MustScan())
@@ -167,19 +165,20 @@ func (s *HandlerTestSuite) TestProductDetail() {
 	}
 }
 
-func (s *HandlerTestSuite) TestProductDetailFailed() {
+func (s *HandlerTestSuite) TestHandler_RetrieveSKUDetailFailed() {
+	t := s.T()
 	testCases := []struct {
 		name   string
 		before func(t *testing.T)
 
-		req      web.SKUSNReq
+		req      web.SPUSNReq
 		wantCode int
 		wantResp test.Result[any]
 	}{
 		{
 			name:     "SN不存在",
 			before:   func(t *testing.T) {},
-			req:      web.SKUSNReq{SN: "SKU000"},
+			req:      web.SPUSNReq{SN: "SKU000"},
 			wantCode: 500,
 			wantResp: test.Result[any]{
 				Code: errs.SystemError.Code,
@@ -218,46 +217,7 @@ func (s *HandlerTestSuite) TestProductDetailFailed() {
 					require.NoError(t, err)
 				}
 			},
-			req:      web.SKUSNReq{SN: "SKU002"},
-			wantCode: 500,
-			wantResp: test.Result[any]{
-				Code: errs.SystemError.Code,
-				Msg:  errs.SystemError.Msg,
-			},
-		},
-		{
-			name: "SPU下架_SKU上架",
-			before: func(t *testing.T) {
-				t.Helper()
-				spu := dao.SPU{
-					SN:          "SPU003",
-					Name:        "会员服务",
-					Description: "提供不同期限的会员服务",
-					Status:      domain.StatusOffShelf.ToUint8(),
-				}
-				id, err := s.dao.CreateSPU(context.Background(), spu)
-				require.NoError(t, err)
-
-				skus := []dao.SKU{
-					{
-						SN:          "SKU003",
-						SPUID:       id,
-						Name:        "季度会员",
-						Description: "提供一个季度的会员服务",
-						Price:       2970,
-						Stock:       1000,
-						StockLimit:  100000000,
-						Status:      domain.StatusOnShelf.ToUint8(),
-						Attrs:       sql.NullString{String: `{"days":100}`, Valid: true},
-						Image:       "image-SKU003",
-					},
-				}
-				for i := 0; i < len(skus); i++ {
-					_, err := s.dao.CreateSKU(context.Background(), skus[i])
-					require.NoError(t, err)
-				}
-			},
-			req:      web.SKUSNReq{SN: "SKU003"},
+			req:      web.SPUSNReq{SN: "SKU002"},
 			wantCode: 500,
 			wantResp: test.Result[any]{
 				Code: errs.SystemError.Code,
@@ -297,7 +257,7 @@ func (s *HandlerTestSuite) TestProductDetailFailed() {
 					require.NoError(t, err)
 				}
 			},
-			req:      web.SKUSNReq{SN: "SKU004"},
+			req:      web.SPUSNReq{SN: "SKU004"},
 			wantCode: 500,
 			wantResp: test.Result[any]{
 				Code: errs.SystemError.Code,
@@ -306,16 +266,344 @@ func (s *HandlerTestSuite) TestProductDetailFailed() {
 		},
 	}
 	for _, tc := range testCases {
-		s.T().Run(tc.name, func(t *testing.T) {
+		t.Run(tc.name, func(t *testing.T) {
 			tc.before(t)
 			req, err := http.NewRequest(http.MethodPost,
-				"/product/detail", iox.NewJSONReader(tc.req))
+				"/product/sku/detail", iox.NewJSONReader(tc.req))
 			req.Header.Set("content-type", "application/json")
 			require.NoError(t, err)
 			recorder := test.NewJSONResponseRecorder[any]()
 			s.server.ServeHTTP(recorder, req)
 			require.Equal(t, tc.wantCode, recorder.Code)
 			assert.Equal(t, tc.wantResp, recorder.MustScan())
+		})
+	}
+}
+
+func (s *HandlerTestSuite) TestHandler_RetrieveSPUDetail() {
+
+	t := s.T()
+
+	testCases := []struct {
+		name   string
+		before func(t *testing.T)
+
+		req      web.SPUSNReq
+		wantCode int
+		wantResp test.Result[web.SPU]
+	}{
+		{
+			name: "查找成功",
+			before: func(t *testing.T) {
+				spu := dao.SPU{
+					SN:          "SPU102",
+					Name:        "会员服务-2",
+					Description: "提供不同期限的会员服务-2",
+					Status:      domain.StatusOnShelf.ToUint8(),
+				}
+				id, err := s.dao.CreateSPU(context.Background(), spu)
+				require.NoError(t, err)
+
+				skus := []dao.SKU{
+					{
+						SN:          "SKU101",
+						SPUID:       id,
+						Name:        "月会员",
+						Description: "提供一个月会员服务",
+						Price:       1899,
+						Stock:       1000,
+						StockLimit:  100000000,
+						Status:      domain.StatusOnShelf.ToUint8(),
+						Attrs:       sql.NullString{String: `{"days":31}`, Valid: true},
+						Image:       "image-SKU101",
+					},
+					{
+						SN:          "SKU102",
+						SPUID:       id,
+						Name:        "星期会员",
+						Description: "提供一周的会员服务",
+						Price:       799,
+						Stock:       1000,
+						StockLimit:  100000000,
+						Status:      domain.StatusOnShelf.ToUint8(),
+						Attrs:       sql.NullString{String: `{"days":7}`, Valid: true},
+						Image:       "image-SKU102",
+					},
+				}
+				for i := 0; i < len(skus); i++ {
+					_, err := s.dao.CreateSKU(context.Background(), skus[i])
+					require.NoError(t, err)
+				}
+			},
+			req:      web.SPUSNReq{SN: "SPU102"},
+			wantCode: 200,
+			wantResp: test.Result[web.SPU]{
+				Data: web.SPU{
+					SN:   "SPU102",
+					Name: "会员服务-2",
+					Desc: "提供不同期限的会员服务-2",
+					SKUs: []web.SKU{
+						{
+							SN:         "SKU102",
+							Name:       "星期会员",
+							Desc:       "提供一周的会员服务",
+							Price:      799,
+							Stock:      1000,
+							StockLimit: 100000000,
+							SaleType:   domain.SaleTypeUnlimited.ToUint8(),
+							Attrs:      `{"days":7}`,
+							Image:      "image-SKU102",
+						},
+						{
+							SN:         "SKU101",
+							Name:       "月会员",
+							Desc:       "提供一个月会员服务",
+							Price:      1899,
+							Stock:      1000,
+							StockLimit: 100000000,
+							SaleType:   domain.SaleTypeUnlimited.ToUint8(),
+							Attrs:      `{"days":31}`,
+							Image:      "image-SKU101",
+						},
+					},
+				},
+			},
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			tc.before(t)
+			req, err := http.NewRequest(http.MethodPost,
+				"/product/spu/detail", iox.NewJSONReader(tc.req))
+			req.Header.Set("content-type", "application/json")
+			require.NoError(t, err)
+			recorder := test.NewJSONResponseRecorder[web.SPU]()
+			s.server.ServeHTTP(recorder, req)
+			require.Equal(t, tc.wantCode, recorder.Code)
+			assert.Equal(t, tc.wantResp, recorder.MustScan())
+		})
+	}
+}
+
+func (s *HandlerTestSuite) TestHandler_RetrieveSPUDetailFailed() {
+	t := s.T()
+	testCases := []struct {
+		name   string
+		before func(t *testing.T)
+
+		req      web.SPUSNReq
+		wantCode int
+		wantResp test.Result[any]
+	}{
+		{
+			name:     "SN不存在",
+			before:   func(t *testing.T) {},
+			req:      web.SPUSNReq{SN: "SPU000"},
+			wantCode: 500,
+			wantResp: test.Result[any]{
+				Code: errs.SystemError.Code,
+				Msg:  errs.SystemError.Msg,
+			},
+		},
+		{
+			name: "SPU下架_SKU上架",
+			before: func(t *testing.T) {
+				t.Helper()
+				spu := dao.SPU{
+					SN:          "SPU103",
+					Name:        "会员服务-3",
+					Description: "提供不同期限的会员服务-3",
+					Status:      domain.StatusOffShelf.ToUint8(),
+				}
+				id, err := s.dao.CreateSPU(context.Background(), spu)
+				require.NoError(t, err)
+
+				skus := []dao.SKU{
+					{
+						SN:          "SKU103",
+						SPUID:       id,
+						Name:        "季度会员",
+						Description: "提供一个季度的会员服务",
+						Price:       2970,
+						Stock:       1000,
+						StockLimit:  100000000,
+						Status:      domain.StatusOnShelf.ToUint8(),
+						Attrs:       sql.NullString{String: `{"days":100}`, Valid: true},
+						Image:       "image-SKU003",
+					},
+				}
+				for i := 0; i < len(skus); i++ {
+					_, err := s.dao.CreateSKU(context.Background(), skus[i])
+					require.NoError(t, err)
+				}
+			},
+			req:      web.SPUSNReq{SN: "SPU103"},
+			wantCode: 500,
+			wantResp: test.Result[any]{
+				Code: errs.SystemError.Code,
+				Msg:  errs.SystemError.Msg,
+			},
+		},
+		{
+			name: "SPU下架_SKU下架",
+			before: func(t *testing.T) {
+				t.Helper()
+				spu := dao.SPU{
+					SN:          "SPU104",
+					Name:        "会员服务-4",
+					Description: "提供不同期限的会员服务-4",
+					Status:      domain.StatusOffShelf.ToUint8(),
+				}
+
+				id, err := s.dao.CreateSPU(context.Background(), spu)
+				require.NoError(t, err)
+
+				skus := []dao.SKU{
+					{
+						SN:          "SKU104",
+						SPUID:       id,
+						Name:        "年会员",
+						Description: "提供一年的会员服务",
+						Price:       11880,
+						Stock:       1000,
+						StockLimit:  100000000,
+						Status:      domain.StatusOffShelf.ToUint8(),
+						Attrs:       sql.NullString{String: `{"days":366}`, Valid: true},
+						Image:       "image-SKU004",
+					},
+				}
+				for i := 0; i < len(skus); i++ {
+					_, err := s.dao.CreateSKU(context.Background(), skus[i])
+					require.NoError(t, err)
+				}
+			},
+			req:      web.SPUSNReq{SN: "SPU104"},
+			wantCode: 500,
+			wantResp: test.Result[any]{
+				Code: errs.SystemError.Code,
+				Msg:  errs.SystemError.Msg,
+			},
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			tc.before(t)
+			req, err := http.NewRequest(http.MethodPost,
+				"/product/spu/detail", iox.NewJSONReader(tc.req))
+			req.Header.Set("content-type", "application/json")
+			require.NoError(t, err)
+			recorder := test.NewJSONResponseRecorder[any]()
+			s.server.ServeHTTP(recorder, req)
+			require.Equal(t, tc.wantCode, recorder.Code)
+			assert.Equal(t, tc.wantResp, recorder.MustScan())
+		})
+	}
+}
+
+func (s *HandlerTestSuite) TestService_FindSPUByID() {
+	t := s.T()
+	testCases := []struct {
+		name     string
+		getSPUID func(t *testing.T) int64
+
+		SPU           domain.SPU
+		errRequreFunc require.ErrorAssertionFunc
+	}{
+		{
+			name: "查找成功",
+			getSPUID: func(t *testing.T) int64 {
+				spu := dao.SPU{
+					SN:          "SPU1102",
+					Name:        "会员服务-2",
+					Description: "提供不同期限的会员服务-2",
+					Status:      domain.StatusOnShelf.ToUint8(),
+				}
+				id, err := s.dao.CreateSPU(context.Background(), spu)
+				require.NoError(t, err)
+
+				skus := []dao.SKU{
+					{
+						SN:          "SKU1101",
+						SPUID:       id,
+						Name:        "月会员",
+						Description: "提供一个月会员服务",
+						Price:       1899,
+						Stock:       1000,
+						StockLimit:  100000000,
+						Status:      domain.StatusOnShelf.ToUint8(),
+						Attrs:       sql.NullString{String: `{"days":31}`, Valid: true},
+						Image:       "image-SKU1101",
+					},
+					{
+						SN:          "SKU1102",
+						SPUID:       id,
+						Name:        "星期会员",
+						Description: "提供一周的会员服务",
+						Price:       799,
+						Stock:       1000,
+						StockLimit:  100000000,
+						Status:      domain.StatusOnShelf.ToUint8(),
+						Attrs:       sql.NullString{String: `{"days":7}`, Valid: true},
+						Image:       "image-SKU1102",
+					},
+				}
+				for i := 0; i < len(skus); i++ {
+					_, err := s.dao.CreateSKU(context.Background(), skus[i])
+					require.NoError(t, err)
+				}
+				return id
+			},
+			SPU: domain.SPU{
+				SN:     "SPU1102",
+				Name:   "会员服务-2",
+				Desc:   "提供不同期限的会员服务-2",
+				Status: domain.StatusOnShelf,
+				SKUs: []domain.SKU{
+					{
+						SN:         "SKU1102",
+						Name:       "星期会员",
+						Desc:       "提供一周的会员服务",
+						Price:      799,
+						Stock:      1000,
+						StockLimit: 100000000,
+						SaleType:   domain.SaleTypeUnlimited,
+						Attrs:      `{"days":7}`,
+						Image:      "image-SKU1102",
+						Status:     domain.StatusOnShelf,
+					},
+					{
+						SN:         "SKU1101",
+						Name:       "月会员",
+						Desc:       "提供一个月会员服务",
+						Price:      1899,
+						Stock:      1000,
+						StockLimit: 100000000,
+						SaleType:   domain.SaleTypeUnlimited,
+						Attrs:      `{"days":31}`,
+						Image:      "image-SKU1101",
+						Status:     domain.StatusOnShelf,
+					},
+				},
+			},
+			errRequreFunc: require.NoError,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			id := tc.getSPUID(t)
+			spu, err := s.svc.FindSPUByID(context.Background(), id)
+			tc.errRequreFunc(t, err)
+			if err == nil {
+				require.NotZero(t, spu.ID)
+				spu.ID = 0
+				for i := 0; i < len(spu.SKUs); i++ {
+					require.NotZero(t, spu.SKUs[i].ID)
+					require.NotZero(t, spu.SKUs[i].SPUID)
+					spu.SKUs[i].ID = 0
+					spu.SKUs[i].SPUID = 0
+				}
+				require.Equal(t, tc.SPU, spu)
+			}
 		})
 	}
 }

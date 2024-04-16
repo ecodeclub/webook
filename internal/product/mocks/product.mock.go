@@ -40,10 +40,10 @@ func (m *MockService) EXPECT() *MockServiceMockRecorder {
 }
 
 // FindSKUBySN mocks base method.
-func (m *MockService) FindSKUBySN(ctx context.Context, sn string) (domain.SPU, error) {
+func (m *MockService) FindSKUBySN(ctx context.Context, sn string) (domain.SKU, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "FindSKUBySN", ctx, sn)
-	ret0, _ := ret[0].(domain.SPU)
+	ret0, _ := ret[0].(domain.SKU)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -61,19 +61,97 @@ type ServiceFindSKUBySNCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *ServiceFindSKUBySNCall) Return(arg0 domain.SPU, arg1 error) *ServiceFindSKUBySNCall {
+func (c *ServiceFindSKUBySNCall) Return(arg0 domain.SKU, arg1 error) *ServiceFindSKUBySNCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *ServiceFindSKUBySNCall) Do(f func(context.Context, string) (domain.SPU, error)) *ServiceFindSKUBySNCall {
+func (c *ServiceFindSKUBySNCall) Do(f func(context.Context, string) (domain.SKU, error)) *ServiceFindSKUBySNCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *ServiceFindSKUBySNCall) DoAndReturn(f func(context.Context, string) (domain.SPU, error)) *ServiceFindSKUBySNCall {
+func (c *ServiceFindSKUBySNCall) DoAndReturn(f func(context.Context, string) (domain.SKU, error)) *ServiceFindSKUBySNCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// FindSPUByID mocks base method.
+func (m *MockService) FindSPUByID(ctx context.Context, id int64) (domain.SPU, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FindSPUByID", ctx, id)
+	ret0, _ := ret[0].(domain.SPU)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// FindSPUByID indicates an expected call of FindSPUByID.
+func (mr *MockServiceMockRecorder) FindSPUByID(ctx, id any) *ServiceFindSPUByIDCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindSPUByID", reflect.TypeOf((*MockService)(nil).FindSPUByID), ctx, id)
+	return &ServiceFindSPUByIDCall{Call: call}
+}
+
+// ServiceFindSPUByIDCall wrap *gomock.Call
+type ServiceFindSPUByIDCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *ServiceFindSPUByIDCall) Return(arg0 domain.SPU, arg1 error) *ServiceFindSPUByIDCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *ServiceFindSPUByIDCall) Do(f func(context.Context, int64) (domain.SPU, error)) *ServiceFindSPUByIDCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *ServiceFindSPUByIDCall) DoAndReturn(f func(context.Context, int64) (domain.SPU, error)) *ServiceFindSPUByIDCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// FindSPUBySN mocks base method.
+func (m *MockService) FindSPUBySN(ctx context.Context, sn string) (domain.SPU, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FindSPUBySN", ctx, sn)
+	ret0, _ := ret[0].(domain.SPU)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// FindSPUBySN indicates an expected call of FindSPUBySN.
+func (mr *MockServiceMockRecorder) FindSPUBySN(ctx, sn any) *ServiceFindSPUBySNCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindSPUBySN", reflect.TypeOf((*MockService)(nil).FindSPUBySN), ctx, sn)
+	return &ServiceFindSPUBySNCall{Call: call}
+}
+
+// ServiceFindSPUBySNCall wrap *gomock.Call
+type ServiceFindSPUBySNCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *ServiceFindSPUBySNCall) Return(arg0 domain.SPU, arg1 error) *ServiceFindSPUBySNCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *ServiceFindSPUBySNCall) Do(f func(context.Context, string) (domain.SPU, error)) *ServiceFindSPUBySNCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *ServiceFindSPUBySNCall) DoAndReturn(f func(context.Context, string) (domain.SPU, error)) *ServiceFindSPUBySNCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

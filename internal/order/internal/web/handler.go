@@ -64,7 +64,7 @@ func (h *Handler) RetrievePreviewOrder(ctx *ginx.Context, req PreviewOrderReq, s
 	if err != nil {
 		return systemErrorResult, fmt.Errorf("商品SKU序列号非法: %w", err)
 	}
-	if req.Quantity < 1 || req.Quantity > p.SKUs[0].Stock {
+	if req.Quantity < 1 || req.Quantity > p.Stock {
 		// todo: 重新审视stockLimit的意义及用法
 		return systemErrorResult, fmt.Errorf("要购买的商品数量非法")
 	}
@@ -76,20 +76,22 @@ func (h *Handler) RetrievePreviewOrder(ctx *ginx.Context, req PreviewOrderReq, s
 		Data: PreviewOrderResp{
 			Credits:  c.TotalAmount,
 			Payments: h.toPaymentChannelVO(ctx),
-			SKUs: slice.Map(p.SKUs, func(idx int, src product.SKU) SKU {
-				return SKU{
-					SN:            src.SN,
-					Image:         src.Image,
-					Name:          src.Name,
-					Desc:          src.Desc,
-					OriginalPrice: src.Price,
-					RealPrice:     src.Price, // 引入优惠券时, 需要获取用户的优惠信息,动态计算
-					Quantity:      req.Quantity,
-				}
-			}),
-			Policy: "请注意: 虚拟商品、一旦支持成功不退、不换,请谨慎操作",
+			SKUs:     []SKU{h.toSKU(p, req.Quantity)},
+			Policy:   "请注意: 虚拟商品、一旦支持成功不退、不换,请谨慎操作",
 		},
 	}, nil
+}
+
+func (h *Handler) toSKU(sku product.SKU, quantity int64) SKU {
+	return SKU{
+		SN:            sku.SN,
+		Image:         sku.Image,
+		Name:          sku.Name,
+		Desc:          sku.Desc,
+		OriginalPrice: sku.Price,
+		RealPrice:     sku.Price, // 引入优惠券时, 需要获取用户的优惠信息,动态计算
+		Quantity:      quantity,
+	}
 }
 
 func (h *Handler) toPaymentChannelVO(ctx *ginx.Context) []PaymentItem {
@@ -193,32 +195,37 @@ func (h *Handler) getOrderItems(ctx context.Context, req CreateOrderReq) ([]doma
 	}
 	orderItems := make([]domain.OrderItem, 0, len(req.SKUs))
 	originalTotalPrice, realTotalPrice := int64(0), int64(0)
-	for _, p := range req.SKUs {
-		pp, err := h.productSvc.FindSKUBySN(ctx, p.SN)
+	for _, skuReq := range req.SKUs {
+		sku, err := h.productSvc.FindSKUBySN(ctx, skuReq.SN)
 		if err != nil {
 			// SN非法
 			return nil, 0, 0, fmt.Errorf("商品SKUSN非法: %w", err)
 		}
-		if p.Quantity < 1 || p.Quantity > pp.SKUs[0].Stock {
+		if skuReq.Quantity < 1 || skuReq.Quantity > sku.Stock {
 			// todo: 重新审视stockLimit的意义及用法
 			return nil, 0, 0, fmt.Errorf("商品数量非法")
+		}
+		spu, err := h.productSvc.FindSPUByID(ctx, sku.SPUID)
+		if err != nil {
+			// SN非法
+			return nil, 0, 0, fmt.Errorf("商品SPUSN非法: %w", err)
 		}
 
 		item := domain.OrderItem{
 			SKU: domain.SKU{
-				SPUID:         pp.ID,
-				ID:            pp.SKUs[0].ID,
-				SN:            pp.SKUs[0].SN,
-				Image:         pp.SKUs[0].Image,
-				Name:          pp.SKUs[0].Name,
-				Description:   pp.SKUs[0].Desc,
-				OriginalPrice: pp.SKUs[0].Price,
-				RealPrice:     pp.SKUs[0].Price, // 引入优惠券时,需要重新计算
-				Quantity:      p.Quantity,
+				SPUID:         spu.ID,
+				ID:            sku.ID,
+				SN:            sku.SN,
+				Image:         sku.Image,
+				Name:          sku.Name,
+				Description:   sku.Desc,
+				OriginalPrice: sku.Price,
+				RealPrice:     sku.Price, // 引入优惠券时,需要重新计算
+				Quantity:      skuReq.Quantity,
 			},
 		}
-		originalTotalPrice += item.SKU.OriginalPrice * p.Quantity
-		realTotalPrice += item.SKU.RealPrice * p.Quantity
+		originalTotalPrice += item.SKU.OriginalPrice * skuReq.Quantity
+		realTotalPrice += item.SKU.RealPrice * skuReq.Quantity
 		orderItems = append(orderItems, item)
 	}
 	return orderItems, originalTotalPrice, realTotalPrice, nil

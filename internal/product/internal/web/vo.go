@@ -38,3 +38,7 @@ type SKU struct {
 	// SaleStart  int64  `json:"saleStart"`
 	// SaleEnd    int64  `json:"saleEnd"`
 }
+
+type SPUSNReq struct {
+	SN string `json:"sn"`
+}

@@ -47,10 +47,11 @@ type SPU struct {
 }
 
 type SKU struct {
-	ID   int64
-	SN   string
-	Name string
-	Desc string
+	ID    int64
+	SPUID int64
+	SN    string
+	Name  string
+	Desc  string
 
 	Price      int64
 	Stock      int64

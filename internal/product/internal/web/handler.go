@@ -33,32 +33,47 @@ func NewHandler(svc service.Service) *Handler {
 
 func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g := server.Group("/product")
-	g.POST("/detail", ginx.BS[SKUSNReq](h.RetrieveProductDetail))
+	g.POST("spu/detail", ginx.BS[SPUSNReq](h.RetrieveSPUDetail))
+	g.POST("sku/detail", ginx.BS[SKUSNReq](h.RetrieveSKUDetail))
 }
 
-func (h *Handler) RetrieveProductDetail(ctx *ginx.Context, req SKUSNReq, _ session.Session) (ginx.Result, error) {
-	p, err := h.svc.FindSKUBySN(ctx.Request.Context(), req.SN)
+func (h *Handler) RetrieveSPUDetail(ctx *ginx.Context, req SPUSNReq, _ session.Session) (ginx.Result, error) {
+	spu, err := h.svc.FindSPUBySN(ctx.Request.Context(), req.SN)
 	if err != nil {
 		return systemErrorResult, err
 	}
 	return ginx.Result{
 		Data: SPU{
-			SN:   p.SN,
-			Name: p.Name,
-			Desc: p.Desc,
-			SKUs: slice.Map(p.SKUs, func(idx int, src domain.SKU) SKU {
-				return SKU{
-					SN:         src.SN,
-					Name:       src.Name,
-					Desc:       src.Desc,
-					Price:      src.Price,
-					Stock:      src.Stock,
-					StockLimit: src.StockLimit,
-					SaleType:   src.SaleType.ToUint8(),
-					Attrs:      src.Attrs,
-					Image:      src.Image,
-				}
+			SN:   spu.SN,
+			Name: spu.Name,
+			Desc: spu.Desc,
+			SKUs: slice.Map(spu.SKUs, func(idx int, src domain.SKU) SKU {
+				return h.toSKU(src)
 			}),
 		},
+	}, nil
+}
+
+func (h *Handler) toSKU(sku domain.SKU) SKU {
+	return SKU{
+		SN:         sku.SN,
+		Name:       sku.Name,
+		Desc:       sku.Desc,
+		Price:      sku.Price,
+		Stock:      sku.Stock,
+		StockLimit: sku.StockLimit,
+		SaleType:   sku.SaleType.ToUint8(),
+		Attrs:      sku.Attrs,
+		Image:      sku.Image,
+	}
+}
+
+func (h *Handler) RetrieveSKUDetail(ctx *ginx.Context, req SKUSNReq, _ session.Session) (ginx.Result, error) {
+	sku, err := h.svc.FindSKUBySN(ctx.Request.Context(), req.SN)
+	if err != nil {
+		return systemErrorResult, err
+	}
+	return ginx.Result{
+		Data: h.toSKU(sku),
 	}, nil
 }

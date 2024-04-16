@@ -23,7 +23,9 @@ import (
 
 //go:generate mockgen -source=./service.go -package=productmocks -destination=../../mocks/product.mock.go -typed Service
 type Service interface {
-	FindSKUBySN(ctx context.Context, sn string) (domain.SPU, error)
+	FindSPUBySN(ctx context.Context, sn string) (domain.SPU, error)
+	FindSPUByID(ctx context.Context, id int64) (domain.SPU, error)
+	FindSKUBySN(ctx context.Context, sn string) (domain.SKU, error)
 }
 
 func NewService(repo repository.ProductRepository) Service {
@@ -34,6 +36,14 @@ type service struct {
 	repo repository.ProductRepository
 }
 
-func (s *service) FindSKUBySN(ctx context.Context, sn string) (domain.SPU, error) {
+func (s *service) FindSPUBySN(ctx context.Context, sn string) (domain.SPU, error) {
+	return s.repo.FindSPUBySN(ctx, sn)
+}
+
+func (s *service) FindSPUByID(ctx context.Context, id int64) (domain.SPU, error) {
+	return s.repo.FindSPUByID(ctx, id)
+}
+
+func (s *service) FindSKUBySN(ctx context.Context, sn string) (domain.SKU, error) {
 	return s.repo.FindSKUBySN(ctx, sn)
 }
