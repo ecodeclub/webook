@@ -13,6 +13,7 @@ import (
 	"github.com/ecodeclub/webook/internal/label"
 	"github.com/ecodeclub/webook/internal/member"
 	"github.com/ecodeclub/webook/internal/pkg/middleware"
+	"github.com/ecodeclub/webook/internal/product"
 	baguwen "github.com/ecodeclub/webook/internal/question"
 	"github.com/ecodeclub/webook/internal/skill"
 	"github.com/google/wire"
@@ -55,7 +56,8 @@ func InitApp() (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	component := initGinxServer(provider, checkMembershipMiddlewareBuilder, handler, questionSetHandler, webHandler, handler2, handler3, handler4, handler5, handler6)
+	handler7 := product.InitHandler(db)
+	component := initGinxServer(provider, checkMembershipMiddlewareBuilder, handler, questionSetHandler, webHandler, handler2, handler3, handler4, handler5, handler6, handler7)
 	app := &App{
 		Web: component,
 	}
