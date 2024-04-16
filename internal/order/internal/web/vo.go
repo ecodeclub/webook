@@ -23,13 +23,12 @@ type PreviewOrderReq struct {
 type PreviewOrderResp struct {
 	Credits  uint64        `json:"credits"`  // 积分总数
 	Payments []PaymentItem `json:"payments"` // 支付通道
-	Products []Product     `json:"products"` // 商品信息
+	Products []SKU         `json:"skus"`     // 商品信息
 	Policy   string        `json:"policy"`   // 政策信息
 }
 
-type Product struct {
-	SPUSN         string `json:"spuSN"`
-	SKUSN         string `json:"skuSN"`
+type SKU struct {
+	SN            string `json:"sn"`
 	Image         string `json:"image"`
 	Name          string `json:"name"`
 	Desc          string `json:"desc"`
@@ -46,7 +45,7 @@ type PaymentItem struct {
 // CreateOrderReq 创建订单请求
 type CreateOrderReq struct {
 	RequestID          string        `json:"requestID"`       // 请求去重,防止订单重复提交
-	Products           []Product     `json:"products"`        // 商品信息
+	Products           []SKU         `json:"products"`        // 商品信息
 	Payments           []PaymentItem `json:"paymentChannels"` // 支付通道
 	OriginalTotalPrice int64         `json:"originalTotalPrice"`
 	RealTotalPrice     int64         `json:"realTotalPrice"`
@@ -103,7 +102,7 @@ type Payment struct {
 }
 
 type OrderItem struct {
-	Product Product `json:"product"`
+	Product SKU `json:"product"`
 }
 
 // CancelOrderReq 取消订单

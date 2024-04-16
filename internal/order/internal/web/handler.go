@@ -91,11 +91,10 @@ func (h *Handler) toPaymentChannelVO(ctx *ginx.Context) []PaymentItem {
 	return channels
 }
 
-func (h *Handler) toProductVO(p product.Product, quantity int64) []Product {
-	return []Product{
+func (h *Handler) toProductVO(p product.Product, quantity int64) []SKU {
+	return []SKU{
 		{
-			SPUSN:         p.SPU.SN,
-			SKUSN:         p.SKU.SN,
+			SN:            p.SKU.SN,
 			Image:         p.SKU.Image,
 			Name:          p.SKU.Name,
 			Desc:          p.SKU.Desc,
@@ -199,7 +198,7 @@ func (h *Handler) getOrderItems(ctx context.Context, req CreateOrderReq) ([]doma
 	orderItems := make([]domain.OrderItem, 0, len(req.Products))
 	originalTotalPrice, realTotalPrice := int64(0), int64(0)
 	for _, p := range req.Products {
-		pp, err := h.productSvc.FindBySN(ctx, p.SKUSN)
+		pp, err := h.productSvc.FindBySN(ctx, p.SN)
 		if err != nil {
 			// SN非法
 			return nil, 0, 0, fmt.Errorf("商品SKUSN非法: %w", err)
@@ -212,7 +211,6 @@ func (h *Handler) getOrderItems(ctx context.Context, req CreateOrderReq) ([]doma
 		item := domain.OrderItem{
 			SKU: domain.SKU{
 				SPUID:         pp.SPU.ID,
-				SPUSN:         pp.SPU.SN,
 				ID:            pp.SKU.ID,
 				SN:            pp.SKU.SN,
 				Image:         pp.SKU.Image,
@@ -288,9 +286,8 @@ func (h *Handler) toOrderVO(order domain.Order) Order {
 		Status:             order.Status.ToUint8(),
 		Items: slice.Map(order.Items, func(idx int, src domain.OrderItem) OrderItem {
 			return OrderItem{
-				Product: Product{
-					SPUSN:         src.SKU.SPUSN,
-					SKUSN:         src.SKU.SN,
+				Product: SKU{
+					SN:            src.SKU.SN,
 					Image:         src.SKU.Image,
 					Name:          src.SKU.Name,
 					Desc:          src.SKU.Description,

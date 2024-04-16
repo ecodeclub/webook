@@ -278,10 +278,9 @@ func (s *OrderModuleTestSuite) TestHandler_PreviewOrder() {
 						{Type: payment.ChannelTypeCredit},
 						{Type: payment.ChannelTypeWechat},
 					},
-					Products: []web.Product{
+					Products: []web.SKU{
 						{
-							SPUSN:         "SPUSN100",
-							SKUSN:         "SKU100",
+							SN:            "SKU100",
 							Image:         "SKUImage100",
 							Name:          "商品SKU100",
 							Desc:          "商品SKU100",
@@ -380,9 +379,9 @@ func (s *OrderModuleTestSuite) TestHandler_CreateOrderAndPayment() {
 			name: "创建成功_仅积分支付",
 			req: web.CreateOrderReq{
 				RequestID: "requestID01",
-				Products: []web.Product{
+				Products: []web.SKU{
 					{
-						SKUSN:    "SKU100",
+						SN:       "SKU100",
 						Quantity: 1,
 					},
 				},
@@ -405,9 +404,9 @@ func (s *OrderModuleTestSuite) TestHandler_CreateOrderAndPayment() {
 			name: "创建成功_积分和微信组合支付",
 			req: web.CreateOrderReq{
 				RequestID: "requestID02",
-				Products: []web.Product{
+				Products: []web.SKU{
 					{
-						SKUSN:    "SKU101",
+						SN:       "SKU101",
 						Quantity: 1,
 					},
 				},
@@ -466,7 +465,7 @@ func (s *OrderModuleTestSuite) TestHandler_CreateOrderAndPaymentFailed() {
 			name: "商品信息非法",
 			req: web.CreateOrderReq{
 				RequestID: "requestID09",
-				Products:  []web.Product{},
+				Products:  []web.SKU{},
 			},
 			wantCode: 500,
 			wantResp: test.Result[any]{
@@ -478,9 +477,9 @@ func (s *OrderModuleTestSuite) TestHandler_CreateOrderAndPaymentFailed() {
 			name: "商品SKUSN不存在",
 			req: web.CreateOrderReq{
 				RequestID: "requestID03",
-				Products: []web.Product{
+				Products: []web.SKU{
 					{
-						SKUSN: "InvalidSKUSN",
+						SN: "InvalidSKUSN",
 					},
 				},
 			},
@@ -494,9 +493,9 @@ func (s *OrderModuleTestSuite) TestHandler_CreateOrderAndPaymentFailed() {
 			name: "要购买的商品数量非法",
 			req: web.CreateOrderReq{
 				RequestID: "requestID04",
-				Products: []web.Product{
+				Products: []web.SKU{
 					{
-						SKUSN:    "SKU100",
+						SN:       "SKU100",
 						Quantity: 0,
 					},
 				},
@@ -511,9 +510,9 @@ func (s *OrderModuleTestSuite) TestHandler_CreateOrderAndPaymentFailed() {
 			name: "商品库存不足",
 			req: web.CreateOrderReq{
 				RequestID: "requestID05",
-				Products: []web.Product{
+				Products: []web.SKU{
 					{
-						SKUSN:    "SKU100",
+						SN:       "SKU100",
 						Quantity: 11,
 					},
 				},
@@ -528,9 +527,9 @@ func (s *OrderModuleTestSuite) TestHandler_CreateOrderAndPaymentFailed() {
 			name: "商品总原价非法",
 			req: web.CreateOrderReq{
 				RequestID: "requestID06",
-				Products: []web.Product{
+				Products: []web.SKU{
 					{
-						SKUSN:    "SKU100",
+						SN:       "SKU100",
 						Quantity: 10,
 					},
 				},
@@ -545,9 +544,9 @@ func (s *OrderModuleTestSuite) TestHandler_CreateOrderAndPaymentFailed() {
 			name: "商品总实价非法",
 			req: web.CreateOrderReq{
 				RequestID: "requestID07",
-				Products: []web.Product{
+				Products: []web.SKU{
 					{
-						SKUSN:    "SKU100",
+						SN:       "SKU100",
 						Quantity: 10,
 					},
 				},
@@ -563,9 +562,9 @@ func (s *OrderModuleTestSuite) TestHandler_CreateOrderAndPaymentFailed() {
 			name: "支付渠道非法",
 			req: web.CreateOrderReq{
 				RequestID: "requestID08",
-				Products: []web.Product{
+				Products: []web.SKU{
 					{
-						SKUSN:    "SKU100",
+						SN:       "SKU100",
 						Quantity: 10,
 					},
 				},
@@ -731,7 +730,6 @@ func (s *OrderModuleTestSuite) TestHandler_ListOrders() {
 			{
 				SPUId:            id,
 				SKUId:            id,
-				SPUSN:            fmt.Sprintf("SPUSN-%d", id),
 				SKUSN:            fmt.Sprintf("SKUSN-%d", id),
 				SKUImage:         fmt.Sprintf("SKUImage-%d", id),
 				SKUName:          fmt.Sprintf("SKUName-%d", id),
@@ -773,9 +771,8 @@ func (s *OrderModuleTestSuite) TestHandler_ListOrders() {
 							Status:             domain.StatusUnpaid.ToUint8(),
 							Items: []web.OrderItem{
 								{
-									Product: web.Product{
-										SPUSN:         fmt.Sprintf("SPUSN-%d", 199),
-										SKUSN:         fmt.Sprintf("SKUSN-%d", 199),
+									Product: web.SKU{
+										SN:            fmt.Sprintf("SKUSN-%d", 199),
 										Image:         fmt.Sprintf("SKUImage-%d", 199),
 										Name:          fmt.Sprintf("SKUName-%d", 199),
 										Desc:          fmt.Sprintf("SKUDescription-%d", 199),
@@ -797,9 +794,8 @@ func (s *OrderModuleTestSuite) TestHandler_ListOrders() {
 							Status:             domain.StatusUnpaid.ToUint8(),
 							Items: []web.OrderItem{
 								{
-									Product: web.Product{
-										SPUSN:         fmt.Sprintf("SPUSN-%d", 198),
-										SKUSN:         fmt.Sprintf("SKUSN-%d", 198),
+									Product: web.SKU{
+										SN:            fmt.Sprintf("SKUSN-%d", 198),
 										Image:         fmt.Sprintf("SKUImage-%d", 198),
 										Name:          fmt.Sprintf("SKUName-%d", 198),
 										Desc:          fmt.Sprintf("SKUDescription-%d", 198),
@@ -835,9 +831,8 @@ func (s *OrderModuleTestSuite) TestHandler_ListOrders() {
 							Status:             domain.StatusUnpaid.ToUint8(),
 							Items: []web.OrderItem{
 								{
-									Product: web.Product{
-										SPUSN:         fmt.Sprintf("SPUSN-%d", 100),
-										SKUSN:         fmt.Sprintf("SKUSN-%d", 100),
+									Product: web.SKU{
+										SN:            fmt.Sprintf("SKUSN-%d", 100),
 										Image:         fmt.Sprintf("SKUImage-%d", 100),
 										Name:          fmt.Sprintf("SKUName-%d", 100),
 										Desc:          fmt.Sprintf("SKUDescription-%d", 100),
@@ -907,7 +902,6 @@ func (s *OrderModuleTestSuite) TestHandler_RetrieveOrderDetail() {
 					{
 						SPUId:            1,
 						SKUId:            1,
-						SPUSN:            fmt.Sprintf("SPUSN-%d", 1),
 						SKUSN:            fmt.Sprintf("SKUSN-%d", 1),
 						SKUImage:         fmt.Sprintf("SKUImage-%d", 1),
 						SKUName:          "商品SKU",
@@ -942,9 +936,8 @@ func (s *OrderModuleTestSuite) TestHandler_RetrieveOrderDetail() {
 						Status:             domain.StatusUnpaid.ToUint8(),
 						Items: []web.OrderItem{
 							{
-								Product: web.Product{
-									SPUSN:         fmt.Sprintf("SPUSN-%d", 1),
-									SKUSN:         fmt.Sprintf("SKUSN-%d", 1),
+								Product: web.SKU{
+									SN:            fmt.Sprintf("SKUSN-%d", 1),
 									Image:         fmt.Sprintf("SKUImage-%d", 1),
 									Name:          "商品SKU",
 									Desc:          "商品SKU描述",
