@@ -55,10 +55,14 @@ func (s *ModuleTestSuite) SetupSuite() {
 func (s *ModuleTestSuite) TearDownSuite() {
 	err := s.db.Exec("DROP TABLE `members`").Error
 	require.NoError(s.T(), err)
+	err = s.db.Exec("DROP TABLE `member_records`").Error
+	require.NoError(s.T(), err)
 }
 
 func (s *ModuleTestSuite) TearDownTest() {
 	err := s.db.Exec("TRUNCATE TABLE `members`").Error
+	require.NoError(s.T(), err)
+	err = s.db.Exec("TRUNCATE TABLE `member_records`").Error
 	require.NoError(s.T(), err)
 }
 
@@ -401,21 +405,21 @@ func (s *ModuleTestSuite) newMemberEventMessage(t *testing.T, evt event.MemberEv
 	return &mq.Message{Value: marshal}
 }
 
-func (s *ModuleTestSuite) TestService_ActivateMembership() {
+func (s *ModuleTestSuite) TestService_ActivateMembership_Concurrent() {
 	t := s.T()
 
-	t.Run("相同消息并发测试", func(t *testing.T) {
+	t.Run("相同消息并发测试_只有一个成功", func(t *testing.T) {
 		n := 10
+		uid := int64(2100)
 
 		waitChan := make(chan struct{})
 		errChan := make(chan error)
 
 		for i := 0; i < n; i++ {
-			i := i
 			go func() {
 				<-waitChan
 				err := s.svc.ActivateMembership(context.Background(), domain.Member{
-					Uid: 2100,
+					Uid: uid,
 					Records: []domain.MemberRecord{
 						{
 							Key:   "Key-Same-Message",
@@ -426,52 +430,79 @@ func (s *ModuleTestSuite) TestService_ActivateMembership() {
 						},
 					},
 				})
-				t.Logf("invoked i = %d\n", i)
 				errChan <- err
 			}()
 		}
 
 		time.Sleep(100 * time.Millisecond)
 		close(waitChan)
-		counter := 0
+		errCounter := 0
 		for i := 0; i < n; i++ {
 			err := <-errChan
 			if err != nil {
 				require.ErrorIs(t, err, service.ErrDuplicatedMemberRecord)
-				counter++
+				errCounter++
 			}
 		}
-		require.Equal(t, n-1, counter)
+		require.Equal(t, n-1, errCounter)
+
+		info, err := s.svc.GetMembershipInfo(context.Background(), uid)
+		require.NoError(t, err)
+
+		nowDate := time.Now().UTC()
+		startAt := time.Date(nowDate.Year(), nowDate.Month(), nowDate.Day(), 23, 59, 59, 0, time.UTC).UnixMilli()
+		require.True(t, startAt <= info.EndAt, fmt.Sprintf("n = %d, e = %d\n", startAt, info.EndAt))
+		require.Equal(t, []domain.MemberRecord{
+			{
+				Key:   "Key-Same-Message",
+				Days:  100,
+				Biz:   "相同消息并发测试",
+				BizId: 11,
+				Desc:  "相同消息并发测试",
+			},
+		}, info.Records)
+		require.Equal(t, uint64(100), uint64(time.Duration(info.EndAt-startAt)*time.Millisecond/(time.Hour*24)))
 	})
 
-	t.Run("不同消息并发测试", func(t *testing.T) {
+	t.Run("不同消息并发测试_全部成功", func(t *testing.T) {
 		n := 10
+		days := uint64(200)
+		uid := int64(2200)
 		waitChan := make(chan struct{})
-		errChan := make(chan error)
+		errChan := make(chan error, n)
+		recordChan := make(chan domain.MemberRecord, n)
 		for i := 0; i < n; i++ {
 			go func(i int) {
 				<-waitChan
+				record := domain.MemberRecord{
+					Key:   fmt.Sprintf("Key-diff-Message-%d", i),
+					Days:  days,
+					Biz:   "不同消息并发测试",
+					BizId: 12,
+					Desc:  "不同消息并发测试",
+				}
 				err := s.svc.ActivateMembership(context.Background(), domain.Member{
-					Uid: 2200,
-					Records: []domain.MemberRecord{
-						{
-							Key:   fmt.Sprintf("Key-diff-Message-%d", i),
-							Days:  200,
-							Biz:   "不同消息并发测试",
-							BizId: 12,
-							Desc:  "不同消息并发测试",
-						},
-					},
+					Uid:     uid,
+					Records: []domain.MemberRecord{record},
 				})
-				t.Logf("invoked j = %d\n", i)
 				errChan <- err
+				recordChan <- record
 			}(i)
 		}
 		time.Sleep(100 * time.Millisecond)
 		close(waitChan)
+		expectedRecords := make([]domain.MemberRecord, 0, n)
 		for i := 0; i < n; i++ {
 			require.NoError(t, <-errChan)
+			expectedRecords = append(expectedRecords, <-recordChan)
 		}
+		info, err := s.svc.GetMembershipInfo(context.Background(), uid)
+		require.NoError(t, err)
+		nowDate := time.Now().UTC()
+		startAt := time.Date(nowDate.Year(), nowDate.Month(), nowDate.Day(), 23, 59, 59, 0, time.UTC).UnixMilli()
+		require.True(t, startAt <= info.EndAt, fmt.Sprintf("n = %d, e = %d\n", startAt, info.EndAt))
+		require.ElementsMatch(t, expectedRecords, info.Records)
+		require.Equal(t, uint64(n)*days, uint64(time.Duration(info.EndAt-startAt)*time.Millisecond/(time.Hour*24)))
 	})
 
 }
