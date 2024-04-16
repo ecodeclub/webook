@@ -12,15 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package credit
+package errs
 
-import (
-	"github.com/ecodeclub/webook/internal/credit/internal/event"
-	"github.com/ecodeclub/webook/internal/credit/internal/web"
+var (
+	SystemError = ErrorCode{Code: 510001, Msg: "系统错误"}
 )
 
-type Module struct {
-	Hdl *web.Handler
-	Svc Service
-	c   *event.CreditIncreaseConsumer
+type ErrorCode struct {
+	Code int
+	Msg  string
 }

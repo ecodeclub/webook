@@ -27,6 +27,7 @@ import (
 	"github.com/ecodeclub/webook/internal/credit/internal/repository"
 	"github.com/ecodeclub/webook/internal/credit/internal/repository/dao"
 	"github.com/ecodeclub/webook/internal/credit/internal/service"
+	"github.com/ecodeclub/webook/internal/credit/internal/web"
 	"github.com/ego-component/egorm"
 	"github.com/google/wire"
 )
@@ -34,11 +35,13 @@ import (
 type Credit = domain.Credit
 type CreditLog = domain.CreditLog
 type Service = service.Service
+type Handler = web.Handler
 
 func InitModule(db *egorm.Component, q mq.MQ, e ecache.Cache) (*Module, error) {
 	wire.Build(wire.Struct(
 		new(Module), "*"),
 		InitService,
+		InitHandler,
 		initCreditConsumer,
 	)
 	return new(Module), nil
@@ -57,6 +60,10 @@ func InitService(db *egorm.Component) Service {
 		svc = service.NewCreditService(r)
 	})
 	return svc
+}
+
+func InitHandler(srv service.Service) *Handler {
+	return web.NewHandler(svc)
 }
 
 func initCreditConsumer(svc service.Service, q mq.MQ) *event.CreditIncreaseConsumer {

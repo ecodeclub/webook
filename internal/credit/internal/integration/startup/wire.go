@@ -26,3 +26,7 @@ func InitService() credit.Service {
 	wire.Build(testioc.BaseSet, credit.InitService)
 	return nil
 }
+
+func InitHandler(svc credit.Service) *credit.Handler {
+	return credit.InitHandler(svc)
+}

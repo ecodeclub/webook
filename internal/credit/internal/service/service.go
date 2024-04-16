@@ -38,10 +38,6 @@ type Service interface {
 	CancelDeductCredits(ctx context.Context, uid, tid int64) error
 }
 
-func NewService(repo repository.CreditRepository) Service {
-	return &service{repo: repo}
-}
-
 type service struct {
 	repo repository.CreditRepository
 }

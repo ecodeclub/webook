@@ -20,19 +20,27 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"testing"
 	"time"
 
+	"github.com/ecodeclub/ginx/session"
 	"github.com/ecodeclub/mq-api"
 	"github.com/ecodeclub/webook/internal/credit/internal/domain"
 	"github.com/ecodeclub/webook/internal/credit/internal/event"
 	"github.com/ecodeclub/webook/internal/credit/internal/integration/startup"
 	"github.com/ecodeclub/webook/internal/credit/internal/service"
+	"github.com/ecodeclub/webook/internal/test"
 	testioc "github.com/ecodeclub/webook/internal/test/ioc"
 	"github.com/ego-component/egorm"
+	"github.com/gin-gonic/gin"
+	"github.com/gotomicro/ego/core/econf"
+	"github.com/gotomicro/ego/server/egin"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
+
+const testUID = int64(230919)
 
 func TestCreditModule(t *testing.T) {
 	suite.Run(t, new(ModuleTestSuite))
@@ -40,13 +48,26 @@ func TestCreditModule(t *testing.T) {
 
 type ModuleTestSuite struct {
 	suite.Suite
-	db  *egorm.Component
-	mq  mq.MQ
-	svc service.Service
+	server *egin.Component
+	db     *egorm.Component
+	mq     mq.MQ
+	svc    service.Service
 }
 
 func (s *ModuleTestSuite) SetupTest() {
 	s.svc = startup.InitService()
+
+	handler := startup.InitHandler(s.svc)
+	econf.Set("server", map[string]any{"contextTimeout": "1s"})
+	server := egin.Load("server").Build()
+	server.Use(func(ctx *gin.Context) {
+		ctx.Set("_session", session.NewMemorySession(session.Claims{
+			Uid: testUID,
+		}))
+	})
+	handler.PrivateRoutes(server.Engine)
+
+	s.server = server
 	s.mq = testioc.InitMQ()
 	s.db = testioc.InitDB()
 }
@@ -1183,4 +1204,115 @@ func (s *ModuleTestSuite) TestService_CancelDeductCredits_Concurrent() {
 	require.Equal(t, uint64(100), c.TotalAmount)
 	require.Equal(t, uint64(0), c.LockedTotalAmount)
 	require.Len(t, c.Logs, 1)
+}
+
+func (s *ModuleTestSuite) TestHandler_QueryCredits() {
+	t := s.T()
+
+	testCases := []struct {
+		name string
+
+		before   func(t *testing.T)
+		after    func(t *testing.T)
+		wantCode int
+		wantResp test.Result[uint64]
+	}{
+		{
+			name: "用户有记录_有预扣",
+			before: func(t *testing.T) {
+				t.Helper()
+
+				// 创建已有用户
+				err := s.svc.AddCredits(context.Background(), domain.Credit{
+					Uid: testUID,
+					Logs: []domain.CreditLog{
+						{
+							Key:          "key-10001-1",
+							ChangeAmount: 100,
+							Biz:          "Marketing",
+							BizId:        2,
+							Desc:         "邀请注册",
+						},
+					},
+				})
+				require.NoError(t, err)
+
+				// 预扣
+				id, err := s.svc.TryDeductCredits(context.Background(), domain.Credit{
+					Uid: testUID,
+					Logs: []domain.CreditLog{
+						{
+							Key:          "key-10001-2",
+							ChangeAmount: 50,
+							Biz:          "order",
+							BizId:        9,
+							Desc:         "购买面试",
+						},
+					},
+				})
+				require.NoError(t, err)
+				require.NotZero(t, id)
+
+			},
+			after: func(t *testing.T) {
+				t.Helper()
+				s.TearDownTest()
+			},
+			wantCode: 200,
+			wantResp: test.Result[uint64]{
+				Data: uint64(50),
+			},
+		},
+		{
+			name: "用户有记录_无预扣",
+			before: func(t *testing.T) {
+				t.Helper()
+				// 创建已有用户
+				err := s.svc.AddCredits(context.Background(), domain.Credit{
+					Uid: testUID,
+					Logs: []domain.CreditLog{
+						{
+							Key:          "key-10002-1",
+							ChangeAmount: 100,
+							Biz:          "Marketing",
+							BizId:        2,
+							Desc:         "邀请注册",
+						},
+					},
+				})
+				require.NoError(t, err)
+			},
+			after: func(t *testing.T) {
+				t.Helper()
+				s.TearDownTest()
+			},
+			wantCode: 200,
+			wantResp: test.Result[uint64]{
+				Data: uint64(100),
+			},
+		},
+		{
+			name:     "用户无记录",
+			before:   func(t *testing.T) {},
+			after:    func(t *testing.T) {},
+			wantCode: 200,
+			wantResp: test.Result[uint64]{
+				Data: uint64(0),
+			},
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			tc.before(t)
+			req, err := http.NewRequest(http.MethodPost,
+				"/credit", nil)
+			req.Header.Set("content-type", "application/json")
+			require.NoError(t, err)
+			recorder := test.NewJSONResponseRecorder[uint64]()
+			s.server.ServeHTTP(recorder, req)
+			require.Equal(t, tc.wantCode, recorder.Code)
+			require.Equal(t, tc.wantResp, recorder.MustScan())
+			tc.after(t)
+		})
+	}
 }
