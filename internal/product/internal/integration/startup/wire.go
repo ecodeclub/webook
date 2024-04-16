@@ -18,6 +18,7 @@ package startup
 
 import (
 	"github.com/ecodeclub/webook/internal/product"
+	"github.com/ecodeclub/webook/internal/product/internal/service"
 	"github.com/ecodeclub/webook/internal/product/internal/web"
 	testioc "github.com/ecodeclub/webook/internal/test/ioc"
 	"github.com/google/wire"
@@ -26,4 +27,9 @@ import (
 func InitHandler() (*web.Handler, error) {
 	wire.Build(testioc.BaseSet, product.InitHandler)
 	return new(web.Handler), nil
+}
+
+func InitService() service.Service {
+	wire.Build(testioc.BaseSet, product.InitService)
+	return nil
 }

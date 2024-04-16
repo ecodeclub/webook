@@ -25,7 +25,9 @@ import (
 
 type ProductDAO interface {
 	FindSPUByID(ctx context.Context, id int64) (SPU, error)
+	FindSPUBySN(ctx context.Context, sn string) (SPU, error)
 	FindSKUBySN(ctx context.Context, sn string) (SKU, error)
+	FindSKUsBySPUID(ctx context.Context, spuId int64) ([]SKU, error)
 	CreateSPU(ctx context.Context, spu SPU) (int64, error)
 	CreateSKU(ctx context.Context, sku SKU) (int64, error)
 }
@@ -36,6 +38,12 @@ type ProductGORMDAO struct {
 
 func NewProductGORMDAO(db *egorm.Component) ProductDAO {
 	return &ProductGORMDAO{db: db}
+}
+
+func (d *ProductGORMDAO) FindSPUByID(ctx context.Context, id int64) (SPU, error) {
+	var res SPU
+	err := d.db.WithContext(ctx).Where("id = ? AND status = ?", id, domain.StatusOnShelf.ToUint8()).First(&res).Error
+	return res, err
 }
 
 func (d *ProductGORMDAO) FindSPUBySN(ctx context.Context, sn string) (SPU, error) {
@@ -50,9 +58,11 @@ func (d *ProductGORMDAO) FindSKUBySN(ctx context.Context, sn string) (SKU, error
 	return res, err
 }
 
-func (d *ProductGORMDAO) FindSPUByID(ctx context.Context, id int64) (SPU, error) {
-	var res SPU
-	err := d.db.WithContext(ctx).Where("id = ? AND status = ?", id, domain.StatusOnShelf.ToUint8()).First(&res).Error
+func (d *ProductGORMDAO) FindSKUsBySPUID(ctx context.Context, spuId int64) ([]SKU, error) {
+	var res []SKU
+	err := d.db.WithContext(ctx).Where("spu_id = ? AND status = ?", spuId, domain.StatusOnShelf.ToUint8()).
+		Order("ctime DESC").
+		Find(&res).Error
 	return res, err
 }
 
