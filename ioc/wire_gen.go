@@ -9,6 +9,7 @@ package ioc
 import (
 	"github.com/ecodeclub/webook/internal/cases"
 	"github.com/ecodeclub/webook/internal/cos"
+	"github.com/ecodeclub/webook/internal/credit"
 	"github.com/ecodeclub/webook/internal/feedback"
 	"github.com/ecodeclub/webook/internal/label"
 	"github.com/ecodeclub/webook/internal/member"
@@ -57,7 +58,12 @@ func InitApp() (*App, error) {
 		return nil, err
 	}
 	handler7 := product.InitHandler(db)
-	component := initGinxServer(provider, checkMembershipMiddlewareBuilder, handler, questionSetHandler, webHandler, handler2, handler3, handler4, handler5, handler6, handler7)
+	creditModule, err := credit.InitModule(db, mq, cache)
+	if err != nil {
+		return nil, err
+	}
+	handler8 := creditModule.Hdl
+	component := initGinxServer(provider, checkMembershipMiddlewareBuilder, handler, questionSetHandler, webHandler, handler2, handler3, handler4, handler5, handler6, handler7, handler8)
 	app := &App{
 		Web: component,
 	}

@@ -29,6 +29,7 @@ import (
 	"github.com/ecodeclub/webook/internal/payment/internal/repository"
 	"github.com/ecodeclub/webook/internal/pkg/sequencenumber"
 	"github.com/gotomicro/ego/core/elog"
+	"github.com/lithammer/shortuuid/v4"
 )
 
 var (
@@ -163,7 +164,15 @@ func (p *PaymentService) tryDeductCredits(ctx context.Context, uid int64, amount
 	strategy, _ := retry.NewExponentialBackoffRetryStrategy(p.initialInterval, p.maxInterval, p.maxRetries)
 	for {
 
-		txID, err := p.svc.TryDeductCredits(ctx, credit.Credit{Uid: uid, ChangeAmount: amount})
+		txID, err := p.svc.TryDeductCredits(ctx, credit.Credit{Uid: uid, Logs: []credit.CreditLog{
+			{
+				Key:          shortuuid.New(),
+				ChangeAmount: int64(amount),
+				Biz:          "payment",
+				BizId:        0,
+				Desc:         "",
+			},
+		}})
 		if err == nil {
 			return txID, nil
 		}

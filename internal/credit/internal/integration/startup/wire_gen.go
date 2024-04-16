@@ -19,3 +19,9 @@ func InitService() service.Service {
 	serviceService := credit.InitService(db)
 	return serviceService
 }
+
+// wire.go:
+
+func InitHandler(svc credit.Service) *credit.Handler {
+	return credit.InitHandler(svc)
+}

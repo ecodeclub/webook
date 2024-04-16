@@ -17,6 +17,7 @@ package event
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/ecodeclub/mq-api"
@@ -69,23 +70,28 @@ func (c *CreditIncreaseConsumer) Consume(ctx context.Context) error {
 	}
 
 	err = c.svc.AddCredits(ctx, domain.Credit{
-		Uid:          evt.Uid,
-		ChangeAmount: evt.Amount,
+		Uid: evt.Uid,
 		Logs: []domain.CreditLog{
 			{
-				Key:    evt.Key,
-				BizId:  evt.BizId,
-				Biz:    evt.Biz,
-				Action: evt.Action,
+				Key:          evt.Key,
+				ChangeAmount: int64(evt.Amount),
+				Biz:          evt.Biz,
+				BizId:        evt.BizId,
+				Desc:         evt.Action,
 			},
 		},
 	})
 
-	if err != nil {
-		c.logger.Error("变更积分失败",
+	if errors.Is(err, service.ErrDuplicatedCreditLog) {
+		c.logger.Warn("重复消费",
 			elog.FieldErr(err),
 			elog.Any("CreditIncreaseEvent", evt),
 		)
+		// 重复消费时,吞掉错误
+		return nil
+	}
+	if err != nil {
+		c.logger.Error("变更积分失败", elog.Any("CreditIncreaseEvent", evt))
 	}
 	return err
 }

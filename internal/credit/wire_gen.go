@@ -17,6 +17,7 @@ import (
 	"github.com/ecodeclub/webook/internal/credit/internal/repository"
 	"github.com/ecodeclub/webook/internal/credit/internal/repository/dao"
 	"github.com/ecodeclub/webook/internal/credit/internal/service"
+	"github.com/ecodeclub/webook/internal/credit/internal/web"
 	"github.com/ego-component/egorm"
 	"gorm.io/gorm"
 )
@@ -25,8 +26,10 @@ import (
 
 func InitModule(db *gorm.DB, q mq.MQ, e ecache.Cache) (*Module, error) {
 	service := InitService(db)
+	handler := InitHandler(service)
 	creditIncreaseConsumer := initCreditConsumer(service, q)
 	module := &Module{
+		Hdl: handler,
 		Svc: service,
 		c:   creditIncreaseConsumer,
 	}
@@ -37,7 +40,11 @@ func InitModule(db *gorm.DB, q mq.MQ, e ecache.Cache) (*Module, error) {
 
 type Credit = domain.Credit
 
+type CreditLog = domain.CreditLog
+
 type Service = service.Service
+
+type Handler = web.Handler
 
 var (
 	once = &sync.Once{}
@@ -52,6 +59,10 @@ func InitService(db *egorm.Component) Service {
 		svc = service.NewCreditService(r)
 	})
 	return svc
+}
+
+func InitHandler(srv service.Service) *Handler {
+	return web.NewHandler(svc)
 }
 
 func initCreditConsumer(svc2 service.Service, q mq.MQ) *event.CreditIncreaseConsumer {

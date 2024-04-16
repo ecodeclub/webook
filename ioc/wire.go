@@ -19,6 +19,7 @@ package ioc
 import (
 	"github.com/ecodeclub/webook/internal/cases"
 	"github.com/ecodeclub/webook/internal/cos"
+	"github.com/ecodeclub/webook/internal/credit"
 	"github.com/ecodeclub/webook/internal/feedback"
 	"github.com/ecodeclub/webook/internal/label"
 	"github.com/ecodeclub/webook/internal/member"
@@ -44,12 +45,12 @@ func InitApp() (*App, error) {
 		wire.FieldsOf(new(*cases.Module), "Hdl"),
 		skill.InitHandler,
 		feedback.InitHandler,
-		// 会员服务
 		member.InitModule,
 		wire.FieldsOf(new(*member.Module), "Svc"),
-		// 会员检查中间件
 		middleware.NewCheckMembershipMiddlewareBuilder,
 		product.InitHandler,
+		credit.InitModule,
+		wire.FieldsOf(new(*credit.Module), "Hdl"),
 		initGinxServer)
 	return new(App), nil
 }
