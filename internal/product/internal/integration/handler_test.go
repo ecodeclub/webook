@@ -74,17 +74,17 @@ func (s *HandlerTestSuite) SetupSuite() {
 }
 
 func (s *HandlerTestSuite) TearDownSuite() {
-	// err := s.db.Exec("DROP TABLE `spus`").Error
-	// require.NoError(s.T(), err)
-	// err = s.db.Exec("DROP TABLE `skus`").Error
-	// require.NoError(s.T(), err)
+	err := s.db.Exec("DROP TABLE `spus`").Error
+	require.NoError(s.T(), err)
+	err = s.db.Exec("DROP TABLE `skus`").Error
+	require.NoError(s.T(), err)
 }
 
 func (s *HandlerTestSuite) TearDownTest() {
-	// err := s.db.Exec("TRUNCATE TABLE `spus`").Error
-	// require.NoError(s.T(), err)
-	// err = s.db.Exec("TRUNCATE TABLE `skus`").Error
-	// require.NoError(s.T(), err)
+	err := s.db.Exec("TRUNCATE TABLE `spus`").Error
+	require.NoError(s.T(), err)
+	err = s.db.Exec("TRUNCATE TABLE `skus`").Error
+	require.NoError(s.T(), err)
 }
 
 func (s *HandlerTestSuite) TestProductDetail() {
