@@ -19,6 +19,7 @@ package integration
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"sync/atomic"
@@ -40,6 +41,7 @@ import (
 	"github.com/ecodeclub/webook/internal/order/internal/web"
 	"github.com/ecodeclub/webook/internal/payment"
 	"github.com/ecodeclub/webook/internal/product"
+	productmocks "github.com/ecodeclub/webook/internal/product/mocks"
 	"github.com/ecodeclub/webook/internal/test"
 	testioc "github.com/ecodeclub/webook/internal/test/ioc"
 	"github.com/ego-component/egorm"
@@ -141,58 +143,6 @@ func (f *fakePaymentService) FindPaymentByID(_ context.Context, paymentID int64)
 	return p, nil
 }
 
-type fakeProductService struct{}
-
-func (f *fakeProductService) FindSKUBySN(_ context.Context, sn string) (product.SPU, error) {
-	products := map[string]product.SPU{
-		"SKU100": {
-			ID:   100,
-			SN:   "SPUSN100",
-			Name: "商品SPU100",
-			Desc: "商品SPU100描述",
-			SKUs: []product.SKU{
-				{
-					ID:       100,
-					SN:       "SKU100",
-					Image:    "SKUImage100",
-					Name:     "商品SKU100",
-					Desc:     "商品SKU100",
-					Price:    990,
-					Stock:    10,
-					SaleType: product.SaleTypeUnlimited, // 无限制
-					Status:   product.StatusOnShelf,
-				},
-			},
-			Status: product.StatusOnShelf,
-		},
-		"SKU101": {
-			ID:   101,
-			SN:   "SPUSN101",
-			Name: "商品SPU101",
-			Desc: "商品SPU101描述",
-			SKUs: []product.SKU{
-				{
-					ID:       101,
-					SN:       "SKU101",
-					Image:    "SKUImage101",
-					Name:     "商品SKU101",
-					Desc:     "商品SKU101",
-					Price:    9900,
-					Stock:    1,
-					SaleType: product.SaleTypeUnlimited, // 无限制
-					Status:   product.StatusOnShelf,
-				},
-			},
-			Status: product.StatusOnShelf,
-		},
-	}
-	if _, ok := products[sn]; !ok {
-		return product.SPU{}, fmt.Errorf(fmt.Sprintf("fakeProductService未配置的SN=%s", sn))
-	}
-
-	return products[sn], nil
-}
-
 func TestOrderModule(t *testing.T) {
 	suite.Run(t, new(OrderModuleTestSuite))
 }
@@ -212,12 +162,7 @@ func (s *OrderModuleTestSuite) SetupSuite() {
 
 	s.ctrl = gomock.NewController(s.T())
 
-	mockedCreditSvc := creditmocks.NewMockService(s.ctrl)
-	mockedCreditSvc.EXPECT().GetCreditsByUID(gomock.Any(), testUID).AnyTimes().Return(credit.Credit{
-		TotalAmount: 1000,
-	}, nil)
-
-	handler, err := startup.InitHandler(&fakePaymentService{}, &fakeProductService{}, mockedCreditSvc)
+	handler, err := startup.InitHandler(&fakePaymentService{}, s.getProductMockService(), s.getCreditMockService())
 	require.NoError(s.T(), err)
 
 	econf.Set("server", map[string]any{"contextTimeout": "1s"})
@@ -237,6 +182,63 @@ func (s *OrderModuleTestSuite) SetupSuite() {
 	s.svc = order.InitService(s.db)
 	s.mq = testioc.InitMQ()
 	s.cache = testioc.InitCache()
+}
+
+func (s *OrderModuleTestSuite) getProductMockService() *productmocks.MockService {
+	mockedProductSvc := productmocks.NewMockService(s.ctrl)
+	mockedProductSvc.EXPECT().FindSKUBySN(gomock.Any(), "SKU100").AnyTimes().Return(
+		product.SPU{
+			ID:   100,
+			SN:   "SPUSN100",
+			Name: "商品SPU100",
+			Desc: "商品SPU100描述",
+			SKUs: []product.SKU{
+				{
+					ID:       100,
+					SN:       "SKU100",
+					Image:    "SKUImage100",
+					Name:     "商品SKU100",
+					Desc:     "商品SKU100",
+					Price:    990,
+					Stock:    10,
+					SaleType: product.SaleTypeUnlimited, // 无限制
+					Status:   product.StatusOnShelf,
+				},
+			},
+			Status: product.StatusOnShelf,
+		}, nil)
+	mockedProductSvc.EXPECT().FindSKUBySN(gomock.Any(), "SKU101").AnyTimes().Return(
+		product.SPU{
+			ID:   101,
+			SN:   "SPUSN101",
+			Name: "商品SPU101",
+			Desc: "商品SPU101描述",
+			SKUs: []product.SKU{
+				{
+					ID:       101,
+					SN:       "SKU101",
+					Image:    "SKUImage101",
+					Name:     "商品SKU101",
+					Desc:     "商品SKU101",
+					Price:    9900,
+					Stock:    1,
+					SaleType: product.SaleTypeUnlimited, // 无限制
+					Status:   product.StatusOnShelf,
+				},
+			},
+			Status: product.StatusOnShelf,
+		}, nil)
+	mockedProductSvc.EXPECT().FindSKUBySN(gomock.Any(), "InvalidSKUSN").AnyTimes().Return(product.SPU{},
+		errors.New("SKU的SN非法"))
+	return mockedProductSvc
+}
+
+func (s *OrderModuleTestSuite) getCreditMockService() *creditmocks.MockService {
+	mockedCreditSvc := creditmocks.NewMockService(s.ctrl)
+	mockedCreditSvc.EXPECT().GetCreditsByUID(gomock.Any(), testUID).AnyTimes().Return(credit.Credit{
+		TotalAmount: 1000,
+	}, nil)
+	return mockedCreditSvc
 }
 
 func (s *OrderModuleTestSuite) TearDownSuite() {
@@ -319,7 +321,7 @@ func (s *OrderModuleTestSuite) TestHandler_PreviewOrderFailed() {
 		{
 			name: "商品SKUSN不存在",
 			req: web.PreviewOrderReq{
-				SKUSN:    "InvalidSN",
+				SKUSN:    "InvalidSKUSN",
 				Quantity: 1,
 			},
 			wantCode: 500,
