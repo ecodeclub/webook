@@ -14,22 +14,18 @@
 
 package web
 
-type ProductSNReq struct {
+type SKUSNReq struct {
 	SN string `json:"sn"`
 }
 
-type Product struct {
-	SPU ProductSPU `json:"spu"`
-	SKU ProductSKU `json:"sku"`
-}
-
-type ProductSPU struct {
+type SPU struct {
 	SN   string `json:"sn"`
 	Name string `json:"name"`
 	Desc string `json:"desc"`
+	SKUs []SKU  `json:"skus"`
 }
 
-type ProductSKU struct {
+type SKU struct {
 	SN         string `json:"sn"`
 	Name       string `json:"name"`
 	Desc       string `json:"desc"`

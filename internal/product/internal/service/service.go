@@ -21,8 +21,9 @@ import (
 	"github.com/ecodeclub/webook/internal/product/internal/repository"
 )
 
+//go:generate mockgen -source=./service.go -package=productmocks -destination=../../mocks/product.mock.go -typed Service
 type Service interface {
-	FindBySN(ctx context.Context, sn string) (domain.Product, error)
+	FindSKUBySN(ctx context.Context, sn string) (domain.SPU, error)
 }
 
 func NewService(repo repository.ProductRepository) Service {
@@ -33,6 +34,6 @@ type service struct {
 	repo repository.ProductRepository
 }
 
-func (s *service) FindBySN(ctx context.Context, sn string) (domain.Product, error) {
-	return s.repo.FindBySN(ctx, sn)
+func (s *service) FindSKUBySN(ctx context.Context, sn string) (domain.SPU, error) {
+	return s.repo.FindSKUBySN(ctx, sn)
 }

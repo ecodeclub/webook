@@ -143,51 +143,51 @@ func (f *fakePaymentService) FindPaymentByID(_ context.Context, paymentID int64)
 
 type fakeProductService struct{}
 
-func (f *fakeProductService) FindBySN(_ context.Context, sn string) (product.Product, error) {
-	products := map[string]product.Product{
+func (f *fakeProductService) FindSKUBySN(_ context.Context, sn string) (product.SPU, error) {
+	products := map[string]product.SPU{
 		"SKU100": {
-			SPU: product.SPU{
-				ID:     100,
-				SN:     "SPUSN100",
-				Name:   "商品SPU100",
-				Desc:   "商品SPU100描述",
-				Status: product.StatusOnShelf,
+			ID:   100,
+			SN:   "SPUSN100",
+			Name: "商品SPU100",
+			Desc: "商品SPU100描述",
+			SKUs: []product.SKU{
+				{
+					ID:       100,
+					SN:       "SKU100",
+					Image:    "SKUImage100",
+					Name:     "商品SKU100",
+					Desc:     "商品SKU100",
+					Price:    990,
+					Stock:    10,
+					SaleType: product.SaleTypeUnlimited, // 无限制
+					Status:   product.StatusOnShelf,
+				},
 			},
-			SKU: product.SKU{
-				ID:       100,
-				SN:       "SKU100",
-				Image:    "SKUImage100",
-				Name:     "商品SKU100",
-				Desc:     "商品SKU100",
-				Price:    990,
-				Stock:    10,
-				SaleType: product.SaleTypeUnlimited, // 无限制
-				Status:   product.StatusOnShelf,
-			},
+			Status: product.StatusOnShelf,
 		},
 		"SKU101": {
-			SPU: product.SPU{
-				ID:     101,
-				SN:     "SPUSN101",
-				Name:   "商品SPU101",
-				Desc:   "商品SPU101描述",
-				Status: product.StatusOnShelf,
+			ID:   101,
+			SN:   "SPUSN101",
+			Name: "商品SPU101",
+			Desc: "商品SPU101描述",
+			SKUs: []product.SKU{
+				{
+					ID:       101,
+					SN:       "SKU101",
+					Image:    "SKUImage101",
+					Name:     "商品SKU101",
+					Desc:     "商品SKU101",
+					Price:    9900,
+					Stock:    1,
+					SaleType: product.SaleTypeUnlimited, // 无限制
+					Status:   product.StatusOnShelf,
+				},
 			},
-			SKU: product.SKU{
-				ID:       101,
-				SN:       "SKU101",
-				Image:    "SKUImage101",
-				Name:     "商品SKU101",
-				Desc:     "商品SKU101",
-				Price:    9900,
-				Stock:    1,
-				SaleType: product.SaleTypeUnlimited, // 无限制
-				Status:   product.StatusOnShelf,
-			},
+			Status: product.StatusOnShelf,
 		},
 	}
 	if _, ok := products[sn]; !ok {
-		return product.Product{}, fmt.Errorf(fmt.Sprintf("fakeProductService未配置的SN=%s", sn))
+		return product.SPU{}, fmt.Errorf(fmt.Sprintf("fakeProductService未配置的SN=%s", sn))
 	}
 
 	return products[sn], nil
@@ -267,8 +267,8 @@ func (s *OrderModuleTestSuite) TestHandler_PreviewOrder() {
 		{
 			name: "获取成功",
 			req: web.PreviewOrderReq{
-				ProductSKUSN: "SKU100",
-				Quantity:     1,
+				SKUSN:    "SKU100",
+				Quantity: 1,
 			},
 			wantCode: 200,
 			wantResp: test.Result[web.PreviewOrderResp]{
@@ -278,7 +278,7 @@ func (s *OrderModuleTestSuite) TestHandler_PreviewOrder() {
 						{Type: payment.ChannelTypeCredit},
 						{Type: payment.ChannelTypeWechat},
 					},
-					Products: []web.SKU{
+					SKUs: []web.SKU{
 						{
 							SN:            "SKU100",
 							Image:         "SKUImage100",
@@ -319,8 +319,8 @@ func (s *OrderModuleTestSuite) TestHandler_PreviewOrderFailed() {
 		{
 			name: "商品SKUSN不存在",
 			req: web.PreviewOrderReq{
-				ProductSKUSN: "InvalidSN",
-				Quantity:     1,
+				SKUSN:    "InvalidSN",
+				Quantity: 1,
 			},
 			wantCode: 500,
 			wantResp: test.Result[any]{
@@ -331,8 +331,8 @@ func (s *OrderModuleTestSuite) TestHandler_PreviewOrderFailed() {
 		{
 			name: "要购买的商品数量非法",
 			req: web.PreviewOrderReq{
-				ProductSKUSN: "SKU100",
-				Quantity:     0,
+				SKUSN:    "SKU100",
+				Quantity: 0,
 			},
 			wantCode: 500,
 			wantResp: test.Result[any]{
@@ -343,8 +343,8 @@ func (s *OrderModuleTestSuite) TestHandler_PreviewOrderFailed() {
 		{
 			name: "商品库存不足",
 			req: web.PreviewOrderReq{
-				ProductSKUSN: "SKU100",
-				Quantity:     11,
+				SKUSN:    "SKU100",
+				Quantity: 11,
 			},
 			wantCode: 500,
 			wantResp: test.Result[any]{
@@ -379,7 +379,7 @@ func (s *OrderModuleTestSuite) TestHandler_CreateOrderAndPayment() {
 			name: "创建成功_仅积分支付",
 			req: web.CreateOrderReq{
 				RequestID: "requestID01",
-				Products: []web.SKU{
+				SKUs: []web.SKU{
 					{
 						SN:       "SKU100",
 						Quantity: 1,
@@ -404,7 +404,7 @@ func (s *OrderModuleTestSuite) TestHandler_CreateOrderAndPayment() {
 			name: "创建成功_积分和微信组合支付",
 			req: web.CreateOrderReq{
 				RequestID: "requestID02",
-				Products: []web.SKU{
+				SKUs: []web.SKU{
 					{
 						SN:       "SKU101",
 						Quantity: 1,
@@ -465,7 +465,7 @@ func (s *OrderModuleTestSuite) TestHandler_CreateOrderAndPaymentFailed() {
 			name: "商品信息非法",
 			req: web.CreateOrderReq{
 				RequestID: "requestID09",
-				Products:  []web.SKU{},
+				SKUs:      []web.SKU{},
 			},
 			wantCode: 500,
 			wantResp: test.Result[any]{
@@ -477,7 +477,7 @@ func (s *OrderModuleTestSuite) TestHandler_CreateOrderAndPaymentFailed() {
 			name: "商品SKUSN不存在",
 			req: web.CreateOrderReq{
 				RequestID: "requestID03",
-				Products: []web.SKU{
+				SKUs: []web.SKU{
 					{
 						SN: "InvalidSKUSN",
 					},
@@ -493,7 +493,7 @@ func (s *OrderModuleTestSuite) TestHandler_CreateOrderAndPaymentFailed() {
 			name: "要购买的商品数量非法",
 			req: web.CreateOrderReq{
 				RequestID: "requestID04",
-				Products: []web.SKU{
+				SKUs: []web.SKU{
 					{
 						SN:       "SKU100",
 						Quantity: 0,
@@ -510,7 +510,7 @@ func (s *OrderModuleTestSuite) TestHandler_CreateOrderAndPaymentFailed() {
 			name: "商品库存不足",
 			req: web.CreateOrderReq{
 				RequestID: "requestID05",
-				Products: []web.SKU{
+				SKUs: []web.SKU{
 					{
 						SN:       "SKU100",
 						Quantity: 11,
@@ -527,7 +527,7 @@ func (s *OrderModuleTestSuite) TestHandler_CreateOrderAndPaymentFailed() {
 			name: "商品总原价非法",
 			req: web.CreateOrderReq{
 				RequestID: "requestID06",
-				Products: []web.SKU{
+				SKUs: []web.SKU{
 					{
 						SN:       "SKU100",
 						Quantity: 10,
@@ -544,7 +544,7 @@ func (s *OrderModuleTestSuite) TestHandler_CreateOrderAndPaymentFailed() {
 			name: "商品总实价非法",
 			req: web.CreateOrderReq{
 				RequestID: "requestID07",
-				Products: []web.SKU{
+				SKUs: []web.SKU{
 					{
 						SN:       "SKU100",
 						Quantity: 10,
@@ -562,7 +562,7 @@ func (s *OrderModuleTestSuite) TestHandler_CreateOrderAndPaymentFailed() {
 			name: "支付渠道非法",
 			req: web.CreateOrderReq{
 				RequestID: "requestID08",
-				Products: []web.SKU{
+				SKUs: []web.SKU{
 					{
 						SN:       "SKU100",
 						Quantity: 10,
@@ -771,7 +771,7 @@ func (s *OrderModuleTestSuite) TestHandler_ListOrders() {
 							Status:             domain.StatusUnpaid.ToUint8(),
 							Items: []web.OrderItem{
 								{
-									Product: web.SKU{
+									SKU: web.SKU{
 										SN:            fmt.Sprintf("SKUSN-%d", 199),
 										Image:         fmt.Sprintf("SKUImage-%d", 199),
 										Name:          fmt.Sprintf("SKUName-%d", 199),
@@ -794,7 +794,7 @@ func (s *OrderModuleTestSuite) TestHandler_ListOrders() {
 							Status:             domain.StatusUnpaid.ToUint8(),
 							Items: []web.OrderItem{
 								{
-									Product: web.SKU{
+									SKU: web.SKU{
 										SN:            fmt.Sprintf("SKUSN-%d", 198),
 										Image:         fmt.Sprintf("SKUImage-%d", 198),
 										Name:          fmt.Sprintf("SKUName-%d", 198),
@@ -831,7 +831,7 @@ func (s *OrderModuleTestSuite) TestHandler_ListOrders() {
 							Status:             domain.StatusUnpaid.ToUint8(),
 							Items: []web.OrderItem{
 								{
-									Product: web.SKU{
+									SKU: web.SKU{
 										SN:            fmt.Sprintf("SKUSN-%d", 100),
 										Image:         fmt.Sprintf("SKUImage-%d", 100),
 										Name:          fmt.Sprintf("SKUName-%d", 100),
@@ -936,7 +936,7 @@ func (s *OrderModuleTestSuite) TestHandler_RetrieveOrderDetail() {
 						Status:             domain.StatusUnpaid.ToUint8(),
 						Items: []web.OrderItem{
 							{
-								Product: web.SKU{
+								SKU: web.SKU{
 									SN:            fmt.Sprintf("SKUSN-%d", 1),
 									Image:         fmt.Sprintf("SKUImage-%d", 1),
 									Name:          "商品SKU",

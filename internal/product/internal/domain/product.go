@@ -37,16 +37,12 @@ const (
 	SaleTypePresale   SaleType = 3 // 预售
 )
 
-type Product struct {
-	SPU SPU
-	SKU SKU
-}
-
 type SPU struct {
 	ID     int64
 	SN     string
 	Name   string
 	Desc   string
+	SKUs   []SKU
 	Status Status
 }
 

@@ -60,10 +60,10 @@ type Handler = web.Handler
 
 type Service = service.Service
 
-type Product = domain.Product
 type SKU = domain.SKU
 type SPU = domain.SPU
 type Status = domain.Status
 
 const StatusOffShelf = domain.StatusOffShelf
 const StatusOnShelf = domain.StatusOnShelf
+const SaleTypeUnlimited = domain.SaleTypeUnlimited
