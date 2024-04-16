@@ -17,6 +17,6 @@ package event
 const orderCompleteEvents = "order_complete_events"
 
 type CompleteOrderEvent struct {
-	OrderSN string `json:"sn"`
-	BuyerID int64  `json:"buyerId"`
+	OrderSN string `json:"orderSN"`
+	BuyerID int64  `json:"buyerID"`
 }
