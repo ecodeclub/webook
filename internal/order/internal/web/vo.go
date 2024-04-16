@@ -21,15 +21,15 @@ type PreviewOrderReq struct {
 }
 
 type PreviewOrderResp struct {
-	Credits  uint64    `json:"credits"`  // 积分总数
-	Payments []Payment `json:"payments"` // 支付通道
-	Products []Product `json:"products"` // 商品信息
-	Policy   string    `json:"policy"`   // 政策信息
+	Credits  uint64        `json:"credits"`  // 积分总数
+	Payments []PaymentItem `json:"payments"` // 支付通道
+	Products []SKU         `json:"skus"`     // 商品信息
+	Policy   string        `json:"policy"`   // 政策信息
 }
 
-type Product struct {
-	SPUSN         string `json:"spuSN"`
-	SKUSN         string `json:"skuSN"`
+type SKU struct {
+	SN            string `json:"sn"`
+	Image         string `json:"image"`
 	Name          string `json:"name"`
 	Desc          string `json:"desc"`
 	OriginalPrice int64  `json:"originalPrice"`
@@ -37,18 +37,18 @@ type Product struct {
 	Quantity      int64  `json:"quantity"`
 }
 
-type Payment struct {
+type PaymentItem struct {
 	Type   int64 `json:"type"` // 1 积分, 2微信
 	Amount int64 `json:"amount,omitempty"`
 }
 
 // CreateOrderReq 创建订单请求
 type CreateOrderReq struct {
-	RequestID          string    `json:"requestID"`       // 请求去重,防止订单重复提交
-	Products           []Product `json:"products"`        // 商品信息
-	Payments           []Payment `json:"paymentChannels"` // 支付通道
-	OriginalTotalPrice int64     `json:"originalTotalPrice"`
-	RealTotalPrice     int64     `json:"realTotalPrice"`
+	RequestID          string        `json:"requestID"`       // 请求去重,防止订单重复提交
+	Products           []SKU         `json:"products"`        // 商品信息
+	Payments           []PaymentItem `json:"paymentChannels"` // 支付通道
+	OriginalTotalPrice int64         `json:"originalTotalPrice"`
+	RealTotalPrice     int64         `json:"realTotalPrice"`
 }
 
 type CreateOrderResp struct {
@@ -87,24 +87,22 @@ type RetrieveOrderDetailResp struct {
 
 type Order struct {
 	SN                 string      `json:"sn"`
-	PaymentSN          string      `json:"paymentSn"`
+	Payment            Payment     `json:"payment"`
 	OriginalTotalPrice int64       `json:"originalPrice"`
 	RealTotalPrice     int64       `json:"realPrice"`
 	Status             uint8       `json:"status"`
 	Items              []OrderItem `json:"items"`
-	Payments           []Payment   `json:"payments"`
 	Ctime              int64       `json:"ctime"`
 	Utime              int64       `json:"utime"`
 }
 
+type Payment struct {
+	SN    string        `json:"sn"`
+	Items []PaymentItem `json:"items,omitempty"`
+}
+
 type OrderItem struct {
-	SPUID            int64  `json:"spuId"`
-	SKUID            int64  `json:"skuId"`
-	SKUName          string `json:"skuName"`
-	SKUDescription   string `json:"skuDescription"`
-	SKUOriginalPrice int64  `json:"skuOriginalPrice"`
-	SKURealPrice     int64  `json:"skuRealPrice"`
-	Quantity         int64  `json:"quantity"`
+	Product SKU `json:"product"`
 }
 
 // CancelOrderReq 取消订单

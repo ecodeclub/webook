@@ -24,6 +24,7 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/ecodeclub/ecache"
 	"github.com/ecodeclub/ekit/iox"
 	"github.com/ecodeclub/ginx/session"
 	"github.com/ecodeclub/mq-api"
@@ -155,6 +156,7 @@ func (f *fakeProductService) FindBySN(_ context.Context, sn string) (product.Pro
 			SKU: product.SKU{
 				ID:       100,
 				SN:       "SKU100",
+				Image:    "SKUImage100",
 				Name:     "商品SKU100",
 				Desc:     "商品SKU100",
 				Price:    990,
@@ -174,6 +176,7 @@ func (f *fakeProductService) FindBySN(_ context.Context, sn string) (product.Pro
 			SKU: product.SKU{
 				ID:       101,
 				SN:       "SKU101",
+				Image:    "SKUImage101",
 				Name:     "商品SKU101",
 				Desc:     "商品SKU101",
 				Price:    9900,
@@ -183,7 +186,6 @@ func (f *fakeProductService) FindBySN(_ context.Context, sn string) (product.Pro
 			},
 		},
 	}
-
 	if _, ok := products[sn]; !ok {
 		return product.Product{}, fmt.Errorf(fmt.Sprintf("fakeProductService未配置的SN=%s", sn))
 	}
@@ -201,6 +203,7 @@ type OrderModuleTestSuite struct {
 	db     *egorm.Component
 	mq     mq.MQ
 	dao    dao.OrderDAO
+	cache  ecache.Cache
 	svc    order.Service
 	ctrl   *gomock.Controller
 }
@@ -233,6 +236,7 @@ func (s *OrderModuleTestSuite) SetupSuite() {
 	s.dao = dao.NewOrderGORMDAO(s.db)
 	s.svc = order.InitService(s.db)
 	s.mq = testioc.InitMQ()
+	s.cache = testioc.InitCache()
 }
 
 func (s *OrderModuleTestSuite) TearDownSuite() {
@@ -270,14 +274,14 @@ func (s *OrderModuleTestSuite) TestHandler_PreviewOrder() {
 			wantResp: test.Result[web.PreviewOrderResp]{
 				Data: web.PreviewOrderResp{
 					Credits: 1000,
-					Payments: []web.Payment{
+					Payments: []web.PaymentItem{
 						{Type: payment.ChannelTypeCredit},
 						{Type: payment.ChannelTypeWechat},
 					},
-					Products: []web.Product{
+					Products: []web.SKU{
 						{
-							SPUSN:         "SPUSN100",
-							SKUSN:         "SKU100",
+							SN:            "SKU100",
+							Image:         "SKUImage100",
 							Name:          "商品SKU100",
 							Desc:          "商品SKU100",
 							OriginalPrice: 990,
@@ -375,13 +379,13 @@ func (s *OrderModuleTestSuite) TestHandler_CreateOrderAndPayment() {
 			name: "创建成功_仅积分支付",
 			req: web.CreateOrderReq{
 				RequestID: "requestID01",
-				Products: []web.Product{
+				Products: []web.SKU{
 					{
-						SKUSN:    "SKU100",
+						SN:       "SKU100",
 						Quantity: 1,
 					},
 				},
-				Payments: []web.Payment{
+				Payments: []web.PaymentItem{
 					{Type: payment.ChannelTypeCredit},
 					{Type: payment.ChannelTypeWechat},
 				},
@@ -400,13 +404,13 @@ func (s *OrderModuleTestSuite) TestHandler_CreateOrderAndPayment() {
 			name: "创建成功_积分和微信组合支付",
 			req: web.CreateOrderReq{
 				RequestID: "requestID02",
-				Products: []web.Product{
+				Products: []web.SKU{
 					{
-						SKUSN:    "SKU101",
+						SN:       "SKU101",
 						Quantity: 1,
 					},
 				},
-				Payments: []web.Payment{
+				Payments: []web.PaymentItem{
 					{Type: payment.ChannelTypeCredit},
 					{Type: payment.ChannelTypeWechat},
 				},
@@ -431,6 +435,9 @@ func (s *OrderModuleTestSuite) TestHandler_CreateOrderAndPayment() {
 			s.server.ServeHTTP(recorder, req)
 			require.Equal(t, tc.wantCode, recorder.Code)
 			tc.assertRespFunc(t, recorder.MustScan())
+
+			_, err = s.cache.Delete(context.Background(), fmt.Sprintf("order:create:%s", tc.req.RequestID))
+			require.NoError(t, err)
 		})
 	}
 }
@@ -458,7 +465,7 @@ func (s *OrderModuleTestSuite) TestHandler_CreateOrderAndPaymentFailed() {
 			name: "商品信息非法",
 			req: web.CreateOrderReq{
 				RequestID: "requestID09",
-				Products:  []web.Product{},
+				Products:  []web.SKU{},
 			},
 			wantCode: 500,
 			wantResp: test.Result[any]{
@@ -470,9 +477,9 @@ func (s *OrderModuleTestSuite) TestHandler_CreateOrderAndPaymentFailed() {
 			name: "商品SKUSN不存在",
 			req: web.CreateOrderReq{
 				RequestID: "requestID03",
-				Products: []web.Product{
+				Products: []web.SKU{
 					{
-						SKUSN: "InvalidSKUSN",
+						SN: "InvalidSKUSN",
 					},
 				},
 			},
@@ -486,9 +493,9 @@ func (s *OrderModuleTestSuite) TestHandler_CreateOrderAndPaymentFailed() {
 			name: "要购买的商品数量非法",
 			req: web.CreateOrderReq{
 				RequestID: "requestID04",
-				Products: []web.Product{
+				Products: []web.SKU{
 					{
-						SKUSN:    "SKU100",
+						SN:       "SKU100",
 						Quantity: 0,
 					},
 				},
@@ -503,9 +510,9 @@ func (s *OrderModuleTestSuite) TestHandler_CreateOrderAndPaymentFailed() {
 			name: "商品库存不足",
 			req: web.CreateOrderReq{
 				RequestID: "requestID05",
-				Products: []web.Product{
+				Products: []web.SKU{
 					{
-						SKUSN:    "SKU100",
+						SN:       "SKU100",
 						Quantity: 11,
 					},
 				},
@@ -520,9 +527,9 @@ func (s *OrderModuleTestSuite) TestHandler_CreateOrderAndPaymentFailed() {
 			name: "商品总原价非法",
 			req: web.CreateOrderReq{
 				RequestID: "requestID06",
-				Products: []web.Product{
+				Products: []web.SKU{
 					{
-						SKUSN:    "SKU100",
+						SN:       "SKU100",
 						Quantity: 10,
 					},
 				},
@@ -537,9 +544,9 @@ func (s *OrderModuleTestSuite) TestHandler_CreateOrderAndPaymentFailed() {
 			name: "商品总实价非法",
 			req: web.CreateOrderReq{
 				RequestID: "requestID07",
-				Products: []web.Product{
+				Products: []web.SKU{
 					{
-						SKUSN:    "SKU100",
+						SN:       "SKU100",
 						Quantity: 10,
 					},
 				},
@@ -555,13 +562,13 @@ func (s *OrderModuleTestSuite) TestHandler_CreateOrderAndPaymentFailed() {
 			name: "支付渠道非法",
 			req: web.CreateOrderReq{
 				RequestID: "requestID08",
-				Products: []web.Product{
+				Products: []web.SKU{
 					{
-						SKUSN:    "SKU100",
+						SN:       "SKU100",
 						Quantity: 10,
 					},
 				},
-				Payments: []web.Payment{
+				Payments: []web.PaymentItem{
 					{
 						Type: 0,
 					},
@@ -723,6 +730,8 @@ func (s *OrderModuleTestSuite) TestHandler_ListOrders() {
 			{
 				SPUId:            id,
 				SKUId:            id,
+				SKUSN:            fmt.Sprintf("SKUSN-%d", id),
+				SKUImage:         fmt.Sprintf("SKUImage-%d", id),
 				SKUName:          fmt.Sprintf("SKUName-%d", id),
 				SKUDescription:   fmt.Sprintf("SKUDescription-%d", id),
 				SKUOriginalPrice: 100,
@@ -753,38 +762,47 @@ func (s *OrderModuleTestSuite) TestHandler_ListOrders() {
 					Total: int64(total),
 					Orders: []web.Order{
 						{
-							SN:                 "OrderSN-list-199",
-							PaymentSN:          fmt.Sprintf("PaymentSN-list-%d", 199),
+							SN: "OrderSN-list-199",
+							Payment: web.Payment{
+								SN: fmt.Sprintf("PaymentSN-list-%d", 199),
+							},
 							OriginalTotalPrice: 100,
 							RealTotalPrice:     100,
 							Status:             domain.StatusUnpaid.ToUint8(),
 							Items: []web.OrderItem{
 								{
-									SPUID:            int64(199),
-									SKUID:            int64(199),
-									SKUName:          fmt.Sprintf("SKUName-%d", 199),
-									SKUDescription:   fmt.Sprintf("SKUDescription-%d", 199),
-									SKUOriginalPrice: 100,
-									SKURealPrice:     100,
-									Quantity:         1,
+									Product: web.SKU{
+										SN:            fmt.Sprintf("SKUSN-%d", 199),
+										Image:         fmt.Sprintf("SKUImage-%d", 199),
+										Name:          fmt.Sprintf("SKUName-%d", 199),
+										Desc:          fmt.Sprintf("SKUDescription-%d", 199),
+										OriginalPrice: 100,
+										RealPrice:     100,
+										Quantity:      1,
+									},
 								},
 							},
 						},
 						{
-							SN:                 "OrderSN-list-198",
-							PaymentSN:          fmt.Sprintf("PaymentSN-list-%d", 198),
+							SN: "OrderSN-list-198",
+							Payment: web.Payment{
+								SN:    fmt.Sprintf("PaymentSN-list-%d", 198),
+								Items: nil,
+							},
 							OriginalTotalPrice: 100,
 							RealTotalPrice:     100,
 							Status:             domain.StatusUnpaid.ToUint8(),
 							Items: []web.OrderItem{
 								{
-									SPUID:            int64(198),
-									SKUID:            int64(198),
-									SKUName:          fmt.Sprintf("SKUName-%d", 198),
-									SKUDescription:   fmt.Sprintf("SKUDescription-%d", 198),
-									SKUOriginalPrice: 100,
-									SKURealPrice:     100,
-									Quantity:         1,
+									Product: web.SKU{
+										SN:            fmt.Sprintf("SKUSN-%d", 198),
+										Image:         fmt.Sprintf("SKUImage-%d", 198),
+										Name:          fmt.Sprintf("SKUName-%d", 198),
+										Desc:          fmt.Sprintf("SKUDescription-%d", 198),
+										OriginalPrice: 100,
+										RealPrice:     100,
+										Quantity:      1,
+									},
 								},
 							},
 						},
@@ -804,20 +822,24 @@ func (s *OrderModuleTestSuite) TestHandler_ListOrders() {
 					Total: int64(total),
 					Orders: []web.Order{
 						{
-							SN:                 "OrderSN-list-100",
-							PaymentSN:          fmt.Sprintf("PaymentSN-list-%d", 100),
+							SN: "OrderSN-list-100",
+							Payment: web.Payment{
+								SN: fmt.Sprintf("PaymentSN-list-%d", 100),
+							},
 							OriginalTotalPrice: 100,
 							RealTotalPrice:     100,
 							Status:             domain.StatusUnpaid.ToUint8(),
 							Items: []web.OrderItem{
 								{
-									SPUID:            int64(100),
-									SKUID:            int64(100),
-									SKUName:          fmt.Sprintf("SKUName-%d", 100),
-									SKUDescription:   fmt.Sprintf("SKUDescription-%d", 100),
-									SKUOriginalPrice: 100,
-									SKURealPrice:     100,
-									Quantity:         1,
+									Product: web.SKU{
+										SN:            fmt.Sprintf("SKUSN-%d", 100),
+										Image:         fmt.Sprintf("SKUImage-%d", 100),
+										Name:          fmt.Sprintf("SKUName-%d", 100),
+										Desc:          fmt.Sprintf("SKUDescription-%d", 100),
+										OriginalPrice: 100,
+										RealPrice:     100,
+										Quantity:      1,
+									},
 								},
 							},
 						},
@@ -880,6 +902,8 @@ func (s *OrderModuleTestSuite) TestHandler_RetrieveOrderDetail() {
 					{
 						SPUId:            1,
 						SKUId:            1,
+						SKUSN:            fmt.Sprintf("SKUSN-%d", 1),
+						SKUImage:         fmt.Sprintf("SKUImage-%d", 1),
 						SKUName:          "商品SKU",
 						SKUDescription:   "商品SKU描述",
 						SKUOriginalPrice: 9900,
@@ -897,26 +921,30 @@ func (s *OrderModuleTestSuite) TestHandler_RetrieveOrderDetail() {
 			wantResp: test.Result[web.RetrieveOrderDetailResp]{
 				Data: web.RetrieveOrderDetailResp{
 					Order: web.Order{
-						SN:                 "orderSN-33",
-						PaymentSN:          "paymentSN-33",
+						SN: "orderSN-33",
+						Payment: web.Payment{
+							SN: "paymentSN-33",
+							Items: []web.PaymentItem{
+								{
+									Type:   payment.ChannelTypeCredit,
+									Amount: 9900,
+								},
+							},
+						},
 						OriginalTotalPrice: 9900,
 						RealTotalPrice:     9900,
 						Status:             domain.StatusUnpaid.ToUint8(),
 						Items: []web.OrderItem{
 							{
-								SPUID:            1,
-								SKUID:            1,
-								SKUName:          "商品SKU",
-								SKUDescription:   "商品SKU描述",
-								SKUOriginalPrice: 9900,
-								SKURealPrice:     9900,
-								Quantity:         1,
-							},
-						},
-						Payments: []web.Payment{
-							{
-								Type:   payment.ChannelTypeCredit,
-								Amount: 9900,
+								Product: web.SKU{
+									SN:            fmt.Sprintf("SKUSN-%d", 1),
+									Image:         fmt.Sprintf("SKUImage-%d", 1),
+									Name:          "商品SKU",
+									Desc:          "商品SKU描述",
+									OriginalPrice: 9900,
+									RealPrice:     9900,
+									Quantity:      1,
+								},
 							},
 						},
 					},

@@ -82,20 +82,20 @@ func (h *Handler) RetrievePreviewOrder(ctx *ginx.Context, req PreviewOrderReq, s
 	}, nil
 }
 
-func (h *Handler) toPaymentChannelVO(ctx *ginx.Context) []Payment {
+func (h *Handler) toPaymentChannelVO(ctx *ginx.Context) []PaymentItem {
 	pcs := h.paymentSvc.GetPaymentChannels(ctx.Request.Context())
-	channels := make([]Payment, 0, len(pcs))
+	channels := make([]PaymentItem, 0, len(pcs))
 	for _, pc := range pcs {
-		channels = append(channels, Payment{Type: pc.Type})
+		channels = append(channels, PaymentItem{Type: pc.Type})
 	}
 	return channels
 }
 
-func (h *Handler) toProductVO(p product.Product, quantity int64) []Product {
-	return []Product{
+func (h *Handler) toProductVO(p product.Product, quantity int64) []SKU {
+	return []SKU{
 		{
-			SPUSN:         p.SPU.SN,
-			SKUSN:         p.SKU.SN,
+			SN:            p.SKU.SN,
+			Image:         p.SKU.Image,
 			Name:          p.SKU.Name,
 			Desc:          p.SKU.Desc,
 			OriginalPrice: p.SKU.Price,
@@ -162,7 +162,7 @@ func (h *Handler) checkRequestID(ctx context.Context, requestID string) error {
 }
 
 func (h *Handler) createOrderRequestKey(requestID string) string {
-	return fmt.Sprintf("webook:order:create:%s", requestID)
+	return fmt.Sprintf("order:create:%s", requestID)
 }
 
 func (h *Handler) createOrder(ctx context.Context, req CreateOrderReq, buyerID int64) (domain.Order, error) {
@@ -198,7 +198,7 @@ func (h *Handler) getOrderItems(ctx context.Context, req CreateOrderReq) ([]doma
 	orderItems := make([]domain.OrderItem, 0, len(req.Products))
 	originalTotalPrice, realTotalPrice := int64(0), int64(0)
 	for _, p := range req.Products {
-		pp, err := h.productSvc.FindBySN(ctx, p.SKUSN)
+		pp, err := h.productSvc.FindBySN(ctx, p.SN)
 		if err != nil {
 			// SN非法
 			return nil, 0, 0, fmt.Errorf("商品SKUSN非法: %w", err)
@@ -209,22 +209,26 @@ func (h *Handler) getOrderItems(ctx context.Context, req CreateOrderReq) ([]doma
 		}
 
 		item := domain.OrderItem{
-			SPUID:            pp.SPU.ID,
-			SKUID:            pp.SKU.ID,
-			SKUName:          pp.SKU.Name,
-			SKUDescription:   pp.SKU.Desc,
-			SKUOriginalPrice: pp.SKU.Price,
-			SKURealPrice:     pp.SKU.Price, // 引入优惠券时,需要重新计算
-			Quantity:         p.Quantity,
+			SKU: domain.SKU{
+				SPUID:         pp.SPU.ID,
+				ID:            pp.SKU.ID,
+				SN:            pp.SKU.SN,
+				Image:         pp.SKU.Image,
+				Name:          pp.SKU.Name,
+				Description:   pp.SKU.Desc,
+				OriginalPrice: pp.SKU.Price,
+				RealPrice:     pp.SKU.Price, // 引入优惠券时,需要重新计算
+				Quantity:      p.Quantity,
+			},
 		}
-		originalTotalPrice += item.SKUOriginalPrice * p.Quantity
-		realTotalPrice += item.SKURealPrice * p.Quantity
+		originalTotalPrice += item.SKU.OriginalPrice * p.Quantity
+		realTotalPrice += item.SKU.RealPrice * p.Quantity
 		orderItems = append(orderItems, item)
 	}
 	return orderItems, originalTotalPrice, realTotalPrice, nil
 }
 
-func (h *Handler) createPayment(ctx context.Context, order domain.Order, paymentChannels []Payment) (payment.Payment, error) {
+func (h *Handler) createPayment(ctx context.Context, order domain.Order, paymentChannels []PaymentItem) (payment.Payment, error) {
 	records := make([]payment.Record, 0, len(paymentChannels))
 	for _, pc := range paymentChannels {
 		if pc.Type != payment.ChannelTypeCredit && pc.Type != payment.ChannelTypeWechat {
@@ -276,19 +280,21 @@ func (h *Handler) ListOrders(ctx *ginx.Context, req ListOrdersReq, sess session.
 func (h *Handler) toOrderVO(order domain.Order) Order {
 	return Order{
 		SN:                 order.SN,
-		PaymentSN:          order.PaymentSN,
+		Payment:            Payment{SN: order.Payment.SN},
 		OriginalTotalPrice: order.OriginalTotalPrice,
 		RealTotalPrice:     order.RealTotalPrice,
 		Status:             order.Status.ToUint8(),
 		Items: slice.Map(order.Items, func(idx int, src domain.OrderItem) OrderItem {
 			return OrderItem{
-				SPUID:            src.SPUID,
-				SKUID:            src.SKUID,
-				SKUName:          src.SKUName,
-				SKUDescription:   src.SKUDescription,
-				SKUOriginalPrice: src.SKUOriginalPrice,
-				SKURealPrice:     src.SKURealPrice,
-				Quantity:         src.Quantity,
+				Product: SKU{
+					SN:            src.SKU.SN,
+					Image:         src.SKU.Image,
+					Name:          src.SKU.Name,
+					Desc:          src.SKU.Description,
+					OriginalPrice: src.SKU.OriginalPrice,
+					RealPrice:     src.SKU.RealPrice,
+					Quantity:      src.SKU.Quantity,
+				},
 			}
 		}),
 		Ctime: order.Ctime,
@@ -302,7 +308,7 @@ func (h *Handler) RetrieveOrderDetail(ctx *ginx.Context, req RetrieveOrderDetail
 	if err != nil {
 		return systemErrorResult, fmt.Errorf("订单未找到: %w", err)
 	}
-	paymentInfo, err := h.paymentSvc.FindPaymentByID(ctx.Request.Context(), order.PaymentID)
+	paymentInfo, err := h.paymentSvc.FindPaymentByID(ctx.Request.Context(), order.Payment.ID)
 	if err != nil {
 		return systemErrorResult, fmt.Errorf("支付未找到: %w", err)
 	}
@@ -315,8 +321,8 @@ func (h *Handler) RetrieveOrderDetail(ctx *ginx.Context, req RetrieveOrderDetail
 
 func (h *Handler) toOrderVOWithPaymentInfo(order domain.Order, pr payment.Payment) Order {
 	vo := h.toOrderVO(order)
-	vo.Payments = slice.Map(pr.Records, func(idx int, src payment.Record) Payment {
-		return Payment{
+	vo.Payment.Items = slice.Map(pr.Records, func(idx int, src payment.Record) PaymentItem {
+		return PaymentItem{
 			Type:   src.Channel,
 			Amount: src.Amount,
 		}
