@@ -186,39 +186,67 @@ func (s *OrderModuleTestSuite) SetupSuite() {
 
 func (s *OrderModuleTestSuite) getProductMockService() *productmocks.MockService {
 	mockedProductSvc := productmocks.NewMockService(s.ctrl)
-
+	skus := map[string]product.SKU{
+		"SKU100": {
+			ID:       100,
+			SPUID:    100,
+			SN:       "SKU100",
+			Image:    "SKUImage100",
+			Name:     "商品SKU100",
+			Desc:     "商品SKU100",
+			Price:    990,
+			Stock:    10,
+			SaleType: product.SaleTypeUnlimited, // 无限制
+			Status:   product.StatusOnShelf,
+		},
+		"SKU101": {
+			ID:       101,
+			SPUID:    101,
+			SN:       "SKU101",
+			Image:    "SKUImage101",
+			Name:     "商品SKU101",
+			Desc:     "商品SKU101",
+			Price:    9900,
+			Stock:    1,
+			SaleType: product.SaleTypeUnlimited, // 无限制
+			Status:   product.StatusOnShelf,
+		},
+	}
+	spus := map[int64]product.SPU{
+		100: {
+			ID:   100,
+			SN:   "SPU100",
+			Name: "商品SPU100",
+			Desc: "商品SKU100",
+			SKUs: []product.SKU{
+				skus["SKU100"],
+			},
+			Status: product.StatusOnShelf,
+		},
+		101: {
+			ID:   101,
+			SN:   "SPU101",
+			Name: "商品SPU101",
+			Desc: "商品SKU101",
+			SKUs: []product.SKU{
+				skus["SKU101"],
+			},
+			Status: product.StatusOnShelf,
+		},
+	}
 	mockedProductSvc.EXPECT().FindSKUBySN(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, sn string) (product.SKU, error) {
-		skus := map[string]product.SKU{
-			"SKU100": {
-				ID:       100,
-				SPUID:    100,
-				SN:       "SKU100",
-				Image:    "SKUImage100",
-				Name:     "商品SKU100",
-				Desc:     "商品SKU100",
-				Price:    990,
-				Stock:    10,
-				SaleType: product.SaleTypeUnlimited, // 无限制
-				Status:   product.StatusOnShelf,
-			},
-			"SKU101": {
-				ID:       101,
-				SPUID:    101,
-				SN:       "SKU101",
-				Image:    "SKUImage101",
-				Name:     "商品SKU101",
-				Desc:     "商品SKU101",
-				Price:    9900,
-				Stock:    1,
-				SaleType: product.SaleTypeUnlimited, // 无限制
-				Status:   product.StatusOnShelf,
-			},
-		}
 		sku, ok := skus[sn]
 		if !ok {
 			return product.SKU{}, errors.New("SKU的SN非法")
 		}
 		return sku, nil
+	}).AnyTimes()
+	mockedProductSvc.EXPECT().FindSPUByID(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, id int64) (product.SPU, error) {
+		spu, ok := spus[id]
+		if !ok {
+			return product.SPU{}, errors.New("SPU的ID非法")
+		}
+		return spu, nil
 	}).AnyTimes()
 
 	return mockedProductSvc
