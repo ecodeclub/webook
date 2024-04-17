@@ -34,3 +34,6 @@ cover.out
 /internal/cases/internal/integration/logs
 /internal/skill/internal/integration/logs
 /internal/feedback/internal/integration/logs
+/cert/
+
+local_test.go

@@ -18,9 +18,10 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/ecodeclub/webook/internal/credit"
-	"github.com/ecodeclub/webook/internal/feedback"
+	"github.com/ecodeclub/webook/internal/order"
 	"github.com/ecodeclub/webook/internal/product"
+
+	"github.com/ecodeclub/webook/internal/feedback"
 
 	"github.com/ecodeclub/webook/internal/pkg/middleware"
 	"github.com/ecodeclub/webook/internal/skill"
@@ -54,7 +55,7 @@ func initGinxServer(sp session.Provider,
 	skillHdl *skill.Handler,
 	fbHdl *feedback.Handler,
 	pHdl *product.Handler,
-	creditHdl *credit.Handler,
+	orderHdl *order.Handler,
 ) *egin.Component {
 	session.SetDefaultProvider(sp)
 	res := egin.Load("web").Build()
@@ -93,7 +94,7 @@ func initGinxServer(sp session.Provider,
 	caseHdl.PrivateRoutes(res.Engine)
 	skillHdl.PrivateRoutes(res.Engine)
 	pHdl.PrivateRoutes(res.Engine)
-	creditHdl.PrivateRoutes(res.Engine)
+	orderHdl.PrivateRoutes(res.Engine)
 	// 会员校验
 	res.Use(checkMembershipMiddleware.Build())
 	qh.MemberRoutes(res.Engine)

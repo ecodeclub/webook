@@ -18,6 +18,10 @@ type SKUSNReq struct {
 	SN string `json:"sn"`
 }
 
+type SNReq struct {
+	SN string `json:"sn"`
+}
+
 type SPU struct {
 	SN   string `json:"sn"`
 	Name string `json:"name"`

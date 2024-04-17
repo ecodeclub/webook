@@ -5,14 +5,13 @@ import (
 	"encoding/json"
 
 	"github.com/ecodeclub/mq-api"
-	"github.com/ecodeclub/mq-api/kafka"
 )
 
 type PaymentProducer struct {
-	producer kafka.Producer
+	producer mq.Producer
 }
 
-func NewPaymentProducer(p kafka.Producer) (*PaymentProducer, error) {
+func NewPaymentProducer(p mq.Producer) (Producer, error) {
 	return &PaymentProducer{
 		p,
 	}, nil
