@@ -64,11 +64,15 @@ func (r *creditRepository) toCreditLogsEntity(c domain.Credit) []dao.CreditLog {
 
 func (r *creditRepository) GetCreditByUID(ctx context.Context, uid int64) (domain.Credit, error) {
 	c, err := r.dao.FindCreditByUID(ctx, uid)
-	if err != nil {
+	switch err {
+	case nil:
+		cl, err := r.dao.FindCreditLogsByUID(ctx, uid)
+		return r.toDomain(c, cl), err
+	case dao.ErrCreditNotFound:
+		return domain.Credit{}, nil
+	default:
 		return domain.Credit{}, err
 	}
-	cl, err := r.dao.FindCreditLogsByUID(ctx, uid)
-	return r.toDomain(c, cl), err
 }
 
 func (r *creditRepository) toDomain(d dao.Credit, l []dao.CreditLog) domain.Credit {

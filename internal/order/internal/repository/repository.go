@@ -18,6 +18,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/ecodeclub/ekit/sqlx"
+
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/ecodeclub/webook/internal/order/internal/domain"
 	"github.com/ecodeclub/webook/internal/order/internal/repository/dao"
@@ -61,8 +63,8 @@ func (o *orderRepository) toOrderEntity(order domain.Order) dao.Order {
 		Id:                 order.ID,
 		SN:                 order.SN,
 		BuyerId:            order.BuyerID,
-		PaymentId:          order.Payment.ID,
-		PaymentSn:          order.Payment.SN,
+		PaymentId:          sqlx.NewNullInt64(order.Payment.ID),
+		PaymentSn:          sqlx.NewNullString(order.Payment.SN),
 		OriginalTotalPrice: order.OriginalTotalPrice,
 		RealTotalPrice:     order.RealTotalPrice,
 		Status:             order.Status.ToUint8(),
@@ -108,8 +110,8 @@ func (o *orderRepository) toOrderDomain(order dao.Order, orderItems []dao.OrderI
 		SN:      order.SN,
 		BuyerID: order.BuyerId,
 		Payment: domain.Payment{
-			ID: order.PaymentId,
-			SN: order.PaymentSn,
+			ID: order.PaymentId.Int64,
+			SN: order.PaymentSn.String,
 		},
 		OriginalTotalPrice: order.OriginalTotalPrice,
 		RealTotalPrice:     order.RealTotalPrice,

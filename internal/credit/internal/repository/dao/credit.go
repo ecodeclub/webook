@@ -31,6 +31,7 @@ var (
 	ErrUpdateCreditConflict = errors.New("更新积分主记录冲突")
 	ErrDuplicatedCreditLog  = errors.New("积分流水记录重复")
 	ErrCreditNotEnough      = errors.New("积分不足")
+	ErrCreditNotFound       = gorm.ErrRecordNotFound
 )
 
 type CreditDAO interface {

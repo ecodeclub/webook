@@ -16,6 +16,7 @@ package web
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/ecodeclub/ecache"
@@ -48,7 +49,7 @@ func NewHandler(svc service.Service, paymentSvc payment.Service, productSvc prod
 
 func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g := server.Group("/order")
-	g.POST("/preview", ginx.BS[PreviewOrderReq](h.RetrievePreviewOrder))
+	g.POST("/preview", ginx.BS[PreviewOrderReq](h.PreviewOrder))
 	g.POST("/create", ginx.BS[CreateOrderReq](h.CreateOrderAndPayment))
 	g.POST("", ginx.BS[RetrieveOrderStatusReq](h.RetrieveOrderStatus))
 	g.POST("/list", ginx.BS[ListOrdersReq](h.ListOrders))
@@ -58,8 +59,8 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 
 func (h *Handler) PublicRoutes(_ *gin.Engine) {}
 
-// RetrievePreviewOrder 获取订单预览信息, 此时订单尚未创建
-func (h *Handler) RetrievePreviewOrder(ctx *ginx.Context, req PreviewOrderReq, sess session.Session) (ginx.Result, error) {
+// PreviewOrder 获取订单预览信息, 此时订单尚未创建
+func (h *Handler) PreviewOrder(ctx *ginx.Context, req PreviewOrderReq, sess session.Session) (ginx.Result, error) {
 	p, err := h.productSvc.FindSKUBySN(ctx.Request.Context(), req.SKUSN)
 	if err != nil {
 		return systemErrorResult, fmt.Errorf("商品SKU序列号非法: %w", err)
@@ -116,7 +117,7 @@ func (h *Handler) CreateOrderAndPayment(ctx *ginx.Context, req CreateOrderReq, s
 		return systemErrorResult, fmt.Errorf("创建订单失败: %w", err)
 	}
 
-	p, err := h.createPayment(ctx, order, req.Payments)
+	p, err := h.createPayment(ctx, order, req.PaymentItems)
 	if err != nil {
 		// 创建支付失败
 		return systemErrorResult, fmt.Errorf("创建支付失败: %w", err)
@@ -153,6 +154,8 @@ func (h *Handler) checkRequestID(ctx context.Context, requestID string) error {
 	if !val.KeyNotFound() {
 		return fmt.Errorf("重复请求")
 	}
+	// 这里有一个隐患，就是如果要是最终并没有创建 ORDER 成功，
+	// 这会要求用户必须重新创建一个订单
 	if err := h.cache.Set(ctx, key, requestID, 0); err != nil {
 		return fmt.Errorf("缓存请求ID失败: %w", err)
 	}
@@ -168,18 +171,10 @@ func (h *Handler) createOrder(ctx context.Context, req CreateOrderReq, buyerID i
 	if err != nil {
 		return domain.Order{}, err
 	}
-	if originalTotalPrice != req.OriginalTotalPrice {
-		return domain.Order{}, fmt.Errorf("商品总原价非法")
-	}
-	if realTotalPrice != req.RealTotalPrice {
-		return domain.Order{}, fmt.Errorf("商品总实价非法")
-	}
-
 	orderSN, err := h.snGenerator.Generate(buyerID)
 	if err != nil {
 		return domain.Order{}, fmt.Errorf("生成订单序列号失败")
 	}
-
 	return h.svc.CreateOrder(ctx, domain.Order{
 		SN:                 orderSN,
 		BuyerID:            buyerID,
@@ -203,17 +198,12 @@ func (h *Handler) getOrderItems(ctx context.Context, req CreateOrderReq) ([]doma
 		}
 		if skuReq.Quantity < 1 || skuReq.Quantity > sku.Stock {
 			// todo: 重新审视stockLimit的意义及用法
+			// 暂时不需要修改
 			return nil, 0, 0, fmt.Errorf("商品数量非法")
 		}
-		spu, err := h.productSvc.FindSPUByID(ctx, sku.SPUID)
-		if err != nil {
-			// SN非法
-			return nil, 0, 0, fmt.Errorf("商品SPUSN非法: %w", err)
-		}
-
 		item := domain.OrderItem{
 			SKU: domain.SKU{
-				SPUID:         spu.ID,
+				SPUID:         sku.SPUID,
 				ID:            sku.ID,
 				SN:            sku.SN,
 				Image:         sku.Image,
@@ -233,6 +223,7 @@ func (h *Handler) getOrderItems(ctx context.Context, req CreateOrderReq) ([]doma
 
 func (h *Handler) createPayment(ctx context.Context, order domain.Order, paymentChannels []PaymentItem) (payment.Payment, error) {
 	records := make([]payment.Record, 0, len(paymentChannels))
+	pmtTotal := int64(0)
 	for _, pc := range paymentChannels {
 		if pc.Type != payment.ChannelTypeCredit && pc.Type != payment.ChannelTypeWechat {
 			return payment.Payment{}, fmt.Errorf("支付渠道非法")
@@ -241,7 +232,13 @@ func (h *Handler) createPayment(ctx context.Context, order domain.Order, payment
 			Amount:  pc.Amount,
 			Channel: pc.Type,
 		})
+		pmtTotal += pc.Amount
 	}
+
+	if pmtTotal != order.RealTotalPrice {
+		return payment.Payment{}, errors.New("支付信息错误：金额不匹配")
+	}
+
 	return h.paymentSvc.CreatePayment(ctx, payment.Payment{
 		OrderID:     order.ID,
 		OrderSN:     order.SN,

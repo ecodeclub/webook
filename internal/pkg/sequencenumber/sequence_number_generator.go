@@ -51,5 +51,6 @@ func (s *Generator) Generate(id int64) (string, error) {
 	timestamp := s.timestampGenFunc(time.Now())
 	lastFour := fmt.Sprintf("%04d", id%10000)
 	uuid := s.shortUUIDGenFunc()
+	// timestamp 的16进制编码 + 用户后四位 + (uuid 凑够位数) == 32 位
 	return fmt.Sprintf("%d%s%s", timestamp, lastFour, uuid), nil
 }

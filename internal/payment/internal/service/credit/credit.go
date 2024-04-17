@@ -163,7 +163,6 @@ func (p *PaymentService) Prepay(ctx context.Context, pmt domain.Payment) (domain
 func (p *PaymentService) tryDeductCredits(ctx context.Context, uid int64, amount uint64) (txID int64, err error) {
 	strategy, _ := retry.NewExponentialBackoffRetryStrategy(p.initialInterval, p.maxInterval, p.maxRetries)
 	for {
-
 		txID, err := p.svc.TryDeductCredits(ctx, credit.Credit{Uid: uid, Logs: []credit.CreditLog{
 			{
 				Key:          shortuuid.New(),

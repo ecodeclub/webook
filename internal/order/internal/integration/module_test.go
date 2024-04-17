@@ -406,7 +406,7 @@ func (s *OrderModuleTestSuite) TestHandler_CreateOrderAndPayment() {
 						Quantity: 1,
 					},
 				},
-				Payments: []web.PaymentItem{
+				PaymentItems: []web.PaymentItem{
 					{Type: payment.ChannelTypeCredit},
 					{Type: payment.ChannelTypeWechat},
 				},
@@ -431,7 +431,7 @@ func (s *OrderModuleTestSuite) TestHandler_CreateOrderAndPayment() {
 						Quantity: 1,
 					},
 				},
-				Payments: []web.PaymentItem{
+				PaymentItems: []web.PaymentItem{
 					{Type: payment.ChannelTypeCredit},
 					{Type: payment.ChannelTypeWechat},
 				},
@@ -589,7 +589,7 @@ func (s *OrderModuleTestSuite) TestHandler_CreateOrderAndPaymentFailed() {
 						Quantity: 10,
 					},
 				},
-				Payments: []web.PaymentItem{
+				PaymentItems: []web.PaymentItem{
 					{
 						Type: 0,
 					},
