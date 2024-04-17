@@ -31,12 +31,12 @@ func NewHandler(svc service.Service) *Handler {
 
 func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g := server.Group("/credit")
-	g.POST("", ginx.S(h.QueryCredits))
+	g.POST("/detail", ginx.S(h.QueryCredits))
 }
 
 func (h *Handler) QueryCredits(ctx *ginx.Context, sess session.Session) (ginx.Result, error) {
 	c, _ := h.svc.GetCreditsByUID(ctx.Request.Context(), sess.Claims().Uid)
 	return ginx.Result{
-		Data: c.TotalAmount,
+		Data: Credit{Amount: c.TotalAmount},
 	}, nil
 }
