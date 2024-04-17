@@ -25,6 +25,7 @@ import (
 var (
 	ErrDuplicatedCreditLog = dao.ErrDuplicatedCreditLog
 	ErrCreditNotEnough     = dao.ErrCreditNotEnough
+	ErrRecordNotFound      = dao.ErrRecordNotFound
 )
 
 type CreditRepository interface {

@@ -27,6 +27,7 @@ var (
 	ErrCreditNotEnough     = repository.ErrCreditNotEnough
 	ErrDuplicatedCreditLog = repository.ErrDuplicatedCreditLog
 	ErrInvalidCreditLog    = errors.New("积分流水信息非法")
+	ErrRecordNotFound      = repository.ErrRecordNotFound
 )
 
 //go:generate mockgen -source=./service.go -destination=../../mocks/credit.mock.go -package=creditmocks Service
@@ -54,7 +55,11 @@ func (s *service) AddCredits(ctx context.Context, credit domain.Credit) error {
 }
 
 func (s *service) GetCreditsByUID(ctx context.Context, uid int64) (domain.Credit, error) {
-	return s.repo.GetCreditByUID(ctx, uid)
+	c, err := s.repo.GetCreditByUID(ctx, uid)
+	if errors.Is(err, ErrRecordNotFound) {
+		return domain.Credit{Uid: uid}, nil
+	}
+	return c, err
 }
 
 func (s *service) TryDeductCredits(ctx context.Context, credit domain.Credit) (id int64, err error) {

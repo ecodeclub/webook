@@ -30,6 +30,7 @@ import (
 	"github.com/ecodeclub/webook/internal/credit/internal/event"
 	"github.com/ecodeclub/webook/internal/credit/internal/integration/startup"
 	"github.com/ecodeclub/webook/internal/credit/internal/service"
+	"github.com/ecodeclub/webook/internal/credit/internal/web"
 	"github.com/ecodeclub/webook/internal/test"
 	testioc "github.com/ecodeclub/webook/internal/test/ioc"
 	"github.com/ego-component/egorm"
@@ -1206,6 +1207,135 @@ func (s *ModuleTestSuite) TestService_CancelDeductCredits_Concurrent() {
 	require.Len(t, c.Logs, 1)
 }
 
+func (s *ModuleTestSuite) TestService_GetCreditsByUID() {
+	t := s.T()
+
+	testCases := []struct {
+		name string
+
+		before         func(t *testing.T, credit domain.Credit)
+		credit         domain.Credit
+		errRequireFunc require.ErrorAssertionFunc
+	}{
+		{
+			name:   "无记录用户",
+			before: func(t *testing.T, credit domain.Credit) {},
+			credit: domain.Credit{
+				Uid: 20000,
+			},
+			errRequireFunc: require.NoError,
+		},
+		{
+			name: "有记录用户_无预扣积分",
+			before: func(t *testing.T, credit domain.Credit) {
+				t.Helper()
+
+				// 创建已有用户
+				err := s.svc.AddCredits(context.Background(), domain.Credit{
+					Uid: credit.Uid,
+					Logs: []domain.CreditLog{
+						{
+							Key:          "key-20001-1",
+							ChangeAmount: 100,
+							Biz:          "Marketing",
+							BizId:        2,
+							Desc:         "邀请注册",
+						},
+					},
+				})
+				require.NoError(t, err)
+
+			},
+			credit: domain.Credit{
+				Uid:               20001,
+				TotalAmount:       100,
+				LockedTotalAmount: 0,
+				Logs: []domain.CreditLog{
+					{
+						Key:          "key-20001-1",
+						ChangeAmount: 100,
+						Biz:          "Marketing",
+						BizId:        2,
+						Desc:         "邀请注册",
+					},
+				},
+			},
+			errRequireFunc: require.NoError,
+		},
+		{
+			name: "有记录用户_有预扣积分",
+			before: func(t *testing.T, credit domain.Credit) {
+				t.Helper()
+
+				// 创建已有用户
+				err := s.svc.AddCredits(context.Background(), domain.Credit{
+					Uid: credit.Uid,
+					Logs: []domain.CreditLog{
+						{
+							Key:          "key-20002-1",
+							ChangeAmount: 100,
+							Biz:          "Marketing",
+							BizId:        2,
+							Desc:         "邀请注册",
+						},
+					},
+				})
+				require.NoError(t, err)
+
+				// 预扣
+				_, err = s.svc.TryDeductCredits(context.Background(), domain.Credit{
+					Uid: credit.Uid,
+					Logs: []domain.CreditLog{
+						{
+							Key:          "key-20002-2",
+							ChangeAmount: 50,
+							Biz:          "order",
+							BizId:        9,
+							Desc:         "购买面试",
+						},
+					},
+				})
+
+			},
+			credit: domain.Credit{
+				Uid:               20002,
+				TotalAmount:       50,
+				LockedTotalAmount: 50,
+				Logs: []domain.CreditLog{
+					{
+						Key:          "key-20002-2",
+						ChangeAmount: -50,
+						Biz:          "order",
+						BizId:        9,
+						Desc:         "购买面试",
+					},
+					{
+						Key:          "key-20002-1",
+						ChangeAmount: 100,
+						Biz:          "Marketing",
+						BizId:        2,
+						Desc:         "邀请注册",
+					},
+				},
+			},
+			errRequireFunc: require.NoError,
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			tc.before(t, tc.credit)
+			c, err := s.svc.GetCreditsByUID(context.Background(), tc.credit.Uid)
+			tc.errRequireFunc(t, err)
+			if err == nil {
+				require.Equal(t, tc.credit, c)
+			}
+		})
+	}
+
+}
+
 func (s *ModuleTestSuite) TestHandler_QueryCredits() {
 	t := s.T()
 
@@ -1215,7 +1345,7 @@ func (s *ModuleTestSuite) TestHandler_QueryCredits() {
 		before   func(t *testing.T)
 		after    func(t *testing.T)
 		wantCode int
-		wantResp test.Result[uint64]
+		wantResp test.Result[web.Credit]
 	}{
 		{
 			name: "用户有记录_有预扣",
@@ -1259,8 +1389,8 @@ func (s *ModuleTestSuite) TestHandler_QueryCredits() {
 				s.TearDownTest()
 			},
 			wantCode: 200,
-			wantResp: test.Result[uint64]{
-				Data: uint64(50),
+			wantResp: test.Result[web.Credit]{
+				Data: web.Credit{Amount: uint64(50)},
 			},
 		},
 		{
@@ -1287,8 +1417,8 @@ func (s *ModuleTestSuite) TestHandler_QueryCredits() {
 				s.TearDownTest()
 			},
 			wantCode: 200,
-			wantResp: test.Result[uint64]{
-				Data: uint64(100),
+			wantResp: test.Result[web.Credit]{
+				Data: web.Credit{Amount: uint64(100)},
 			},
 		},
 		{
@@ -1296,8 +1426,8 @@ func (s *ModuleTestSuite) TestHandler_QueryCredits() {
 			before:   func(t *testing.T) {},
 			after:    func(t *testing.T) {},
 			wantCode: 200,
-			wantResp: test.Result[uint64]{
-				Data: uint64(0),
+			wantResp: test.Result[web.Credit]{
+				Data: web.Credit{Amount: uint64(0)},
 			},
 		},
 	}
@@ -1305,10 +1435,10 @@ func (s *ModuleTestSuite) TestHandler_QueryCredits() {
 		t.Run(tc.name, func(t *testing.T) {
 			tc.before(t)
 			req, err := http.NewRequest(http.MethodPost,
-				"/credit", nil)
+				"/credit/detail", nil)
 			req.Header.Set("content-type", "application/json")
 			require.NoError(t, err)
-			recorder := test.NewJSONResponseRecorder[uint64]()
+			recorder := test.NewJSONResponseRecorder[web.Credit]()
 			s.server.ServeHTTP(recorder, req)
 			require.Equal(t, tc.wantCode, recorder.Code)
 			require.Equal(t, tc.wantResp, recorder.MustScan())
