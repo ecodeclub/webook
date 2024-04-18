@@ -309,8 +309,8 @@ func (s *OrderModuleTestSuite) TestHandler_PreviewOrder() {
 								{Type: payment.ChannelTypeWechat},
 							},
 						},
-						OriginalTotalPrice: 990,
-						RealTotalPrice:     990,
+						OriginalTotalAmt: 990,
+						RealTotalAmt:     990,
 						Items: []web.OrderItem{
 							{
 								SKU: web.SKU{
@@ -819,9 +819,9 @@ func (s *OrderModuleTestSuite) TestHandler_ListOrders() {
 							Payment: web.Payment{
 								SN: fmt.Sprintf("PaymentSN-list-%d", 199),
 							},
-							OriginalTotalPrice: 100,
-							RealTotalPrice:     100,
-							Status:             domain.StatusUnpaid.ToUint8(),
+							OriginalTotalAmt: 100,
+							RealTotalAmt:     100,
+							Status:           domain.StatusUnpaid.ToUint8(),
 							Items: []web.OrderItem{
 								{
 									SKU: web.SKU{
@@ -842,9 +842,9 @@ func (s *OrderModuleTestSuite) TestHandler_ListOrders() {
 								SN:    fmt.Sprintf("PaymentSN-list-%d", 198),
 								Items: nil,
 							},
-							OriginalTotalPrice: 100,
-							RealTotalPrice:     100,
-							Status:             domain.StatusUnpaid.ToUint8(),
+							OriginalTotalAmt: 100,
+							RealTotalAmt:     100,
+							Status:           domain.StatusUnpaid.ToUint8(),
 							Items: []web.OrderItem{
 								{
 									SKU: web.SKU{
@@ -879,9 +879,9 @@ func (s *OrderModuleTestSuite) TestHandler_ListOrders() {
 							Payment: web.Payment{
 								SN: fmt.Sprintf("PaymentSN-list-%d", 100),
 							},
-							OriginalTotalPrice: 100,
-							RealTotalPrice:     100,
-							Status:             domain.StatusUnpaid.ToUint8(),
+							OriginalTotalAmt: 100,
+							RealTotalAmt:     100,
+							Status:           domain.StatusUnpaid.ToUint8(),
 							Items: []web.OrderItem{
 								{
 									SKU: web.SKU{
@@ -985,9 +985,9 @@ func (s *OrderModuleTestSuite) TestHandler_RetrieveOrderDetail() {
 								},
 							},
 						},
-						OriginalTotalPrice: 9900,
-						RealTotalPrice:     9900,
-						Status:             domain.StatusUnpaid.ToUint8(),
+						OriginalTotalAmt: 9900,
+						RealTotalAmt:     9900,
+						Status:           domain.StatusUnpaid.ToUint8(),
 						Items: []web.OrderItem{
 							{
 								SKU: web.SKU{

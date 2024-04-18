@@ -83,8 +83,8 @@ func (h *Handler) PreviewOrder(ctx *ginx.Context, req PreviewOrderReq, sess sess
 				Payment: Payment{
 					Items: items,
 				},
-				OriginalTotalPrice: originalTotalPrice,
-				RealTotalPrice:     realTotalPrice,
+				OriginalTotalAmt: originalTotalPrice,
+				RealTotalAmt:     realTotalPrice,
 				Items: slice.Map(orderItems, func(idx int, src domain.OrderItem) OrderItem {
 					return OrderItem{
 						SKU: h.toSKUVO(src.SKU),
@@ -284,11 +284,11 @@ func (h *Handler) ListOrders(ctx *ginx.Context, req ListOrdersReq, sess session.
 
 func (h *Handler) toOrderVO(order domain.Order) Order {
 	return Order{
-		SN:                 order.SN,
-		Payment:            Payment{SN: order.Payment.SN},
-		OriginalTotalPrice: order.OriginalTotalPrice,
-		RealTotalPrice:     order.RealTotalPrice,
-		Status:             order.Status.ToUint8(),
+		SN:               order.SN,
+		Payment:          Payment{SN: order.Payment.SN},
+		OriginalTotalAmt: order.OriginalTotalPrice,
+		RealTotalAmt:     order.RealTotalPrice,
+		Status:           order.Status.ToUint8(),
 		Items: slice.Map(order.Items, func(idx int, src domain.OrderItem) OrderItem {
 			return OrderItem{
 				SKU: h.toSKUVO(src.SKU),

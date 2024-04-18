@@ -33,8 +33,8 @@ func NewHandler(svc service.Service) *Handler {
 
 func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g := server.Group("/product")
-	g.POST("spu/detail", ginx.BS[SNReq](h.RetrieveSPUDetail))
-	g.POST("sku/detail", ginx.BS[SNReq](h.RetrieveSKUDetail))
+	g.POST("/spu/detail", ginx.BS[SNReq](h.RetrieveSPUDetail))
+	g.POST("/sku/detail", ginx.BS[SNReq](h.RetrieveSKUDetail))
 }
 
 func (h *Handler) RetrieveSPUDetail(ctx *ginx.Context, req SNReq, _ session.Session) (ginx.Result, error) {
