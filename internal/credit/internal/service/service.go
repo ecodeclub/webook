@@ -30,7 +30,7 @@ var (
 	ErrRecordNotFound      = repository.ErrRecordNotFound
 )
 
-//go:generate mockgen -source=./service.go -destination=../../mocks/credit.mock.go -package=creditmocks Service
+//go:generate mockgen -source=./service.go -destination=../../mocks/credit.mock.go -package=creditmocks -typed Service
 type Service interface {
 	AddCredits(ctx context.Context, credit domain.Credit) error
 	GetCreditsByUID(ctx context.Context, uid int64) (domain.Credit, error)

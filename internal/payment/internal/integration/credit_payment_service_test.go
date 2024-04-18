@@ -84,7 +84,7 @@ func (s *CreditPaymentServiceTestSuite) TestPay() {
 
 		mockedCreditService := creditmocks.NewMockService(ctrl)
 		paymentNo3rd := int64(1)
-		mockedCreditService.EXPECT().TryDeductCredits(gomock.Any(), gomock.Any()).Return(paymentNo3rd, int64(10), nil)
+		mockedCreditService.EXPECT().TryDeductCredits(gomock.Any(), gomock.Any()).Return(paymentNo3rd, nil)
 		mockedCreditService.EXPECT().ConfirmDeductCredits(gomock.Any(), testUID, paymentNo3rd).Return(nil)
 		// mockedCreditService.EXPECT().CancelDeductCredits(gomock.Any(), paymentNo3rd).Return(nil)
 

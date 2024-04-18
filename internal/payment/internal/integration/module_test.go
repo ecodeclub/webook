@@ -17,6 +17,7 @@
 package integration
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -24,6 +25,7 @@ import (
 	"github.com/ecodeclub/webook/internal/credit"
 	creditmocks "github.com/ecodeclub/webook/internal/credit/mocks"
 	"github.com/ecodeclub/webook/internal/payment"
+	"github.com/ecodeclub/webook/internal/payment/internal/domain"
 	evtmocks "github.com/ecodeclub/webook/internal/payment/internal/event/mocks"
 	startup "github.com/ecodeclub/webook/internal/payment/internal/integration/setup"
 	wechatmocks "github.com/ecodeclub/webook/internal/payment/internal/service/wechat/mocks"
@@ -32,6 +34,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gotomicro/ego/core/econf"
 	"github.com/gotomicro/ego/server/egin"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"go.uber.org/mock/gomock"
 )
@@ -73,28 +76,60 @@ func (s *PaymentModuleTestSuite) SetupSuite() {
 }
 
 func (s *PaymentModuleTestSuite) getMockNativeAPIService() *wechatmocks.MockNativeAPIService {
-	nativeAPI := wechatmocks.NewMockNativeAPIService(s.ctrl)
-	return nativeAPI
+	mockNativeAPI := wechatmocks.NewMockNativeAPIService(s.ctrl)
+	return mockNativeAPI
 }
 
 func (s *PaymentModuleTestSuite) getMockNotifyHandler() *wechatmocks.MockNotifyHandler {
-	notifyHandler := wechatmocks.NewMockNotifyHandler(s.ctrl)
-	return notifyHandler
+	mockNotifyHandler := wechatmocks.NewMockNotifyHandler(s.ctrl)
+	return mockNotifyHandler
 }
 
 func (s *PaymentModuleTestSuite) getMockProducer() *evtmocks.MockPaymentEventProducer {
-	mockedPayment := evtmocks.NewMockPaymentEventProducer(s.ctrl)
-	return mockedPayment
+	mockProducer := evtmocks.NewMockPaymentEventProducer(s.ctrl)
+	return mockProducer
 }
 
 func (s *PaymentModuleTestSuite) getMockCreditService() *credit.Module {
-	creditModule := &credit.Module{Svc: creditmocks.NewMockService(s.ctrl)}
-	return creditModule
+	mockCreditSvc := creditmocks.NewMockService(s.ctrl)
+
+	// credits := map[int64]credit.Credit {
+	// 	testUID: {
+	// 		Uid:               testUID,
+	// 		TotalAmount:       0,
+	// 		LockedTotalAmount: 0,
+	// 		Logs:              nil,
+	// 	},
+	// }
+	// creditLogs := map[int64]map[int64]credit.CreditLog {
+	// 	testUID: {
+	// 		1: {
+	// 			Key:          "",
+	// 			ChangeAmount: 0,
+	// 			Biz:          "",
+	// 			BizId:        0,
+	// 			Desc:         "",
+	// 		},
+	// 	},
+	// }
+
+	// mockCreditSvc.EXPECT().TryDeductCredits(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, c credit.Credit) (int64, error) {
+	// 	logs, ok := creditLogs[c.Uid]
+	// 	if !ok {
+	// 		return 0, errors.New("未配置uid")
+	// 	}
+	// 	return , nil
+	// })
+
+	mockCreditSvc.EXPECT().TryDeductCredits(gomock.Any(), gomock.Any()).AnyTimes().Return(int64(1), nil)
+
+	return &credit.Module{Svc: mockCreditSvc}
 }
 
 func (s *PaymentModuleTestSuite) paymentDDLFunc() func() int64 {
 	return func() int64 {
-		return time.Now().Add(time.Minute * 30).UnixMilli()
+		return time.Now().Add(1 * time.Minute).UnixMilli()
+		// return time.Now().Add(time.Minute * 30).UnixMilli()
 	}
 }
 
@@ -125,5 +160,39 @@ func (s *PaymentModuleTestSuite) TearDownTest() {
 func (s *PaymentModuleTestSuite) TestService_CreatePayment_CreditOnly() {
 	t := s.T()
 	t.Skip()
+
+	t.Run("成功", func(t *testing.T) {
+		t.Skip()
+		t.Parallel()
+
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		mockedCreditService := creditmocks.NewMockService(ctrl)
+		paymentNo3rd := int64(1)
+		mockedCreditService.EXPECT().TryDeductCredits(gomock.Any(), gomock.Any()).Return(paymentNo3rd, nil)
+		mockedCreditService.EXPECT().ConfirmDeductCredits(gomock.Any(), testUID, paymentNo3rd).Return(nil)
+		// mockedCreditService.EXPECT().CancelDeductCredits(gomock.Any(), paymentNo3rd).Return(nil)
+
+		pmt, err := s.module.Svc.CreatePayment(context.Background(), domain.Payment{
+			OrderID:          200001,
+			OrderSN:          "OrderSN-Payment-credit-001",
+			PayerID:          testUID,
+			OrderDescription: "月会员 * 1",
+			TotalAmount:      990,
+			Records: []domain.PaymentRecord{
+				{
+					Channel: domain.ChannelTypeCredit,
+					Amount:  990,
+				},
+			},
+		})
+		require.NoError(t, err)
+		require.NotZero(t, pmt.ID)
+		require.NotZero(t, pmt.SN)
+
+		// require.Equal(t, "OrderSN-Payment-credit-001", producer.paymentEvents[0].OrderSN)
+		// require.Equal(t, int64(domain.PaymentStatusPaid), producer.paymentEvents[0].Status)
+	})
 
 }
