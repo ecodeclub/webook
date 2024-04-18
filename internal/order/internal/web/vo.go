@@ -16,15 +16,13 @@ package web
 
 // PreviewOrderReq 预览订单请求
 type PreviewOrderReq struct {
-	SKUSN    string `json:"sn"`
-	Quantity int64  `json:"quantity"`
+	SKUs []SKU `json:"skus"` // 商品信息
 }
 
 type PreviewOrderResp struct {
-	Credits  uint64        `json:"credits"`  // 积分总数
-	Payments []PaymentItem `json:"payments"` // 支付通道
-	SKUs     []SKU         `json:"skus"`     // 商品信息
-	Policy   string        `json:"policy"`   // 政策信息
+	Order   Order  `json:"order"`   // 预览oder, 包含支持的渠道, 和要购买的SKU
+	Credits uint64 `json:"credits"` // 积分总数
+	Policy  string `json:"policy"`  // 政策信息
 }
 
 type SKU struct {
@@ -44,11 +42,9 @@ type PaymentItem struct {
 
 // CreateOrderReq 创建订单请求
 type CreateOrderReq struct {
-	RequestID          string        `json:"requestID"`       // 请求去重,防止订单重复提交
-	SKUs               []SKU         `json:"skus"`            // 商品信息
-	Payments           []PaymentItem `json:"paymentChannels"` // 支付通道
-	OriginalTotalPrice int64         `json:"originalTotalPrice"`
-	RealTotalPrice     int64         `json:"realTotalPrice"`
+	RequestID    string        `json:"requestID"`    // 请求去重,防止订单重复提交
+	SKUs         []SKU         `json:"skus"`         // 商品信息
+	PaymentItems []PaymentItem `json:"paymentItems"` // 支付通道
 }
 
 type CreateOrderResp struct {
