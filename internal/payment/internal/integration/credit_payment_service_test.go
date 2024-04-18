@@ -38,8 +38,6 @@ import (
 	"go.uber.org/mock/gomock"
 )
 
-const testUID = int64(789)
-
 func TestCreditPaymentServiceTestSuite(t *testing.T) {
 	suite.Run(t, new(CreditPaymentServiceTestSuite))
 }

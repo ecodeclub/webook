@@ -32,7 +32,7 @@ import (
 
 var errUnknownTransactionState = errors.New("未知的微信事务状态")
 
-//go:generate mockgen -source=./native.go -package=wechatmocks -destination=./mocks/wechat.mock.go -typed NativeAPIService
+//go:generate mockgen -source=./native.go -package=wechatmocks -destination=./mocks/native.mock.go -typed NativeAPIService
 type NativeAPIService interface {
 	Prepay(ctx context.Context, req native.PrepayRequest) (resp *native.PrepayResponse, result *core.APIResult, err error)
 	QueryOrderByOutTradeNo(ctx context.Context, req native.QueryOrderByOutTradeNoRequest) (resp *payments.Transaction, result *core.APIResult, err error)
