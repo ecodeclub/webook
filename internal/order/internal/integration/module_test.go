@@ -309,8 +309,8 @@ func (s *OrderModuleTestSuite) TestHandler_PreviewOrder() {
 								{Type: payment.ChannelTypeWechat},
 							},
 						},
-						OriginalTotalPrice: 990,
-						RealTotalPrice:     990,
+						OriginalAmount: 990,
+						RealAmount:     990,
 						Items: []web.OrderItem{
 							{
 								SKU: web.SKU{
@@ -443,7 +443,7 @@ func (s *OrderModuleTestSuite) TestHandler_CreateOrderAndPayment() {
 			wantCode: 200,
 			assertRespFunc: func(t *testing.T, result test.Result[web.CreateOrderResp]) {
 				t.Helper()
-				assert.NotZero(t, result.Data.OrderSN)
+				assert.NotZero(t, result.Data.SN)
 				assert.Zero(t, result.Data.WechatCodeURL)
 			},
 		},
@@ -466,7 +466,7 @@ func (s *OrderModuleTestSuite) TestHandler_CreateOrderAndPayment() {
 			wantCode: 200,
 			assertRespFunc: func(t *testing.T, result test.Result[web.CreateOrderResp]) {
 				t.Helper()
-				assert.NotZero(t, result.Data.OrderSN)
+				assert.NotZero(t, result.Data.SN)
 				assert.NotZero(t, result.Data.WechatCodeURL)
 			},
 		},
@@ -666,7 +666,7 @@ func (s *OrderModuleTestSuite) TestHandler_RetrieveOrderStatus() {
 		name string
 
 		before         func(t *testing.T)
-		req            web.RetrieveOrderStatusReq
+		req            web.OrderSNReq
 		wantCode       int
 		assertRespFunc func(t *testing.T, result test.Result[web.RetrieveOrderStatusResp])
 	}{
@@ -695,13 +695,13 @@ func (s *OrderModuleTestSuite) TestHandler_RetrieveOrderStatus() {
 				require.NoError(t, err)
 			},
 
-			req: web.RetrieveOrderStatusReq{
-				OrderSN: "orderSN-1",
+			req: web.OrderSNReq{
+				SN: "orderSN-1",
 			},
 			wantCode: 200,
 			assertRespFunc: func(t *testing.T, result test.Result[web.RetrieveOrderStatusResp]) {
 				t.Helper()
-				assert.NotZero(t, result.Data.OrderStatus)
+				assert.NotZero(t, result.Data.Status)
 			},
 		},
 	}
@@ -724,14 +724,14 @@ func (s *OrderModuleTestSuite) TestHandler_RetrieveOrderStatusFailed() {
 	t := s.T()
 	testCases := []struct {
 		name     string
-		req      web.RetrieveOrderStatusReq
+		req      web.OrderSNReq
 		wantCode int
 		wantResp test.Result[any]
 	}{
 		{
 			name: "订单序列号为空",
-			req: web.RetrieveOrderStatusReq{
-				OrderSN: "",
+			req: web.OrderSNReq{
+				SN: "",
 			},
 			wantCode: 500,
 			wantResp: test.Result[any]{
@@ -741,8 +741,8 @@ func (s *OrderModuleTestSuite) TestHandler_RetrieveOrderStatusFailed() {
 		},
 		{
 			name: "订单序列号非法",
-			req: web.RetrieveOrderStatusReq{
-				OrderSN: "InvalidOrderSN",
+			req: web.OrderSNReq{
+				SN: "InvalidOrderSN",
 			},
 			wantCode: 500,
 			wantResp: test.Result[any]{
@@ -771,13 +771,13 @@ func (s *OrderModuleTestSuite) TestHandler_ListOrders() {
 	for idx := 0; idx < total; idx++ {
 		id := int64(100 + idx)
 		orderEntity := dao.Order{
-			Id:                 id,
-			SN:                 fmt.Sprintf("OrderSN-list-%d", id),
-			PaymentId:          sqlx.NewNullInt64(id),
-			PaymentSn:          sqlx.NewNullString(fmt.Sprintf("PaymentSN-list-%d", id)),
-			BuyerId:            testUID,
-			OriginalTotalPrice: 100,
-			RealTotalPrice:     100,
+			Id:             id,
+			SN:             fmt.Sprintf("OrderSN-list-%d", id),
+			PaymentId:      sqlx.NewNullInt64(id),
+			PaymentSn:      sqlx.NewNullString(fmt.Sprintf("PaymentSN-list-%d", id)),
+			BuyerId:        testUID,
+			OriginalAmount: 100,
+			RealAmount:     100,
 		}
 		items := []dao.OrderItem{
 			{
@@ -819,9 +819,9 @@ func (s *OrderModuleTestSuite) TestHandler_ListOrders() {
 							Payment: web.Payment{
 								SN: fmt.Sprintf("PaymentSN-list-%d", 199),
 							},
-							OriginalTotalPrice: 100,
-							RealTotalPrice:     100,
-							Status:             domain.StatusUnpaid.ToUint8(),
+							OriginalAmount: 100,
+							RealAmount:     100,
+							Status:         domain.StatusUnpaid.ToUint8(),
 							Items: []web.OrderItem{
 								{
 									SKU: web.SKU{
@@ -842,9 +842,9 @@ func (s *OrderModuleTestSuite) TestHandler_ListOrders() {
 								SN:    fmt.Sprintf("PaymentSN-list-%d", 198),
 								Items: nil,
 							},
-							OriginalTotalPrice: 100,
-							RealTotalPrice:     100,
-							Status:             domain.StatusUnpaid.ToUint8(),
+							OriginalAmount: 100,
+							RealAmount:     100,
+							Status:         domain.StatusUnpaid.ToUint8(),
 							Items: []web.OrderItem{
 								{
 									SKU: web.SKU{
@@ -879,9 +879,9 @@ func (s *OrderModuleTestSuite) TestHandler_ListOrders() {
 							Payment: web.Payment{
 								SN: fmt.Sprintf("PaymentSN-list-%d", 100),
 							},
-							OriginalTotalPrice: 100,
-							RealTotalPrice:     100,
-							Status:             domain.StatusUnpaid.ToUint8(),
+							OriginalAmount: 100,
+							RealAmount:     100,
+							Status:         domain.StatusUnpaid.ToUint8(),
 							Items: []web.OrderItem{
 								{
 									SKU: web.SKU{
@@ -937,7 +937,7 @@ func (s *OrderModuleTestSuite) TestHandler_RetrieveOrderDetail() {
 		name string
 
 		before   func(t *testing.T)
-		req      web.RetrieveOrderDetailReq
+		req      web.OrderSNReq
 		wantCode int
 		wantResp test.Result[web.RetrieveOrderDetailResp]
 	}{
@@ -946,12 +946,12 @@ func (s *OrderModuleTestSuite) TestHandler_RetrieveOrderDetail() {
 			before: func(t *testing.T) {
 				t.Helper()
 				_, err := s.dao.CreateOrder(context.Background(), dao.Order{
-					SN:                 "orderSN-33",
-					BuyerId:            testUID,
-					PaymentId:          sqlx.NewNullInt64(33),
-					PaymentSn:          sqlx.NewNullString("paymentSN-33"),
-					OriginalTotalPrice: 9900,
-					RealTotalPrice:     9900,
+					SN:             "orderSN-33",
+					BuyerId:        testUID,
+					PaymentId:      sqlx.NewNullInt64(33),
+					PaymentSn:      sqlx.NewNullString("paymentSN-33"),
+					OriginalAmount: 9900,
+					RealAmount:     9900,
 				}, []dao.OrderItem{
 					{
 						SPUId:            1,
@@ -968,8 +968,8 @@ func (s *OrderModuleTestSuite) TestHandler_RetrieveOrderDetail() {
 				require.NoError(t, err)
 			},
 
-			req: web.RetrieveOrderDetailReq{
-				OrderSN: "orderSN-33",
+			req: web.OrderSNReq{
+				SN: "orderSN-33",
 			},
 			wantCode: 200,
 			wantResp: test.Result[web.RetrieveOrderDetailResp]{
@@ -985,9 +985,9 @@ func (s *OrderModuleTestSuite) TestHandler_RetrieveOrderDetail() {
 								},
 							},
 						},
-						OriginalTotalPrice: 9900,
-						RealTotalPrice:     9900,
-						Status:             domain.StatusUnpaid.ToUint8(),
+						OriginalAmount: 9900,
+						RealAmount:     9900,
+						Status:         domain.StatusUnpaid.ToUint8(),
 						Items: []web.OrderItem{
 							{
 								SKU: web.SKU{
@@ -1025,14 +1025,14 @@ func (s *OrderModuleTestSuite) TestHandler_RetrieveOrderDetailFailed() {
 	t := s.T()
 	testCases := []struct {
 		name     string
-		req      web.RetrieveOrderDetailReq
+		req      web.OrderSNReq
 		wantCode int
 		wantResp test.Result[any]
 	}{
 		{
 			name: "订单序列号为空",
-			req: web.RetrieveOrderDetailReq{
-				OrderSN: "",
+			req: web.OrderSNReq{
+				SN: "",
 			},
 			wantCode: 500,
 			wantResp: test.Result[any]{
@@ -1042,8 +1042,8 @@ func (s *OrderModuleTestSuite) TestHandler_RetrieveOrderDetailFailed() {
 		},
 		{
 			name: "订单序列号非法",
-			req: web.RetrieveOrderDetailReq{
-				OrderSN: "InvalidOrderSN",
+			req: web.OrderSNReq{
+				SN: "InvalidOrderSN",
 			},
 			wantCode: 500,
 			wantResp: test.Result[any]{
@@ -1073,7 +1073,7 @@ func (s *OrderModuleTestSuite) TestHandler_CancelOrder() {
 
 		before   func(t *testing.T)
 		after    func(t *testing.T)
-		req      web.CancelOrderReq
+		req      web.OrderSNReq
 		wantCode int
 		wantResp test.Result[any]
 	}{
@@ -1105,8 +1105,8 @@ func (s *OrderModuleTestSuite) TestHandler_CancelOrder() {
 				assert.NoError(t, err)
 				assert.Equal(t, domain.StatusCanceled.ToUint8(), orderEntity.Status)
 			},
-			req: web.CancelOrderReq{
-				OrderSN: "orderSN-44",
+			req: web.OrderSNReq{
+				SN: "orderSN-44",
 			},
 			wantCode: 200,
 			wantResp: test.Result[any]{
@@ -1134,14 +1134,14 @@ func (s *OrderModuleTestSuite) TestHandler_CancelOrderFailed() {
 	t := s.T()
 	testCases := []struct {
 		name     string
-		req      web.CancelOrderReq
+		req      web.OrderSNReq
 		wantCode int
 		wantResp test.Result[any]
 	}{
 		{
 			name: "订单序列号为空",
-			req: web.CancelOrderReq{
-				OrderSN: "",
+			req: web.OrderSNReq{
+				SN: "",
 			},
 			wantCode: 500,
 			wantResp: test.Result[any]{
@@ -1151,8 +1151,8 @@ func (s *OrderModuleTestSuite) TestHandler_CancelOrderFailed() {
 		},
 		{
 			name: "订单序列号非法",
-			req: web.CancelOrderReq{
-				OrderSN: "InvalidOrderSN",
+			req: web.OrderSNReq{
+				SN: "InvalidOrderSN",
 			},
 			wantCode: 500,
 			wantResp: test.Result[any]{
@@ -1324,13 +1324,13 @@ func (s *OrderModuleTestSuite) TestJob_CloseTimeoutOrders() {
 				for idx := 0; idx < total; idx++ {
 					id := int64(200 + idx)
 					orderEntity := dao.Order{
-						Id:                 id,
-						SN:                 fmt.Sprintf("OrderSN-close-%d", id),
-						PaymentId:          sqlx.NewNullInt64(id),
-						PaymentSn:          sqlx.NewNullString(fmt.Sprintf("PaymentSN-close-%d", id)),
-						BuyerId:            id,
-						OriginalTotalPrice: 100,
-						RealTotalPrice:     100,
+						Id:             id,
+						SN:             fmt.Sprintf("OrderSN-close-%d", id),
+						PaymentId:      sqlx.NewNullInt64(id),
+						PaymentSn:      sqlx.NewNullString(fmt.Sprintf("PaymentSN-close-%d", id)),
+						BuyerId:        id,
+						OriginalAmount: 100,
+						RealAmount:     100,
 					}
 					items := []dao.OrderItem{
 						{
@@ -1368,13 +1368,13 @@ func (s *OrderModuleTestSuite) TestJob_CloseTimeoutOrders() {
 				for idx := 0; idx < total; idx++ {
 					id := int64(300 + idx)
 					orderEntity := dao.Order{
-						Id:                 id,
-						SN:                 fmt.Sprintf("OrderSN-close-%d", id),
-						PaymentId:          sqlx.NewNullInt64(id),
-						PaymentSn:          sqlx.NewNullString(fmt.Sprintf("PaymentSN-close-%d", id)),
-						BuyerId:            id,
-						OriginalTotalPrice: 100,
-						RealTotalPrice:     100,
+						Id:             id,
+						SN:             fmt.Sprintf("OrderSN-close-%d", id),
+						PaymentId:      sqlx.NewNullInt64(id),
+						PaymentSn:      sqlx.NewNullString(fmt.Sprintf("PaymentSN-close-%d", id)),
+						BuyerId:        id,
+						OriginalAmount: 100,
+						RealAmount:     100,
 					}
 					items := []dao.OrderItem{
 						{

@@ -59,14 +59,14 @@ func (o *orderRepository) CreateOrder(ctx context.Context, order domain.Order) (
 
 func (o *orderRepository) toOrderEntity(order domain.Order) dao.Order {
 	return dao.Order{
-		Id:                 order.ID,
-		SN:                 order.SN,
-		BuyerId:            order.BuyerID,
-		PaymentId:          sqlx.NewNullInt64(order.Payment.ID),
-		PaymentSn:          sqlx.NewNullString(order.Payment.SN),
-		OriginalTotalPrice: order.OriginalTotalPrice,
-		RealTotalPrice:     order.RealTotalPrice,
-		Status:             order.Status.ToUint8(),
+		Id:             order.ID,
+		SN:             order.SN,
+		BuyerId:        order.BuyerID,
+		PaymentId:      sqlx.NewNullInt64(order.Payment.ID),
+		PaymentSn:      sqlx.NewNullString(order.Payment.SN),
+		OriginalAmount: order.OriginalAmount,
+		RealAmount:     order.RealAmount,
+		Status:         order.Status.ToUint8(),
 	}
 }
 
@@ -112,9 +112,9 @@ func (o *orderRepository) toOrderDomain(order dao.Order, orderItems []dao.OrderI
 			ID: order.PaymentId.Int64,
 			SN: order.PaymentSn.String,
 		},
-		OriginalTotalPrice: order.OriginalTotalPrice,
-		RealTotalPrice:     order.RealTotalPrice,
-		Status:             domain.OrderStatus(order.Status),
+		OriginalAmount: order.OriginalAmount,
+		RealAmount:     order.RealAmount,
+		Status:         domain.OrderStatus(order.Status),
 		Items: slice.Map(orderItems, func(idx int, src dao.OrderItem) domain.OrderItem {
 			return domain.OrderItem{
 				SKU: domain.SKU{

@@ -50,10 +50,10 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g := server.Group("/order")
 	g.POST("/preview", ginx.BS[PreviewOrderReq](h.PreviewOrder))
 	g.POST("/create", ginx.BS[CreateOrderReq](h.CreateOrderAndPayment))
-	g.POST("", ginx.BS[RetrieveOrderStatusReq](h.RetrieveOrderStatus))
+	g.POST("", ginx.BS[OrderSNReq](h.RetrieveOrderStatus))
 	g.POST("/list", ginx.BS[ListOrdersReq](h.ListOrders))
-	g.POST("/detail", ginx.BS[RetrieveOrderDetailReq](h.RetrieveOrderDetail))
-	g.POST("/cancel", ginx.BS[CancelOrderReq](h.CancelOrder))
+	g.POST("/detail", ginx.BS[OrderSNReq](h.RetrieveOrderDetail))
+	g.POST("/cancel", ginx.BS[OrderSNReq](h.CancelOrder))
 }
 
 func (h *Handler) PublicRoutes(_ *gin.Engine) {}
@@ -83,8 +83,8 @@ func (h *Handler) PreviewOrder(ctx *ginx.Context, req PreviewOrderReq, sess sess
 				Payment: Payment{
 					Items: items,
 				},
-				OriginalTotalPrice: originalTotalPrice,
-				RealTotalPrice:     realTotalPrice,
+				OriginalAmount: originalTotalPrice,
+				RealAmount:     realTotalPrice,
 				Items: slice.Map(orderItems, func(idx int, src domain.OrderItem) OrderItem {
 					return OrderItem{
 						SKU: h.toSKUVO(src.SKU),
@@ -143,7 +143,7 @@ func (h *Handler) CreateOrderAndPayment(ctx *ginx.Context, req CreateOrderReq, s
 
 	return ginx.Result{
 		Data: CreateOrderResp{
-			OrderSN:       order.SN,
+			SN:            order.SN,
 			WechatCodeURL: wechatCodeURL,
 		},
 	}, nil
@@ -183,11 +183,11 @@ func (h *Handler) createOrder(ctx context.Context, skus []SKU, buyerID int64) (d
 	}
 
 	return h.svc.CreateOrder(ctx, domain.Order{
-		SN:                 orderSN,
-		BuyerID:            buyerID,
-		OriginalTotalPrice: originalTotalPrice,
-		RealTotalPrice:     realTotalPrice,
-		Items:              orderItems,
+		SN:             orderSN,
+		BuyerID:        buyerID,
+		OriginalAmount: originalTotalPrice,
+		RealAmount:     realTotalPrice,
+		Items:          orderItems,
 	})
 }
 
@@ -241,27 +241,27 @@ func (h *Handler) createPayment(ctx context.Context, order domain.Order, payment
 		})
 		realTotalPrice += pc.Amount
 	}
-	if realTotalPrice != order.RealTotalPrice {
+	if realTotalPrice != order.RealAmount {
 		return payment.Payment{}, fmt.Errorf("支付信息错误：金额不匹配")
 	}
 	return h.paymentSvc.CreatePayment(ctx, payment.Payment{
 		OrderID:     order.ID,
 		OrderSN:     order.SN,
 		PayerID:     order.BuyerID,
-		TotalAmount: order.RealTotalPrice,
+		TotalAmount: order.RealAmount,
 		Records:     records,
 	})
 }
 
 // RetrieveOrderStatus 获取订单状态
-func (h *Handler) RetrieveOrderStatus(ctx *ginx.Context, req RetrieveOrderStatusReq, sess session.Session) (ginx.Result, error) {
-	order, err := h.svc.FindOrderByUIDAndOrderSN(ctx.Request.Context(), sess.Claims().Uid, req.OrderSN)
+func (h *Handler) RetrieveOrderStatus(ctx *ginx.Context, req OrderSNReq, sess session.Session) (ginx.Result, error) {
+	order, err := h.svc.FindOrderByUIDAndOrderSN(ctx.Request.Context(), sess.Claims().Uid, req.SN)
 	if err != nil {
 		return systemErrorResult, fmt.Errorf("订单未找到: %w", err)
 	}
 	return ginx.Result{
 		Data: RetrieveOrderStatusResp{
-			OrderStatus: order.Status.ToUint8(),
+			Status: order.Status.ToUint8(),
 		},
 	}, nil
 }
@@ -284,11 +284,11 @@ func (h *Handler) ListOrders(ctx *ginx.Context, req ListOrdersReq, sess session.
 
 func (h *Handler) toOrderVO(order domain.Order) Order {
 	return Order{
-		SN:                 order.SN,
-		Payment:            Payment{SN: order.Payment.SN},
-		OriginalTotalPrice: order.OriginalTotalPrice,
-		RealTotalPrice:     order.RealTotalPrice,
-		Status:             order.Status.ToUint8(),
+		SN:             order.SN,
+		Payment:        Payment{SN: order.Payment.SN},
+		OriginalAmount: order.OriginalAmount,
+		RealAmount:     order.RealAmount,
+		Status:         order.Status.ToUint8(),
 		Items: slice.Map(order.Items, func(idx int, src domain.OrderItem) OrderItem {
 			return OrderItem{
 				SKU: h.toSKUVO(src.SKU),
@@ -300,8 +300,8 @@ func (h *Handler) toOrderVO(order domain.Order) Order {
 }
 
 // RetrieveOrderDetail 查看订单详情
-func (h *Handler) RetrieveOrderDetail(ctx *ginx.Context, req RetrieveOrderDetailReq, sess session.Session) (ginx.Result, error) {
-	order, err := h.svc.FindOrderByUIDAndOrderSN(ctx.Request.Context(), sess.Claims().Uid, req.OrderSN)
+func (h *Handler) RetrieveOrderDetail(ctx *ginx.Context, req OrderSNReq, sess session.Session) (ginx.Result, error) {
+	order, err := h.svc.FindOrderByUIDAndOrderSN(ctx.Request.Context(), sess.Claims().Uid, req.SN)
 	if err != nil {
 		return systemErrorResult, fmt.Errorf("订单未找到: %w", err)
 	}
@@ -328,8 +328,8 @@ func (h *Handler) toOrderVOWithPaymentInfo(order domain.Order, pr payment.Paymen
 }
 
 // CancelOrder 取消订单
-func (h *Handler) CancelOrder(ctx *ginx.Context, req CancelOrderReq, sess session.Session) (ginx.Result, error) {
-	order, err := h.svc.FindOrderByUIDAndOrderSN(ctx.Request.Context(), sess.Claims().Uid, req.OrderSN)
+func (h *Handler) CancelOrder(ctx *ginx.Context, req OrderSNReq, sess session.Session) (ginx.Result, error) {
+	order, err := h.svc.FindOrderByUIDAndOrderSN(ctx.Request.Context(), sess.Claims().Uid, req.SN)
 	if err != nil {
 		return systemErrorResult, fmt.Errorf("查找订单失败: %w", err)
 	}
