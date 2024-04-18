@@ -16,7 +16,7 @@ package ioc
 
 import (
 	"github.com/ecodeclub/webook/internal/credit"
-	"github.com/ecodeclub/webook/internal/payment/internal/events"
+	"github.com/ecodeclub/webook/internal/payment/internal/event"
 	"github.com/ecodeclub/webook/internal/payment/internal/repository"
 	credit2 "github.com/ecodeclub/webook/internal/payment/internal/service/credit"
 	"github.com/ecodeclub/webook/internal/pkg/sequencenumber"
@@ -25,7 +25,7 @@ import (
 
 func InitCreditPaymentService(svc credit.Service,
 	repo repository.PaymentRepository,
-	producer events.Producer,
+	producer event.PaymentEventProducer,
 	paymentDDLFunc func() int64,
 	l *elog.Component,
 ) *credit2.PaymentService {

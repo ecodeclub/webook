@@ -7,20 +7,20 @@
 package startup
 
 import (
-	service3 "github.com/ecodeclub/webook/internal/credit"
+	"github.com/ecodeclub/webook/internal/credit"
 	"github.com/ecodeclub/webook/internal/order"
 	"github.com/ecodeclub/webook/internal/order/internal/web"
 	"github.com/ecodeclub/webook/internal/payment"
-	service2 "github.com/ecodeclub/webook/internal/product"
+	"github.com/ecodeclub/webook/internal/product"
 	testioc "github.com/ecodeclub/webook/internal/test/ioc"
 )
 
 // Injectors from wire.go:
 
-func InitHandler(paymentSvc payment.Service, productSvc service2.Service, creditSvc service3.Service) (*web.Handler, error) {
+func InitHandler(pm *payment.Module, ppm *product.Module, cm *credit.Module) (*web.Handler, error) {
 	cache := testioc.InitCache()
 	db := testioc.InitDB()
-	serviceService := order.InitService(db)
-	handler := order.InitHandler(cache, serviceService, paymentSvc, productSvc, creditSvc)
+	service := order.InitService(db)
+	handler := order.InitHandler(cache, service, pm, ppm, cm)
 	return handler, nil
 }

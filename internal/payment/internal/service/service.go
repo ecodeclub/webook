@@ -27,6 +27,7 @@ import (
 	"github.com/gotomicro/ego/core/elog"
 )
 
+//go:generate mockgen -source=service.go -package=paymentmocks -destination=../../mocks/payment.mock.go -typed Service
 type Service interface {
 	CreatePayment(ctx context.Context, payment domain.Payment) (domain.Payment, error)
 	GetPaymentChannels(ctx context.Context) []domain.PaymentChannel

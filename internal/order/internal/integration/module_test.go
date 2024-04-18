@@ -162,7 +162,10 @@ func (s *OrderModuleTestSuite) SetupSuite() {
 
 	s.ctrl = gomock.NewController(s.T())
 
-	handler, err := startup.InitHandler(&fakePaymentService{}, s.getProductMockService(), s.getCreditMockService())
+	pm := &payment.Module{Svc: &fakePaymentService{}}
+	ppm := &product.Module{Svc: s.getProductMockService()}
+	cm := &credit.Module{Svc: s.getCreditMockService()}
+	handler, err := startup.InitHandler(pm, ppm, cm)
 	require.NoError(s.T(), err)
 
 	econf.Set("server", map[string]any{"contextTimeout": "1s"})
