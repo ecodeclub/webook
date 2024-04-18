@@ -305,8 +305,8 @@ func (s *OrderModuleTestSuite) TestHandler_PreviewOrder() {
 					Order: web.Order{
 						Payment: web.Payment{
 							Items: []web.PaymentItem{
-								{Type: payment.ChannelTypeCredit},
-								{Type: payment.ChannelTypeWechat},
+								{Type: int64(payment.ChannelTypeCredit)},
+								{Type: int64(payment.ChannelTypeWechat)},
 							},
 						},
 						OriginalTotalAmt: 990,
@@ -437,7 +437,7 @@ func (s *OrderModuleTestSuite) TestHandler_CreateOrderAndPayment() {
 					},
 				},
 				PaymentItems: []web.PaymentItem{
-					{Type: payment.ChannelTypeCredit, Amount: 990},
+					{Type: int64(payment.ChannelTypeCredit), Amount: 990},
 				},
 			},
 			wantCode: 200,
@@ -459,8 +459,8 @@ func (s *OrderModuleTestSuite) TestHandler_CreateOrderAndPayment() {
 					},
 				},
 				PaymentItems: []web.PaymentItem{
-					{Type: payment.ChannelTypeCredit, Amount: 5000},
-					{Type: payment.ChannelTypeWechat, Amount: 4900},
+					{Type: int64(payment.ChannelTypeCredit), Amount: 5000},
+					{Type: int64(payment.ChannelTypeWechat), Amount: 4900},
 				},
 			},
 			wantCode: 200,
@@ -980,7 +980,7 @@ func (s *OrderModuleTestSuite) TestHandler_RetrieveOrderDetail() {
 							SN: "paymentSN-33",
 							Items: []web.PaymentItem{
 								{
-									Type:   payment.ChannelTypeCredit,
+									Type:   int64(payment.ChannelTypeCredit),
 									Amount: 9900,
 								},
 							},

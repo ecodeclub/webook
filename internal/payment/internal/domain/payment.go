@@ -14,16 +14,28 @@
 
 package domain
 
-const (
-	ChannelTypeCredit = iota + 1
-	ChannelTypeWechat
-)
+type ChannelType uint8
+
+func (c ChannelType) ToUnit8() uint8 {
+	return uint8(c)
+}
 
 const (
-	PaymentStatusUnpaid = iota + 1
-	PaymentStatusPaid
-	PaymentStatusFailed
-	PaymentStatusRefund
+	ChannelTypeCredit ChannelType = 1
+	ChannelTypeWechat ChannelType = 2
+)
+
+type PaymentStatus uint8
+
+func (s PaymentStatus) ToUnit8() uint8 {
+	return uint8(s)
+}
+
+const (
+	PaymentStatusUnpaid PaymentStatus = 1
+	PaymentStatusPaid   PaymentStatus = 2
+	PaymentStatusFailed PaymentStatus = 3
+	PaymentStatusRefund PaymentStatus = 4
 )
 
 type Amount struct {
@@ -47,14 +59,14 @@ type Payment struct {
 	TotalAmount      int64
 	PayDDL           int64
 	PaidAt           int64
-	Status           int64
+	Status           PaymentStatus
 	Records          []PaymentRecord
 	Ctime            int64
 	Utime            int64
 }
 
 type PaymentChannel struct {
-	Type int64
+	Type ChannelType
 	Desc string
 }
 
@@ -63,9 +75,9 @@ type PaymentRecord struct {
 	// 第三方那边返回的 ID TxnID string
 	PaymentNO3rd  string
 	Description   string
-	Channel       int64
+	Channel       ChannelType
 	Amount        int64
 	PaidAt        int64
-	Status        int64
+	Status        PaymentStatus
 	WechatCodeURL string
 }

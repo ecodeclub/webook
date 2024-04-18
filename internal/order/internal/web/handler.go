@@ -74,7 +74,7 @@ func (h *Handler) PreviewOrder(ctx *ginx.Context, req PreviewOrderReq, sess sess
 	pcs := h.paymentSvc.GetPaymentChannels(ctx.Request.Context())
 	items := make([]PaymentItem, 0, len(pcs))
 	for _, pc := range pcs {
-		items = append(items, PaymentItem{Type: pc.Type})
+		items = append(items, PaymentItem{Type: int64(pc.Type)})
 	}
 
 	return ginx.Result{
@@ -232,12 +232,12 @@ func (h *Handler) createPayment(ctx context.Context, order domain.Order, payment
 	records := make([]payment.Record, 0, len(paymentChannels))
 	realTotalPrice := int64(0)
 	for _, pc := range paymentChannels {
-		if pc.Type != payment.ChannelTypeCredit && pc.Type != payment.ChannelTypeWechat {
+		if pc.Type != int64(payment.ChannelTypeCredit) && pc.Type != int64(payment.ChannelTypeWechat) {
 			return payment.Payment{}, fmt.Errorf("支付渠道非法")
 		}
 		records = append(records, payment.Record{
 			Amount:  pc.Amount,
-			Channel: pc.Type,
+			Channel: payment.ChannelType(pc.Type),
 		})
 		realTotalPrice += pc.Amount
 	}
@@ -321,7 +321,7 @@ func (h *Handler) toOrderVOWithPaymentInfo(order domain.Order, pr payment.Paymen
 	vo := h.toOrderVO(order)
 	vo.Payment.Items = slice.Map(pr.Records, func(idx int, src payment.Record) PaymentItem {
 		return PaymentItem{
-			Type:   src.Channel,
+			Type:   int64(src.Channel),
 			Amount: src.Amount,
 		}
 	})

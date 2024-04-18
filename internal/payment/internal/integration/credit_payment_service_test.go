@@ -40,6 +40,10 @@ import (
 
 const testUID = int64(789)
 
+func TestCreditPaymentServiceTestSuite(t *testing.T) {
+	suite.Run(t, new(CreditPaymentServiceTestSuite))
+}
+
 type CreditPaymentServiceTestSuite struct {
 	suite.Suite
 	server *egin.Component
@@ -187,8 +191,4 @@ type fakeProducer struct {
 func (f *fakeProducer) Produce(_ context.Context, evt event.PaymentEvent) error {
 	f.paymentEvents = append(f.paymentEvents, evt)
 	return nil
-}
-
-func TestCreditPaymentServiceTestSuite(t *testing.T) {
-	suite.Run(t, new(CreditPaymentServiceTestSuite))
 }

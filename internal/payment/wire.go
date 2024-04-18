@@ -42,9 +42,10 @@ type Handler = web.Handler
 type Payment = domain.Payment
 type Record = domain.PaymentRecord
 type Channel = domain.PaymentChannel
+type ChannelType = domain.ChannelType
 
-var ChannelTypeCredit int64 = domain.ChannelTypeCredit
-var ChannelTypeWechat int64 = domain.ChannelTypeWechat
+var ChannelTypeCredit = domain.ChannelTypeCredit
+var ChannelTypeWechat = domain.ChannelTypeWechat
 
 type Service = service.Service
 

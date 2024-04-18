@@ -63,9 +63,11 @@ type Record = domain.PaymentRecord
 
 type Channel = domain.PaymentChannel
 
-var ChannelTypeCredit int64 = domain.ChannelTypeCredit
+type ChannelType = domain.ChannelType
 
-var ChannelTypeWechat int64 = domain.ChannelTypeWechat
+var ChannelTypeCredit = domain.ChannelTypeCredit
+
+var ChannelTypeWechat = domain.ChannelTypeWechat
 
 type Service = service.Service
 
