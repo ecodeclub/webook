@@ -1037,7 +1037,7 @@ func (s *ModuleTestSuite) TestService_CancelDeductCredits() {
 		errAssertFunc require.ErrorAssertionFunc
 	}{
 		{
-			name: "取消预扣成功_ID有效",
+			name: "取消预扣成功_ID有效且为当前用户所有",
 			getUIDAndTID: func(t *testing.T) (int64, int64) {
 				t.Helper()
 				// 创建已有用户
@@ -1090,7 +1090,7 @@ func (s *ModuleTestSuite) TestService_CancelDeductCredits() {
 			errAssertFunc: require.NoError,
 		},
 		{
-			name: "取消预扣失败_ID有效但非法",
+			name: "取消预扣'成功'_ID有效但不为当前用户所有_不返回错误",
 			getUIDAndTID: func(t *testing.T) (int64, int64) {
 				t.Helper()
 				// 创建已有用户
@@ -1126,13 +1126,13 @@ func (s *ModuleTestSuite) TestService_CancelDeductCredits() {
 					},
 				})
 			},
-			errAssertFunc: require.Error,
+			errAssertFunc: require.NoError,
 		},
 		{
-			name:          "取消预扣失败_ID非法",
-			getUIDAndTID:  func(t *testing.T) (int64, int64) { return int64(9002), int64(2000) },
+			name:          "取消预扣'成功'_ID非法_不返回错误",
+			getUIDAndTID:  func(t *testing.T) (int64, int64) { return int64(9004), int64(2000) },
 			after:         func(t *testing.T, uid int64) {},
-			errAssertFunc: require.Error,
+			errAssertFunc: require.NoError,
 		},
 	}
 
@@ -1192,19 +1192,22 @@ func (s *ModuleTestSuite) TestService_CancelDeductCredits_Concurrent() {
 
 	time.Sleep(100 * time.Millisecond)
 	close(waitChan)
-	errCounter := 0
 	for i := 0; i < n; i++ {
-		err = <-errChan
-		if err != nil {
-			errCounter++
-		}
+		require.NoError(t, <-errChan)
 	}
-	require.Equal(t, n-1, errCounter)
 	c, err := s.svc.GetCreditsByUID(context.Background(), uid)
 	require.NoError(t, err)
 	require.Equal(t, uint64(100), c.TotalAmount)
 	require.Equal(t, uint64(0), c.LockedTotalAmount)
-	require.Len(t, c.Logs, 1)
+	require.Equal(t, c.Logs, []domain.CreditLog{
+		{
+			Key:          "key-9003-1",
+			ChangeAmount: 100,
+			Biz:          "user",
+			BizId:        1,
+			Desc:         "注册",
+		},
+	})
 }
 
 func (s *ModuleTestSuite) TestService_GetCreditsByUID() {
