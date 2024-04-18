@@ -26,7 +26,10 @@ import (
 	"github.com/google/wire"
 )
 
-func InitHandler(paymentSvc payment.Service, productSvc product.Service, creditSvc credit.Service) (*web.Handler, error) {
-	wire.Build(testioc.BaseSet, order.InitService, order.InitHandler)
+func InitHandler(pm *payment.Module, ppm *product.Module, cm *credit.Module) (*web.Handler, error) {
+	wire.Build(testioc.BaseSet,
+		order.InitService,
+		order.InitHandler,
+	)
 	return new(web.Handler), nil
 }

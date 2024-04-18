@@ -24,7 +24,7 @@ import (
 
 	creditmocks "github.com/ecodeclub/webook/internal/credit/mocks"
 	"github.com/ecodeclub/webook/internal/payment/internal/domain"
-	"github.com/ecodeclub/webook/internal/payment/internal/events"
+	"github.com/ecodeclub/webook/internal/payment/internal/event"
 	"github.com/ecodeclub/webook/internal/payment/internal/repository"
 	"github.com/ecodeclub/webook/internal/payment/internal/repository/dao"
 	credit2 "github.com/ecodeclub/webook/internal/payment/internal/service/credit"
@@ -181,10 +181,10 @@ func (s *CreditPaymentServiceTestSuite) TestPay() {
 }
 
 type fakeProducer struct {
-	paymentEvents []events.PaymentEvent
+	paymentEvents []event.PaymentEvent
 }
 
-func (f *fakeProducer) ProducePaymentEvent(_ context.Context, evt events.PaymentEvent) error {
+func (f *fakeProducer) Produce(_ context.Context, evt event.PaymentEvent) error {
 	f.paymentEvents = append(f.paymentEvents, evt)
 	return nil
 }

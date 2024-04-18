@@ -1,10 +1,6 @@
-package events
+package event
 
-import "context"
-
-type Producer interface {
-	ProducePaymentEvent(ctx context.Context, evt PaymentEvent) error
-}
+const paymentEvents = "payment_events"
 
 // PaymentEvent 也是最简设计
 // 有一些人会习惯把支付详情也放进来，但是目前来看是没有必要的
@@ -12,8 +8,4 @@ type Producer interface {
 type PaymentEvent struct {
 	OrderSN string
 	Status  int64
-}
-
-func (PaymentEvent) Topic() string {
-	return "payment_events"
 }
