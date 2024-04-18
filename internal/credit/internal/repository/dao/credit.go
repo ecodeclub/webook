@@ -281,13 +281,13 @@ func (g *creditDAO) cancelCreditLockLog(tx *gorm.DB, uid, tid int64) error {
 
 	var c Credit
 	if err := tx.First(&c, "uid = ?", uid).Error; err != nil {
-		return fmt.Errorf("用户ID非法: %w", err)
+		return nil
 	}
 
 	var cl CreditLog
 	if err := tx.Where("uid = ? AND id = ? AND status = ?", uid, tid, domain.CreditLogStatusLocked).
 		First(&cl).Error; err != nil {
-		return fmt.Errorf("事务ID非法: %w", err)
+		return nil
 	}
 
 	cl.Status = domain.CreditLogStatusInactive
