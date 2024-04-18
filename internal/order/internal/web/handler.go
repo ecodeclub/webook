@@ -60,47 +60,53 @@ func (h *Handler) PublicRoutes(_ *gin.Engine) {}
 
 // PreviewOrder 获取订单预览信息, 此时订单尚未创建
 func (h *Handler) PreviewOrder(ctx *ginx.Context, req PreviewOrderReq, sess session.Session) (ginx.Result, error) {
-	p, err := h.productSvc.FindSKUBySN(ctx.Request.Context(), req.SKUSN)
+
+	orderItems, originalTotalPrice, realTotalPrice, err := h.getDomainOrderItems(ctx, req.SKUs)
 	if err != nil {
-		return systemErrorResult, fmt.Errorf("商品SKU序列号非法: %w", err)
+		return systemErrorResult, fmt.Errorf("获取预览订单项失败: %w", err)
 	}
-	if req.Quantity < 1 || req.Quantity > p.Stock {
-		// todo: 重新审视stockLimit的意义及用法
-		return systemErrorResult, fmt.Errorf("要购买的商品数量非法")
-	}
+
 	c, err := h.creditSvc.GetCreditsByUID(ctx.Request.Context(), sess.Claims().Uid)
 	if err != nil {
 		return systemErrorResult, fmt.Errorf("获取用户积分失败: %w", err)
 	}
+
+	pcs := h.paymentSvc.GetPaymentChannels(ctx.Request.Context())
+	items := make([]PaymentItem, 0, len(pcs))
+	for _, pc := range pcs {
+		items = append(items, PaymentItem{Type: pc.Type})
+	}
+
 	return ginx.Result{
 		Data: PreviewOrderResp{
-			Credits:  c.TotalAmount,
-			Payments: h.toPaymentChannelVO(ctx),
-			SKUs:     []SKU{h.toSKU(p, req.Quantity)},
-			Policy:   "请注意: 虚拟商品、一旦支持成功不退、不换,请谨慎操作",
+			Order: Order{
+				Payment: Payment{
+					Items: items,
+				},
+				OriginalTotalPrice: originalTotalPrice,
+				RealTotalPrice:     realTotalPrice,
+				Items: slice.Map(orderItems, func(idx int, src domain.OrderItem) OrderItem {
+					return OrderItem{
+						SKU: h.toSKUVO(src.SKU),
+					}
+				}),
+			},
+			Credits: c.TotalAmount,
+			Policy:  "请注意: 虚拟商品、一旦支持成功不退、不换,请谨慎操作",
 		},
 	}, nil
 }
 
-func (h *Handler) toSKU(sku product.SKU, quantity int64) SKU {
+func (h *Handler) toSKUVO(sku domain.SKU) SKU {
 	return SKU{
 		SN:            sku.SN,
 		Image:         sku.Image,
 		Name:          sku.Name,
-		Desc:          sku.Desc,
-		OriginalPrice: sku.Price,
-		RealPrice:     sku.Price, // 引入优惠券时, 需要获取用户的优惠信息,动态计算
-		Quantity:      quantity,
+		Desc:          sku.Description,
+		OriginalPrice: sku.OriginalPrice,
+		RealPrice:     sku.RealPrice, // 引入优惠券时, 需要获取用户的优惠信息,动态计算
+		Quantity:      sku.Quantity,
 	}
-}
-
-func (h *Handler) toPaymentChannelVO(ctx *ginx.Context) []PaymentItem {
-	pcs := h.paymentSvc.GetPaymentChannels(ctx.Request.Context())
-	channels := make([]PaymentItem, 0, len(pcs))
-	for _, pc := range pcs {
-		channels = append(channels, PaymentItem{Type: pc.Type})
-	}
-	return channels
 }
 
 // CreateOrderAndPayment 创建订单和支付
@@ -110,7 +116,7 @@ func (h *Handler) CreateOrderAndPayment(ctx *ginx.Context, req CreateOrderReq, s
 		return systemErrorResult, fmt.Errorf("请求ID错误: %w", err)
 	}
 
-	order, err := h.createOrder(ctx, req, sess.Claims().Uid)
+	order, err := h.createOrder(ctx, req.SKUs, sess.Claims().Uid)
 	if err != nil {
 		// 创建订单失败
 		return systemErrorResult, fmt.Errorf("创建订单失败: %w", err)
@@ -165,8 +171,8 @@ func (h *Handler) createOrderRequestKey(requestID string) string {
 	return fmt.Sprintf("order:create:%s", requestID)
 }
 
-func (h *Handler) createOrder(ctx context.Context, req CreateOrderReq, buyerID int64) (domain.Order, error) {
-	orderItems, originalTotalPrice, realTotalPrice, err := h.getOrderItems(ctx, req)
+func (h *Handler) createOrder(ctx context.Context, skus []SKU, buyerID int64) (domain.Order, error) {
+	orderItems, originalTotalPrice, realTotalPrice, err := h.getDomainOrderItems(ctx, skus)
 	if err != nil {
 		return domain.Order{}, err
 	}
@@ -185,39 +191,38 @@ func (h *Handler) createOrder(ctx context.Context, req CreateOrderReq, buyerID i
 	})
 }
 
-func (h *Handler) getOrderItems(ctx context.Context, req CreateOrderReq) ([]domain.OrderItem, int64, int64, error) {
-	if len(req.SKUs) == 0 {
+func (h *Handler) getDomainOrderItems(ctx context.Context, skus []SKU) ([]domain.OrderItem, int64, int64, error) {
+	if len(skus) == 0 {
 		return nil, 0, 0, fmt.Errorf("商品信息非法")
 	}
-	orderItems := make([]domain.OrderItem, 0, len(req.SKUs))
+	orderItems := make([]domain.OrderItem, 0, len(skus))
 	originalTotalPrice, realTotalPrice := int64(0), int64(0)
-	for _, skuReq := range req.SKUs {
-		sku, err := h.productSvc.FindSKUBySN(ctx, skuReq.SN)
+	for _, sku := range skus {
+		productSKU, err := h.productSvc.FindSKUBySN(ctx, sku.SN)
 		if err != nil {
 			// SN非法
 			return nil, 0, 0, fmt.Errorf("商品SKUSN非法: %w", err)
 		}
-		if skuReq.Quantity < 1 || skuReq.Quantity > sku.Stock {
+		if sku.Quantity < 1 || sku.Quantity > productSKU.Stock {
 			// todo: 重新审视stockLimit的意义及用法
 			// 暂时不需要修改
 			return nil, 0, 0, fmt.Errorf("商品数量非法")
 		}
-
 		item := domain.OrderItem{
 			SKU: domain.SKU{
-				SPUID:         sku.SPUID,
-				ID:            sku.ID,
-				SN:            sku.SN,
-				Image:         sku.Image,
-				Name:          sku.Name,
-				Description:   sku.Desc,
-				OriginalPrice: sku.Price,
-				RealPrice:     sku.Price, // 引入优惠券时,需要重新计算
-				Quantity:      skuReq.Quantity,
+				SPUID:         productSKU.SPUID,
+				ID:            productSKU.ID,
+				SN:            productSKU.SN,
+				Image:         productSKU.Image,
+				Name:          productSKU.Name,
+				Description:   productSKU.Desc,
+				OriginalPrice: productSKU.Price,
+				RealPrice:     productSKU.Price, // 引入优惠券时,需要重新计算
+				Quantity:      sku.Quantity,
 			},
 		}
-		originalTotalPrice += item.SKU.OriginalPrice * skuReq.Quantity
-		realTotalPrice += item.SKU.RealPrice * skuReq.Quantity
+		originalTotalPrice += item.SKU.OriginalPrice * sku.Quantity
+		realTotalPrice += item.SKU.RealPrice * sku.Quantity
 		orderItems = append(orderItems, item)
 	}
 	return orderItems, originalTotalPrice, realTotalPrice, nil
@@ -286,15 +291,7 @@ func (h *Handler) toOrderVO(order domain.Order) Order {
 		Status:             order.Status.ToUint8(),
 		Items: slice.Map(order.Items, func(idx int, src domain.OrderItem) OrderItem {
 			return OrderItem{
-				SKU: SKU{
-					SN:            src.SKU.SN,
-					Image:         src.SKU.Image,
-					Name:          src.SKU.Name,
-					Desc:          src.SKU.Description,
-					OriginalPrice: src.SKU.OriginalPrice,
-					RealPrice:     src.SKU.RealPrice,
-					Quantity:      src.SKU.Quantity,
-				},
+				SKU: h.toSKUVO(src.SKU),
 			}
 		}),
 		Ctime: order.Ctime,
