@@ -16,8 +16,10 @@ package dao
 
 import (
 	"context"
+	"database/sql"
 	"time"
 
+	"github.com/ecodeclub/ekit/sqlx"
 	"github.com/ecodeclub/webook/internal/order/internal/domain"
 	"github.com/ego-component/egorm"
 	"gorm.io/gorm"
@@ -68,7 +70,7 @@ func (g *gormOrderDAO) CreateOrder(ctx context.Context, order Order, items []Ord
 }
 
 func (g *gormOrderDAO) UpdateOrderPaymentIDAndPaymentSN(ctx context.Context, uid, oid, pid int64, psn string) error {
-	order := Order{PaymentId: pid, PaymentSn: psn, Utime: time.Now().UnixMilli()}
+	order := Order{PaymentId: sqlx.NewNullInt64(pid), PaymentSn: sqlx.NewNullString(psn), Utime: time.Now().UnixMilli()}
 	return g.db.WithContext(ctx).Where("buyer_id = ? AND id = ? AND status = ?", uid, oid, domain.StatusUnpaid.ToUint8()).Updates(order).Error
 }
 
@@ -139,14 +141,14 @@ func (g *gormOrderDAO) FindOrderBySN(ctx context.Context, sn string) (Order, err
 }
 
 type Order struct {
-	Id                 int64  `gorm:"primaryKey;autoIncrement;comment:订单自增ID"`
-	SN                 string `gorm:"type:varchar(255);not null;uniqueIndex:uniq_order_sn;comment:订单序列号"`
-	BuyerId            int64  `gorm:"not null;index:idx_buyer_id;comment:购买者ID"`
-	PaymentId          int64  `gorm:"uniqueIndex:uniq_payment_id;comment:支付自增ID,冗余允许为NULL"`
-	PaymentSn          string `gorm:"type:varchar(255);uniqueIndex:uniq_payment_sn;comment:支付序列号,冗余允许为NULL"`
-	OriginalTotalPrice int64  `gorm:"not null;comment:原始总价;单位为分, 999表示9.99元"`
-	RealTotalPrice     int64  `gorm:"not null;comment:实付总价;单位为分, 999表示9.99元"`
-	Status             uint8  `gorm:"type:tinyint unsigned;not null;default:1;comment:订单状态 1=未支付 2=已完成(用户支付完成) 3=已关闭(用户主动取消) 4=已超时(订单超时关闭)"`
+	Id                 int64          `gorm:"primaryKey;autoIncrement;comment:订单自增ID"`
+	SN                 string         `gorm:"type:varchar(255);not null;uniqueIndex:uniq_order_sn;comment:订单序列号"`
+	BuyerId            int64          `gorm:"not null;index:idx_buyer_id;comment:购买者ID"`
+	PaymentId          sql.NullInt64  `gorm:"uniqueIndex:uniq_payment_id;comment:支付自增ID,冗余允许为NULL"`
+	PaymentSn          sql.NullString `gorm:"type:varchar(255);uniqueIndex:uniq_payment_sn;comment:支付序列号,冗余允许为NULL"`
+	OriginalTotalPrice int64          `gorm:"not null;comment:原始总价;单位为分, 999表示9.99元"`
+	RealTotalPrice     int64          `gorm:"not null;comment:实付总价;单位为分, 999表示9.99元"`
+	Status             uint8          `gorm:"type:tinyint unsigned;not null;default:1;comment:订单状态 1=未支付 2=已完成(用户支付完成) 3=已关闭(用户主动取消) 4=已超时(订单超时关闭)"`
 	Ctime              int64
 	Utime              int64
 }

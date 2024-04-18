@@ -27,6 +27,7 @@ import (
 
 	"github.com/ecodeclub/ecache"
 	"github.com/ecodeclub/ekit/iox"
+	"github.com/ecodeclub/ekit/sqlx"
 	"github.com/ecodeclub/ginx/session"
 	"github.com/ecodeclub/mq-api"
 	"github.com/ecodeclub/webook/internal/credit"
@@ -406,12 +407,9 @@ func (s *OrderModuleTestSuite) TestHandler_CreateOrderAndPayment() {
 						Quantity: 1,
 					},
 				},
-				Payments: []web.PaymentItem{
-					{Type: payment.ChannelTypeCredit},
-					{Type: payment.ChannelTypeWechat},
+				PaymentItems: []web.PaymentItem{
+					{Type: payment.ChannelTypeCredit, Amount: 990},
 				},
-				OriginalTotalPrice: 990,
-				RealTotalPrice:     990,
 			},
 			wantCode: 200,
 			assertRespFunc: func(t *testing.T, result test.Result[web.CreateOrderResp]) {
@@ -431,12 +429,10 @@ func (s *OrderModuleTestSuite) TestHandler_CreateOrderAndPayment() {
 						Quantity: 1,
 					},
 				},
-				Payments: []web.PaymentItem{
-					{Type: payment.ChannelTypeCredit},
-					{Type: payment.ChannelTypeWechat},
+				PaymentItems: []web.PaymentItem{
+					{Type: payment.ChannelTypeCredit, Amount: 5000},
+					{Type: payment.ChannelTypeWechat, Amount: 4900},
 				},
-				OriginalTotalPrice: 9900,
-				RealTotalPrice:     9900,
 			},
 			wantCode: 200,
 			assertRespFunc: func(t *testing.T, result test.Result[web.CreateOrderResp]) {
@@ -571,7 +567,6 @@ func (s *OrderModuleTestSuite) TestHandler_CreateOrderAndPaymentFailed() {
 						Quantity: 10,
 					},
 				},
-				OriginalTotalPrice: 10 * 990,
 			},
 			wantCode: 500,
 			wantResp: test.Result[any]{
@@ -589,13 +584,11 @@ func (s *OrderModuleTestSuite) TestHandler_CreateOrderAndPaymentFailed() {
 						Quantity: 10,
 					},
 				},
-				Payments: []web.PaymentItem{
+				PaymentItems: []web.PaymentItem{
 					{
 						Type: 0,
 					},
 				},
-				OriginalTotalPrice: 10 * 990,
-				RealTotalPrice:     10 * 990,
 			},
 			wantCode: 500,
 			wantResp: test.Result[any]{
@@ -646,8 +639,8 @@ func (s *OrderModuleTestSuite) TestHandler_RetrieveOrderStatus() {
 				_, err := s.dao.CreateOrder(context.Background(), dao.Order{
 					SN:        "orderSN-1",
 					BuyerId:   testUID,
-					PaymentId: 12,
-					PaymentSn: "paymentSN-12",
+					PaymentId: sqlx.NewNullInt64(12),
+					PaymentSn: sqlx.NewNullString("paymentSN-12"),
 				}, []dao.OrderItem{
 					{
 						Id:               0,
@@ -741,8 +734,8 @@ func (s *OrderModuleTestSuite) TestHandler_ListOrders() {
 		orderEntity := dao.Order{
 			Id:                 id,
 			SN:                 fmt.Sprintf("OrderSN-list-%d", id),
-			PaymentId:          id,
-			PaymentSn:          fmt.Sprintf("PaymentSN-list-%d", id),
+			PaymentId:          sqlx.NewNullInt64(id),
+			PaymentSn:          sqlx.NewNullString(fmt.Sprintf("PaymentSN-list-%d", id)),
 			BuyerId:            testUID,
 			OriginalTotalPrice: 100,
 			RealTotalPrice:     100,
@@ -915,8 +908,8 @@ func (s *OrderModuleTestSuite) TestHandler_RetrieveOrderDetail() {
 				_, err := s.dao.CreateOrder(context.Background(), dao.Order{
 					SN:                 "orderSN-33",
 					BuyerId:            testUID,
-					PaymentId:          33,
-					PaymentSn:          "paymentSN-33",
+					PaymentId:          sqlx.NewNullInt64(33),
+					PaymentSn:          sqlx.NewNullString("paymentSN-33"),
 					OriginalTotalPrice: 9900,
 					RealTotalPrice:     9900,
 				}, []dao.OrderItem{
@@ -1050,8 +1043,8 @@ func (s *OrderModuleTestSuite) TestHandler_CancelOrder() {
 					_, err := s.dao.CreateOrder(context.Background(), dao.Order{
 						SN:        "orderSN-44",
 						BuyerId:   testUID,
-						PaymentId: 44,
-						PaymentSn: "paymentSN-44",
+						PaymentId: sqlx.NewNullInt64(44),
+						PaymentSn: sqlx.NewNullString("paymentSN-44"),
 					}, []dao.OrderItem{
 						{
 							SPUId:            1,
@@ -1161,8 +1154,8 @@ func (s *OrderModuleTestSuite) TestConsumer_ConsumeCompleteOrder() {
 				_, err := s.dao.CreateOrder(context.Background(), dao.Order{
 					SN:        "orderSN-22",
 					BuyerId:   testUID,
-					PaymentId: 22,
-					PaymentSn: "paymentSN-22",
+					PaymentId: sqlx.NewNullInt64(22),
+					PaymentSn: sqlx.NewNullString("paymentSN-22"),
 				}, []dao.OrderItem{
 					{
 						SPUId:            1,
@@ -1291,8 +1284,8 @@ func (s *OrderModuleTestSuite) TestJob_CloseTimeoutOrders() {
 					orderEntity := dao.Order{
 						Id:                 id,
 						SN:                 fmt.Sprintf("OrderSN-close-%d", id),
-						PaymentId:          id,
-						PaymentSn:          fmt.Sprintf("PaymentSN-close-%d", id),
+						PaymentId:          sqlx.NewNullInt64(id),
+						PaymentSn:          sqlx.NewNullString(fmt.Sprintf("PaymentSN-close-%d", id)),
 						BuyerId:            id,
 						OriginalTotalPrice: 100,
 						RealTotalPrice:     100,
@@ -1335,8 +1328,8 @@ func (s *OrderModuleTestSuite) TestJob_CloseTimeoutOrders() {
 					orderEntity := dao.Order{
 						Id:                 id,
 						SN:                 fmt.Sprintf("OrderSN-close-%d", id),
-						PaymentId:          id,
-						PaymentSn:          fmt.Sprintf("PaymentSN-close-%d", id),
+						PaymentId:          sqlx.NewNullInt64(id),
+						PaymentSn:          sqlx.NewNullString(fmt.Sprintf("PaymentSN-close-%d", id)),
 						BuyerId:            id,
 						OriginalTotalPrice: 100,
 						RealTotalPrice:     100,
