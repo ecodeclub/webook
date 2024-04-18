@@ -14,7 +14,7 @@ import (
 	"github.com/ecodeclub/mq-api"
 	"github.com/ecodeclub/webook/internal/credit"
 	"github.com/ecodeclub/webook/internal/payment/internal/domain"
-	"github.com/ecodeclub/webook/internal/payment/internal/events"
+	"github.com/ecodeclub/webook/internal/payment/internal/event"
 	"github.com/ecodeclub/webook/internal/payment/internal/repository"
 	"github.com/ecodeclub/webook/internal/payment/internal/repository/dao"
 	"github.com/ecodeclub/webook/internal/payment/internal/service"
@@ -34,21 +34,17 @@ func InitModule(db *gorm.DB, mq2 mq.MQ, c ecache.Cache, cm *credit.Module) (*Mod
 	client := ioc.InitWechatClient(wechatConfig)
 	paymentDAO := initDAO(db)
 	paymentRepository := repository.NewPaymentRepository(paymentDAO)
-	producer, err := initProducer(mq2)
-	if err != nil {
-		return nil, err
-	}
-	eventsProducer, err := events.NewPaymentProducer(producer)
+	paymentEventProducer, err := initPaymentEventProducer(mq2)
 	if err != nil {
 		return nil, err
 	}
 	v := paymentDDLFunc()
 	component := initLogger()
-	nativePaymentService := ioc.InitWechatNativeService(client, paymentRepository, eventsProducer, v, component, wechatConfig)
+	nativePaymentService := ioc.InitWechatNativeService(client, paymentRepository, paymentEventProducer, v, component, wechatConfig)
 	webHandler := web.NewHandler(handler, nativePaymentService)
 	serviceService := cm.Svc
 	generator := sequencenumber.NewGenerator()
-	paymentService := credit2.NewCreditPaymentService(serviceService, paymentRepository, eventsProducer, v, generator, component)
+	paymentService := credit2.NewCreditPaymentService(serviceService, paymentRepository, paymentEventProducer, v, generator, component)
 	service2 := service.NewService(nativePaymentService, paymentService, generator, paymentRepository)
 	module := &Module{
 		Hdl: webHandler,
@@ -78,8 +74,12 @@ var (
 	orderDAO dao.PaymentDAO
 )
 
-func initProducer(mq2 mq.MQ) (mq.Producer, error) {
-	return mq2.Producer("payment_events")
+func initPaymentEventProducer(mq2 mq.MQ) (event.PaymentEventProducer, error) {
+	p, err := mq2.Producer("payment_events")
+	if err != nil {
+		return nil, err
+	}
+	return event.NewPaymentEventProducer(p)
 }
 
 func paymentDDLFunc() func() int64 {

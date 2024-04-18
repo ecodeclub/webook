@@ -22,7 +22,7 @@ import (
 
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/ecodeclub/webook/internal/payment/internal/domain"
-	"github.com/ecodeclub/webook/internal/payment/internal/events"
+	"github.com/ecodeclub/webook/internal/payment/internal/event"
 	"github.com/ecodeclub/webook/internal/payment/internal/repository"
 	"github.com/gotomicro/ego/core/elog"
 	"github.com/wechatpay-apiv3/wechatpay-go/core"
@@ -35,7 +35,7 @@ var errUnknownTransactionState = errors.New("未知的微信事务状态")
 type NativePaymentService struct {
 	svc            NativeAPIService
 	repo           repository.PaymentRepository
-	producer       events.Producer
+	producer       event.PaymentEventProducer
 	paymentDDLFunc func() int64
 	l              *elog.Component
 
@@ -55,7 +55,7 @@ type NativePaymentService struct {
 
 func NewNativePaymentService(svc NativeAPIService,
 	repo repository.PaymentRepository,
-	producer events.Producer,
+	producer event.PaymentEventProducer,
 	paymentDDLFunc func() int64,
 	l *elog.Component,
 	appid, mchid string) *NativePaymentService {
@@ -183,7 +183,7 @@ func (n *NativePaymentService) updateByTxn(ctx context.Context, txn *payments.Tr
 	}
 
 	// 就是处于结束状态
-	err1 := n.producer.ProducePaymentEvent(ctx, events.PaymentEvent{
+	err1 := n.producer.Produce(ctx, event.PaymentEvent{
 		OrderSN: pmt.OrderSN,
 		Status:  pmt.Status,
 	})

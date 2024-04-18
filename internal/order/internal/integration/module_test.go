@@ -27,6 +27,7 @@ import (
 
 	"github.com/ecodeclub/ecache"
 	"github.com/ecodeclub/ekit/iox"
+	"github.com/ecodeclub/ekit/sqlx"
 	"github.com/ecodeclub/ginx/session"
 	"github.com/ecodeclub/mq-api"
 	"github.com/ecodeclub/webook/internal/credit"
@@ -162,7 +163,10 @@ func (s *OrderModuleTestSuite) SetupSuite() {
 
 	s.ctrl = gomock.NewController(s.T())
 
-	handler, err := startup.InitHandler(&fakePaymentService{}, s.getProductMockService(), s.getCreditMockService())
+	pm := &payment.Module{Svc: &fakePaymentService{}}
+	ppm := &product.Module{Svc: s.getProductMockService()}
+	cm := &credit.Module{Svc: s.getCreditMockService()}
+	handler, err := startup.InitHandler(pm, ppm, cm)
 	require.NoError(s.T(), err)
 
 	econf.Set("server", map[string]any{"contextTimeout": "1s"})
@@ -277,7 +281,7 @@ func (s *OrderModuleTestSuite) TearDownTest() {
 }
 
 func (s *OrderModuleTestSuite) TestHandler_PreviewOrder() {
-
+	t := s.T()
 	testCases := []struct {
 		name string
 
@@ -288,35 +292,47 @@ func (s *OrderModuleTestSuite) TestHandler_PreviewOrder() {
 		{
 			name: "获取成功",
 			req: web.PreviewOrderReq{
-				SKUSN:    "SKU100",
-				Quantity: 1,
+				SKUs: []web.SKU{
+					{
+						SN:       "SKU100",
+						Quantity: 1,
+					},
+				},
 			},
 			wantCode: 200,
 			wantResp: test.Result[web.PreviewOrderResp]{
 				Data: web.PreviewOrderResp{
-					Credits: 1000,
-					Payments: []web.PaymentItem{
-						{Type: payment.ChannelTypeCredit},
-						{Type: payment.ChannelTypeWechat},
-					},
-					SKUs: []web.SKU{
-						{
-							SN:            "SKU100",
-							Image:         "SKUImage100",
-							Name:          "商品SKU100",
-							Desc:          "商品SKU100",
-							OriginalPrice: 990,
-							RealPrice:     990,
-							Quantity:      1,
+					Order: web.Order{
+						Payment: web.Payment{
+							Items: []web.PaymentItem{
+								{Type: payment.ChannelTypeCredit},
+								{Type: payment.ChannelTypeWechat},
+							},
+						},
+						OriginalTotalPrice: 990,
+						RealTotalPrice:     990,
+						Items: []web.OrderItem{
+							{
+								SKU: web.SKU{
+									SN:            "SKU100",
+									Image:         "SKUImage100",
+									Name:          "商品SKU100",
+									Desc:          "商品SKU100",
+									OriginalPrice: 990,
+									RealPrice:     990,
+									Quantity:      1,
+								},
+							},
 						},
 					},
-					Policy: "请注意: 虚拟商品、一旦支持成功不退、不换,请谨慎操作",
+					Credits: 1000,
+					Policy:  "请注意: 虚拟商品、一旦支持成功不退、不换,请谨慎操作",
 				},
 			},
 		},
 	}
 	for _, tc := range testCases {
-		s.T().Run(tc.name, func(t *testing.T) {
+		t.Run(tc.name, func(t *testing.T) {
 			req, err := http.NewRequest(http.MethodPost,
 				"/order/preview", iox.NewJSONReader(tc.req))
 			req.Header.Set("content-type", "application/json")
@@ -330,6 +346,7 @@ func (s *OrderModuleTestSuite) TestHandler_PreviewOrder() {
 }
 
 func (s *OrderModuleTestSuite) TestHandler_PreviewOrderFailed() {
+	t := s.T()
 	testCases := []struct {
 		name string
 
@@ -340,8 +357,12 @@ func (s *OrderModuleTestSuite) TestHandler_PreviewOrderFailed() {
 		{
 			name: "商品SKUSN不存在",
 			req: web.PreviewOrderReq{
-				SKUSN:    "InvalidSKUSN",
-				Quantity: 1,
+				SKUs: []web.SKU{
+					{
+						SN:       "InvalidSKUSN",
+						Quantity: 1,
+					},
+				},
 			},
 			wantCode: 500,
 			wantResp: test.Result[any]{
@@ -352,8 +373,12 @@ func (s *OrderModuleTestSuite) TestHandler_PreviewOrderFailed() {
 		{
 			name: "要购买的商品数量非法",
 			req: web.PreviewOrderReq{
-				SKUSN:    "SKU100",
-				Quantity: 0,
+				SKUs: []web.SKU{
+					{
+						SN:       "SKU100",
+						Quantity: 0,
+					},
+				},
 			},
 			wantCode: 500,
 			wantResp: test.Result[any]{
@@ -364,8 +389,12 @@ func (s *OrderModuleTestSuite) TestHandler_PreviewOrderFailed() {
 		{
 			name: "商品库存不足",
 			req: web.PreviewOrderReq{
-				SKUSN:    "SKU100",
-				Quantity: 11,
+				SKUs: []web.SKU{
+					{
+						SN:       "SKU100",
+						Quantity: 11,
+					},
+				},
 			},
 			wantCode: 500,
 			wantResp: test.Result[any]{
@@ -376,7 +405,7 @@ func (s *OrderModuleTestSuite) TestHandler_PreviewOrderFailed() {
 		// todo: 要购买商品超过库存限制(stockLimit)但是库存充足
 	}
 	for _, tc := range testCases {
-		s.T().Run(tc.name, func(t *testing.T) {
+		t.Run(tc.name, func(t *testing.T) {
 			req, err := http.NewRequest(http.MethodPost,
 				"/order/preview", iox.NewJSONReader(tc.req))
 			req.Header.Set("content-type", "application/json")
@@ -390,6 +419,7 @@ func (s *OrderModuleTestSuite) TestHandler_PreviewOrderFailed() {
 }
 
 func (s *OrderModuleTestSuite) TestHandler_CreateOrderAndPayment() {
+	t := s.T()
 	var testCases = []struct {
 		name           string
 		req            web.CreateOrderReq
@@ -407,11 +437,8 @@ func (s *OrderModuleTestSuite) TestHandler_CreateOrderAndPayment() {
 					},
 				},
 				PaymentItems: []web.PaymentItem{
-					{Type: payment.ChannelTypeCredit},
-					{Type: payment.ChannelTypeWechat},
+					{Type: payment.ChannelTypeCredit, Amount: 990},
 				},
-				OriginalTotalPrice: 990,
-				RealTotalPrice:     990,
 			},
 			wantCode: 200,
 			assertRespFunc: func(t *testing.T, result test.Result[web.CreateOrderResp]) {
@@ -432,11 +459,9 @@ func (s *OrderModuleTestSuite) TestHandler_CreateOrderAndPayment() {
 					},
 				},
 				PaymentItems: []web.PaymentItem{
-					{Type: payment.ChannelTypeCredit},
-					{Type: payment.ChannelTypeWechat},
+					{Type: payment.ChannelTypeCredit, Amount: 5000},
+					{Type: payment.ChannelTypeWechat, Amount: 4900},
 				},
-				OriginalTotalPrice: 9900,
-				RealTotalPrice:     9900,
 			},
 			wantCode: 200,
 			assertRespFunc: func(t *testing.T, result test.Result[web.CreateOrderResp]) {
@@ -447,7 +472,12 @@ func (s *OrderModuleTestSuite) TestHandler_CreateOrderAndPayment() {
 		},
 	}
 	for _, tc := range testCases {
-		s.T().Run(tc.name, func(t *testing.T) {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Cleanup(func() {
+				_, err := s.cache.Delete(context.Background(), fmt.Sprintf("order:create:%s", tc.req.RequestID))
+				require.NoError(t, err)
+			})
+
 			req, err := http.NewRequest(http.MethodPost,
 				"/order/create", iox.NewJSONReader(tc.req))
 			req.Header.Set("content-type", "application/json")
@@ -456,14 +486,12 @@ func (s *OrderModuleTestSuite) TestHandler_CreateOrderAndPayment() {
 			s.server.ServeHTTP(recorder, req)
 			require.Equal(t, tc.wantCode, recorder.Code)
 			tc.assertRespFunc(t, recorder.MustScan())
-
-			_, err = s.cache.Delete(context.Background(), fmt.Sprintf("order:create:%s", tc.req.RequestID))
-			require.NoError(t, err)
 		})
 	}
 }
 
 func (s *OrderModuleTestSuite) TestHandler_CreateOrderAndPaymentFailed() {
+	t := s.T()
 	testCases := []struct {
 		name string
 
@@ -571,7 +599,6 @@ func (s *OrderModuleTestSuite) TestHandler_CreateOrderAndPaymentFailed() {
 						Quantity: 10,
 					},
 				},
-				OriginalTotalPrice: 10 * 990,
 			},
 			wantCode: 500,
 			wantResp: test.Result[any]{
@@ -594,8 +621,6 @@ func (s *OrderModuleTestSuite) TestHandler_CreateOrderAndPaymentFailed() {
 						Type: 0,
 					},
 				},
-				OriginalTotalPrice: 10 * 990,
-				RealTotalPrice:     10 * 990,
 			},
 			wantCode: 500,
 			wantResp: test.Result[any]{
@@ -617,20 +642,26 @@ func (s *OrderModuleTestSuite) TestHandler_CreateOrderAndPaymentFailed() {
 		// todo: 要购买商品超过库存限制(stockLimit)但是库存充足
 	}
 	for _, tc := range testCases {
-		s.T().Run(tc.name, func(t *testing.T) {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Cleanup(func() {
+				_, err := s.cache.Delete(context.Background(), fmt.Sprintf("order:create:%s", tc.req.RequestID))
+				require.NoError(t, err)
+			})
 			req, err := http.NewRequest(http.MethodPost,
 				"/order/create", iox.NewJSONReader(tc.req))
 			req.Header.Set("content-type", "application/json")
 			require.NoError(t, err)
+
 			recorder := test.NewJSONResponseRecorder[any]()
 			s.server.ServeHTTP(recorder, req)
 			require.Equal(t, tc.wantCode, recorder.Code)
-			assert.Equal(t, tc.wantResp, recorder.MustScan())
+			require.Equal(t, tc.wantResp, recorder.MustScan())
 		})
 	}
 }
 
 func (s *OrderModuleTestSuite) TestHandler_RetrieveOrderStatus() {
+	t := s.T()
 	var testCases = []struct {
 		name string
 
@@ -646,8 +677,8 @@ func (s *OrderModuleTestSuite) TestHandler_RetrieveOrderStatus() {
 				_, err := s.dao.CreateOrder(context.Background(), dao.Order{
 					SN:        "orderSN-1",
 					BuyerId:   testUID,
-					PaymentId: 12,
-					PaymentSn: "paymentSN-12",
+					PaymentId: sqlx.NewNullInt64(12),
+					PaymentSn: sqlx.NewNullString("paymentSN-12"),
 				}, []dao.OrderItem{
 					{
 						Id:               0,
@@ -675,7 +706,7 @@ func (s *OrderModuleTestSuite) TestHandler_RetrieveOrderStatus() {
 		},
 	}
 	for _, tc := range testCases {
-		s.T().Run(tc.name, func(t *testing.T) {
+		t.Run(tc.name, func(t *testing.T) {
 			tc.before(t)
 			req, err := http.NewRequest(http.MethodPost,
 				"/order", iox.NewJSONReader(tc.req))
@@ -690,6 +721,7 @@ func (s *OrderModuleTestSuite) TestHandler_RetrieveOrderStatus() {
 }
 
 func (s *OrderModuleTestSuite) TestHandler_RetrieveOrderStatusFailed() {
+	t := s.T()
 	testCases := []struct {
 		name     string
 		req      web.RetrieveOrderStatusReq
@@ -720,7 +752,7 @@ func (s *OrderModuleTestSuite) TestHandler_RetrieveOrderStatusFailed() {
 		},
 	}
 	for _, tc := range testCases {
-		s.T().Run(tc.name, func(t *testing.T) {
+		t.Run(tc.name, func(t *testing.T) {
 			req, err := http.NewRequest(http.MethodPost,
 				"/order", iox.NewJSONReader(tc.req))
 			req.Header.Set("content-type", "application/json")
@@ -734,15 +766,15 @@ func (s *OrderModuleTestSuite) TestHandler_RetrieveOrderStatusFailed() {
 }
 
 func (s *OrderModuleTestSuite) TestHandler_ListOrders() {
-
+	t := s.T()
 	total := 100
 	for idx := 0; idx < total; idx++ {
 		id := int64(100 + idx)
 		orderEntity := dao.Order{
 			Id:                 id,
 			SN:                 fmt.Sprintf("OrderSN-list-%d", id),
-			PaymentId:          id,
-			PaymentSn:          fmt.Sprintf("PaymentSN-list-%d", id),
+			PaymentId:          sqlx.NewNullInt64(id),
+			PaymentSn:          sqlx.NewNullString(fmt.Sprintf("PaymentSN-list-%d", id)),
 			BuyerId:            testUID,
 			OriginalTotalPrice: 100,
 			RealTotalPrice:     100,
@@ -871,7 +903,7 @@ func (s *OrderModuleTestSuite) TestHandler_ListOrders() {
 	}
 
 	for _, tc := range testCases {
-		s.T().Run(tc.name, func(t *testing.T) {
+		t.Run(tc.name, func(t *testing.T) {
 			req, err := http.NewRequest(http.MethodPost,
 				"/order/list", iox.NewJSONReader(tc.req))
 			req.Header.Set("content-type", "application/json")
@@ -900,6 +932,7 @@ func (s *OrderModuleTestSuite) assertOrderEqual(t *testing.T, expected web.Order
 }
 
 func (s *OrderModuleTestSuite) TestHandler_RetrieveOrderDetail() {
+	t := s.T()
 	var testCases = []struct {
 		name string
 
@@ -915,8 +948,8 @@ func (s *OrderModuleTestSuite) TestHandler_RetrieveOrderDetail() {
 				_, err := s.dao.CreateOrder(context.Background(), dao.Order{
 					SN:                 "orderSN-33",
 					BuyerId:            testUID,
-					PaymentId:          33,
-					PaymentSn:          "paymentSN-33",
+					PaymentId:          sqlx.NewNullInt64(33),
+					PaymentSn:          sqlx.NewNullString("paymentSN-33"),
 					OriginalTotalPrice: 9900,
 					RealTotalPrice:     9900,
 				}, []dao.OrderItem{
@@ -974,7 +1007,7 @@ func (s *OrderModuleTestSuite) TestHandler_RetrieveOrderDetail() {
 		},
 	}
 	for _, tc := range testCases {
-		s.T().Run(tc.name, func(t *testing.T) {
+		t.Run(tc.name, func(t *testing.T) {
 			tc.before(t)
 			req, err := http.NewRequest(http.MethodPost,
 				"/order/detail", iox.NewJSONReader(tc.req))
@@ -989,6 +1022,7 @@ func (s *OrderModuleTestSuite) TestHandler_RetrieveOrderDetail() {
 }
 
 func (s *OrderModuleTestSuite) TestHandler_RetrieveOrderDetailFailed() {
+	t := s.T()
 	testCases := []struct {
 		name     string
 		req      web.RetrieveOrderDetailReq
@@ -1019,7 +1053,7 @@ func (s *OrderModuleTestSuite) TestHandler_RetrieveOrderDetailFailed() {
 		},
 	}
 	for _, tc := range testCases {
-		s.T().Run(tc.name, func(t *testing.T) {
+		t.Run(tc.name, func(t *testing.T) {
 			req, err := http.NewRequest(http.MethodPost,
 				"/order/detail", iox.NewJSONReader(tc.req))
 			req.Header.Set("content-type", "application/json")
@@ -1033,56 +1067,56 @@ func (s *OrderModuleTestSuite) TestHandler_RetrieveOrderDetailFailed() {
 }
 
 func (s *OrderModuleTestSuite) TestHandler_CancelOrder() {
-	var (
-		testCases = []struct {
-			name string
+	t := s.T()
+	testCases := []struct {
+		name string
 
-			before   func(t *testing.T)
-			after    func(t *testing.T)
-			req      web.CancelOrderReq
-			wantCode int
-			wantResp test.Result[any]
-		}{
-			{
-				name: "取消订单成功",
-				before: func(t *testing.T) {
-					t.Helper()
-					_, err := s.dao.CreateOrder(context.Background(), dao.Order{
-						SN:        "orderSN-44",
-						BuyerId:   testUID,
-						PaymentId: 44,
-						PaymentSn: "paymentSN-44",
-					}, []dao.OrderItem{
-						{
-							SPUId:            1,
-							SKUId:            1,
-							SKUName:          "商品SKU",
-							SKUDescription:   "商品SKU描述",
-							SKUOriginalPrice: 9900,
-							SKURealPrice:     9900,
-							Quantity:         1,
-						},
-					})
-					require.NoError(t, err)
-				},
-				after: func(t *testing.T) {
-					t.Helper()
-					orderEntity, err := s.dao.FindOrderByUIDAndSN(context.Background(), testUID, "orderSN-44")
-					assert.NoError(t, err)
-					assert.Equal(t, domain.StatusCanceled.ToUint8(), orderEntity.Status)
-				},
-				req: web.CancelOrderReq{
-					OrderSN: "orderSN-44",
-				},
-				wantCode: 200,
-				wantResp: test.Result[any]{
-					Msg: "OK",
-				},
+		before   func(t *testing.T)
+		after    func(t *testing.T)
+		req      web.CancelOrderReq
+		wantCode int
+		wantResp test.Result[any]
+	}{
+		{
+			name: "取消订单成功",
+			before: func(t *testing.T) {
+				t.Helper()
+				_, err := s.dao.CreateOrder(context.Background(), dao.Order{
+					SN:        "orderSN-44",
+					BuyerId:   testUID,
+					PaymentId: sqlx.NewNullInt64(44),
+					PaymentSn: sqlx.NewNullString("paymentSN-44"),
+				}, []dao.OrderItem{
+					{
+						SPUId:            1,
+						SKUId:            1,
+						SKUName:          "商品SKU",
+						SKUDescription:   "商品SKU描述",
+						SKUOriginalPrice: 9900,
+						SKURealPrice:     9900,
+						Quantity:         1,
+					},
+				})
+				require.NoError(t, err)
 			},
-		}
-	)
+			after: func(t *testing.T) {
+				t.Helper()
+				orderEntity, err := s.dao.FindOrderByUIDAndSN(context.Background(), testUID, "orderSN-44")
+				assert.NoError(t, err)
+				assert.Equal(t, domain.StatusCanceled.ToUint8(), orderEntity.Status)
+			},
+			req: web.CancelOrderReq{
+				OrderSN: "orderSN-44",
+			},
+			wantCode: 200,
+			wantResp: test.Result[any]{
+				Msg: "OK",
+			},
+		},
+	}
+
 	for _, tc := range testCases {
-		s.T().Run(tc.name, func(t *testing.T) {
+		t.Run(tc.name, func(t *testing.T) {
 			tc.before(t)
 			req, err := http.NewRequest(http.MethodPost,
 				"/order/cancel", iox.NewJSONReader(tc.req))
@@ -1097,6 +1131,7 @@ func (s *OrderModuleTestSuite) TestHandler_CancelOrder() {
 }
 
 func (s *OrderModuleTestSuite) TestHandler_CancelOrderFailed() {
+	t := s.T()
 	testCases := []struct {
 		name     string
 		req      web.CancelOrderReq
@@ -1127,7 +1162,7 @@ func (s *OrderModuleTestSuite) TestHandler_CancelOrderFailed() {
 		},
 	}
 	for _, tc := range testCases {
-		s.T().Run(tc.name, func(t *testing.T) {
+		t.Run(tc.name, func(t *testing.T) {
 			req, err := http.NewRequest(http.MethodPost,
 				"/order/cancel", iox.NewJSONReader(tc.req))
 			req.Header.Set("content-type", "application/json")
@@ -1146,7 +1181,7 @@ func (s *OrderModuleTestSuite) TestConsumer_ConsumeCompleteOrder() {
 	producer, er := s.mq.Producer("order_complete_events")
 	require.NoError(t, er)
 
-	var testCases = []struct {
+	testCases := []struct {
 		name string
 
 		before         func(t *testing.T, producer mq.Producer, message *mq.Message)
@@ -1161,8 +1196,8 @@ func (s *OrderModuleTestSuite) TestConsumer_ConsumeCompleteOrder() {
 				_, err := s.dao.CreateOrder(context.Background(), dao.Order{
 					SN:        "orderSN-22",
 					BuyerId:   testUID,
-					PaymentId: 22,
-					PaymentSn: "paymentSN-22",
+					PaymentId: sqlx.NewNullInt64(22),
+					PaymentSn: sqlx.NewNullString("paymentSN-22"),
 				}, []dao.OrderItem{
 					{
 						SPUId:            1,
@@ -1291,8 +1326,8 @@ func (s *OrderModuleTestSuite) TestJob_CloseTimeoutOrders() {
 					orderEntity := dao.Order{
 						Id:                 id,
 						SN:                 fmt.Sprintf("OrderSN-close-%d", id),
-						PaymentId:          id,
-						PaymentSn:          fmt.Sprintf("PaymentSN-close-%d", id),
+						PaymentId:          sqlx.NewNullInt64(id),
+						PaymentSn:          sqlx.NewNullString(fmt.Sprintf("PaymentSN-close-%d", id)),
 						BuyerId:            id,
 						OriginalTotalPrice: 100,
 						RealTotalPrice:     100,
@@ -1335,8 +1370,8 @@ func (s *OrderModuleTestSuite) TestJob_CloseTimeoutOrders() {
 					orderEntity := dao.Order{
 						Id:                 id,
 						SN:                 fmt.Sprintf("OrderSN-close-%d", id),
-						PaymentId:          id,
-						PaymentSn:          fmt.Sprintf("PaymentSN-close-%d", id),
+						PaymentId:          sqlx.NewNullInt64(id),
+						PaymentSn:          sqlx.NewNullString(fmt.Sprintf("PaymentSN-close-%d", id)),
 						BuyerId:            id,
 						OriginalTotalPrice: 100,
 						RealTotalPrice:     100,

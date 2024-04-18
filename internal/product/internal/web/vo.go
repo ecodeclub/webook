@@ -14,7 +14,7 @@
 
 package web
 
-type SKUSNReq struct {
+type SNReq struct {
 	SN string `json:"sn"`
 }
 
@@ -41,8 +41,4 @@ type SKU struct {
 	Image      string `json:"image"`
 	// SaleStart  int64  `json:"saleStart"`
 	// SaleEnd    int64  `json:"saleEnd"`
-}
-
-type SPUSNReq struct {
-	SN string `json:"sn"`
 }

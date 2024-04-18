@@ -1,3 +1,17 @@
+// Copyright 2023 ecodeclub
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 //go:build wireinject
 
 package payment
@@ -10,7 +24,7 @@ import (
 	"github.com/ecodeclub/mq-api"
 	"github.com/ecodeclub/webook/internal/credit"
 	"github.com/ecodeclub/webook/internal/payment/internal/domain"
-	"github.com/ecodeclub/webook/internal/payment/internal/events"
+	"github.com/ecodeclub/webook/internal/payment/internal/event"
 	"github.com/ecodeclub/webook/internal/payment/internal/repository"
 	"github.com/ecodeclub/webook/internal/payment/internal/repository/dao"
 	"github.com/ecodeclub/webook/internal/payment/internal/service"
@@ -45,13 +59,12 @@ func InitModule(db *egorm.Component,
 		ioc.InitWechatNotifyHandler,
 		ioc.InitWechatClient,
 		initDAO,
-		events.NewPaymentProducer,
+		initPaymentEventProducer,
 		web.NewHandler,
 		service.NewService,
 		credit2.NewCreditPaymentService,
 		repository.NewPaymentRepository,
 		paymentDDLFunc,
-		initProducer,
 		sequencenumber.NewGenerator,
 		wire.FieldsOf(new(*credit.Module), "Svc"),
 		wire.Struct(new(Module), "*"),
@@ -64,8 +77,12 @@ var (
 	orderDAO dao.PaymentDAO
 )
 
-func initProducer(mq mq.MQ) (mq.Producer, error) {
-	return mq.Producer("payment_events")
+func initPaymentEventProducer(mq mq.MQ) (event.PaymentEventProducer, error) {
+	p, err := mq.Producer("payment_events")
+	if err != nil {
+		return nil, err
+	}
+	return event.NewPaymentEventProducer(p)
 }
 
 func paymentDDLFunc() func() int64 {

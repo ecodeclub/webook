@@ -15,20 +15,3 @@
 //go:build wireinject
 
 package startup
-
-import (
-	"github.com/ecodeclub/webook/internal/payment"
-	"github.com/ecodeclub/webook/internal/payment/internal/service/credit"
-	testioc "github.com/ecodeclub/webook/internal/test/ioc"
-	"github.com/google/wire"
-)
-
-// func InitHandler(paymentSvc payment.Service, productSvc product.Service, creditSvc credit.Service) (*web.Handler, error) {
-// 	wire.Build(testioc.BaseSet, order.InitHandler)
-// 	return new(web.Handler), nil
-// }
-
-func InitCreditPaymentService(paymentDDLFunc func() int64) *credit.PaymentService {
-	wire.Build(testioc.BaseSet, payment.RepoSet)
-	return new(credit.PaymentService)
-}

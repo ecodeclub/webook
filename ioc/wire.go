@@ -51,13 +51,11 @@ func InitApp() (*App, error) {
 		wire.FieldsOf(new(*member.Module), "Svc"),
 		middleware.NewCheckMembershipMiddlewareBuilder,
 		product.InitModule,
-		wire.FieldsOf(new(*product.Module), "Hdl", "Svc"),
+		wire.FieldsOf(new(*product.Module), "Hdl"),
 		order.InitModule,
 		wire.FieldsOf(new(*order.Module), "Hdl"),
 		payment.InitModule,
-		wire.FieldsOf(new(*payment.Module), "Svc"),
 		credit.InitModule,
-		wire.FieldsOf(new(*credit.Module), "Svc"),
 		initGinxServer)
 	return new(App), nil
 }

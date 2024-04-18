@@ -59,7 +59,10 @@ func InitApp() (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	productModule := product.InitModule(db)
+	productModule, err := product.InitModule(db)
+	if err != nil {
+		return nil, err
+	}
 	handler7 := productModule.Hdl
 	creditModule, err := credit.InitModule(db, mq, cache)
 	if err != nil {
@@ -69,10 +72,7 @@ func InitApp() (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	serviceService := paymentModule.Svc
-	service2 := productModule.Svc
-	service3 := creditModule.Svc
-	orderModule, err := order.InitModule(db, cache, mq, serviceService, service2, service3)
+	orderModule, err := order.InitModule(db, cache, mq, paymentModule, productModule, creditModule)
 	if err != nil {
 		return nil, err
 	}
