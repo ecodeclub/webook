@@ -23,6 +23,8 @@ import (
 	"github.com/ecodeclub/webook/internal/feedback"
 	"github.com/ecodeclub/webook/internal/label"
 	"github.com/ecodeclub/webook/internal/member"
+	"github.com/ecodeclub/webook/internal/order"
+	"github.com/ecodeclub/webook/internal/payment"
 	"github.com/ecodeclub/webook/internal/pkg/middleware"
 	"github.com/ecodeclub/webook/internal/product"
 	baguwen "github.com/ecodeclub/webook/internal/question"
@@ -48,9 +50,12 @@ func InitApp() (*App, error) {
 		member.InitModule,
 		wire.FieldsOf(new(*member.Module), "Svc"),
 		middleware.NewCheckMembershipMiddlewareBuilder,
-		product.InitHandler,
+		product.InitModule,
+		wire.FieldsOf(new(*product.Module), "Hdl"),
+		order.InitModule,
+		wire.FieldsOf(new(*order.Module), "Hdl"),
+		payment.InitModule,
 		credit.InitModule,
-		wire.FieldsOf(new(*credit.Module), "Hdl"),
 		initGinxServer)
 	return new(App), nil
 }

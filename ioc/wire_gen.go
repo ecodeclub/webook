@@ -13,6 +13,8 @@ import (
 	"github.com/ecodeclub/webook/internal/feedback"
 	"github.com/ecodeclub/webook/internal/label"
 	"github.com/ecodeclub/webook/internal/member"
+	"github.com/ecodeclub/webook/internal/order"
+	"github.com/ecodeclub/webook/internal/payment"
 	"github.com/ecodeclub/webook/internal/pkg/middleware"
 	"github.com/ecodeclub/webook/internal/product"
 	baguwen "github.com/ecodeclub/webook/internal/question"
@@ -57,12 +59,24 @@ func InitApp() (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	handler7 := product.InitHandler(db)
+	productModule, err := product.InitModule(db)
+	if err != nil {
+		return nil, err
+	}
+	handler7 := productModule.Hdl
 	creditModule, err := credit.InitModule(db, mq, cache)
 	if err != nil {
 		return nil, err
 	}
-	handler8 := creditModule.Hdl
+	paymentModule, err := payment.InitModule(db, mq, cache, creditModule)
+	if err != nil {
+		return nil, err
+	}
+	orderModule, err := order.InitModule(db, cache, mq, paymentModule, productModule, creditModule)
+	if err != nil {
+		return nil, err
+	}
+	handler8 := orderModule.Hdl
 	component := initGinxServer(provider, checkMembershipMiddlewareBuilder, handler, questionSetHandler, webHandler, handler2, handler3, handler4, handler5, handler6, handler7, handler8)
 	app := &App{
 		Web: component,
