@@ -37,6 +37,11 @@ var HandlerSet = wire.NewSet(
 	InitService,
 	web.NewHandler)
 
+func InitModule(db *egorm.Component) (*Module, error) {
+	wire.Build(HandlerSet, wire.Struct(new(Module), "*"))
+	return new(Module), nil
+}
+
 func InitHandler(db *egorm.Component) *Handler {
 	wire.Build(HandlerSet)
 	return new(Handler)

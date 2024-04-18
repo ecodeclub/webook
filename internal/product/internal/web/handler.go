@@ -33,11 +33,11 @@ func NewHandler(svc service.Service) *Handler {
 
 func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g := server.Group("/product")
-	g.POST("spu/detail", ginx.BS[SPUSNReq](h.RetrieveSPUDetail))
-	g.POST("sku/detail", ginx.BS[SKUSNReq](h.RetrieveSKUDetail))
+	g.POST("spu/detail", ginx.BS[SNReq](h.RetrieveSPUDetail))
+	g.POST("sku/detail", ginx.BS[SNReq](h.RetrieveSKUDetail))
 }
 
-func (h *Handler) RetrieveSPUDetail(ctx *ginx.Context, req SPUSNReq, _ session.Session) (ginx.Result, error) {
+func (h *Handler) RetrieveSPUDetail(ctx *ginx.Context, req SNReq, _ session.Session) (ginx.Result, error) {
 	spu, err := h.svc.FindSPUBySN(ctx.Request.Context(), req.SN)
 	if err != nil {
 		return systemErrorResult, err
@@ -68,7 +68,7 @@ func (h *Handler) toSKU(sku domain.SKU) SKU {
 	}
 }
 
-func (h *Handler) RetrieveSKUDetail(ctx *ginx.Context, req SKUSNReq, _ session.Session) (ginx.Result, error) {
+func (h *Handler) RetrieveSKUDetail(ctx *ginx.Context, req SNReq, _ session.Session) (ginx.Result, error) {
 	sku, err := h.svc.FindSKUBySN(ctx.Request.Context(), req.SN)
 	if err != nil {
 		return systemErrorResult, err
