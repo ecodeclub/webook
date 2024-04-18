@@ -21,6 +21,16 @@ import (
 
 // Injectors from wire.go:
 
+func InitModule(db *gorm.DB) *Module {
+	service := InitService(db)
+	handler := web.NewHandler(service)
+	module := &Module{
+		Hdl: handler,
+		Svc: service,
+	}
+	return module
+}
+
 func InitHandler(db *gorm.DB) *web.Handler {
 	service := InitService(db)
 	handler := web.NewHandler(service)

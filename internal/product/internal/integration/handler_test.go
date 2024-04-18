@@ -43,11 +43,11 @@ import (
 
 const uid = int64(123)
 
-func TestProductHandler(t *testing.T) {
-	suite.Run(t, new(HandlerTestSuite))
+func TestProductModuleTestSuite(t *testing.T) {
+	suite.Run(t, new(ProductModuleTestSuite))
 }
 
-type HandlerTestSuite struct {
+type ProductModuleTestSuite struct {
 	suite.Suite
 	server *egin.Component
 	db     *egorm.Component
@@ -55,7 +55,7 @@ type HandlerTestSuite struct {
 	svc    service.Service
 }
 
-func (s *HandlerTestSuite) SetupSuite() {
+func (s *ProductModuleTestSuite) SetupSuite() {
 	handler, err := startup.InitHandler()
 	require.NoError(s.T(), err)
 
@@ -76,21 +76,21 @@ func (s *HandlerTestSuite) SetupSuite() {
 	s.svc = startup.InitService()
 }
 
-func (s *HandlerTestSuite) TearDownSuite() {
+func (s *ProductModuleTestSuite) TearDownSuite() {
 	err := s.db.Exec("DROP TABLE `spus`").Error
 	require.NoError(s.T(), err)
 	err = s.db.Exec("DROP TABLE `skus`").Error
 	require.NoError(s.T(), err)
 }
 
-func (s *HandlerTestSuite) TearDownTest() {
+func (s *ProductModuleTestSuite) TearDownTest() {
 	err := s.db.Exec("TRUNCATE TABLE `spus`").Error
 	require.NoError(s.T(), err)
 	err = s.db.Exec("TRUNCATE TABLE `skus`").Error
 	require.NoError(s.T(), err)
 }
 
-func (s *HandlerTestSuite) TestHandler_RetrieveSKUDetail() {
+func (s *ProductModuleTestSuite) TestHandler_RetrieveSKUDetail() {
 
 	t := s.T()
 
@@ -98,7 +98,7 @@ func (s *HandlerTestSuite) TestHandler_RetrieveSKUDetail() {
 		name   string
 		before func(t *testing.T)
 
-		req      web.SPUSNReq
+		req      web.SNReq
 		wantCode int
 		wantResp test.Result[web.SKU]
 	}{
@@ -133,7 +133,7 @@ func (s *HandlerTestSuite) TestHandler_RetrieveSKUDetail() {
 					require.NoError(t, err)
 				}
 			},
-			req:      web.SPUSNReq{SN: "SKU001"},
+			req:      web.SNReq{SN: "SKU001"},
 			wantCode: 200,
 			wantResp: test.Result[web.SKU]{
 				Data: web.SKU{
@@ -165,20 +165,20 @@ func (s *HandlerTestSuite) TestHandler_RetrieveSKUDetail() {
 	}
 }
 
-func (s *HandlerTestSuite) TestHandler_RetrieveSKUDetailFailed() {
+func (s *ProductModuleTestSuite) TestHandler_RetrieveSKUDetailFailed() {
 	t := s.T()
 	testCases := []struct {
 		name   string
 		before func(t *testing.T)
 
-		req      web.SPUSNReq
+		req      web.SNReq
 		wantCode int
 		wantResp test.Result[any]
 	}{
 		{
 			name:     "SN不存在",
 			before:   func(t *testing.T) {},
-			req:      web.SPUSNReq{SN: "SKU000"},
+			req:      web.SNReq{SN: "SKU000"},
 			wantCode: 500,
 			wantResp: test.Result[any]{
 				Code: errs.SystemError.Code,
@@ -217,7 +217,7 @@ func (s *HandlerTestSuite) TestHandler_RetrieveSKUDetailFailed() {
 					require.NoError(t, err)
 				}
 			},
-			req:      web.SPUSNReq{SN: "SKU002"},
+			req:      web.SNReq{SN: "SKU002"},
 			wantCode: 500,
 			wantResp: test.Result[any]{
 				Code: errs.SystemError.Code,
@@ -257,7 +257,7 @@ func (s *HandlerTestSuite) TestHandler_RetrieveSKUDetailFailed() {
 					require.NoError(t, err)
 				}
 			},
-			req:      web.SPUSNReq{SN: "SKU004"},
+			req:      web.SNReq{SN: "SKU004"},
 			wantCode: 500,
 			wantResp: test.Result[any]{
 				Code: errs.SystemError.Code,
@@ -280,7 +280,7 @@ func (s *HandlerTestSuite) TestHandler_RetrieveSKUDetailFailed() {
 	}
 }
 
-func (s *HandlerTestSuite) TestHandler_RetrieveSPUDetail() {
+func (s *ProductModuleTestSuite) TestHandler_RetrieveSPUDetail() {
 
 	t := s.T()
 
@@ -288,7 +288,7 @@ func (s *HandlerTestSuite) TestHandler_RetrieveSPUDetail() {
 		name   string
 		before func(t *testing.T)
 
-		req      web.SPUSNReq
+		req      web.SNReq
 		wantCode int
 		wantResp test.Result[web.SPU]
 	}{
@@ -335,7 +335,7 @@ func (s *HandlerTestSuite) TestHandler_RetrieveSPUDetail() {
 					require.NoError(t, err)
 				}
 			},
-			req:      web.SPUSNReq{SN: "SPU102"},
+			req:      web.SNReq{SN: "SPU102"},
 			wantCode: 200,
 			wantResp: test.Result[web.SPU]{
 				Data: web.SPU{
@@ -385,20 +385,20 @@ func (s *HandlerTestSuite) TestHandler_RetrieveSPUDetail() {
 	}
 }
 
-func (s *HandlerTestSuite) TestHandler_RetrieveSPUDetailFailed() {
+func (s *ProductModuleTestSuite) TestHandler_RetrieveSPUDetailFailed() {
 	t := s.T()
 	testCases := []struct {
 		name   string
 		before func(t *testing.T)
 
-		req      web.SPUSNReq
+		req      web.SNReq
 		wantCode int
 		wantResp test.Result[any]
 	}{
 		{
 			name:     "SN不存在",
 			before:   func(t *testing.T) {},
-			req:      web.SPUSNReq{SN: "SPU000"},
+			req:      web.SNReq{SN: "SPU000"},
 			wantCode: 500,
 			wantResp: test.Result[any]{
 				Code: errs.SystemError.Code,
@@ -437,7 +437,7 @@ func (s *HandlerTestSuite) TestHandler_RetrieveSPUDetailFailed() {
 					require.NoError(t, err)
 				}
 			},
-			req:      web.SPUSNReq{SN: "SPU103"},
+			req:      web.SNReq{SN: "SPU103"},
 			wantCode: 500,
 			wantResp: test.Result[any]{
 				Code: errs.SystemError.Code,
@@ -477,7 +477,7 @@ func (s *HandlerTestSuite) TestHandler_RetrieveSPUDetailFailed() {
 					require.NoError(t, err)
 				}
 			},
-			req:      web.SPUSNReq{SN: "SPU104"},
+			req:      web.SNReq{SN: "SPU104"},
 			wantCode: 500,
 			wantResp: test.Result[any]{
 				Code: errs.SystemError.Code,
@@ -500,7 +500,7 @@ func (s *HandlerTestSuite) TestHandler_RetrieveSPUDetailFailed() {
 	}
 }
 
-func (s *HandlerTestSuite) TestService_FindSPUByID() {
+func (s *ProductModuleTestSuite) TestService_FindSPUByID() {
 	t := s.T()
 	testCases := []struct {
 		name     string
