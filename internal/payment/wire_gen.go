@@ -19,13 +19,10 @@ import (
 	"github.com/ecodeclub/webook/internal/payment/internal/repository/dao"
 	"github.com/ecodeclub/webook/internal/payment/internal/service"
 	credit2 "github.com/ecodeclub/webook/internal/payment/internal/service/credit"
-	"github.com/ecodeclub/webook/internal/payment/internal/service/wechat"
 	"github.com/ecodeclub/webook/internal/payment/internal/web"
 	"github.com/ecodeclub/webook/internal/payment/ioc"
 	"github.com/ecodeclub/webook/internal/pkg/sequencenumber"
 	"github.com/gotomicro/ego/core/elog"
-	"github.com/wechatpay-apiv3/wechatpay-go/core/notify"
-	"github.com/wechatpay-apiv3/wechatpay-go/services/payments/native"
 	"gorm.io/gorm"
 )
 
@@ -34,20 +31,17 @@ import (
 func InitModule(db *gorm.DB, mq2 mq.MQ, c ecache.Cache, cm *credit.Module) (*Module, error) {
 	wechatConfig := ioc.InitWechatConfig()
 	handler := ioc.InitWechatNotifyHandler(wechatConfig)
-	notifyHandler := convertToNotifyHandler(handler)
 	client := ioc.InitWechatClient(wechatConfig)
-	nativeApiService := ioc.InitNativeApiService(client)
-	nativeAPIService := convertToNativeAPIService(nativeApiService)
-	daoPaymentDAO := initDAO(db)
-	paymentRepository := repository.NewPaymentRepository(daoPaymentDAO)
+	paymentDAO := initDAO(db)
+	paymentRepository := repository.NewPaymentRepository(paymentDAO)
 	paymentEventProducer, err := initPaymentEventProducer(mq2)
 	if err != nil {
 		return nil, err
 	}
 	v := paymentDDLFunc()
 	component := initLogger()
-	nativePaymentService := ioc.InitWechatNativeService(nativeAPIService, paymentRepository, paymentEventProducer, v, component, wechatConfig)
-	webHandler := web.NewHandler(notifyHandler, nativePaymentService)
+	nativePaymentService := ioc.InitWechatNativeService(client, paymentRepository, paymentEventProducer, v, component, wechatConfig)
+	webHandler := web.NewHandler(handler, nativePaymentService)
 	serviceService := cm.Svc
 	generator := sequencenumber.NewGenerator()
 	paymentService := credit2.NewCreditPaymentService(serviceService, paymentRepository, paymentEventProducer, v, generator, component)
@@ -69,25 +63,15 @@ type Record = domain.PaymentRecord
 
 type Channel = domain.PaymentChannel
 
-type ChannelType = domain.ChannelType
+var ChannelTypeCredit int64 = domain.ChannelTypeCredit
 
-var ChannelTypeCredit = domain.ChannelTypeCredit
-
-var ChannelTypeWechat = domain.ChannelTypeWechat
+var ChannelTypeWechat int64 = domain.ChannelTypeWechat
 
 type Service = service.Service
 
-func convertToNotifyHandler(h *notify.Handler) wechat.NotifyHandler {
-	return h
-}
-
-func convertToNativeAPIService(n *native.NativeApiService) wechat.NativeAPIService {
-	return n
-}
-
 var (
-	once       = &sync.Once{}
-	paymentDAO dao.PaymentDAO
+	once     = &sync.Once{}
+	orderDAO dao.PaymentDAO
 )
 
 func initPaymentEventProducer(mq2 mq.MQ) (event.PaymentEventProducer, error) {
@@ -107,9 +91,9 @@ func paymentDDLFunc() func() int64 {
 func initDAO(db *gorm.DB) dao.PaymentDAO {
 	once.Do(func() {
 		_ = dao.InitTables(db)
-		paymentDAO = dao.NewPaymentGORMDAO(db)
+		orderDAO = dao.NewPaymentGORMDAO(db)
 	})
-	return paymentDAO
+	return orderDAO
 }
 
 func initLogger() *elog.Component {

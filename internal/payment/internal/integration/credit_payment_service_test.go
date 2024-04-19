@@ -38,9 +38,7 @@ import (
 	"go.uber.org/mock/gomock"
 )
 
-func TestCreditPaymentServiceTestSuite(t *testing.T) {
-	suite.Run(t, new(CreditPaymentServiceTestSuite))
-}
+const testUID = int64(789)
 
 type CreditPaymentServiceTestSuite struct {
 	suite.Suite
@@ -84,7 +82,7 @@ func (s *CreditPaymentServiceTestSuite) TestPay() {
 
 		mockedCreditService := creditmocks.NewMockService(ctrl)
 		paymentNo3rd := int64(1)
-		mockedCreditService.EXPECT().TryDeductCredits(gomock.Any(), gomock.Any()).Return(paymentNo3rd, nil)
+		mockedCreditService.EXPECT().TryDeductCredits(gomock.Any(), gomock.Any()).Return(paymentNo3rd, int64(10), nil)
 		mockedCreditService.EXPECT().ConfirmDeductCredits(gomock.Any(), testUID, paymentNo3rd).Return(nil)
 		// mockedCreditService.EXPECT().CancelDeductCredits(gomock.Any(), paymentNo3rd).Return(nil)
 
@@ -189,4 +187,8 @@ type fakeProducer struct {
 func (f *fakeProducer) Produce(_ context.Context, evt event.PaymentEvent) error {
 	f.paymentEvents = append(f.paymentEvents, evt)
 	return nil
+}
+
+func TestCreditPaymentServiceTestSuite(t *testing.T) {
+	suite.Run(t, new(CreditPaymentServiceTestSuite))
 }

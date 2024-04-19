@@ -16,12 +16,13 @@ package wechat
 
 import (
 	"context"
-	"net/http"
 
-	"github.com/wechatpay-apiv3/wechatpay-go/core/notify"
+	"github.com/wechatpay-apiv3/wechatpay-go/core"
+	"github.com/wechatpay-apiv3/wechatpay-go/services/payments"
+	"github.com/wechatpay-apiv3/wechatpay-go/services/payments/native"
 )
 
-//go:generate mockgen -source=./notify.go  -package=wechatmocks -destination=./mocks/notify.mock.go -typed NotifyHandler
-type NotifyHandler interface {
-	ParseNotifyRequest(ctx context.Context, request *http.Request, content any) (*notify.Request, error)
+type NativeAPIService interface {
+	Prepay(ctx context.Context, req native.PrepayRequest) (resp *native.PrepayResponse, result *core.APIResult, err error)
+	QueryOrderByOutTradeNo(ctx context.Context, req native.QueryOrderByOutTradeNoRequest) (resp *payments.Transaction, result *core.APIResult, err error)
 }

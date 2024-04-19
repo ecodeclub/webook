@@ -74,7 +74,7 @@ func (h *Handler) PreviewOrder(ctx *ginx.Context, req PreviewOrderReq, sess sess
 	pcs := h.paymentSvc.GetPaymentChannels(ctx.Request.Context())
 	items := make([]PaymentItem, 0, len(pcs))
 	for _, pc := range pcs {
-		items = append(items, PaymentItem{Type: int64(pc.Type)})
+		items = append(items, PaymentItem{Type: pc.Type})
 	}
 
 	return ginx.Result{
@@ -172,7 +172,7 @@ func (h *Handler) createOrderRequestKey(requestID string) string {
 }
 
 func (h *Handler) createOrder(ctx context.Context, skus []SKU, buyerID int64) (domain.Order, error) {
-	orderItems, originalTotalAmt, realTotalAmt, err := h.getDomainOrderItems(ctx, skus)
+	orderItems, originalTotalPrice, realTotalPrice, err := h.getDomainOrderItems(ctx, skus)
 	if err != nil {
 		return domain.Order{}, err
 	}
@@ -185,8 +185,8 @@ func (h *Handler) createOrder(ctx context.Context, skus []SKU, buyerID int64) (d
 	return h.svc.CreateOrder(ctx, domain.Order{
 		SN:               orderSN,
 		BuyerID:          buyerID,
-		OriginalTotalAmt: originalTotalAmt,
-		RealTotalAmt:     realTotalAmt,
+		OriginalTotalAmt: originalTotalPrice,
+		RealTotalAmt:     realTotalPrice,
 		Items:            orderItems,
 	})
 }
@@ -196,7 +196,7 @@ func (h *Handler) getDomainOrderItems(ctx context.Context, skus []SKU) ([]domain
 		return nil, 0, 0, fmt.Errorf("商品信息非法")
 	}
 	orderItems := make([]domain.OrderItem, 0, len(skus))
-	originalTotalAmt, realTotalAmt := int64(0), int64(0)
+	originalTotalPrice, realTotalPrice := int64(0), int64(0)
 	for _, sku := range skus {
 		productSKU, err := h.productSvc.FindSKUBySN(ctx, sku.SN)
 		if err != nil {
@@ -221,36 +221,34 @@ func (h *Handler) getDomainOrderItems(ctx context.Context, skus []SKU) ([]domain
 				Quantity:      sku.Quantity,
 			},
 		}
-		originalTotalAmt += item.SKU.OriginalPrice * sku.Quantity
-		realTotalAmt += item.SKU.RealPrice * sku.Quantity
+		originalTotalPrice += item.SKU.OriginalPrice * sku.Quantity
+		realTotalPrice += item.SKU.RealPrice * sku.Quantity
 		orderItems = append(orderItems, item)
 	}
-	return orderItems, originalTotalAmt, realTotalAmt, nil
+	return orderItems, originalTotalPrice, realTotalPrice, nil
 }
 
 func (h *Handler) createPayment(ctx context.Context, order domain.Order, paymentChannels []PaymentItem) (payment.Payment, error) {
-	// TODO: 针对订单生成更精确的订单描述信息
-	orderDescription := "面窝吧"
 	records := make([]payment.Record, 0, len(paymentChannels))
-	realTotalAmt := int64(0)
+	realTotalPrice := int64(0)
 	for _, pc := range paymentChannels {
-		if pc.Type != int64(payment.ChannelTypeCredit) && pc.Type != int64(payment.ChannelTypeWechat) {
+		if pc.Type != payment.ChannelTypeCredit && pc.Type != payment.ChannelTypeWechat {
 			return payment.Payment{}, fmt.Errorf("支付渠道非法")
 		}
 		records = append(records, payment.Record{
 			Amount:  pc.Amount,
-			Channel: payment.ChannelType(pc.Type),
+			Channel: pc.Type,
 		})
-		realTotalAmt += pc.Amount
+		realTotalPrice += pc.Amount
 	}
-	if realTotalAmt != order.RealTotalAmt {
+	if realTotalPrice != order.RealTotalAmt {
 		return payment.Payment{}, fmt.Errorf("支付信息错误：金额不匹配")
 	}
 	return h.paymentSvc.CreatePayment(ctx, payment.Payment{
 		OrderID:          order.ID,
 		OrderSN:          order.SN,
 		PayerID:          order.BuyerID,
-		OrderDescription: orderDescription,
+		OrderDescription: "面窝吧",
 		TotalAmount:      order.RealTotalAmt,
 		Records:          records,
 	})
@@ -323,7 +321,7 @@ func (h *Handler) toOrderVOWithPaymentInfo(order domain.Order, pr payment.Paymen
 	vo := h.toOrderVO(order)
 	vo.Payment.Items = slice.Map(pr.Records, func(idx int, src payment.Record) PaymentItem {
 		return PaymentItem{
-			Type:   int64(src.Channel),
+			Type:   src.Channel,
 			Amount: src.Amount,
 		}
 	})

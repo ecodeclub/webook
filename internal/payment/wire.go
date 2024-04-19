@@ -29,15 +29,12 @@ import (
 	"github.com/ecodeclub/webook/internal/payment/internal/repository/dao"
 	"github.com/ecodeclub/webook/internal/payment/internal/service"
 	credit2 "github.com/ecodeclub/webook/internal/payment/internal/service/credit"
-	"github.com/ecodeclub/webook/internal/payment/internal/service/wechat"
 	"github.com/ecodeclub/webook/internal/payment/internal/web"
 	"github.com/ecodeclub/webook/internal/payment/ioc"
 	"github.com/ecodeclub/webook/internal/pkg/sequencenumber"
 	"github.com/ego-component/egorm"
 	"github.com/google/wire"
 	"github.com/gotomicro/ego/core/elog"
-	"github.com/wechatpay-apiv3/wechatpay-go/core/notify"
-	"github.com/wechatpay-apiv3/wechatpay-go/services/payments/native"
 	"gorm.io/gorm"
 )
 
@@ -45,10 +42,9 @@ type Handler = web.Handler
 type Payment = domain.Payment
 type Record = domain.PaymentRecord
 type Channel = domain.PaymentChannel
-type ChannelType = domain.ChannelType
 
-var ChannelTypeCredit = domain.ChannelTypeCredit
-var ChannelTypeWechat = domain.ChannelTypeWechat
+var ChannelTypeCredit int64 = domain.ChannelTypeCredit
+var ChannelTypeWechat int64 = domain.ChannelTypeWechat
 
 type Service = service.Service
 
@@ -61,10 +57,7 @@ func InitModule(db *egorm.Component,
 		ioc.InitWechatNativeService,
 		ioc.InitWechatConfig,
 		ioc.InitWechatNotifyHandler,
-		convertToNotifyHandler,
 		ioc.InitWechatClient,
-		ioc.InitNativeApiService,
-		convertToNativeAPIService,
 		initDAO,
 		initPaymentEventProducer,
 		web.NewHandler,
@@ -79,17 +72,9 @@ func InitModule(db *egorm.Component,
 	return new(Module), nil
 }
 
-func convertToNotifyHandler(h *notify.Handler) wechat.NotifyHandler {
-	return h
-}
-
-func convertToNativeAPIService(n *native.NativeApiService) wechat.NativeAPIService {
-	return n
-}
-
 var (
-	once       = &sync.Once{}
-	paymentDAO dao.PaymentDAO
+	once     = &sync.Once{}
+	orderDAO dao.PaymentDAO
 )
 
 func initPaymentEventProducer(mq mq.MQ) (event.PaymentEventProducer, error) {
@@ -109,9 +94,9 @@ func paymentDDLFunc() func() int64 {
 func initDAO(db *gorm.DB) dao.PaymentDAO {
 	once.Do(func() {
 		_ = dao.InitTables(db)
-		paymentDAO = dao.NewPaymentGORMDAO(db)
+		orderDAO = dao.NewPaymentGORMDAO(db)
 	})
-	return paymentDAO
+	return orderDAO
 }
 
 func initLogger() *elog.Component {

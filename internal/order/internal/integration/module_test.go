@@ -22,6 +22,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"sync/atomic"
 	"testing"
 
 	"github.com/ecodeclub/ecache"
@@ -40,7 +41,6 @@ import (
 	"github.com/ecodeclub/webook/internal/order/internal/repository/dao"
 	"github.com/ecodeclub/webook/internal/order/internal/web"
 	"github.com/ecodeclub/webook/internal/payment"
-	paymentmocks "github.com/ecodeclub/webook/internal/payment/mocks"
 	"github.com/ecodeclub/webook/internal/product"
 	productmocks "github.com/ecodeclub/webook/internal/product/mocks"
 	"github.com/ecodeclub/webook/internal/test"
@@ -58,6 +58,91 @@ import (
 const (
 	testUID = int64(234)
 )
+
+type fakePaymentService struct {
+	counter atomic.Int64
+}
+
+func (f *fakePaymentService) CreatePayment(_ context.Context, p payment.Payment) (payment.Payment, error) {
+	f.counter.Add(1)
+	id := f.counter.Load()
+
+	columns := map[int64]payment.Payment{
+		1: {
+			ID:          1,
+			SN:          "PaymentSN-1",
+			OrderID:     p.OrderID,
+			OrderSN:     p.OrderSN,
+			TotalAmount: p.TotalAmount,
+			PayDDL:      p.PayDDL,
+			Records: []payment.Record{
+				{
+					PaymentNO3rd: "credit-1",
+					Channel:      payment.ChannelTypeCredit,
+					Amount:       990,
+					Status:       0,
+				},
+			},
+		},
+		2: {
+			ID:          2,
+			SN:          "PaymentSN-2",
+			OrderID:     p.OrderID,
+			OrderSN:     p.OrderSN,
+			TotalAmount: p.TotalAmount,
+			PayDDL:      p.PayDDL,
+			Records: []payment.Record{
+				{
+					PaymentNO3rd: "credit-1",
+					Channel:      payment.ChannelTypeCredit,
+					Amount:       1000,
+					Status:       0,
+				},
+				{
+					PaymentNO3rd:  "wechat-2",
+					Channel:       payment.ChannelTypeWechat,
+					Amount:        8990,
+					Status:        0,
+					WechatCodeURL: "webchat_code",
+				},
+			},
+		},
+	}
+	r, ok := columns[id]
+	if !ok {
+		return payment.Payment{}, fmt.Errorf(fmt.Sprintf("未配置的支付id=%d", id))
+	}
+	return r, nil
+}
+
+func (f *fakePaymentService) GetPaymentChannels(_ context.Context) []payment.Channel {
+	return []payment.Channel{
+		{Type: 1, Desc: "积分"},
+		{Type: 2, Desc: "微信"},
+	}
+}
+
+func (f *fakePaymentService) FindPaymentByID(_ context.Context, paymentID int64) (payment.Payment, error) {
+	payments := map[int64]payment.Payment{
+		33: {
+			ID:      33,
+			SN:      "paymentSN-33",
+			OrderID: 0,
+			OrderSN: "orderSN-33",
+			Records: []payment.Record{
+				{
+					Channel: payment.ChannelTypeCredit,
+					Amount:  9900,
+				},
+			},
+		},
+	}
+	p, ok := payments[paymentID]
+	if !ok {
+		return payment.Payment{}, fmt.Errorf(fmt.Sprintf("未配置的支付ID = %d", paymentID))
+	}
+	return p, nil
+}
 
 func TestOrderModule(t *testing.T) {
 	suite.Run(t, new(OrderModuleTestSuite))
@@ -78,7 +163,7 @@ func (s *OrderModuleTestSuite) SetupSuite() {
 
 	s.ctrl = gomock.NewController(s.T())
 
-	pm := &payment.Module{Svc: s.getPaymentMockService()}
+	pm := &payment.Module{Svc: &fakePaymentService{}}
 	ppm := &product.Module{Svc: s.getProductMockService()}
 	cm := &credit.Module{Svc: s.getCreditMockService()}
 	handler, err := startup.InitHandler(pm, ppm, cm)
@@ -101,94 +186,6 @@ func (s *OrderModuleTestSuite) SetupSuite() {
 	s.svc = order.InitService(s.db)
 	s.mq = testioc.InitMQ()
 	s.cache = testioc.InitCache()
-}
-
-func (s *OrderModuleTestSuite) getPaymentMockService() *paymentmocks.MockService {
-
-	paymentSvc := paymentmocks.NewMockService(s.ctrl)
-
-	paymentSvc.EXPECT().GetPaymentChannels(gomock.Any()).Return([]payment.Channel{
-		{Type: 1, Desc: "积分"},
-		{Type: 2, Desc: "微信"},
-	}).AnyTimes()
-
-	payments := map[int64]payment.Payment{
-		33: {
-			ID:      33,
-			SN:      "paymentSN-33",
-			OrderID: 0,
-			OrderSN: "orderSN-33",
-			Records: []payment.Record{
-				{
-					Channel: payment.ChannelTypeCredit,
-					Amount:  9900,
-				},
-			},
-		},
-	}
-
-	paymentSvc.EXPECT().FindPaymentByID(gomock.Any(), gomock.Any()).
-		DoAndReturn(func(ctx context.Context, pid int64) (payment.Payment, error) {
-			p, ok := payments[pid]
-			if !ok {
-				return payment.Payment{}, fmt.Errorf(fmt.Sprintf("未配置的支付ID = %d", pid))
-			}
-			return p, nil
-		}).AnyTimes()
-
-	tables := map[int64]payment.Payment{}
-	id := int64(0)
-	paymentSvc.EXPECT().CreatePayment(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, p payment.Payment) (payment.Payment, error) {
-		id++
-		if id == 1 {
-			tables[id] = payment.Payment{
-				ID:          id,
-				SN:          fmt.Sprintf("PaymentSN-%d", id),
-				OrderID:     p.OrderID,
-				OrderSN:     p.OrderSN,
-				TotalAmount: p.TotalAmount,
-				Records: []payment.Record{
-					{
-						PaymentNO3rd: "credit-1",
-						Channel:      payment.ChannelTypeCredit,
-						Amount:       990,
-						Status:       0,
-					},
-				},
-			}
-		} else if id == 2 {
-			tables[id] = payment.Payment{
-				ID:          id,
-				SN:          fmt.Sprintf("PaymentSN-%d", id),
-				OrderID:     p.OrderID,
-				OrderSN:     p.OrderSN,
-				TotalAmount: p.TotalAmount,
-				Records: []payment.Record{
-					{
-						PaymentNO3rd: "credit-1",
-						Channel:      payment.ChannelTypeCredit,
-						Amount:       1000,
-						Status:       0,
-					},
-					{
-						PaymentNO3rd:  "wechat-2",
-						Channel:       payment.ChannelTypeWechat,
-						Amount:        8990,
-						Status:        0,
-						WechatCodeURL: "webchat_code",
-					},
-				},
-			}
-		}
-
-		r, ok := tables[id]
-		if !ok {
-			return payment.Payment{}, fmt.Errorf(fmt.Sprintf("未配置的支付id=%d", id))
-		}
-		return r, nil
-	}).AnyTimes()
-
-	return paymentSvc
 }
 
 func (s *OrderModuleTestSuite) getProductMockService() *productmocks.MockService {
@@ -308,8 +305,8 @@ func (s *OrderModuleTestSuite) TestHandler_PreviewOrder() {
 					Order: web.Order{
 						Payment: web.Payment{
 							Items: []web.PaymentItem{
-								{Type: int64(payment.ChannelTypeCredit)},
-								{Type: int64(payment.ChannelTypeWechat)},
+								{Type: payment.ChannelTypeCredit},
+								{Type: payment.ChannelTypeWechat},
 							},
 						},
 						OriginalTotalAmt: 990,
@@ -440,7 +437,7 @@ func (s *OrderModuleTestSuite) TestHandler_CreateOrderAndPayment() {
 					},
 				},
 				PaymentItems: []web.PaymentItem{
-					{Type: int64(payment.ChannelTypeCredit), Amount: 990},
+					{Type: payment.ChannelTypeCredit, Amount: 990},
 				},
 			},
 			wantCode: 200,
@@ -462,8 +459,8 @@ func (s *OrderModuleTestSuite) TestHandler_CreateOrderAndPayment() {
 					},
 				},
 				PaymentItems: []web.PaymentItem{
-					{Type: int64(payment.ChannelTypeCredit), Amount: 5000},
-					{Type: int64(payment.ChannelTypeWechat), Amount: 4900},
+					{Type: payment.ChannelTypeCredit, Amount: 5000},
+					{Type: payment.ChannelTypeWechat, Amount: 4900},
 				},
 			},
 			wantCode: 200,
@@ -983,7 +980,7 @@ func (s *OrderModuleTestSuite) TestHandler_RetrieveOrderDetail() {
 							SN: "paymentSN-33",
 							Items: []web.PaymentItem{
 								{
-									Type:   int64(payment.ChannelTypeCredit),
+									Type:   payment.ChannelTypeCredit,
 									Amount: 9900,
 								},
 							},

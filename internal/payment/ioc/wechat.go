@@ -56,19 +56,15 @@ func InitWechatClient(cfg WechatConfig) *core.Client {
 }
 
 func InitWechatNativeService(
-	native wechat.NativeAPIService,
+	cli *core.Client,
 	repo repository.PaymentRepository,
 	producer event.PaymentEventProducer,
 	paymentDDLFunc func() int64,
 	l *elog.Component,
 	cfg WechatConfig) *wechat.NativePaymentService {
-	return wechat.NewNativePaymentService(native, repo, producer, paymentDDLFunc, l, cfg.AppID, cfg.MchID)
-}
-
-func InitNativeApiService(cli *core.Client) *native.NativeApiService {
-	return &native.NativeApiService{
+	return wechat.NewNativePaymentService(&native.NativeApiService{
 		Client: cli,
-	}
+	}, repo, producer, paymentDDLFunc, l, cfg.AppID, cfg.MchID)
 }
 
 func InitWechatNotifyHandler(cfg WechatConfig) *notify.Handler {
