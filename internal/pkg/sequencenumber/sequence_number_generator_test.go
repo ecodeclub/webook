@@ -21,7 +21,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-const expectedSNLength = 39
+const expectedSNLength = 32
 
 func TestGenerateSequenceNumberWith(t *testing.T) {
 	sng := NewGeneratorWith(func(_ time.Time) int64 { return 1234554320123 }, func() string { return "nUfojcH2M5j2j3Tk5A1mf2" })
