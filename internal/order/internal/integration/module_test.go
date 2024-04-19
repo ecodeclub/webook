@@ -309,8 +309,8 @@ func (s *OrderModuleTestSuite) TestHandler_PreviewOrder() {
 								{Type: payment.ChannelTypeWechat},
 							},
 						},
-						OriginalAmount: 990,
-						RealAmount:     990,
+						OriginalTotalAmt: 990,
+						RealTotalAmt:     990,
 						Items: []web.OrderItem{
 							{
 								SKU: web.SKU{
@@ -771,13 +771,13 @@ func (s *OrderModuleTestSuite) TestHandler_ListOrders() {
 	for idx := 0; idx < total; idx++ {
 		id := int64(100 + idx)
 		orderEntity := dao.Order{
-			Id:             id,
-			SN:             fmt.Sprintf("OrderSN-list-%d", id),
-			PaymentId:      sqlx.NewNullInt64(id),
-			PaymentSn:      sqlx.NewNullString(fmt.Sprintf("PaymentSN-list-%d", id)),
-			BuyerId:        testUID,
-			OriginalAmount: 100,
-			RealAmount:     100,
+			Id:               id,
+			SN:               fmt.Sprintf("OrderSN-list-%d", id),
+			PaymentId:        sqlx.NewNullInt64(id),
+			PaymentSn:        sqlx.NewNullString(fmt.Sprintf("PaymentSN-list-%d", id)),
+			BuyerId:          testUID,
+			OriginalTotalAmt: 100,
+			RealTotalAmt:     100,
 		}
 		items := []dao.OrderItem{
 			{
@@ -819,9 +819,9 @@ func (s *OrderModuleTestSuite) TestHandler_ListOrders() {
 							Payment: web.Payment{
 								SN: fmt.Sprintf("PaymentSN-list-%d", 199),
 							},
-							OriginalAmount: 100,
-							RealAmount:     100,
-							Status:         domain.StatusUnpaid.ToUint8(),
+							OriginalTotalAmt: 100,
+							RealTotalAmt:     100,
+							Status:           domain.StatusUnpaid.ToUint8(),
 							Items: []web.OrderItem{
 								{
 									SKU: web.SKU{
@@ -842,9 +842,9 @@ func (s *OrderModuleTestSuite) TestHandler_ListOrders() {
 								SN:    fmt.Sprintf("PaymentSN-list-%d", 198),
 								Items: nil,
 							},
-							OriginalAmount: 100,
-							RealAmount:     100,
-							Status:         domain.StatusUnpaid.ToUint8(),
+							OriginalTotalAmt: 100,
+							RealTotalAmt:     100,
+							Status:           domain.StatusUnpaid.ToUint8(),
 							Items: []web.OrderItem{
 								{
 									SKU: web.SKU{
@@ -879,9 +879,9 @@ func (s *OrderModuleTestSuite) TestHandler_ListOrders() {
 							Payment: web.Payment{
 								SN: fmt.Sprintf("PaymentSN-list-%d", 100),
 							},
-							OriginalAmount: 100,
-							RealAmount:     100,
-							Status:         domain.StatusUnpaid.ToUint8(),
+							OriginalTotalAmt: 100,
+							RealTotalAmt:     100,
+							Status:           domain.StatusUnpaid.ToUint8(),
 							Items: []web.OrderItem{
 								{
 									SKU: web.SKU{
@@ -946,12 +946,12 @@ func (s *OrderModuleTestSuite) TestHandler_RetrieveOrderDetail() {
 			before: func(t *testing.T) {
 				t.Helper()
 				_, err := s.dao.CreateOrder(context.Background(), dao.Order{
-					SN:             "orderSN-33",
-					BuyerId:        testUID,
-					PaymentId:      sqlx.NewNullInt64(33),
-					PaymentSn:      sqlx.NewNullString("paymentSN-33"),
-					OriginalAmount: 9900,
-					RealAmount:     9900,
+					SN:               "orderSN-33",
+					BuyerId:          testUID,
+					PaymentId:        sqlx.NewNullInt64(33),
+					PaymentSn:        sqlx.NewNullString("paymentSN-33"),
+					OriginalTotalAmt: 9900,
+					RealTotalAmt:     9900,
 				}, []dao.OrderItem{
 					{
 						SPUId:            1,
@@ -985,9 +985,9 @@ func (s *OrderModuleTestSuite) TestHandler_RetrieveOrderDetail() {
 								},
 							},
 						},
-						OriginalAmount: 9900,
-						RealAmount:     9900,
-						Status:         domain.StatusUnpaid.ToUint8(),
+						OriginalTotalAmt: 9900,
+						RealTotalAmt:     9900,
+						Status:           domain.StatusUnpaid.ToUint8(),
 						Items: []web.OrderItem{
 							{
 								SKU: web.SKU{
@@ -1324,13 +1324,13 @@ func (s *OrderModuleTestSuite) TestJob_CloseTimeoutOrders() {
 				for idx := 0; idx < total; idx++ {
 					id := int64(200 + idx)
 					orderEntity := dao.Order{
-						Id:             id,
-						SN:             fmt.Sprintf("OrderSN-close-%d", id),
-						PaymentId:      sqlx.NewNullInt64(id),
-						PaymentSn:      sqlx.NewNullString(fmt.Sprintf("PaymentSN-close-%d", id)),
-						BuyerId:        id,
-						OriginalAmount: 100,
-						RealAmount:     100,
+						Id:               id,
+						SN:               fmt.Sprintf("OrderSN-close-%d", id),
+						PaymentId:        sqlx.NewNullInt64(id),
+						PaymentSn:        sqlx.NewNullString(fmt.Sprintf("PaymentSN-close-%d", id)),
+						BuyerId:          id,
+						OriginalTotalAmt: 100,
+						RealTotalAmt:     100,
 					}
 					items := []dao.OrderItem{
 						{
@@ -1368,13 +1368,13 @@ func (s *OrderModuleTestSuite) TestJob_CloseTimeoutOrders() {
 				for idx := 0; idx < total; idx++ {
 					id := int64(300 + idx)
 					orderEntity := dao.Order{
-						Id:             id,
-						SN:             fmt.Sprintf("OrderSN-close-%d", id),
-						PaymentId:      sqlx.NewNullInt64(id),
-						PaymentSn:      sqlx.NewNullString(fmt.Sprintf("PaymentSN-close-%d", id)),
-						BuyerId:        id,
-						OriginalAmount: 100,
-						RealAmount:     100,
+						Id:               id,
+						SN:               fmt.Sprintf("OrderSN-close-%d", id),
+						PaymentId:        sqlx.NewNullInt64(id),
+						PaymentSn:        sqlx.NewNullString(fmt.Sprintf("PaymentSN-close-%d", id)),
+						BuyerId:          id,
+						OriginalTotalAmt: 100,
+						RealTotalAmt:     100,
 					}
 					items := []dao.OrderItem{
 						{

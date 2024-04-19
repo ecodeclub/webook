@@ -83,8 +83,8 @@ func (h *Handler) PreviewOrder(ctx *ginx.Context, req PreviewOrderReq, sess sess
 				Payment: Payment{
 					Items: items,
 				},
-				OriginalAmount: originalTotalPrice,
-				RealAmount:     realTotalPrice,
+				OriginalTotalAmt: originalTotalPrice,
+				RealTotalAmt:     realTotalPrice,
 				Items: slice.Map(orderItems, func(idx int, src domain.OrderItem) OrderItem {
 					return OrderItem{
 						SKU: h.toSKUVO(src.SKU),
@@ -183,11 +183,11 @@ func (h *Handler) createOrder(ctx context.Context, skus []SKU, buyerID int64) (d
 	}
 
 	return h.svc.CreateOrder(ctx, domain.Order{
-		SN:             orderSN,
-		BuyerID:        buyerID,
-		OriginalAmount: originalTotalPrice,
-		RealAmount:     realTotalPrice,
-		Items:          orderItems,
+		SN:               orderSN,
+		BuyerID:          buyerID,
+		OriginalTotalAmt: originalTotalPrice,
+		RealTotalAmt:     realTotalPrice,
+		Items:            orderItems,
 	})
 }
 
@@ -241,15 +241,16 @@ func (h *Handler) createPayment(ctx context.Context, order domain.Order, payment
 		})
 		realTotalPrice += pc.Amount
 	}
-	if realTotalPrice != order.RealAmount {
+	if realTotalPrice != order.RealTotalAmt {
 		return payment.Payment{}, fmt.Errorf("支付信息错误：金额不匹配")
 	}
 	return h.paymentSvc.CreatePayment(ctx, payment.Payment{
-		OrderID:     order.ID,
-		OrderSN:     order.SN,
-		PayerID:     order.BuyerID,
-		TotalAmount: order.RealAmount,
-		Records:     records,
+		OrderID:          order.ID,
+		OrderSN:          order.SN,
+		PayerID:          order.BuyerID,
+		OrderDescription: "面窝吧",
+		TotalAmount:      order.RealTotalAmt,
+		Records:          records,
 	})
 }
 
@@ -284,11 +285,11 @@ func (h *Handler) ListOrders(ctx *ginx.Context, req ListOrdersReq, sess session.
 
 func (h *Handler) toOrderVO(order domain.Order) Order {
 	return Order{
-		SN:             order.SN,
-		Payment:        Payment{SN: order.Payment.SN},
-		OriginalAmount: order.OriginalAmount,
-		RealAmount:     order.RealAmount,
-		Status:         order.Status.ToUint8(),
+		SN:               order.SN,
+		Payment:          Payment{SN: order.Payment.SN},
+		OriginalTotalAmt: order.OriginalTotalAmt,
+		RealTotalAmt:     order.RealTotalAmt,
+		Status:           order.Status.ToUint8(),
 		Items: slice.Map(order.Items, func(idx int, src domain.OrderItem) OrderItem {
 			return OrderItem{
 				SKU: h.toSKUVO(src.SKU),

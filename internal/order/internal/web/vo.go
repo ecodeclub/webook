@@ -77,14 +77,14 @@ type RetrieveOrderDetailResp struct {
 }
 
 type Order struct {
-	SN             string      `json:"sn"`
-	Payment        Payment     `json:"payment"`
-	OriginalAmount int64       `json:"originalAmount"`
-	RealAmount     int64       `json:"realAmount"`
-	Status         uint8       `json:"status"`
-	Items          []OrderItem `json:"items"`
-	Ctime          int64       `json:"ctime"`
-	Utime          int64       `json:"utime"`
+	SN               string      `json:"sn"`
+	Payment          Payment     `json:"payment"`
+	OriginalTotalAmt int64       `json:"originalTotalAmt"`
+	RealTotalAmt     int64       `json:"realTotalAmt"`
+	Status           uint8       `json:"status"`
+	Items            []OrderItem `json:"items"`
+	Ctime            int64       `json:"ctime"`
+	Utime            int64       `json:"utime"`
 }
 
 type Payment struct {
