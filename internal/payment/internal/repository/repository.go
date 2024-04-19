@@ -66,7 +66,6 @@ func (p *paymentRepository) toEntity(pmt domain.Payment) (dao.Payment, []dao.Pay
 		PayerId:          pmt.PayerID,
 		OrderDescription: pmt.OrderDescription,
 		TotalAmount:      pmt.TotalAmount,
-		PayDDL:           pmt.PayDDL,
 		PaidAt:           pmt.PaidAt,
 		Status:           pmt.Status.ToUnit8(),
 	}
@@ -124,7 +123,6 @@ func (p *paymentRepository) toDomain(pmt dao.Payment, records []dao.PaymentRecor
 		OrderSN:          pmt.OrderSn.String,
 		OrderDescription: pmt.OrderDescription,
 		TotalAmount:      pmt.TotalAmount,
-		PayDDL:           pmt.PayDDL,
 		PaidAt:           pmt.PaidAt,
 		Status:           domain.PaymentStatus(pmt.Status),
 		Records:          rs,

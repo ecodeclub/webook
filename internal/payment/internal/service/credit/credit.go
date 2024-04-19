@@ -136,7 +136,6 @@ func (p *PaymentService) Prepay(ctx context.Context, pmt domain.Payment) (domain
 		return domain.Payment{}, fmt.Errorf("预扣积分失败")
 	}
 
-	pmt.PayDDL = p.paymentDDLFunc()
 	pmt.Status = domain.PaymentStatusUnpaid
 	pmt.Records = []domain.PaymentRecord{
 		{

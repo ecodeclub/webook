@@ -57,7 +57,6 @@ type Payment struct {
 	// 订单的描述,冗余
 	OrderDescription string
 	TotalAmount      int64
-	PayDDL           int64
 	PaidAt           int64
 	Status           PaymentStatus
 	Records          []PaymentRecord

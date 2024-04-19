@@ -135,7 +135,6 @@ type Payment struct {
 	OrderSn          sql.NullString `gorm:"type:varchar(255);uniqueIndex:uniq_order_sn;comment:订单序列号,冗余允许为NULL"`
 	OrderDescription string         `gorm:"type:varchar(255);not null;comment:订单简要描述"`
 	TotalAmount      int64          `gorm:"not null;comment:支付总金额, 多种支付方式支付金额的总和"`
-	PayDDL           int64          `gorm:"column:pay_ddl;not null;comment:支付截止时间"`
 	PaidAt           int64          `gorm:"comment:支付时间"`
 	Status           uint8          `gorm:"type:tinyint unsigned;not null;default:1;comment:支付状态 1=未支付 2=已支付 3=已失败"`
 	Ctime            int64

@@ -88,9 +88,8 @@ func NewNativePaymentService(svc NativeAPIService,
 
 func (n *NativePaymentService) Prepay(ctx context.Context, pmt domain.Payment) (domain.Payment, error) {
 
-	var amount int64
 	r, ok := slice.Find(pmt.Records, func(src domain.PaymentRecord) bool {
-		return src.Channel == domain.ChannelTypeCredit
+		return src.Channel == domain.ChannelTypeWechat
 	})
 	if !ok || r.Amount == 0 {
 		return domain.Payment{}, fmt.Errorf("缺少微信支付金额信息")
@@ -106,7 +105,7 @@ func (n *NativePaymentService) Prepay(ctx context.Context, pmt domain.Payment) (
 			NotifyUrl:   core.String(n.notifyURL),
 			Amount: &native.Amount{
 				Currency: core.String("CNY"),
-				Total:    core.Int64(amount),
+				Total:    core.Int64(r.Amount),
 			},
 		},
 	)
@@ -114,14 +113,13 @@ func (n *NativePaymentService) Prepay(ctx context.Context, pmt domain.Payment) (
 		return domain.Payment{}, fmt.Errorf("微信预支付失败: %w", err)
 	}
 
-	pmt.PayDDL = n.paymentDDLFunc()
 	pmt.Status = domain.PaymentStatusUnpaid
 
 	pmt.Records = []domain.PaymentRecord{
 		{
 			Description: pmt.OrderDescription,
 			Channel:     domain.ChannelTypeWechat,
-			Amount:      amount,
+			Amount:      r.Amount,
 			Status:      domain.PaymentStatusUnpaid,
 		},
 	}
