@@ -48,17 +48,17 @@ type CreateOrderReq struct {
 }
 
 type CreateOrderResp struct {
-	OrderSN       string `json:"orderSN"` // 前端用于轮训订单状态,然后根据状态/时间限制来跳转
+	SN            string `json:"sn"` // 前端用于轮训订单状态,然后根据状态/时间限制来跳转
 	WechatCodeURL string `json:"wechatCodeURL,omitempty"`
 }
 
-// RetrieveOrderStatusReq 获取订单状态
-type RetrieveOrderStatusReq struct {
-	OrderSN string `json:"sn"`
+// OrderSNReq 获取订单状态、获取订单详情、取消订单
+type OrderSNReq struct {
+	SN string `json:"sn"`
 }
 
 type RetrieveOrderStatusResp struct {
-	OrderStatus uint8 `json:"status"`
+	Status uint8 `json:"status"`
 }
 
 // ListOrdersReq 分页查询用户所有订单
@@ -72,24 +72,19 @@ type ListOrdersResp struct {
 	Orders []Order `json:"orders,omitempty"`
 }
 
-// RetrieveOrderDetailReq 获取订单详情
-type RetrieveOrderDetailReq struct {
-	OrderSN string `json:"sn"`
-}
-
 type RetrieveOrderDetailResp struct {
 	Order Order `json:"order"`
 }
 
 type Order struct {
-	SN                 string      `json:"sn"`
-	Payment            Payment     `json:"payment"`
-	OriginalTotalPrice int64       `json:"originalPrice"`
-	RealTotalPrice     int64       `json:"realPrice"`
-	Status             uint8       `json:"status"`
-	Items              []OrderItem `json:"items"`
-	Ctime              int64       `json:"ctime"`
-	Utime              int64       `json:"utime"`
+	SN               string      `json:"sn"`
+	Payment          Payment     `json:"payment"`
+	OriginalTotalAmt int64       `json:"originalTotalAmt"`
+	RealTotalAmt     int64       `json:"realTotalAmt"`
+	Status           uint8       `json:"status"`
+	Items            []OrderItem `json:"items"`
+	Ctime            int64       `json:"ctime"`
+	Utime            int64       `json:"utime"`
 }
 
 type Payment struct {
@@ -99,9 +94,4 @@ type Payment struct {
 
 type OrderItem struct {
 	SKU SKU `json:"sku"`
-}
-
-// CancelOrderReq 取消订单
-type CancelOrderReq struct {
-	OrderSN string `json:"sn"`
 }
