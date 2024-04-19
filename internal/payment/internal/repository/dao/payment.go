@@ -104,7 +104,7 @@ func (p *PaymentGORMDAO) GetPayment(ctx context.Context, bizTradeNO string) (Pay
 
 func (p *PaymentGORMDAO) FindExpiredPayment(ctx context.Context, offset int, limit int, t time.Time) ([]Payment, error) {
 	var res []Payment
-	err := p.db.WithContext(ctx).Where("status = ? AND utime < ?", domain.PaymentStatusUnpaid, t.UnixMilli()).Offset(offset).Limit(limit).Find(&res).Error
+	err := p.db.WithContext(ctx).Where("status = ? AND utime < ?", domain.PaymentStatusUnpaid.ToUnit8(), t.UnixMilli()).Offset(offset).Limit(limit).Find(&res).Error
 	return res, err
 }
 
@@ -135,9 +135,8 @@ type Payment struct {
 	OrderSn          sql.NullString `gorm:"type:varchar(255);uniqueIndex:uniq_order_sn;comment:订单序列号,冗余允许为NULL"`
 	OrderDescription string         `gorm:"type:varchar(255);not null;comment:订单简要描述"`
 	TotalAmount      int64          `gorm:"not null;comment:支付总金额, 多种支付方式支付金额的总和"`
-	PayDDL           int64          `gorm:"column:pay_ddl;not null;comment:支付截止时间"`
 	PaidAt           int64          `gorm:"comment:支付时间"`
-	Status           int64          `gorm:"type:tinyint unsigned;not null;default:1;comment:支付状态 1=未支付 2=已支付 3=已失败"`
+	Status           uint8          `gorm:"type:tinyint unsigned;not null;default:1;comment:支付状态 1=未支付 2=已支付 3=已失败"`
 	Ctime            int64
 	Utime            int64
 }
@@ -147,10 +146,10 @@ type PaymentRecord struct {
 	PaymentId    int64          `gorm:"not null;index:idx_payment_id,comment:支付自增ID"`
 	PaymentNO3rd sql.NullString `gorm:"column:payment_no_3rd;type:varchar(255);uniqueIndex:uniq_payment_no_3rd;comment:支付单号, 支付渠道的事务ID"`
 	Description  string         `gorm:"type:varchar(255);not null;comment:本次支付的简要描述"`
-	Channel      int64          `gorm:"type:tinyint unsigned;not null;default:1;comment:支付渠道 1=积分, 2=微信"`
+	Channel      uint8          `gorm:"type:tinyint unsigned;not null;default:1;comment:支付渠道 1=积分, 2=微信"`
 	Amount       int64          `gorm:"not null;comment:支付金额"`
 	PaidAt       int64          `gorm:"comment:支付时间"`
-	Status       int64          `gorm:"type:tinyint unsigned;not null;default:1;comment:支付状态 1=未支付 2=已支付 3=已失败"`
+	Status       uint8          `gorm:"type:tinyint unsigned;not null;default:1;comment:支付状态 1=未支付 2=已支付 3=已失败"`
 	Ctime        int64
 	Utime        int64
 }
