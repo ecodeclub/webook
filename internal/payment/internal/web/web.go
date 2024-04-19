@@ -19,19 +19,19 @@ import (
 	"github.com/ecodeclub/webook/internal/payment/internal/service/wechat"
 	"github.com/gin-gonic/gin"
 	"github.com/gotomicro/ego/core/elog"
-	"github.com/wechatpay-apiv3/wechatpay-go/core/notify"
 	"github.com/wechatpay-apiv3/wechatpay-go/services/payments"
 )
 
 var _ ginx.Handler = &Handler{}
 
 type Handler struct {
-	handler   *notify.Handler
+	// handler   *notify.Handler
+	handler   wechat.NotifyHandler
 	l         *elog.Component
 	nativeSvc *wechat.NativePaymentService
 }
 
-func NewHandler(handler *notify.Handler, nativeSvc *wechat.NativePaymentService) *Handler {
+func NewHandler(handler wechat.NotifyHandler, nativeSvc *wechat.NativePaymentService) *Handler {
 	return &Handler{
 		handler:   handler,
 		nativeSvc: nativeSvc,

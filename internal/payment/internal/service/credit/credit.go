@@ -88,7 +88,7 @@ func (p *PaymentService) Pay(ctx context.Context, pmt domain.Payment) (domain.Pa
 		// 如果发送, 这边也应该同步修改支付记录的状体为支付失败
 		err3 := p.producer.Produce(ctx, event.PaymentEvent{
 			OrderSN: pmt.OrderSN,
-			Status:  domain.PaymentStatusFailed,
+			Status:  int64(domain.PaymentStatusFailed),
 		})
 		if err3 != nil {
 			p.l.Error("发送积分支付成功事件失败",
@@ -103,7 +103,7 @@ func (p *PaymentService) Pay(ctx context.Context, pmt domain.Payment) (domain.Pa
 	// {user_id, “购买商品”, order_id, order_sn, paidAmount}
 	err4 := p.producer.Produce(ctx, event.PaymentEvent{
 		OrderSN: pmt.OrderSN,
-		Status:  domain.PaymentStatusPaid,
+		Status:  int64(domain.PaymentStatusPaid),
 	})
 	if err4 != nil {
 		p.l.Error("发送积分支付成功事件失败",
@@ -136,7 +136,6 @@ func (p *PaymentService) Prepay(ctx context.Context, pmt domain.Payment) (domain
 		return domain.Payment{}, fmt.Errorf("预扣积分失败")
 	}
 
-	pmt.PayDDL = p.paymentDDLFunc()
 	pmt.Status = domain.PaymentStatusUnpaid
 	pmt.Records = []domain.PaymentRecord{
 		{
