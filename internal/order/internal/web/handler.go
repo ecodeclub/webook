@@ -245,11 +245,12 @@ func (h *Handler) createPayment(ctx context.Context, order domain.Order, payment
 		return payment.Payment{}, fmt.Errorf("支付信息错误：金额不匹配")
 	}
 	return h.paymentSvc.CreatePayment(ctx, payment.Payment{
-		OrderID:     order.ID,
-		OrderSN:     order.SN,
-		PayerID:     order.BuyerID,
-		TotalAmount: order.RealTotalPrice,
-		Records:     records,
+		OrderID:          order.ID,
+		OrderSN:          order.SN,
+		PayerID:          order.BuyerID,
+		OrderDescription: "面窝吧",
+		TotalAmount:      order.RealTotalPrice,
+		Records:          records,
 	})
 }
 
