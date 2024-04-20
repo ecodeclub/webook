@@ -14,12 +14,6 @@
 
 package domain
 
-const (
-	CreditLogStatusActive   = 1
-	CreditLogStatusLocked   = 2
-	CreditLogStatusInactive = 3
-)
-
 type Credit struct {
 	Uid               int64
 	TotalAmount       uint64
