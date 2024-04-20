@@ -839,11 +839,11 @@ func (s *ModuleTestSuite) TestService_TryDeductCredits_Concurrent() {
 					Uid:  uid,
 					Logs: []domain.CreditLog{log},
 				})
-				resChan <- Result{ID: id, Err: err}
 				if err == nil {
 					log.ChangeAmount = 0 - log.ChangeAmount
 					logChan <- log
 				}
+				resChan <- Result{ID: id, Err: err}
 			}(i)
 		}
 
@@ -926,11 +926,11 @@ func (s *ModuleTestSuite) TestService_TryDeductCredits_Concurrent() {
 					Uid:  uid,
 					Logs: []domain.CreditLog{log},
 				})
-				resChan <- Result{ID: id, Err: err}
 				if err == nil {
 					log.ChangeAmount = 0 - log.ChangeAmount
 					logChan <- log
 				}
+				resChan <- Result{ID: id, Err: err}
 			}(i)
 		}
 
