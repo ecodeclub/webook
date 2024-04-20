@@ -79,6 +79,7 @@ func (r *creditRepository) toDomain(d dao.Credit, l []dao.CreditLog) domain.Cred
 		LockedTotalAmount: d.LockedTotalCredits,
 		Logs: slice.Map(l, func(idx int, src dao.CreditLog) domain.CreditLog {
 			return domain.CreditLog{
+				ID:           src.Id,
 				Key:          src.Key,
 				ChangeAmount: src.CreditChange,
 				BizId:        src.BizId,

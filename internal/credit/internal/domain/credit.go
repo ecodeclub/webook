@@ -22,6 +22,7 @@ type Credit struct {
 }
 
 type CreditLog struct {
+	ID           int64
 	Key          string
 	ChangeAmount int64
 	Biz          string
