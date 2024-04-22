@@ -31,8 +31,6 @@ var (
 	ErrDuplicatedCreditLog          = errors.New("积分流水记录重复")
 	ErrCreditNotEnough              = errors.New("积分不足")
 	ErrRecordNotFound               = egorm.ErrRecordNotFound
-	ErrInvalidUID                   = errors.New("用户ID非法")
-	ErrInvalidTID                   = errors.New("事务ID非法")
 	ErrInvalidLockedCreditLogStatus = errors.New("锁定的积分流水初始状态非法")
 )
 
@@ -190,8 +188,8 @@ func (g *creditDAO) createCreditLockLog(tx *gorm.DB, l CreditLog) (int64, error)
 			"Version":            c.Version,
 		})
 
-	if res.Error != nil {
-		return 0, fmt.Errorf("更新积分主记录失败: %w", res.Error)
+	if err := res.Error; err != nil {
+		return 0, fmt.Errorf("更新积分主记录失败: %w", err)
 	}
 	if res.RowsAffected == 0 {
 		// case: version被其他并发事务更新 通知上层重试
@@ -246,7 +244,7 @@ func (g *creditDAO) CancelCreditLockLog(ctx context.Context, uid, tid int64) err
 		if errors.Is(err, ErrUpdateCreditConflict) {
 			continue
 		}
-		if errors.Is(err, ErrInvalidUID) || errors.Is(err, ErrInvalidTID) {
+		if errors.Is(err, ErrRecordNotFound) {
 			return nil
 		}
 		return err
@@ -260,12 +258,12 @@ func (g *creditDAO) updateCreditLockLog(tx *gorm.DB, uid, tid int64, srcStatus, 
 
 	var c Credit
 	if err := tx.First(&c, "uid = ?", uid).Error; err != nil {
-		return fmt.Errorf("%w", ErrInvalidUID)
+		return err
 	}
 
 	var cl CreditLog
 	if err := tx.Where("uid = ? AND id = ?", uid, tid).First(&cl).Error; err != nil {
-		return fmt.Errorf("%w", ErrInvalidTID)
+		return err
 	}
 
 	if cl.Status == dstStatus {
@@ -305,8 +303,8 @@ func (g *creditDAO) updateCreditLockLog(tx *gorm.DB, uid, tid int64, srcStatus, 
 			"Utime":              c.Utime,
 			"Version":            c.Version,
 		})
-	if res.Error != nil {
-		return fmt.Errorf("更新积分主记录失败: %w", res.Error)
+	if err := res.Error; err != nil {
+		return fmt.Errorf("更新积分主记录失败: %w", err)
 	}
 	if res.RowsAffected == 0 {
 		return fmt.Errorf("%w", ErrUpdateCreditConflict)
