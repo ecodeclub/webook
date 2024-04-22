@@ -21,6 +21,7 @@ import (
 
 	"github.com/ecodeclub/webook/internal/credit/internal/domain"
 	"github.com/ecodeclub/webook/internal/credit/internal/repository"
+	"golang.org/x/sync/errgroup"
 )
 
 var (
@@ -37,6 +38,7 @@ type Service interface {
 	TryDeductCredits(ctx context.Context, credit domain.Credit) (id int64, err error)
 	ConfirmDeductCredits(ctx context.Context, uid, tid int64) error
 	CancelDeductCredits(ctx context.Context, uid, tid int64) error
+	FindExpiredLockedCreditLogs(ctx context.Context, offset int, limit int, ctime int64) ([]domain.CreditLog, int64, error)
 }
 
 type service struct {
@@ -79,4 +81,24 @@ func (s *service) ConfirmDeductCredits(ctx context.Context, uid, tid int64) erro
 
 func (s *service) CancelDeductCredits(ctx context.Context, uid, tid int64) error {
 	return s.repo.CancelDeductCredits(ctx, uid, tid)
+}
+
+func (s *service) FindExpiredLockedCreditLogs(ctx context.Context, offset int, limit int, ctime int64) ([]domain.CreditLog, int64, error) {
+	var (
+		eg    errgroup.Group
+		cs    []domain.CreditLog
+		total int64
+	)
+	eg.Go(func() error {
+		var err error
+		cs, err = s.repo.FindExpiredLockedCreditLogs(ctx, offset, limit, ctime)
+		return err
+	})
+
+	eg.Go(func() error {
+		var err error
+		total, err = s.repo.TotalExpiredLockedCreditLogs(ctx, ctime)
+		return err
+	})
+	return cs, total, eg.Wait()
 }
