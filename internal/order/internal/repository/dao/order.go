@@ -27,11 +27,11 @@ import (
 
 type OrderDAO interface {
 	CreateOrder(ctx context.Context, o Order, items []OrderItem) (int64, error)
-	UpdateOrderPaymentIDAndPaymentSN(ctx context.Context, uid, oid, pid int64, psn string) error
-	FindOrderByUIDAndSN(ctx context.Context, uid int64, sn string) (Order, error)
+	UpdateUnpaidOrderPaymentInfo(ctx context.Context, uid, oid, pid int64, psn string) error
+	FindOrderByUIDAndSNAndStatus(ctx context.Context, uid int64, sn string, status uint8) (Order, error)
 	FindOrderItemsByOrderID(ctx context.Context, oid int64) ([]OrderItem, error)
-	CountOrdersByUID(ctx context.Context, uid int64) (int64, error)
-	FindOrdersByUID(ctx context.Context, uid int64, offset, limit int) ([]Order, error)
+	CountOrdersByUID(ctx context.Context, uid int64, status uint8) (int64, error)
+	FindOrdersByUID(ctx context.Context, offset, limit int, uid int64, status uint8) ([]Order, error)
 	CancelOrder(ctx context.Context, uid, oid int64) error
 	CompleteOrder(ctx context.Context, uid, oid int64) error
 
@@ -69,38 +69,56 @@ func (g *gormOrderDAO) CreateOrder(ctx context.Context, order Order, items []Ord
 	return order.Id, err
 }
 
-func (g *gormOrderDAO) UpdateOrderPaymentIDAndPaymentSN(ctx context.Context, uid, oid, pid int64, psn string) error {
-	order := Order{PaymentId: sqlx.NewNullInt64(pid), PaymentSn: sqlx.NewNullString(psn), Utime: time.Now().UnixMilli()}
-	return g.db.WithContext(ctx).Where("buyer_id = ? AND id = ? AND status = ?", uid, oid, domain.StatusUnpaid.ToUint8()).Updates(order).Error
+func (g *gormOrderDAO) UpdateUnpaidOrderPaymentInfo(ctx context.Context, uid, oid, pid int64, psn string) error {
+	order := Order{PaymentId: sqlx.NewNullInt64(pid), PaymentSn: sqlx.NewNullString(psn), Status: domain.StatusProcessing.ToUint8(), Utime: time.Now().UnixMilli()}
+	return g.db.WithContext(ctx).
+		Where("buyer_id = ? AND id = ? AND status = ?", uid, oid, domain.StatusUnpaid.ToUint8()).
+		Updates(order).Error
 }
 
-func (g *gormOrderDAO) FindOrderByUIDAndSN(ctx context.Context, uid int64, sn string) (Order, error) {
+func (g *gormOrderDAO) FindOrderByUIDAndSNAndStatus(ctx context.Context, uid int64, sn string, status uint8) (Order, error) {
 	var res Order
-	err := g.db.WithContext(ctx).First(&res, "buyer_id = ? AND sn = ?", uid, sn).Error
+	err := g.db.WithContext(ctx).
+		Where("buyer_id = ? AND sn = ? AND status >= ?", uid, sn, status).
+		First(&res).Error
 	return res, err
 }
 
 func (g *gormOrderDAO) FindOrderItemsByOrderID(ctx context.Context, oid int64) ([]OrderItem, error) {
 	var res []OrderItem
-	err := g.db.WithContext(ctx).Find(&res, "order_id = ?", oid).Error
+	err := g.db.WithContext(ctx).Order("ctime DESC").Find(&res, "order_id = ?", oid).Error
 	return res, err
 }
 
-func (g *gormOrderDAO) CountOrdersByUID(ctx context.Context, uid int64) (int64, error) {
+func (g *gormOrderDAO) CountOrdersByUID(ctx context.Context, uid int64, status uint8) (int64, error) {
 	var res int64
-	err := g.db.WithContext(ctx).Model(&Order{}).Where("buyer_id = ?", uid).Select("COUNT(id)").Count(&res).Error
+	query := g.db.WithContext(ctx).Model(&Order{})
+	if uid > 0 {
+		query = query.Where("buyer_id = ?", uid)
+	}
+	if status > 0 {
+		query = query.Where("status >= ?", status)
+	}
+	err := query.Count(&res).Error
 	return res, err
 }
 
-func (g *gormOrderDAO) FindOrdersByUID(ctx context.Context, uid int64, offset, limit int) ([]Order, error) {
+func (g *gormOrderDAO) FindOrdersByUID(ctx context.Context, offset, limit int, uid int64, status uint8) ([]Order, error) {
 	var res []Order
-	err := g.db.WithContext(ctx).Offset(offset).Limit(limit).Order("id DESC").Find(&res, "buyer_id = ?", uid).Error
+	query := g.db.WithContext(ctx).Model(&Order{}).Offset(offset).Limit(limit).Order("ctime DESC")
+	if uid > 0 {
+		query = query.Where("buyer_id = ?", uid)
+	}
+	if status > 0 {
+		query = query.Where("status >= ?", status)
+	}
+	err := query.Find(&res).Error
 	return res, err
 }
 
 func (g *gormOrderDAO) CancelOrder(ctx context.Context, uid, oid int64) error {
 	order := Order{Status: domain.StatusCanceled.ToUint8(), Utime: time.Now().UnixMilli()}
-	return g.db.WithContext(ctx).Where("buyer_id = ? AND id = ? AND status = ?", uid, oid, domain.StatusUnpaid.ToUint8()).Updates(order).Error
+	return g.db.WithContext(ctx).Where("buyer_id = ? AND id = ? AND status = ?", uid, oid, domain.StatusProcessing.ToUint8()).Updates(order).Error
 }
 
 func (g *gormOrderDAO) CompleteOrder(ctx context.Context, uid, oid int64) error {

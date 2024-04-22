@@ -26,10 +26,10 @@ import (
 
 type OrderRepository interface {
 	CreateOrder(ctx context.Context, order domain.Order) (domain.Order, error)
-	UpdateOrderPaymentIDAndPaymentSN(ctx context.Context, uid, oid, pid int64, psn string) error
-	FindOrderUIDAndSN(ctx context.Context, uid int64, sn string) (domain.Order, error)
-	TotalOrders(ctx context.Context, uid int64) (int64, error)
-	FindOrdersByUID(ctx context.Context, uid int64, offset, limit int) ([]domain.Order, error)
+	UpdateUnpaidOrderPaymentInfo(ctx context.Context, uid, oid, pid int64, psn string) error
+	FindUserVisibleOrderByUIDAndSN(ctx context.Context, uid int64, sn string) (domain.Order, error)
+	TotalUserVisibleOrders(ctx context.Context, uid int64) (int64, error)
+	FindUserVisibleOrdersByUID(ctx context.Context, uid int64, offset, limit int) ([]domain.Order, error)
 	CancelOrder(ctx context.Context, uid, oid int64) error
 	CompleteOrder(ctx context.Context, uid int64, oid int64) error
 
@@ -86,12 +86,12 @@ func (o *orderRepository) toOrderItemEntities(orderItems []domain.OrderItem) []d
 	})
 }
 
-func (o *orderRepository) UpdateOrderPaymentIDAndPaymentSN(ctx context.Context, uid, oid, pid int64, psn string) error {
-	return o.dao.UpdateOrderPaymentIDAndPaymentSN(ctx, uid, oid, pid, psn)
+func (o *orderRepository) UpdateUnpaidOrderPaymentInfo(ctx context.Context, uid, oid, pid int64, psn string) error {
+	return o.dao.UpdateUnpaidOrderPaymentInfo(ctx, uid, oid, pid, psn)
 }
 
-func (o *orderRepository) FindOrderUIDAndSN(ctx context.Context, uid int64, sn string) (domain.Order, error) {
-	order, err := o.dao.FindOrderByUIDAndSN(ctx, uid, sn)
+func (o *orderRepository) FindUserVisibleOrderByUIDAndSN(ctx context.Context, uid int64, sn string) (domain.Order, error) {
+	order, err := o.dao.FindOrderByUIDAndSNAndStatus(ctx, uid, sn, domain.StatusProcessing.ToUint8())
 	if err != nil {
 		return domain.Order{}, fmt.Errorf("通过订单序列号及买家ID查找订单失败: %w", err)
 	}
@@ -135,12 +135,12 @@ func (o *orderRepository) toOrderDomain(order dao.Order, orderItems []dao.OrderI
 	}
 }
 
-func (o *orderRepository) TotalOrders(ctx context.Context, uid int64) (int64, error) {
-	return o.dao.CountOrdersByUID(ctx, uid)
+func (o *orderRepository) TotalUserVisibleOrders(ctx context.Context, uid int64) (int64, error) {
+	return o.dao.CountOrdersByUID(ctx, uid, domain.StatusProcessing.ToUint8())
 }
 
-func (o *orderRepository) FindOrdersByUID(ctx context.Context, uid int64, offset, limit int) ([]domain.Order, error) {
-	os, err := o.dao.FindOrdersByUID(ctx, uid, offset, limit)
+func (o *orderRepository) FindUserVisibleOrdersByUID(ctx context.Context, uid int64, offset, limit int) ([]domain.Order, error) {
+	os, err := o.dao.FindOrdersByUID(ctx, offset, limit, uid, domain.StatusProcessing.ToUint8())
 	if err != nil {
 		return nil, err
 	}
