@@ -21,6 +21,7 @@ import (
 
 	"github.com/ecodeclub/webook/internal/credit/internal/domain"
 	"github.com/ecodeclub/webook/internal/credit/internal/repository"
+	"golang.org/x/sync/errgroup"
 )
 
 var (
@@ -83,11 +84,21 @@ func (s *service) CancelDeductCredits(ctx context.Context, uid, tid int64) error
 }
 
 func (s *service) FindExpiredLockedCreditLogs(ctx context.Context, offset int, limit int, ctime int64) ([]domain.CreditLog, int64, error) {
-	total := int64(0)
-	logs := make([]domain.CreditLog, 0)
-	return logs, total, nil
-}
+	var (
+		eg    errgroup.Group
+		cs    []domain.CreditLog
+		total int64
+	)
+	eg.Go(func() error {
+		var err error
+		cs, err = s.repo.FindExpiredLockedCreditLogs(ctx, offset, limit, ctime)
+		return err
+	})
 
-func (s *service) CancelExpiredLockedCreditLogs(ctx context.Context, ids []int64, ctime int64) error {
-	return nil
+	eg.Go(func() error {
+		var err error
+		total, err = s.repo.TotalExpiredLockedCreditLogs(ctx, ctime)
+		return err
+	})
+	return cs, total, eg.Wait()
 }

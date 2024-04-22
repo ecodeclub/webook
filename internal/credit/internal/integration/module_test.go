@@ -29,6 +29,7 @@ import (
 	"github.com/ecodeclub/webook/internal/credit/internal/domain"
 	"github.com/ecodeclub/webook/internal/credit/internal/event"
 	"github.com/ecodeclub/webook/internal/credit/internal/integration/startup"
+	"github.com/ecodeclub/webook/internal/credit/internal/job"
 	"github.com/ecodeclub/webook/internal/credit/internal/service"
 	"github.com/ecodeclub/webook/internal/credit/internal/web"
 	"github.com/ecodeclub/webook/internal/test"
@@ -1754,6 +1755,154 @@ func (s *ModuleTestSuite) TestHandler_QueryCredits() {
 			s.server.ServeHTTP(recorder, req)
 			require.Equal(t, tc.wantCode, recorder.Code)
 			require.Equal(t, tc.wantResp, recorder.MustScan())
+			tc.after(t)
+		})
+	}
+}
+
+func (s *ModuleTestSuite) TestJob_CloseExpiredLockedCreditLogs() {
+	t := s.T()
+
+	total := 15
+
+	testCases := []struct {
+		name       string
+		before     func(t *testing.T)
+		getJobFunc func(t *testing.T) *job.CloseExpiredLockedCreditsJob
+		after      func(t *testing.T)
+	}{
+		{
+			name: "关闭超时预扣流水成功_正常情况",
+			before: func(t *testing.T) {
+				t.Helper()
+				for idx := 0; idx < total; idx++ {
+					id := int64(200100 + idx)
+
+					err := s.svc.AddCredits(context.Background(), domain.Credit{
+						Uid: id,
+						Logs: []domain.CreditLog{
+							{
+								Key:          fmt.Sprintf("Key-%d", id),
+								ChangeAmount: 100,
+								Biz:          "user",
+								BizId:        id,
+								Desc:         "注册",
+							},
+						},
+					})
+					require.NoError(t, err)
+
+					// 预扣
+					_, err = s.svc.TryDeductCredits(context.Background(), domain.Credit{
+						Uid: id,
+						Logs: []domain.CreditLog{
+							{
+								Key:          fmt.Sprintf("key-try-%d", id),
+								ChangeAmount: 50,
+								Biz:          "order",
+								BizId:        id,
+								Desc:         "购买商品",
+							},
+						},
+					})
+					require.NoError(t, err)
+				}
+			},
+			getJobFunc: func(t *testing.T) *job.CloseExpiredLockedCreditsJob {
+				t.Helper()
+				return job.NewCloseExpiredOrdersJob(s.svc, 0, 0, 10)
+			},
+			after: func(t *testing.T) {
+				t.Helper()
+				for idx := 0; idx < total; idx++ {
+					id := int64(200100 + idx)
+					c, err := s.svc.GetCreditsByUID(context.Background(), id)
+					require.NoError(t, err)
+					require.Equal(t, uint64(100), c.TotalAmount)
+					require.Equal(t, uint64(0), c.LockedTotalAmount)
+					s.requireCreditLogs(t, []domain.CreditLog{
+						{
+							Key:          fmt.Sprintf("Key-%d", id),
+							Uid:          id,
+							ChangeAmount: 100,
+							Biz:          "user",
+							BizId:        id,
+							Desc:         "注册",
+						},
+					}, c.Logs)
+				}
+			},
+		},
+		{
+			name: "关闭超时预扣流水成功_边界情况",
+			before: func(t *testing.T) {
+				t.Helper()
+				for idx := 0; idx < total; idx++ {
+					id := int64(200300 + idx)
+
+					err := s.svc.AddCredits(context.Background(), domain.Credit{
+						Uid: id,
+						Logs: []domain.CreditLog{
+							{
+								Key:          fmt.Sprintf("Key-%d", id),
+								ChangeAmount: 100,
+								Biz:          "user",
+								BizId:        id,
+								Desc:         "注册",
+							},
+						},
+					})
+					require.NoError(t, err)
+
+					// 预扣
+					_, err = s.svc.TryDeductCredits(context.Background(), domain.Credit{
+						Uid: id,
+						Logs: []domain.CreditLog{
+							{
+								Key:          fmt.Sprintf("key-try-%d", id),
+								ChangeAmount: 50,
+								Biz:          "order",
+								BizId:        id,
+								Desc:         "购买商品",
+							},
+						},
+					})
+					require.NoError(t, err)
+				}
+			},
+			getJobFunc: func(t *testing.T) *job.CloseExpiredLockedCreditsJob {
+				t.Helper()
+				return job.NewCloseExpiredOrdersJob(s.svc, 0, 0, total)
+			},
+			after: func(t *testing.T) {
+				t.Helper()
+				for idx := 0; idx < total; idx++ {
+					id := int64(200300 + idx)
+					c, err := s.svc.GetCreditsByUID(context.Background(), id)
+					require.NoError(t, err)
+					require.Equal(t, uint64(100), c.TotalAmount)
+					require.Equal(t, uint64(0), c.LockedTotalAmount)
+					s.requireCreditLogs(t, []domain.CreditLog{
+						{
+							Key:          fmt.Sprintf("Key-%d", id),
+							Uid:          id,
+							ChangeAmount: 100,
+							Biz:          "user",
+							BizId:        id,
+							Desc:         "注册",
+						},
+					}, c.Logs)
+				}
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			tc.before(t)
+			j := tc.getJobFunc(t)
+			require.NotZero(t, j.Name())
+			require.NoError(t, j.Run(context.Background()))
 			tc.after(t)
 		})
 	}

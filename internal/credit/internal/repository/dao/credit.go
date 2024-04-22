@@ -43,6 +43,8 @@ type CreditDAO interface {
 	CreateCreditLockLog(ctx context.Context, l CreditLog) (int64, error)
 	ConfirmCreditLockLog(ctx context.Context, uid, tid int64) error
 	CancelCreditLockLog(ctx context.Context, uid, tid int64) error
+	FindExpiredLockedCreditLogs(ctx context.Context, offset int, limit int, ctime int64) ([]CreditLog, error)
+	TotalExpiredLockedCreditLogs(ctx context.Context, ctime int64) (int64, error)
 }
 
 type creditDAO struct {
@@ -310,6 +312,22 @@ func (g *creditDAO) updateCreditLockLog(tx *gorm.DB, uid, tid int64, srcStatus, 
 		return fmt.Errorf("%w", ErrUpdateCreditConflict)
 	}
 	return nil
+}
+
+func (g *creditDAO) FindExpiredLockedCreditLogs(ctx context.Context, offset int, limit int, ctime int64) ([]CreditLog, error) {
+	var cs []CreditLog
+	err := g.db.WithContext(ctx).
+		Where("status = ? AND ctime <= ?", CreditLogStatusLocked, ctime).
+		Offset(offset).Limit(limit).Order("ctime desc").Find(&cs).Error
+	return cs, err
+}
+
+func (g *creditDAO) TotalExpiredLockedCreditLogs(ctx context.Context, ctime int64) (int64, error) {
+	var res int64
+	err := g.db.WithContext(ctx).Model(&CreditLog{}).
+		Where("status = ? AND ctime <= ?", CreditLogStatusLocked, ctime).
+		Select("COUNT(id)").Count(&res).Error
+	return res, err
 }
 
 const (
