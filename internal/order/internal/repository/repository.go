@@ -33,9 +33,9 @@ type OrderRepository interface {
 	CancelOrder(ctx context.Context, uid, oid int64) error
 	CompleteOrder(ctx context.Context, uid int64, oid int64) error
 
-	FindExpiredOrders(ctx context.Context, offset, limit int, ctime int64) ([]domain.Order, error)
-	TotalExpiredOrders(ctx context.Context, ctime int64) (int64, error)
-	CloseExpiredOrders(ctx context.Context, orderIDs []int64, ctime int64) error
+	FindTimeoutOrders(ctx context.Context, offset, limit int, ctime int64) ([]domain.Order, error)
+	TotalTimeoutOrders(ctx context.Context, ctime int64) (int64, error)
+	CloseTimeoutOrders(ctx context.Context, orderIDs []int64, ctime int64) error
 }
 
 func NewRepository(d dao.OrderDAO) OrderRepository {
@@ -161,8 +161,8 @@ func (o *orderRepository) CompleteOrder(ctx context.Context, uid int64, oid int6
 	return o.dao.CompleteOrder(ctx, uid, oid)
 }
 
-func (o *orderRepository) FindExpiredOrders(ctx context.Context, offset, limit int, ctime int64) ([]domain.Order, error) {
-	os, err := o.dao.FindExpiredOrders(ctx, offset, limit, ctime)
+func (o *orderRepository) FindTimeoutOrders(ctx context.Context, offset, limit int, ctime int64) ([]domain.Order, error) {
+	os, err := o.dao.FindTimeoutOrders(ctx, offset, limit, ctime)
 	if err != nil {
 		return nil, err
 	}
@@ -171,10 +171,10 @@ func (o *orderRepository) FindExpiredOrders(ctx context.Context, offset, limit i
 	}), err
 }
 
-func (o *orderRepository) TotalExpiredOrders(ctx context.Context, ctime int64) (int64, error) {
-	return o.dao.CountExpiredOrders(ctx, ctime)
+func (o *orderRepository) TotalTimeoutOrders(ctx context.Context, ctime int64) (int64, error) {
+	return o.dao.CountTimeoutOrders(ctx, ctime)
 }
 
-func (o *orderRepository) CloseExpiredOrders(ctx context.Context, orderIDs []int64, ctime int64) error {
-	return o.dao.CloseExpiredOrders(ctx, orderIDs, ctime)
+func (o *orderRepository) CloseTimeoutOrders(ctx context.Context, orderIDs []int64, ctime int64) error {
+	return o.dao.CloseTimeoutOrders(ctx, orderIDs, ctime)
 }

@@ -99,18 +99,18 @@ func (s *service) FindExpiredOrders(ctx context.Context, offset, limit int, ctim
 	)
 	eg.Go(func() error {
 		var err error
-		os, err = s.repo.FindExpiredOrders(ctx, offset, limit, ctime)
+		os, err = s.repo.FindTimeoutOrders(ctx, offset, limit, ctime)
 		return err
 	})
 
 	eg.Go(func() error {
 		var err error
-		total, err = s.repo.TotalExpiredOrders(ctx, ctime)
+		total, err = s.repo.TotalTimeoutOrders(ctx, ctime)
 		return err
 	})
 	return os, total, eg.Wait()
 }
 
 func (s *service) CloseExpiredOrders(ctx context.Context, orderIDs []int64, ctime int64) error {
-	return s.repo.CloseExpiredOrders(ctx, orderIDs, ctime)
+	return s.repo.CloseTimeoutOrders(ctx, orderIDs, ctime)
 }

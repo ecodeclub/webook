@@ -1229,7 +1229,7 @@ func (s *OrderModuleTestSuite) TestConsumer_ConsumeCompleteOrder() {
 				t.Helper()
 				orderEntity, err := s.dao.FindOrderByUIDAndSN(context.Background(), testUID, "orderSN-22")
 				assert.NoError(t, err)
-				assert.Equal(t, domain.StatusCompleted.ToUint8(), orderEntity.Status)
+				assert.Equal(t, domain.StatusSuccess.ToUint8(), orderEntity.Status)
 			},
 			errRequireFunc: require.NoError,
 		},
@@ -1360,7 +1360,7 @@ func (s *OrderModuleTestSuite) TestJob_CloseTimeoutOrders() {
 					id := int64(200 + idx)
 					orderEntity, err := s.dao.FindOrderBySN(context.Background(), fmt.Sprintf("OrderSN-close-%d", id))
 					assert.NoError(t, err)
-					assert.Equal(t, domain.StatusExpired.ToUint8(), orderEntity.Status)
+					assert.Equal(t, domain.StatusTimeoutClosed.ToUint8(), orderEntity.Status)
 				}
 			},
 		},
@@ -1404,7 +1404,7 @@ func (s *OrderModuleTestSuite) TestJob_CloseTimeoutOrders() {
 					id := int64(300 + idx)
 					orderEntity, err := s.dao.FindOrderBySN(context.Background(), fmt.Sprintf("OrderSN-close-%d", id))
 					assert.NoError(t, err)
-					assert.Equal(t, domain.StatusExpired.ToUint8(), orderEntity.Status)
+					assert.Equal(t, domain.StatusTimeoutClosed.ToUint8(), orderEntity.Status)
 				}
 			},
 		},
