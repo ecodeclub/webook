@@ -153,6 +153,46 @@ func (c *ServiceConfirmDeductCreditsCall) DoAndReturn(f func(context.Context, in
 	return c
 }
 
+// FindExpiredLockedCreditLogs mocks base method.
+func (m *MockService) FindExpiredLockedCreditLogs(ctx context.Context, offset, limit int, ctime int64) ([]domain.CreditLog, int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FindExpiredLockedCreditLogs", ctx, offset, limit, ctime)
+	ret0, _ := ret[0].([]domain.CreditLog)
+	ret1, _ := ret[1].(int64)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// FindExpiredLockedCreditLogs indicates an expected call of FindExpiredLockedCreditLogs.
+func (mr *MockServiceMockRecorder) FindExpiredLockedCreditLogs(ctx, offset, limit, ctime any) *ServiceFindExpiredLockedCreditLogsCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindExpiredLockedCreditLogs", reflect.TypeOf((*MockService)(nil).FindExpiredLockedCreditLogs), ctx, offset, limit, ctime)
+	return &ServiceFindExpiredLockedCreditLogsCall{Call: call}
+}
+
+// ServiceFindExpiredLockedCreditLogsCall wrap *gomock.Call
+type ServiceFindExpiredLockedCreditLogsCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *ServiceFindExpiredLockedCreditLogsCall) Return(arg0 []domain.CreditLog, arg1 int64, arg2 error) *ServiceFindExpiredLockedCreditLogsCall {
+	c.Call = c.Call.Return(arg0, arg1, arg2)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *ServiceFindExpiredLockedCreditLogsCall) Do(f func(context.Context, int, int, int64) ([]domain.CreditLog, int64, error)) *ServiceFindExpiredLockedCreditLogsCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *ServiceFindExpiredLockedCreditLogsCall) DoAndReturn(f func(context.Context, int, int, int64) ([]domain.CreditLog, int64, error)) *ServiceFindExpiredLockedCreditLogsCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // GetCreditsByUID mocks base method.
 func (m *MockService) GetCreditsByUID(ctx context.Context, uid int64) (domain.Credit, error) {
 	m.ctrl.T.Helper()

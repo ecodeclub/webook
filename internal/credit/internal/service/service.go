@@ -38,7 +38,6 @@ type Service interface {
 	ConfirmDeductCredits(ctx context.Context, uid, tid int64) error
 	CancelDeductCredits(ctx context.Context, uid, tid int64) error
 	FindExpiredLockedCreditLogs(ctx context.Context, offset int, limit int, ctime int64) ([]domain.CreditLog, int64, error)
-	CancelExpiredLockedCreditLogs(ctx context.Context, ids []int64, ctime int64) error
 }
 
 type service struct {

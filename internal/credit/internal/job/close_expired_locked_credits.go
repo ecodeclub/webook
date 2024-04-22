@@ -19,8 +19,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/ecodeclub/ekit/slice"
-	"github.com/ecodeclub/webook/internal/credit/internal/domain"
 	"github.com/ecodeclub/webook/internal/credit/internal/service"
 	"github.com/gotomicro/ego/task/ecron"
 )
@@ -54,16 +52,14 @@ func (c *CloseExpiredLockedCreditsJob) Run(ctx context.Context) error {
 	for {
 		creditLogs, total, err := c.svc.FindExpiredLockedCreditLogs(ctx, 0, c.limit, ctime)
 		if err != nil {
-			return fmt.Errorf("获取过期订单失败: %w", err)
+			return fmt.Errorf("获取超时的预扣积分流水: %w", err)
 		}
 
-		ids := slice.Map(creditLogs, func(idx int, src domain.CreditLog) int64 {
-			return src.ID
-		})
-
-		err = c.svc.CancelExpiredLockedCreditLogs(ctx, ids, ctime)
-		if err != nil {
-			return fmt.Errorf("关闭过期订单失败: %w", err)
+		for _, log := range creditLogs {
+			err = c.svc.CancelDeductCredits(ctx, log.Uid, log.ID)
+			if err != nil {
+				return fmt.Errorf("取消超时的预扣积分失败: %w", err)
+			}
 		}
 
 		if len(creditLogs) < c.limit {

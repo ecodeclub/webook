@@ -72,6 +72,7 @@ func (s *ModuleTestSuite) SetupTest() {
 	s.server = server
 	s.mq = testioc.InitMQ()
 	s.db = testioc.InitDB()
+
 }
 
 func (s *ModuleTestSuite) TearDownSuite() {
@@ -135,6 +136,7 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeCreditIncreaseEvent() {
 				s.requireCreditLogs(t, []domain.CreditLog{
 					{
 						Key:          "key-6001",
+						Uid:          uid,
 						ChangeAmount: 100,
 						Biz:          "user",
 						BizId:        1,
@@ -164,6 +166,7 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeCreditIncreaseEvent() {
 					Logs: []domain.CreditLog{
 						{
 							Key:          "key-6002-1",
+							Uid:          uid,
 							ChangeAmount: 100,
 							Biz:          "Marketing",
 							BizId:        2,
@@ -193,6 +196,7 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeCreditIncreaseEvent() {
 				s.requireCreditLogs(t, []domain.CreditLog{
 					{
 						Key:          "key-6002-2",
+						Uid:          uid,
 						ChangeAmount: 250,
 						Biz:          "order",
 						BizId:        3,
@@ -200,6 +204,7 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeCreditIncreaseEvent() {
 					},
 					{
 						Key:          "key-6002-1",
+						Uid:          uid,
 						ChangeAmount: 100,
 						Biz:          "Marketing",
 						BizId:        2,
@@ -229,6 +234,7 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeCreditIncreaseEvent() {
 					Logs: []domain.CreditLog{
 						{
 							Key:          "key-6003-1",
+							Uid:          uid,
 							ChangeAmount: 100,
 							Biz:          "Marketing",
 							BizId:        2,
@@ -274,6 +280,7 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeCreditIncreaseEvent() {
 				s.requireCreditLogs(t, []domain.CreditLog{
 					{
 						Key:          "key-6003-3",
+						Uid:          uid,
 						ChangeAmount: 200,
 						Biz:          "order",
 						BizId:        3,
@@ -281,6 +288,7 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeCreditIncreaseEvent() {
 					},
 					{
 						Key:          "key-6003-2",
+						Uid:          uid,
 						ChangeAmount: -50,
 						Biz:          "order",
 						BizId:        9,
@@ -288,6 +296,7 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeCreditIncreaseEvent() {
 					},
 					{
 						Key:          "key-6003-1",
+						Uid:          uid,
 						ChangeAmount: 100,
 						Biz:          "Marketing",
 						BizId:        2,
@@ -473,6 +482,7 @@ func (s *ModuleTestSuite) TestService_TryDeductCredits() {
 				require.Equal(t, c.Logs, []domain.CreditLog{
 					{
 						Key:          "key-7001-2",
+						Uid:          uid,
 						ChangeAmount: -70,
 						Biz:          "order",
 						BizId:        7,
@@ -480,6 +490,7 @@ func (s *ModuleTestSuite) TestService_TryDeductCredits() {
 					},
 					{
 						Key:          "key-7001-1",
+						Uid:          uid,
 						ChangeAmount: 100,
 						Biz:          "Marketing",
 						BizId:        2,
@@ -534,6 +545,7 @@ func (s *ModuleTestSuite) TestService_TryDeductCredits() {
 				require.Equal(t, c.Logs, []domain.CreditLog{
 					{
 						Key:          "key-7002-2",
+						Uid:          uid,
 						ChangeAmount: -100,
 						Biz:          "order",
 						BizId:        7,
@@ -541,10 +553,11 @@ func (s *ModuleTestSuite) TestService_TryDeductCredits() {
 					},
 					{
 						Key:          "key-7002-1",
+						Uid:          uid,
+						ChangeAmount: 100,
 						Biz:          "Marketing",
 						BizId:        2,
 						Desc:         "首次注册",
-						ChangeAmount: 100,
 					},
 				})
 			},
@@ -591,6 +604,7 @@ func (s *ModuleTestSuite) TestService_TryDeductCredits() {
 				s.requireCreditLogs(t, []domain.CreditLog{
 					{
 						Key:          "key-7003-1",
+						Uid:          uid,
 						ChangeAmount: 100,
 						Biz:          "user",
 						BizId:        4,
@@ -718,6 +732,7 @@ func (s *ModuleTestSuite) TestService_TryDeductCredits_Concurrent() {
 		s.requireCreditLogs(t, []domain.CreditLog{
 			{
 				Key:          "key-19001-2",
+				Uid:          uid,
 				ChangeAmount: -50,
 				Biz:          "order",
 				BizId:        9,
@@ -725,6 +740,7 @@ func (s *ModuleTestSuite) TestService_TryDeductCredits_Concurrent() {
 			},
 			{
 				Key:          "key-19001-1",
+				Uid:          uid,
 				ChangeAmount: 100,
 				Biz:          "user",
 				BizId:        19001,
@@ -794,6 +810,7 @@ func (s *ModuleTestSuite) TestService_TryDeductCredits_Concurrent() {
 		s.requireCreditLogs(t, []domain.CreditLog{
 			{
 				Key:          "key-19004-2",
+				Uid:          uid,
 				ChangeAmount: -50,
 				Biz:          "order",
 				BizId:        9,
@@ -801,6 +818,7 @@ func (s *ModuleTestSuite) TestService_TryDeductCredits_Concurrent() {
 			},
 			{
 				Key:          "key-19004-1",
+				Uid:          uid,
 				ChangeAmount: 50,
 				Biz:          "user",
 				BizId:        uid,
@@ -838,6 +856,7 @@ func (s *ModuleTestSuite) TestService_TryDeductCredits_Concurrent() {
 				<-waitChan
 				log := domain.CreditLog{
 					Key:          fmt.Sprintf("key-19002-%d", i),
+					Uid:          uid,
 					ChangeAmount: 50,
 					Biz:          "order",
 					BizId:        3,
@@ -861,6 +880,7 @@ func (s *ModuleTestSuite) TestService_TryDeductCredits_Concurrent() {
 		expectedLogs := []domain.CreditLog{
 			{
 				Key:          "key-19002",
+				Uid:          uid,
 				ChangeAmount: 100,
 				Biz:          "user",
 				BizId:        19002,
@@ -925,6 +945,7 @@ func (s *ModuleTestSuite) TestService_TryDeductCredits_Concurrent() {
 				<-waitChan
 				log := domain.CreditLog{
 					Key:          fmt.Sprintf("key-19003-%d", i),
+					Uid:          uid,
 					ChangeAmount: int64(changeAmount),
 					Biz:          "order",
 					BizId:        3,
@@ -947,6 +968,7 @@ func (s *ModuleTestSuite) TestService_TryDeductCredits_Concurrent() {
 		expectedLogs := []domain.CreditLog{
 			{
 				Key:          "key-19003",
+				Uid:          uid,
 				ChangeAmount: int64(n * changeAmount),
 				Biz:          "user",
 				BizId:        19003,
@@ -1022,6 +1044,7 @@ func (s *ModuleTestSuite) TestService_ConfirmDeductCredits() {
 				s.requireCreditLogs(t, []domain.CreditLog{
 					{
 						Key:          "key-8001-2",
+						Uid:          uid,
 						ChangeAmount: -50,
 						Biz:          "order",
 						BizId:        9,
@@ -1029,6 +1052,7 @@ func (s *ModuleTestSuite) TestService_ConfirmDeductCredits() {
 					},
 					{
 						Key:          "key-8001-1",
+						Uid:          uid,
 						ChangeAmount: 100,
 						Biz:          "user",
 						BizId:        1,
@@ -1068,6 +1092,7 @@ func (s *ModuleTestSuite) TestService_ConfirmDeductCredits() {
 				s.requireCreditLogs(t, []domain.CreditLog{
 					{
 						Key:          "key-8002-1",
+						Uid:          uid,
 						ChangeAmount: 100,
 						Biz:          "user",
 						BizId:        1,
@@ -1126,6 +1151,7 @@ func (s *ModuleTestSuite) TestService_ConfirmDeductCredits() {
 				s.requireCreditLogs(t, []domain.CreditLog{
 					{
 						Key:          "key-8003-1",
+						Uid:          uid,
 						ChangeAmount: 100,
 						Biz:          "user",
 						BizId:        1,
@@ -1218,6 +1244,7 @@ func (s *ModuleTestSuite) TestService_ConfirmDeductCredits_Concurrent() {
 	s.requireCreditLogs(t, []domain.CreditLog{
 		{
 			Key:          "key-8003-2",
+			Uid:          uid,
 			ChangeAmount: -20,
 			Biz:          "order",
 			BizId:        9,
@@ -1225,6 +1252,7 @@ func (s *ModuleTestSuite) TestService_ConfirmDeductCredits_Concurrent() {
 		},
 		{
 			Key:          "key-8003-1",
+			Uid:          uid,
 			ChangeAmount: 100,
 			Biz:          "user",
 			BizId:        1,
@@ -1253,6 +1281,7 @@ func (s *ModuleTestSuite) TestService_CancelDeductCredits() {
 					Logs: []domain.CreditLog{
 						{
 							Key:          "key-9001-1",
+							Uid:          uid,
 							ChangeAmount: 100,
 							Biz:          "user",
 							BizId:        1,
@@ -1286,6 +1315,7 @@ func (s *ModuleTestSuite) TestService_CancelDeductCredits() {
 				s.requireCreditLogs(t, []domain.CreditLog{
 					{
 						Key:          "key-9001-1",
+						Uid:          uid,
 						ChangeAmount: 100,
 						Biz:          "user",
 						BizId:        1,
@@ -1341,6 +1371,7 @@ func (s *ModuleTestSuite) TestService_CancelDeductCredits() {
 				s.requireCreditLogs(t, []domain.CreditLog{
 					{
 						Key:          "key-9003-2",
+						Uid:          uid,
 						ChangeAmount: -50,
 						Biz:          "order",
 						BizId:        9,
@@ -1348,6 +1379,7 @@ func (s *ModuleTestSuite) TestService_CancelDeductCredits() {
 					},
 					{
 						Key:          "key-9003-1",
+						Uid:          uid,
 						ChangeAmount: 100,
 						Biz:          "user",
 						BizId:        1,
@@ -1368,6 +1400,7 @@ func (s *ModuleTestSuite) TestService_CancelDeductCredits() {
 					Logs: []domain.CreditLog{
 						{
 							Key:          "key-9002-1",
+							Uid:          uid,
 							ChangeAmount: 100,
 							Biz:          "user",
 							BizId:        1,
@@ -1387,6 +1420,7 @@ func (s *ModuleTestSuite) TestService_CancelDeductCredits() {
 				s.requireCreditLogs(t, []domain.CreditLog{
 					{
 						Key:          "key-9002-1",
+						Uid:          uid,
 						ChangeAmount: 100,
 						Biz:          "user",
 						BizId:        1,
@@ -1470,6 +1504,7 @@ func (s *ModuleTestSuite) TestService_CancelDeductCredits_Concurrent() {
 	s.requireCreditLogs(t, []domain.CreditLog{
 		{
 			Key:          "key-9003-1",
+			Uid:          uid,
 			ChangeAmount: 100,
 			Biz:          "user",
 			BizId:        1,
@@ -1524,6 +1559,7 @@ func (s *ModuleTestSuite) TestService_GetCreditsByUID() {
 				Logs: []domain.CreditLog{
 					{
 						Key:          "key-20001-1",
+						Uid:          20001,
 						ChangeAmount: 100,
 						Biz:          "Marketing",
 						BizId:        2,
@@ -1575,6 +1611,7 @@ func (s *ModuleTestSuite) TestService_GetCreditsByUID() {
 				Logs: []domain.CreditLog{
 					{
 						Key:          "key-20002-2",
+						Uid:          20002,
 						ChangeAmount: -50,
 						Biz:          "order",
 						BizId:        9,
@@ -1582,6 +1619,7 @@ func (s *ModuleTestSuite) TestService_GetCreditsByUID() {
 					},
 					{
 						Key:          "key-20002-1",
+						Uid:          20002,
 						ChangeAmount: 100,
 						Biz:          "Marketing",
 						BizId:        2,
