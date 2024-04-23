@@ -32,6 +32,12 @@ import (
 
 var errUnknownTransactionState = errors.New("未知的微信事务状态")
 
+//go:generate mockgen -source=./native.go -package=wechatmocks -destination=./mocks/native.mock.go -typed NativeAPIService
+type NativeAPIService interface {
+	Prepay(ctx context.Context, req native.PrepayRequest) (resp *native.PrepayResponse, result *core.APIResult, err error)
+	QueryOrderByOutTradeNo(ctx context.Context, req native.QueryOrderByOutTradeNoRequest) (resp *payments.Transaction, result *core.APIResult, err error)
+}
+
 type NativePaymentService struct {
 	svc            NativeAPIService
 	repo           repository.PaymentRepository
@@ -50,7 +56,7 @@ type NativePaymentService struct {
 	// REVOKED：已撤销（付款码支付）
 	// USERPAYING：用户支付中（付款码支付）
 	// PAYERROR：支付失败(其他原因，如银行返回失败)
-	nativeCallBackTypeToPaymentStatus map[string]int64
+	nativeCallBackTypeToPaymentStatus map[string]domain.PaymentStatus
 }
 
 func NewNativePaymentService(svc NativeAPIService,
@@ -69,7 +75,7 @@ func NewNativePaymentService(svc NativeAPIService,
 		mchID:          mchid,
 		// todo: 配置回调URL
 		notifyURL: "http://wechat.meoying.com/pay/callback",
-		nativeCallBackTypeToPaymentStatus: map[string]int64{
+		nativeCallBackTypeToPaymentStatus: map[string]domain.PaymentStatus{
 			"SUCCESS":  domain.PaymentStatusPaid,
 			"PAYERROR": domain.PaymentStatusFailed,
 			"NOTPAY":   domain.PaymentStatusUnpaid,
@@ -107,7 +113,6 @@ func (n *NativePaymentService) Prepay(ctx context.Context, pmt domain.Payment) (
 		return domain.Payment{}, fmt.Errorf("微信预支付失败: %w", err)
 	}
 
-	pmt.PayDDL = n.paymentDDLFunc()
 	pmt.Status = domain.PaymentStatusUnpaid
 
 	pmt.Records = []domain.PaymentRecord{
@@ -184,7 +189,7 @@ func (n *NativePaymentService) updateByTxn(ctx context.Context, txn *payments.Tr
 	// 就是处于结束状态
 	err1 := n.producer.Produce(ctx, event.PaymentEvent{
 		OrderSN: pmt.OrderSN,
-		Status:  pmt.Status,
+		Status:  int64(pmt.Status),
 	})
 	if err1 != nil {
 		// 要做好监控和告警

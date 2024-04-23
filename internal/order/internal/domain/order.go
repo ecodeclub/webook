@@ -28,16 +28,16 @@ const (
 )
 
 type Order struct {
-	ID                 int64
-	SN                 string
-	BuyerID            int64
-	Payment            Payment
-	OriginalTotalPrice int64
-	RealTotalPrice     int64
-	Status             OrderStatus
-	Items              []OrderItem
-	Ctime              int64
-	Utime              int64
+	ID               int64
+	SN               string
+	BuyerID          int64
+	Payment          Payment
+	OriginalTotalAmt int64
+	RealTotalAmt     int64
+	Status           OrderStatus
+	Items            []OrderItem
+	Ctime            int64
+	Utime            int64
 }
 
 type Payment struct {

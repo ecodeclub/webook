@@ -20,18 +20,18 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/ecodeclub/webook/internal/credit/internal/domain"
 	"github.com/ego-component/egorm"
 	"github.com/go-sql-driver/mysql"
 	"gorm.io/gorm"
 )
 
 var (
-	ErrCreateCreditConflict = errors.New("创建积分主记录冲突")
-	ErrUpdateCreditConflict = errors.New("更新积分主记录冲突")
-	ErrDuplicatedCreditLog  = errors.New("积分流水记录重复")
-	ErrCreditNotEnough      = errors.New("积分不足")
-	ErrRecordNotFound       = egorm.ErrRecordNotFound
+	ErrCreateCreditConflict         = errors.New("创建积分主记录冲突")
+	ErrUpdateCreditConflict         = errors.New("更新积分主记录冲突")
+	ErrDuplicatedCreditLog          = errors.New("积分流水记录重复")
+	ErrCreditNotEnough              = errors.New("积分不足")
+	ErrRecordNotFound               = egorm.ErrRecordNotFound
+	ErrInvalidLockedCreditLogStatus = errors.New("锁定的积分流水初始状态非法")
 )
 
 type CreditDAO interface {
@@ -41,6 +41,8 @@ type CreditDAO interface {
 	CreateCreditLockLog(ctx context.Context, l CreditLog) (int64, error)
 	ConfirmCreditLockLog(ctx context.Context, uid, tid int64) error
 	CancelCreditLockLog(ctx context.Context, uid, tid int64) error
+	FindExpiredLockedCreditLogs(ctx context.Context, offset int, limit int, ctime int64) ([]CreditLog, error)
+	TotalExpiredLockedCreditLogs(ctx context.Context, ctime int64) (int64, error)
 }
 
 type creditDAO struct {
@@ -130,7 +132,7 @@ func (g *creditDAO) FindCreditByUID(ctx context.Context, uid int64) (Credit, err
 func (g *creditDAO) FindCreditLogsByUID(ctx context.Context, uid int64) ([]CreditLog, error) {
 	var res []CreditLog
 	err := g.db.WithContext(ctx).
-		Where("uid = ? AND status != ?", uid, domain.CreditLogStatusInactive).
+		Where("uid = ? AND status != ?", uid, CreditLogStatusInactive).
 		Order("ctime DESC").
 		Find(&res).Error
 	return res, err
@@ -148,6 +150,9 @@ func (g *creditDAO) CreateCreditLockLog(ctx context.Context, l CreditLog) (int64
 		if errors.Is(err, ErrUpdateCreditConflict) {
 			continue
 		}
+		if errors.Is(err, ErrDuplicatedCreditLog) {
+			return g.getCreditLogIDByKey(g.db, l.Key)
+		}
 		return lid, err
 	}
 }
@@ -155,15 +160,19 @@ func (g *creditDAO) CreateCreditLockLog(ctx context.Context, l CreditLog) (int64
 func (g *creditDAO) createCreditLockLog(tx *gorm.DB, l CreditLog) (int64, error) {
 	now := time.Now().UnixMilli()
 	amount := uint64(l.CreditChange)
-	uid := l.Uid
+
 	var c Credit
-	if err := tx.First(&c, "uid = ?", uid).Error; err != nil {
+	if err := tx.First(&c, "uid = ?", l.Uid).Error; err != nil {
 		return 0, fmt.Errorf("积分主记录不存在: %w", err)
 	}
 
 	// 找到积分主记录, 更新可用积分
 	version := c.Version
 	if c.TotalCredits < amount {
+		if id, err := g.getCreditLogIDByKey(tx, l.Key); err == nil {
+			// 重复处理相同请求,返回第一次处理的结果
+			return id, nil
+		}
 		return 0, fmt.Errorf("%w", ErrCreditNotEnough)
 	}
 	c.TotalCredits -= amount
@@ -171,7 +180,7 @@ func (g *creditDAO) createCreditLockLog(tx *gorm.DB, l CreditLog) (int64, error)
 	c.Version += 1
 	c.Utime = now
 	res := tx.Model(&Credit{}).
-		Where("uid = ? AND Version = ?", uid, version).
+		Where("uid = ? AND Version = ?", l.Uid, version).
 		Updates(map[string]any{
 			"TotalCredits":       c.TotalCredits, // 更新后可能为0
 			"LockedTotalCredits": c.LockedTotalCredits,
@@ -179,8 +188,8 @@ func (g *creditDAO) createCreditLockLog(tx *gorm.DB, l CreditLog) (int64, error)
 			"Version":            c.Version,
 		})
 
-	if res.Error != nil {
-		return 0, fmt.Errorf("更新积分主记录失败: %w", res.Error)
+	if err := res.Error; err != nil {
+		return 0, fmt.Errorf("更新积分主记录失败: %w", err)
 	}
 	if res.RowsAffected == 0 {
 		// case: version被其他并发事务更新 通知上层重试
@@ -188,10 +197,9 @@ func (g *creditDAO) createCreditLockLog(tx *gorm.DB, l CreditLog) (int64, error)
 	}
 
 	// 添加积分流水记录
-	l.Uid = c.Uid
 	l.CreditChange = 0 - int64(amount)
 	l.CreditBalance = c.TotalCredits
-	l.Status = domain.CreditLogStatusLocked
+	l.Status = CreditLogStatusLocked
 	l.Ctime = now
 	l.Utime = now
 	if err := tx.Create(&l).Error; err != nil {
@@ -203,106 +211,87 @@ func (g *creditDAO) createCreditLockLog(tx *gorm.DB, l CreditLog) (int64, error)
 	return l.Id, nil
 }
 
+func (g *creditDAO) getCreditLogIDByKey(tx *gorm.DB, key string) (int64, error) {
+	var cl CreditLog
+	if err := tx.First(&cl, "`key` = ?", key).Error; err != nil {
+		return 0, err
+	}
+	// 重复处理相同请求,返回第一次处理的结果
+	return cl.Id, nil
+}
+
 // ConfirmCreditLockLog 确认预扣积分
 func (g *creditDAO) ConfirmCreditLockLog(ctx context.Context, uid, tid int64) error {
 	for {
 		err := g.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-			return g.confirmCreditLockLog(tx, uid, tid)
+			totalCreditsIncreaseAmountFunc := func(cl CreditLog) uint64 { return uint64(0) }
+			return g.updateCreditLockLog(tx, uid, tid, CreditLogStatusLocked, CreditLogStatusActive, totalCreditsIncreaseAmountFunc)
 		})
 		if errors.Is(err, ErrUpdateCreditConflict) {
 			continue
 		}
 		return err
 	}
-}
-
-func (g *creditDAO) confirmCreditLockLog(tx *gorm.DB, uid, tid int64) error {
-
-	// 更新
-	now := time.Now().UnixMilli()
-
-	var c Credit
-	if err := tx.First(&c, "uid = ?", uid).Error; err != nil {
-		return fmt.Errorf("用户ID非法: %w", err)
-	}
-
-	var cl CreditLog
-	if err := tx.Where("uid = ? AND id = ? AND status = ?", uid, tid, domain.CreditLogStatusLocked).
-		First(&cl).Error; err != nil {
-		return fmt.Errorf("事务ID非法: %w", err)
-	}
-
-	cl.Status = domain.CreditLogStatusActive
-	cl.Utime = now
-	res := tx.Model(&CreditLog{}).
-		Where("uid = ? AND id = ? AND status = ?", uid, tid, domain.CreditLogStatusLocked).
-		Updates(cl)
-	if err := res.Error; err != nil {
-		return fmt.Errorf("更新积分流水记录失败: %w", err)
-	}
-
-	changeMount := uint64(0 - cl.CreditChange)
-	version := c.Version
-	c.LockedTotalCredits -= changeMount
-	c.Version += 1
-	c.Utime = now
-	res = tx.Model(&Credit{}).
-		Where("uid = ? AND Version = ?", uid, version).
-		Updates(map[string]any{
-			"LockedTotalCredits": c.LockedTotalCredits, // 更新后可能为0
-			"Utime":              c.Utime,
-			"Version":            c.Version,
-		})
-	if res.Error != nil {
-		return fmt.Errorf("更新积分主记录失败: %w", res.Error)
-	}
-	if res.RowsAffected == 0 {
-		return fmt.Errorf("%w", ErrUpdateCreditConflict)
-	}
-	return nil
 }
 
 // CancelCreditLockLog 取消积分预扣
 func (g *creditDAO) CancelCreditLockLog(ctx context.Context, uid, tid int64) error {
 	for {
 		err := g.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-			return g.cancelCreditLockLog(tx, uid, tid)
+			totalCreditsIncreaseAmountFunc := func(cl CreditLog) uint64 { return uint64(0 - cl.CreditChange) }
+			return g.updateCreditLockLog(tx, uid, tid, CreditLogStatusLocked, CreditLogStatusInactive, totalCreditsIncreaseAmountFunc)
 		})
 		if errors.Is(err, ErrUpdateCreditConflict) {
 			continue
+		}
+		if errors.Is(err, ErrRecordNotFound) {
+			return nil
 		}
 		return err
 	}
 }
 
-func (g *creditDAO) cancelCreditLockLog(tx *gorm.DB, uid, tid int64) error {
+func (g *creditDAO) updateCreditLockLog(tx *gorm.DB, uid, tid int64, srcStatus, dstStatus uint8,
+	totalCreditsIncreaseAmountFunc func(cl CreditLog) uint64) error {
 	// 更新
 	now := time.Now().UnixMilli()
 
 	var c Credit
 	if err := tx.First(&c, "uid = ?", uid).Error; err != nil {
-		return nil
+		return err
 	}
 
 	var cl CreditLog
-	if err := tx.Where("uid = ? AND id = ? AND status = ?", uid, tid, domain.CreditLogStatusLocked).
-		First(&cl).Error; err != nil {
+	if err := tx.Where("uid = ? AND id = ?", uid, tid).First(&cl).Error; err != nil {
+		return err
+	}
+
+	if cl.Status == dstStatus {
+		// 已处理过并且达到目标状态 重复处理相同请求,返回第一次处理的结果
 		return nil
 	}
 
-	cl.Status = domain.CreditLogStatusInactive
+	if cl.Status != srcStatus {
+		// 未达到预期初始状态
+		return fmt.Errorf("%w: 已被修改为%d", ErrInvalidLockedCreditLogStatus, cl.Status)
+	}
+
+	cl.Status = dstStatus
 	cl.Utime = now
 	res := tx.Model(&CreditLog{}).
-		Where("uid = ? AND id = ? AND status = ?", uid, tid, domain.CreditLogStatusLocked).
+		Where("uid = ? AND id = ? AND status = ?", uid, tid, srcStatus).
 		Updates(cl)
 	if err := res.Error; err != nil {
 		return fmt.Errorf("更新积分流水记录失败: %w", err)
 	}
+	if res.RowsAffected == 0 {
+		// 并发修改
+		return fmt.Errorf("%w", ErrUpdateCreditConflict)
+	}
 
-	changeMount := uint64(0 - cl.CreditChange)
 	version := c.Version
-	c.TotalCredits += changeMount
-	c.LockedTotalCredits -= changeMount
+	c.TotalCredits += totalCreditsIncreaseAmountFunc(cl)
+	c.LockedTotalCredits -= uint64(0 - cl.CreditChange)
 	c.Version += 1
 	c.Utime = now
 
@@ -314,15 +303,36 @@ func (g *creditDAO) cancelCreditLockLog(tx *gorm.DB, uid, tid int64) error {
 			"Utime":              c.Utime,
 			"Version":            c.Version,
 		})
-	if res.Error != nil {
-		return fmt.Errorf("更新积分主记录失败: %w", res.Error)
+	if err := res.Error; err != nil {
+		return fmt.Errorf("更新积分主记录失败: %w", err)
 	}
 	if res.RowsAffected == 0 {
 		return fmt.Errorf("%w", ErrUpdateCreditConflict)
 	}
-
 	return nil
 }
+
+func (g *creditDAO) FindExpiredLockedCreditLogs(ctx context.Context, offset int, limit int, ctime int64) ([]CreditLog, error) {
+	var cs []CreditLog
+	err := g.db.WithContext(ctx).
+		Where("status = ? AND ctime <= ?", CreditLogStatusLocked, ctime).
+		Offset(offset).Limit(limit).Order("ctime desc").Find(&cs).Error
+	return cs, err
+}
+
+func (g *creditDAO) TotalExpiredLockedCreditLogs(ctx context.Context, ctime int64) (int64, error) {
+	var res int64
+	err := g.db.WithContext(ctx).Model(&CreditLog{}).
+		Where("status = ? AND ctime <= ?", CreditLogStatusLocked, ctime).
+		Select("COUNT(id)").Count(&res).Error
+	return res, err
+}
+
+const (
+	CreditLogStatusActive   uint8 = 1
+	CreditLogStatusLocked   uint8 = 2
+	CreditLogStatusInactive uint8 = 3
+)
 
 type Credit struct {
 	Id                 int64  `gorm:"primaryKey;autoIncrement;comment:积分主表自增ID"`
@@ -343,7 +353,7 @@ type CreditLog struct {
 	Desc          string `gorm:"type:varchar(256);not null;comment:积分流水描述"`
 	CreditChange  int64  `gorm:"not null;comment:积分变动数量,正数为增加,负数为减少"`
 	CreditBalance uint64 `gorm:"not null;comment:变动后可用的积分总数"`
-	Status        int64  `gorm:"type:tinyint unsigned;not null;default:1;comment:流水状态 1=已生效, 2=预扣中, 3=已失效"`
+	Status        uint8  `gorm:"type:tinyint unsigned;not null;default:1;comment:流水状态 1=已生效, 2=已锁定, 3=已失效"`
 	Ctime         int64
 	Utime         int64
 }

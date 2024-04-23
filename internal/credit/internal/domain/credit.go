@@ -14,12 +14,6 @@
 
 package domain
 
-const (
-	CreditLogStatusActive   = 1
-	CreditLogStatusLocked   = 2
-	CreditLogStatusInactive = 3
-)
-
 type Credit struct {
 	Uid               int64
 	TotalAmount       uint64
@@ -28,6 +22,8 @@ type Credit struct {
 }
 
 type CreditLog struct {
+	ID           int64
+	Uid          int64
 	Key          string
 	ChangeAmount int64
 	Biz          string

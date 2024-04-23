@@ -32,6 +32,7 @@ type Service interface {
 	CreatePayment(ctx context.Context, payment domain.Payment) (domain.Payment, error)
 	GetPaymentChannels(ctx context.Context) []domain.PaymentChannel
 	FindPaymentByID(ctx context.Context, paymentID int64) (domain.Payment, error)
+	PayByOrderID(ctx context.Context, oid int64) (domain.Payment, error)
 }
 
 func NewService(wechatSvc *wechat.NativePaymentService,
@@ -63,7 +64,7 @@ type service struct {
 // CreditPay(ctx,
 // 1) 订单 -> 2) 支付 -> 3) 积分
 
-// CreatePayment 创建支付记录(支付主记录 + 支付渠道流水记录) 订单模块会同步调用该模块
+// CreatePayment 创建支付记录(支付主记录 + 支付渠道流水记录) 订单模块会同步调用该模块, 生成支付计划
 func (s *service) CreatePayment(ctx context.Context, payment domain.Payment) (domain.Payment, error) {
 
 	// 3. 同步调用“支付模块”获取支付ID和支付SN和二维码
@@ -104,10 +105,12 @@ func (s *service) CreatePayment(ctx context.Context, payment domain.Payment) (do
 
 // prepayByWechatAndCredit 用微信和积分预支付
 func (s *service) prepayByWechatAndCredit(ctx context.Context, payment domain.Payment) (domain.Payment, error) {
+
 	p, err := s.creditSvc.Prepay(ctx, payment)
 	if err != nil {
 		return domain.Payment{}, fmt.Errorf("积分与微信混合支付失败: %w", err)
 	}
+
 	pp, err2 := s.wechatSvc.Prepay(ctx, p)
 	if err2 != nil {
 		return domain.Payment{}, fmt.Errorf("积分与微信混合支付失败: %w", err2)
@@ -127,7 +130,8 @@ func (s *service) FindPaymentByID(ctx context.Context, id int64) (domain.Payment
 	return domain.Payment{}, nil
 }
 
-// PayByOrderSN 通过订单序列号支付
-func (s *service) PayByOrderSN(ctx context.Context, orderSN string) (domain.Payment, error) {
+// PayByOrderID 通过订单序ID支付,查找并执行支付计划
+func (s *service) PayByOrderID(ctx context.Context, oid int64) (domain.Payment, error) {
+	// 幂等
 	return domain.Payment{}, nil
 }

@@ -29,6 +29,7 @@ import (
 	"github.com/ecodeclub/webook/internal/credit/internal/domain"
 	"github.com/ecodeclub/webook/internal/credit/internal/event"
 	"github.com/ecodeclub/webook/internal/credit/internal/integration/startup"
+	"github.com/ecodeclub/webook/internal/credit/internal/job"
 	"github.com/ecodeclub/webook/internal/credit/internal/service"
 	"github.com/ecodeclub/webook/internal/credit/internal/web"
 	"github.com/ecodeclub/webook/internal/test"
@@ -37,6 +38,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gotomicro/ego/core/econf"
 	"github.com/gotomicro/ego/server/egin"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -71,6 +73,7 @@ func (s *ModuleTestSuite) SetupTest() {
 	s.server = server
 	s.mq = testioc.InitMQ()
 	s.db = testioc.InitDB()
+
 }
 
 func (s *ModuleTestSuite) TearDownSuite() {
@@ -131,15 +134,16 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeCreditIncreaseEvent() {
 				require.Equal(t, uint64(100), c.TotalAmount)
 				require.Equal(t, uint64(0), c.LockedTotalAmount)
 				require.Len(t, c.Logs, 1)
-				require.Equal(t, c.Logs, []domain.CreditLog{
+				s.requireCreditLogs(t, []domain.CreditLog{
 					{
 						Key:          "key-6001",
+						Uid:          uid,
 						ChangeAmount: 100,
 						Biz:          "user",
 						BizId:        1,
 						Desc:         "注册",
 					},
-				})
+				}, c.Logs)
 			},
 			evt: event.CreditIncreaseEvent{
 				Key:    "key-6001",
@@ -163,6 +167,7 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeCreditIncreaseEvent() {
 					Logs: []domain.CreditLog{
 						{
 							Key:          "key-6002-1",
+							Uid:          uid,
 							ChangeAmount: 100,
 							Biz:          "Marketing",
 							BizId:        2,
@@ -189,9 +194,10 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeCreditIncreaseEvent() {
 
 				require.Equal(t, uint64(350), c.TotalAmount)
 				require.Equal(t, uint64(0), c.LockedTotalAmount)
-				require.Equal(t, c.Logs, []domain.CreditLog{
+				s.requireCreditLogs(t, []domain.CreditLog{
 					{
 						Key:          "key-6002-2",
+						Uid:          uid,
 						ChangeAmount: 250,
 						Biz:          "order",
 						BizId:        3,
@@ -199,12 +205,13 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeCreditIncreaseEvent() {
 					},
 					{
 						Key:          "key-6002-1",
+						Uid:          uid,
 						ChangeAmount: 100,
 						Biz:          "Marketing",
 						BizId:        2,
 						Desc:         "邀请注册",
 					},
-				})
+				}, c.Logs)
 			},
 			evt: event.CreditIncreaseEvent{
 				Key:    "key-6002-2",
@@ -228,6 +235,7 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeCreditIncreaseEvent() {
 					Logs: []domain.CreditLog{
 						{
 							Key:          "key-6003-1",
+							Uid:          uid,
 							ChangeAmount: 100,
 							Biz:          "Marketing",
 							BizId:        2,
@@ -270,9 +278,10 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeCreditIncreaseEvent() {
 
 				require.Equal(t, uint64(250), c.TotalAmount)
 				require.Equal(t, uint64(50), c.LockedTotalAmount)
-				require.Equal(t, c.Logs, []domain.CreditLog{
+				s.requireCreditLogs(t, []domain.CreditLog{
 					{
 						Key:          "key-6003-3",
+						Uid:          uid,
 						ChangeAmount: 200,
 						Biz:          "order",
 						BizId:        3,
@@ -280,6 +289,7 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeCreditIncreaseEvent() {
 					},
 					{
 						Key:          "key-6003-2",
+						Uid:          uid,
 						ChangeAmount: -50,
 						Biz:          "order",
 						BizId:        9,
@@ -287,12 +297,13 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeCreditIncreaseEvent() {
 					},
 					{
 						Key:          "key-6003-1",
+						Uid:          uid,
 						ChangeAmount: 100,
 						Biz:          "Marketing",
 						BizId:        2,
 						Desc:         "邀请注册",
 					},
-				})
+				}, c.Logs)
 			},
 			evt: event.CreditIncreaseEvent{
 				Key:    "key-6003-3",
@@ -465,9 +476,14 @@ func (s *ModuleTestSuite) TestService_TryDeductCredits() {
 				require.NoError(t, err)
 				require.Equal(t, uint64(30), c.TotalAmount)
 				require.Equal(t, uint64(70), c.LockedTotalAmount)
+				for i := 0; i < len(c.Logs); i++ {
+					require.NotZero(t, c.Logs[i].ID)
+					c.Logs[i].ID = 0
+				}
 				require.Equal(t, c.Logs, []domain.CreditLog{
 					{
 						Key:          "key-7001-2",
+						Uid:          uid,
 						ChangeAmount: -70,
 						Biz:          "order",
 						BizId:        7,
@@ -475,6 +491,7 @@ func (s *ModuleTestSuite) TestService_TryDeductCredits() {
 					},
 					{
 						Key:          "key-7001-1",
+						Uid:          uid,
 						ChangeAmount: 100,
 						Biz:          "Marketing",
 						BizId:        2,
@@ -522,9 +539,14 @@ func (s *ModuleTestSuite) TestService_TryDeductCredits() {
 				require.NoError(t, err)
 				require.Equal(t, uint64(0), c.TotalAmount)
 				require.Equal(t, uint64(100), c.LockedTotalAmount)
+				for i := 0; i < len(c.Logs); i++ {
+					require.NotZero(t, c.Logs[i].ID)
+					c.Logs[i].ID = 0
+				}
 				require.Equal(t, c.Logs, []domain.CreditLog{
 					{
 						Key:          "key-7002-2",
+						Uid:          uid,
 						ChangeAmount: -100,
 						Biz:          "order",
 						BizId:        7,
@@ -532,10 +554,11 @@ func (s *ModuleTestSuite) TestService_TryDeductCredits() {
 					},
 					{
 						Key:          "key-7002-1",
+						Uid:          uid,
+						ChangeAmount: 100,
 						Biz:          "Marketing",
 						BizId:        2,
 						Desc:         "首次注册",
-						ChangeAmount: 100,
 					},
 				})
 			},
@@ -579,15 +602,16 @@ func (s *ModuleTestSuite) TestService_TryDeductCredits() {
 				require.NoError(t, err)
 				require.Equal(t, uint64(100), c.TotalAmount)
 				require.Equal(t, uint64(0), c.LockedTotalAmount)
-				require.Equal(t, c.Logs, []domain.CreditLog{
+				s.requireCreditLogs(t, []domain.CreditLog{
 					{
 						Key:          "key-7003-1",
+						Uid:          uid,
 						ChangeAmount: 100,
 						Biz:          "user",
 						BizId:        4,
 						Desc:         "首次注册",
 					},
-				})
+				}, c.Logs)
 			},
 			errRequireFunc: func(t require.TestingT, err error, i ...interface{}) {
 				require.ErrorIs(t, err, service.ErrCreditNotEnough)
@@ -648,7 +672,7 @@ func (s *ModuleTestSuite) TestService_TryDeductCredits_Concurrent() {
 		Err error
 	}
 
-	t.Run("相同请求_只有一个可以成功", func(t *testing.T) {
+	t.Run("相同请求_支持扣减多次_执行多次返回第一次成功的结果", func(t *testing.T) {
 
 		// 创建用户记录
 		uid := int64(19001)
@@ -656,7 +680,7 @@ func (s *ModuleTestSuite) TestService_TryDeductCredits_Concurrent() {
 			Uid: uid,
 			Logs: []domain.CreditLog{
 				{
-					Key:          "key-19001",
+					Key:          "key-19001-1",
 					ChangeAmount: 100,
 					Biz:          "user",
 					BizId:        19001,
@@ -666,7 +690,7 @@ func (s *ModuleTestSuite) TestService_TryDeductCredits_Concurrent() {
 		})
 		require.NoError(t, err)
 
-		n := 10
+		n := 20
 
 		waitChan := make(chan struct{})
 		resChan := make(chan Result)
@@ -678,7 +702,7 @@ func (s *ModuleTestSuite) TestService_TryDeductCredits_Concurrent() {
 					Uid: uid,
 					Logs: []domain.CreditLog{
 						{
-							Key:          "key-19001-1",
+							Key:          "key-19001-2",
 							ChangeAmount: 50,
 							Biz:          "order",
 							BizId:        9,
@@ -692,27 +716,123 @@ func (s *ModuleTestSuite) TestService_TryDeductCredits_Concurrent() {
 
 		time.Sleep(100 * time.Millisecond)
 		close(waitChan)
-		errCounter := 0
+		var expectedID int64
 		for i := 0; i < n; i++ {
 			res := <-resChan
-			if res.Err != nil {
-				require.ErrorIs(t, res.Err, service.ErrDuplicatedCreditLog)
-				errCounter++
+			require.NoError(t, res.Err)
+			require.NotZero(t, res.ID)
+			if expectedID == 0 {
+				expectedID = res.ID
 			}
+			require.Equal(t, expectedID, res.ID)
 		}
-		require.Equal(t, n-1, errCounter)
 		c, err := s.svc.GetCreditsByUID(context.Background(), uid)
 		require.NoError(t, err)
-		require.Equal(t, uint64(50), c.TotalAmount)
+		assert.Equal(t, uint64(50), c.TotalAmount)
+		assert.Equal(t, uint64(50), c.LockedTotalAmount)
+		s.requireCreditLogs(t, []domain.CreditLog{
+			{
+				Key:          "key-19001-2",
+				Uid:          uid,
+				ChangeAmount: -50,
+				Biz:          "order",
+				BizId:        9,
+				Desc:         "购买专栏",
+			},
+			{
+				Key:          "key-19001-1",
+				Uid:          uid,
+				ChangeAmount: 100,
+				Biz:          "user",
+				BizId:        19001,
+				Desc:         "首次注册",
+			},
+		}, c.Logs)
+	})
+
+	t.Run("相同请求_支持扣减一次_执行多次返回第一次成功的结果", func(t *testing.T) {
+
+		// 创建用户记录
+		uid := int64(19004)
+		err := s.svc.AddCredits(context.Background(), domain.Credit{
+			Uid: uid,
+			Logs: []domain.CreditLog{
+				{
+					Key:          "key-19004-1",
+					ChangeAmount: 50,
+					Biz:          "user",
+					BizId:        uid,
+					Desc:         "首次注册",
+				},
+			},
+		})
+		require.NoError(t, err)
+
+		n := 20
+
+		waitChan := make(chan struct{})
+		resChan := make(chan Result)
+
+		for i := 0; i < n; i++ {
+			go func() {
+				<-waitChan
+				id, err := s.svc.TryDeductCredits(context.Background(), domain.Credit{
+					Uid: uid,
+					Logs: []domain.CreditLog{
+						{
+							Key:          "key-19004-2",
+							ChangeAmount: 50,
+							Biz:          "order",
+							BizId:        9,
+							Desc:         "购买专栏",
+						},
+					},
+				})
+				resChan <- Result{ID: id, Err: err}
+			}()
+		}
+
+		time.Sleep(100 * time.Millisecond)
+		close(waitChan)
+		var expectedID int64
+		for i := 0; i < n; i++ {
+			res := <-resChan
+			require.NoError(t, res.Err)
+			require.NotZero(t, res.ID)
+			if expectedID == 0 {
+				expectedID = res.ID
+			}
+			require.Equal(t, expectedID, res.ID)
+		}
+		c, err := s.svc.GetCreditsByUID(context.Background(), uid)
+		require.NoError(t, err)
+		require.Equal(t, uint64(0), c.TotalAmount)
 		require.Equal(t, uint64(50), c.LockedTotalAmount)
-		require.Len(t, c.Logs, 2)
+		s.requireCreditLogs(t, []domain.CreditLog{
+			{
+				Key:          "key-19004-2",
+				Uid:          uid,
+				ChangeAmount: -50,
+				Biz:          "order",
+				BizId:        9,
+				Desc:         "购买专栏",
+			},
+			{
+				Key:          "key-19004-1",
+				Uid:          uid,
+				ChangeAmount: 50,
+				Biz:          "user",
+				BizId:        uid,
+				Desc:         "首次注册",
+			},
+		}, c.Logs)
 	})
 
 	t.Run("不同请求_部分成功", func(t *testing.T) {
 
 		// 创建用户记录
 		uid := int64(19002)
-		err := s.svc.AddCredits(context.Background(), domain.Credit{
+		er := s.svc.AddCredits(context.Background(), domain.Credit{
 			Uid: uid,
 			Logs: []domain.CreditLog{
 				{
@@ -724,48 +844,77 @@ func (s *ModuleTestSuite) TestService_TryDeductCredits_Concurrent() {
 				},
 			},
 		})
-		require.NoError(t, err)
+		require.NoError(t, er)
 
 		n := 10
 
 		waitChan := make(chan struct{})
 		resChan := make(chan Result)
+		logChan := make(chan domain.CreditLog, n)
 
 		for i := 0; i < n; i++ {
 			go func(i int) {
 				<-waitChan
+				log := domain.CreditLog{
+					Key:          fmt.Sprintf("key-19002-%d", i),
+					Uid:          uid,
+					ChangeAmount: 50,
+					Biz:          "order",
+					BizId:        3,
+					Desc:         "购买项目",
+				}
 				id, err := s.svc.TryDeductCredits(context.Background(), domain.Credit{
-					Uid: uid,
-					Logs: []domain.CreditLog{
-						{
-							Key:          fmt.Sprintf("key-19002-%d", i),
-							ChangeAmount: 50,
-							Biz:          "order",
-							BizId:        3,
-							Desc:         "购买项目",
-						},
-					},
+					Uid:  uid,
+					Logs: []domain.CreditLog{log},
 				})
+				if err == nil {
+					log.ChangeAmount = 0 - log.ChangeAmount
+					logChan <- log
+				}
 				resChan <- Result{ID: id, Err: err}
 			}(i)
 		}
 
 		time.Sleep(100 * time.Millisecond)
 		close(waitChan)
+
+		expectedLogs := []domain.CreditLog{
+			{
+				Key:          "key-19002",
+				Uid:          uid,
+				ChangeAmount: 100,
+				Biz:          "user",
+				BizId:        19002,
+				Desc:         "首次注册",
+			},
+		}
 		errCounter := 0
+		var expectedID int64
 		for i := 0; i < n; i++ {
 			res := <-resChan
 			if res.Err != nil {
 				require.ErrorIs(t, res.Err, service.ErrCreditNotEnough)
 				errCounter++
+			} else {
+				require.NotEqual(t, expectedID, res.ID)
+				expectedID = res.ID
 			}
 		}
+
+		var zeroLog domain.CreditLog
+		close(logChan)
+		for log := range logChan {
+			if log != zeroLog {
+				expectedLogs = append(expectedLogs, log)
+			}
+		}
+
 		require.Equal(t, n-2, errCounter)
 		c, err := s.svc.GetCreditsByUID(context.Background(), uid)
 		require.NoError(t, err)
 		require.Equal(t, uint64(0), c.TotalAmount)
 		require.Equal(t, uint64(100), c.LockedTotalAmount)
-		require.Len(t, c.Logs, 3)
+		s.requireCreditLogs(t, expectedLogs, c.Logs)
 	})
 
 	t.Run("不同请求_全部成功", func(t *testing.T) {
@@ -774,7 +923,7 @@ func (s *ModuleTestSuite) TestService_TryDeductCredits_Concurrent() {
 		changeAmount := 50
 		// 创建用户记录
 		uid := int64(19003)
-		err := s.svc.AddCredits(context.Background(), domain.Credit{
+		er := s.svc.AddCredits(context.Background(), domain.Credit{
 			Uid: uid,
 			Logs: []domain.CreditLog{
 				{
@@ -786,42 +935,60 @@ func (s *ModuleTestSuite) TestService_TryDeductCredits_Concurrent() {
 				},
 			},
 		})
-		require.NoError(t, err)
+		require.NoError(t, er)
 
 		waitChan := make(chan struct{})
 		resChan := make(chan Result)
+		logChan := make(chan domain.CreditLog, n)
 
 		for i := 0; i < n; i++ {
 			go func(i int) {
 				<-waitChan
+				log := domain.CreditLog{
+					Key:          fmt.Sprintf("key-19003-%d", i),
+					Uid:          uid,
+					ChangeAmount: int64(changeAmount),
+					Biz:          "order",
+					BizId:        3,
+					Desc:         "购买项目",
+				}
 				id, err := s.svc.TryDeductCredits(context.Background(), domain.Credit{
-					Uid: uid,
-					Logs: []domain.CreditLog{
-						{
-							Key:          fmt.Sprintf("key-19003-%d", i),
-							ChangeAmount: int64(changeAmount),
-							Biz:          "order",
-							BizId:        3,
-							Desc:         "购买项目",
-						},
-					},
+					Uid:  uid,
+					Logs: []domain.CreditLog{log},
 				})
+				if err == nil {
+					log.ChangeAmount = 0 - log.ChangeAmount
+					logChan <- log
+				}
 				resChan <- Result{ID: id, Err: err}
 			}(i)
 		}
 
 		time.Sleep(100 * time.Millisecond)
 		close(waitChan)
+		expectedLogs := []domain.CreditLog{
+			{
+				Key:          "key-19003",
+				Uid:          uid,
+				ChangeAmount: int64(n * changeAmount),
+				Biz:          "user",
+				BizId:        19003,
+				Desc:         "首次注册",
+			},
+		}
+		var expectedID int64
 		for i := 0; i < n; i++ {
 			res := <-resChan
 			require.NoError(t, res.Err)
-			require.NotZero(t, res.ID)
+			require.NotEqual(t, expectedID, res.ID)
+			expectedID = res.ID
+			expectedLogs = append(expectedLogs, <-logChan)
 		}
 		c, err := s.svc.GetCreditsByUID(context.Background(), uid)
 		require.NoError(t, err)
 		require.Equal(t, uint64(0), c.TotalAmount)
 		require.Equal(t, uint64(n*changeAmount), c.LockedTotalAmount)
-		require.Len(t, c.Logs, n+1)
+		s.requireCreditLogs(t, expectedLogs, c.Logs)
 	})
 }
 
@@ -829,10 +996,10 @@ func (s *ModuleTestSuite) TestService_ConfirmDeductCredits() {
 	t := s.T()
 
 	testCases := []struct {
-		name          string
-		getUIDAndTID  func(t *testing.T) (int64, int64)
-		after         func(t *testing.T, uid int64)
-		errAssertFunc require.ErrorAssertionFunc
+		name           string
+		getUIDAndTID   func(t *testing.T) (int64, int64)
+		after          func(t *testing.T, uid int64)
+		errRequireFunc require.ErrorAssertionFunc
 	}{
 		{
 			name: "确认预扣成功_ID有效",
@@ -875,9 +1042,10 @@ func (s *ModuleTestSuite) TestService_ConfirmDeductCredits() {
 				require.NoError(t, err)
 				require.Equal(t, uint64(50), c.TotalAmount)
 				require.Equal(t, uint64(0), c.LockedTotalAmount)
-				require.Equal(t, c.Logs, []domain.CreditLog{
+				s.requireCreditLogs(t, []domain.CreditLog{
 					{
 						Key:          "key-8001-2",
+						Uid:          uid,
 						ChangeAmount: -50,
 						Biz:          "order",
 						BizId:        9,
@@ -885,17 +1053,18 @@ func (s *ModuleTestSuite) TestService_ConfirmDeductCredits() {
 					},
 					{
 						Key:          "key-8001-1",
+						Uid:          uid,
 						ChangeAmount: 100,
 						Biz:          "user",
 						BizId:        1,
 						Desc:         "注册",
 					},
-				})
+				}, c.Logs)
 			},
-			errAssertFunc: require.NoError,
+			errRequireFunc: require.NoError,
 		},
 		{
-			name: "确认预扣失败_ID有效但非法",
+			name: "确认预扣失败_ID有效但非当前用户所有",
 			getUIDAndTID: func(t *testing.T) (int64, int64) {
 				t.Helper()
 				// 创建已有用户
@@ -921,23 +1090,83 @@ func (s *ModuleTestSuite) TestService_ConfirmDeductCredits() {
 				require.NoError(t, err)
 				require.Equal(t, uint64(100), c.TotalAmount)
 				require.Equal(t, uint64(0), c.LockedTotalAmount)
-				require.Equal(t, c.Logs, []domain.CreditLog{
+				s.requireCreditLogs(t, []domain.CreditLog{
 					{
 						Key:          "key-8002-1",
+						Uid:          uid,
 						ChangeAmount: 100,
 						Biz:          "user",
 						BizId:        1,
 						Desc:         "注册",
 					},
-				})
+				}, c.Logs)
 			},
-			errAssertFunc: require.Error,
+			errRequireFunc: require.Error,
 		},
 		{
-			name:          "确认预扣失败_ID非法",
-			getUIDAndTID:  func(t *testing.T) (int64, int64) { return int64(8002), int64(1000) },
-			after:         func(t *testing.T, uid int64) {},
-			errAssertFunc: require.Error,
+			name: "确认预扣失败_ID为已取消的预扣ID",
+			getUIDAndTID: func(t *testing.T) (int64, int64) {
+				t.Helper()
+				// 创建已有用户
+				uid := int64(8003)
+				err := s.svc.AddCredits(context.Background(), domain.Credit{
+					Uid: uid,
+					Logs: []domain.CreditLog{
+						{
+							Key:          "key-8003-1",
+							ChangeAmount: 100,
+							Biz:          "user",
+							BizId:        1,
+							Desc:         "注册",
+						},
+					},
+				})
+				require.NoError(t, err)
+
+				// 预扣
+				id, err := s.svc.TryDeductCredits(context.Background(), domain.Credit{
+					Uid: uid,
+					Logs: []domain.CreditLog{
+						{
+							Key:          "key-8003-2",
+							ChangeAmount: 50,
+							Biz:          "order",
+							BizId:        9,
+							Desc:         "购买面试",
+						},
+					},
+				})
+				require.NoError(t, err)
+
+				// 取消预扣
+				require.NoError(t, s.svc.CancelDeductCredits(context.Background(), uid, id))
+
+				return uid, id
+			},
+			after: func(t *testing.T, uid int64) {
+				t.Helper()
+				c, err := s.svc.GetCreditsByUID(context.Background(), uid)
+				require.NoError(t, err)
+				require.Equal(t, uint64(100), c.TotalAmount)
+				require.Equal(t, uint64(0), c.LockedTotalAmount)
+				s.requireCreditLogs(t, []domain.CreditLog{
+					{
+						Key:          "key-8003-1",
+						Uid:          uid,
+						ChangeAmount: 100,
+						Biz:          "user",
+						BizId:        1,
+						Desc:         "注册",
+					},
+				}, c.Logs)
+			},
+			errRequireFunc: require.Error,
+		},
+		{
+			name:           "确认预扣失败_ID非法",
+			getUIDAndTID:   func(t *testing.T) (int64, int64) { return int64(8002), int64(1000) },
+			after:          func(t *testing.T, uid int64) {},
+			errRequireFunc: require.Error,
 		},
 	}
 
@@ -946,14 +1175,23 @@ func (s *ModuleTestSuite) TestService_ConfirmDeductCredits() {
 		t.Run(tc.name, func(t *testing.T) {
 			uid, tid := tc.getUIDAndTID(t)
 			err := s.svc.ConfirmDeductCredits(context.Background(), uid, tid)
-			tc.errAssertFunc(t, err)
+			tc.errRequireFunc(t, err)
 			tc.after(t, uid)
 		})
 	}
 }
 
+func (s *ModuleTestSuite) requireCreditLogs(t *testing.T, expected []domain.CreditLog, actual []domain.CreditLog) {
+	for i := 0; i < len(actual); i++ {
+		require.NotZero(t, actual[i].ID)
+		actual[i].ID = 0
+	}
+	require.ElementsMatch(t, expected, actual)
+}
+
 func (s *ModuleTestSuite) TestService_ConfirmDeductCredits_Concurrent() {
 	t := s.T()
+
 	// 创建已有用户
 	uid := int64(8003)
 	err := s.svc.AddCredits(context.Background(), domain.Credit{
@@ -989,29 +1227,25 @@ func (s *ModuleTestSuite) TestService_ConfirmDeductCredits_Concurrent() {
 	errChan := make(chan error)
 
 	for i := 0; i < n; i++ {
-		go func() {
+		go func(tid int64) {
 			<-waitChan
 			errChan <- s.svc.ConfirmDeductCredits(context.Background(), uid, tid)
-		}()
+		}(tid)
 	}
 
 	time.Sleep(100 * time.Millisecond)
 	close(waitChan)
-	errCounter := 0
 	for i := 0; i < n; i++ {
-		err = <-errChan
-		if err != nil {
-			errCounter++
-		}
+		require.NoError(t, <-errChan)
 	}
-	require.Equal(t, n-1, errCounter)
 	c, err := s.svc.GetCreditsByUID(context.Background(), uid)
 	require.NoError(t, err)
 	require.Equal(t, uint64(80), c.TotalAmount)
 	require.Equal(t, uint64(0), c.LockedTotalAmount)
-	require.Equal(t, c.Logs, []domain.CreditLog{
+	s.requireCreditLogs(t, []domain.CreditLog{
 		{
 			Key:          "key-8003-2",
+			Uid:          uid,
 			ChangeAmount: -20,
 			Biz:          "order",
 			BizId:        9,
@@ -1019,22 +1253,23 @@ func (s *ModuleTestSuite) TestService_ConfirmDeductCredits_Concurrent() {
 		},
 		{
 			Key:          "key-8003-1",
+			Uid:          uid,
 			ChangeAmount: 100,
 			Biz:          "user",
 			BizId:        1,
 			Desc:         "注册",
 		},
-	})
+	}, c.Logs)
 }
 
 func (s *ModuleTestSuite) TestService_CancelDeductCredits() {
 	t := s.T()
 
 	testCases := []struct {
-		name          string
-		getUIDAndTID  func(t *testing.T) (int64, int64)
-		after         func(t *testing.T, uid int64)
-		errAssertFunc require.ErrorAssertionFunc
+		name           string
+		getUIDAndTID   func(t *testing.T) (int64, int64)
+		after          func(t *testing.T, uid int64)
+		errRequireFunc require.ErrorAssertionFunc
 	}{
 		{
 			name: "取消预扣成功_ID有效且为当前用户所有",
@@ -1047,6 +1282,7 @@ func (s *ModuleTestSuite) TestService_CancelDeductCredits() {
 					Logs: []domain.CreditLog{
 						{
 							Key:          "key-9001-1",
+							Uid:          uid,
 							ChangeAmount: 100,
 							Biz:          "user",
 							BizId:        1,
@@ -1077,17 +1313,82 @@ func (s *ModuleTestSuite) TestService_CancelDeductCredits() {
 				require.NoError(t, err)
 				require.Equal(t, uint64(100), c.TotalAmount)
 				require.Equal(t, uint64(0), c.LockedTotalAmount)
-				require.Equal(t, c.Logs, []domain.CreditLog{
+				s.requireCreditLogs(t, []domain.CreditLog{
 					{
 						Key:          "key-9001-1",
+						Uid:          uid,
 						ChangeAmount: 100,
 						Biz:          "user",
 						BizId:        1,
 						Desc:         "注册",
 					},
-				})
+				}, c.Logs)
 			},
-			errAssertFunc: require.NoError,
+			errRequireFunc: require.NoError,
+		},
+		{
+			name: "取消预扣失败_ID为已确认的流水ID",
+			getUIDAndTID: func(t *testing.T) (int64, int64) {
+				t.Helper()
+				// 创建已有用户
+				uid := int64(9003)
+				err := s.svc.AddCredits(context.Background(), domain.Credit{
+					Uid: uid,
+					Logs: []domain.CreditLog{
+						{
+							Key:          "key-9003-1",
+							ChangeAmount: 100,
+							Biz:          "user",
+							BizId:        1,
+							Desc:         "注册",
+						},
+					},
+				})
+				require.NoError(t, err)
+				// 预扣
+				tid, err := s.svc.TryDeductCredits(context.Background(), domain.Credit{
+					Uid: uid,
+					Logs: []domain.CreditLog{
+						{
+							Key:          "key-9003-2",
+							ChangeAmount: 50,
+							Biz:          "order",
+							BizId:        9,
+							Desc:         "购买面试",
+						},
+					},
+				})
+				require.NoError(t, err)
+				// 已确认
+				require.NoError(t, s.svc.ConfirmDeductCredits(context.Background(), uid, tid))
+				return uid, tid
+			},
+			after: func(t *testing.T, uid int64) {
+				t.Helper()
+				c, err := s.svc.GetCreditsByUID(context.Background(), uid)
+				require.NoError(t, err)
+				require.Equal(t, uint64(50), c.TotalAmount)
+				require.Equal(t, uint64(0), c.LockedTotalAmount)
+				s.requireCreditLogs(t, []domain.CreditLog{
+					{
+						Key:          "key-9003-2",
+						Uid:          uid,
+						ChangeAmount: -50,
+						Biz:          "order",
+						BizId:        9,
+						Desc:         "购买面试",
+					},
+					{
+						Key:          "key-9003-1",
+						Uid:          uid,
+						ChangeAmount: 100,
+						Biz:          "user",
+						BizId:        1,
+						Desc:         "注册",
+					},
+				}, c.Logs)
+			},
+			errRequireFunc: require.Error,
 		},
 		{
 			name: "取消预扣'成功'_ID有效但不为当前用户所有_不返回错误",
@@ -1100,6 +1401,7 @@ func (s *ModuleTestSuite) TestService_CancelDeductCredits() {
 					Logs: []domain.CreditLog{
 						{
 							Key:          "key-9002-1",
+							Uid:          uid,
 							ChangeAmount: 100,
 							Biz:          "user",
 							BizId:        1,
@@ -1116,23 +1418,24 @@ func (s *ModuleTestSuite) TestService_CancelDeductCredits() {
 				require.NoError(t, err)
 				require.Equal(t, uint64(100), c.TotalAmount)
 				require.Equal(t, uint64(0), c.LockedTotalAmount)
-				require.Equal(t, c.Logs, []domain.CreditLog{
+				s.requireCreditLogs(t, []domain.CreditLog{
 					{
 						Key:          "key-9002-1",
+						Uid:          uid,
 						ChangeAmount: 100,
 						Biz:          "user",
 						BizId:        1,
 						Desc:         "注册",
 					},
-				})
+				}, c.Logs)
 			},
-			errAssertFunc: require.NoError,
+			errRequireFunc: require.NoError,
 		},
 		{
-			name:          "取消预扣'成功'_ID非法_不返回错误",
-			getUIDAndTID:  func(t *testing.T) (int64, int64) { return int64(9004), int64(2000) },
-			after:         func(t *testing.T, uid int64) {},
-			errAssertFunc: require.NoError,
+			name:           "取消预扣'成功'_ID非法_不返回错误",
+			getUIDAndTID:   func(t *testing.T) (int64, int64) { return int64(9004), int64(2000) },
+			after:          func(t *testing.T, uid int64) {},
+			errRequireFunc: require.NoError,
 		},
 	}
 
@@ -1141,7 +1444,7 @@ func (s *ModuleTestSuite) TestService_CancelDeductCredits() {
 		t.Run(tc.name, func(t *testing.T) {
 			uid, tid := tc.getUIDAndTID(t)
 			err := s.svc.CancelDeductCredits(context.Background(), uid, tid)
-			tc.errAssertFunc(t, err)
+			tc.errRequireFunc(t, err)
 			tc.after(t, uid)
 		})
 	}
@@ -1199,15 +1502,16 @@ func (s *ModuleTestSuite) TestService_CancelDeductCredits_Concurrent() {
 	require.NoError(t, err)
 	require.Equal(t, uint64(100), c.TotalAmount)
 	require.Equal(t, uint64(0), c.LockedTotalAmount)
-	require.Equal(t, c.Logs, []domain.CreditLog{
+	s.requireCreditLogs(t, []domain.CreditLog{
 		{
 			Key:          "key-9003-1",
+			Uid:          uid,
 			ChangeAmount: 100,
 			Biz:          "user",
 			BizId:        1,
 			Desc:         "注册",
 		},
-	})
+	}, c.Logs)
 }
 
 func (s *ModuleTestSuite) TestService_GetCreditsByUID() {
@@ -1256,6 +1560,7 @@ func (s *ModuleTestSuite) TestService_GetCreditsByUID() {
 				Logs: []domain.CreditLog{
 					{
 						Key:          "key-20001-1",
+						Uid:          20001,
 						ChangeAmount: 100,
 						Biz:          "Marketing",
 						BizId:        2,
@@ -1307,6 +1612,7 @@ func (s *ModuleTestSuite) TestService_GetCreditsByUID() {
 				Logs: []domain.CreditLog{
 					{
 						Key:          "key-20002-2",
+						Uid:          20002,
 						ChangeAmount: -50,
 						Biz:          "order",
 						BizId:        9,
@@ -1314,6 +1620,7 @@ func (s *ModuleTestSuite) TestService_GetCreditsByUID() {
 					},
 					{
 						Key:          "key-20002-1",
+						Uid:          20002,
 						ChangeAmount: 100,
 						Biz:          "Marketing",
 						BizId:        2,
@@ -1332,6 +1639,9 @@ func (s *ModuleTestSuite) TestService_GetCreditsByUID() {
 			c, err := s.svc.GetCreditsByUID(context.Background(), tc.credit.Uid)
 			tc.errRequireFunc(t, err)
 			if err == nil {
+				s.requireCreditLogs(t, tc.credit.Logs, c.Logs)
+				tc.credit.Logs = nil
+				c.Logs = nil
 				require.Equal(t, tc.credit, c)
 			}
 		})
@@ -1445,6 +1755,154 @@ func (s *ModuleTestSuite) TestHandler_QueryCredits() {
 			s.server.ServeHTTP(recorder, req)
 			require.Equal(t, tc.wantCode, recorder.Code)
 			require.Equal(t, tc.wantResp, recorder.MustScan())
+			tc.after(t)
+		})
+	}
+}
+
+func (s *ModuleTestSuite) TestJob_CloseExpiredLockedCreditLogs() {
+	t := s.T()
+
+	total := 15
+
+	testCases := []struct {
+		name       string
+		before     func(t *testing.T)
+		getJobFunc func(t *testing.T) *job.CloseExpiredLockedCreditsJob
+		after      func(t *testing.T)
+	}{
+		{
+			name: "关闭超时预扣流水成功_正常情况",
+			before: func(t *testing.T) {
+				t.Helper()
+				for idx := 0; idx < total; idx++ {
+					id := int64(200100 + idx)
+
+					err := s.svc.AddCredits(context.Background(), domain.Credit{
+						Uid: id,
+						Logs: []domain.CreditLog{
+							{
+								Key:          fmt.Sprintf("Key-%d", id),
+								ChangeAmount: 100,
+								Biz:          "user",
+								BizId:        id,
+								Desc:         "注册",
+							},
+						},
+					})
+					require.NoError(t, err)
+
+					// 预扣
+					_, err = s.svc.TryDeductCredits(context.Background(), domain.Credit{
+						Uid: id,
+						Logs: []domain.CreditLog{
+							{
+								Key:          fmt.Sprintf("key-try-%d", id),
+								ChangeAmount: 50,
+								Biz:          "order",
+								BizId:        id,
+								Desc:         "购买商品",
+							},
+						},
+					})
+					require.NoError(t, err)
+				}
+			},
+			getJobFunc: func(t *testing.T) *job.CloseExpiredLockedCreditsJob {
+				t.Helper()
+				return job.NewCloseExpiredOrdersJob(s.svc, 0, 0, 10)
+			},
+			after: func(t *testing.T) {
+				t.Helper()
+				for idx := 0; idx < total; idx++ {
+					id := int64(200100 + idx)
+					c, err := s.svc.GetCreditsByUID(context.Background(), id)
+					require.NoError(t, err)
+					require.Equal(t, uint64(100), c.TotalAmount)
+					require.Equal(t, uint64(0), c.LockedTotalAmount)
+					s.requireCreditLogs(t, []domain.CreditLog{
+						{
+							Key:          fmt.Sprintf("Key-%d", id),
+							Uid:          id,
+							ChangeAmount: 100,
+							Biz:          "user",
+							BizId:        id,
+							Desc:         "注册",
+						},
+					}, c.Logs)
+				}
+			},
+		},
+		{
+			name: "关闭超时预扣流水成功_边界情况",
+			before: func(t *testing.T) {
+				t.Helper()
+				for idx := 0; idx < total; idx++ {
+					id := int64(200300 + idx)
+
+					err := s.svc.AddCredits(context.Background(), domain.Credit{
+						Uid: id,
+						Logs: []domain.CreditLog{
+							{
+								Key:          fmt.Sprintf("Key-%d", id),
+								ChangeAmount: 100,
+								Biz:          "user",
+								BizId:        id,
+								Desc:         "注册",
+							},
+						},
+					})
+					require.NoError(t, err)
+
+					// 预扣
+					_, err = s.svc.TryDeductCredits(context.Background(), domain.Credit{
+						Uid: id,
+						Logs: []domain.CreditLog{
+							{
+								Key:          fmt.Sprintf("key-try-%d", id),
+								ChangeAmount: 50,
+								Biz:          "order",
+								BizId:        id,
+								Desc:         "购买商品",
+							},
+						},
+					})
+					require.NoError(t, err)
+				}
+			},
+			getJobFunc: func(t *testing.T) *job.CloseExpiredLockedCreditsJob {
+				t.Helper()
+				return job.NewCloseExpiredOrdersJob(s.svc, 0, 0, total)
+			},
+			after: func(t *testing.T) {
+				t.Helper()
+				for idx := 0; idx < total; idx++ {
+					id := int64(200300 + idx)
+					c, err := s.svc.GetCreditsByUID(context.Background(), id)
+					require.NoError(t, err)
+					require.Equal(t, uint64(100), c.TotalAmount)
+					require.Equal(t, uint64(0), c.LockedTotalAmount)
+					s.requireCreditLogs(t, []domain.CreditLog{
+						{
+							Key:          fmt.Sprintf("Key-%d", id),
+							Uid:          id,
+							ChangeAmount: 100,
+							Biz:          "user",
+							BizId:        id,
+							Desc:         "注册",
+						},
+					}, c.Logs)
+				}
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			tc.before(t)
+			j := tc.getJobFunc(t)
+			require.NotZero(t, j.Name())
+			require.NoError(t, j.Run(context.Background()))
 			tc.after(t)
 		})
 	}
