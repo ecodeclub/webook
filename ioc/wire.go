@@ -27,6 +27,7 @@ import (
 	"github.com/ecodeclub/webook/internal/payment"
 	"github.com/ecodeclub/webook/internal/pkg/middleware"
 	"github.com/ecodeclub/webook/internal/product"
+	"github.com/ecodeclub/webook/internal/project"
 	baguwen "github.com/ecodeclub/webook/internal/question"
 	"github.com/ecodeclub/webook/internal/skill"
 	"github.com/google/wire"
@@ -56,6 +57,12 @@ func InitApp() (*App, error) {
 		wire.FieldsOf(new(*order.Module), "Hdl"),
 		payment.InitModule,
 		credit.InitModule,
-		initGinxServer)
+
+		project.InitModule,
+		wire.FieldsOf(new(*project.Module), "AdminHdl", "Hdl"),
+		// 这两个顺序不要换
+		initGinxServer,
+		InitAdminServer,
+	)
 	return new(App), nil
 }
