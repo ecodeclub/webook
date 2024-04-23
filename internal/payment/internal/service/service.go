@@ -31,7 +31,7 @@ import (
 type Service interface {
 	CreatePayment(ctx context.Context, payment domain.Payment) (domain.Payment, error)
 	GetPaymentChannels(ctx context.Context) []domain.PaymentChannel
-	FindPaymentByID(ctx context.Context, paymentID int64) (domain.Payment, error)
+	FindPaymentByID(ctx context.Context, pmtID int64) (domain.Payment, error)
 	PayByOrderID(ctx context.Context, oid int64) (domain.Payment, error)
 }
 
@@ -126,8 +126,8 @@ func (s *service) GetPaymentChannels(ctx context.Context) []domain.PaymentChanne
 	}
 }
 
-func (s *service) FindPaymentByID(ctx context.Context, id int64) (domain.Payment, error) {
-	return domain.Payment{}, nil
+func (s *service) FindPaymentByID(ctx context.Context, pmtID int64) (domain.Payment, error) {
+	return s.repo.FindPaymentByID(ctx, pmtID)
 }
 
 // PayByOrderID 通过订单序ID支付,查找并执行支付计划
