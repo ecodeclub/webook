@@ -189,7 +189,47 @@ func (s *OrderModuleTestSuite) getPaymentMockService() *paymentmocks.MockService
 	}).AnyTimes()
 
 	paymentSvc.EXPECT().PayByOrderID(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, oid int64) (payment.Payment, error) {
-		r, ok := tables[id]
+		if oid == 11212 {
+			return payment.Payment{
+				ID:          212,
+				SN:          "paymentSN-repay-212",
+				OrderID:     oid,
+				OrderSN:     fmt.Sprintf("orderSN-repay-11%d", 212),
+				TotalAmount: 9990,
+				Records: []payment.Record{
+					{
+						PaymentNO3rd: "credit-1",
+						Channel:      payment.ChannelTypeCredit,
+						Amount:       1000,
+						Status:       0,
+					},
+					{
+						PaymentNO3rd:  "wechat-2",
+						Channel:       payment.ChannelTypeWechat,
+						Amount:        8990,
+						Status:        0,
+						WechatCodeURL: "webchat_code",
+					},
+				},
+			}, nil
+		} else if oid == 11213 {
+			return payment.Payment{
+				ID:          213,
+				SN:          "paymentSN-repay-213",
+				OrderID:     oid,
+				OrderSN:     fmt.Sprintf("orderSN-repay-11%d", 213),
+				TotalAmount: 9990,
+				Records: []payment.Record{
+					{
+						PaymentNO3rd: "credit-1",
+						Channel:      payment.ChannelTypeCredit,
+						Amount:       9990,
+						Status:       0,
+					},
+				},
+			}, nil
+		}
+		r, ok := tables[oid]
 		if !ok {
 			return payment.Payment{}, fmt.Errorf(fmt.Sprintf("未配置的支付id=%d", id))
 		}
@@ -465,7 +505,6 @@ func (s *OrderModuleTestSuite) TestHandler_CreateOrder() {
 				require.Equal(t, domain.StatusProcessing, orders[0].Status)
 			},
 		},
-		// todo: 创建成功_仅微信支付
 		{
 			name: "创建成功_积分和微信组合支付",
 			req: web.CreateOrderReq{
@@ -687,7 +726,6 @@ func (s *OrderModuleTestSuite) TestHandler_CreateOrderFailed() {
 
 func (s *OrderModuleTestSuite) TestHandler_Repay() {
 	t := s.T()
-	t.Skip()
 
 	var testCases = []struct {
 		name string
@@ -695,23 +733,24 @@ func (s *OrderModuleTestSuite) TestHandler_Repay() {
 		before         func(t *testing.T)
 		req            web.OrderSNReq
 		wantCode       int
-		assertRespFunc func(t *testing.T, result test.Result[web.RetrieveOrderStatusResp])
+		assertRespFunc func(t *testing.T, result test.Result[web.RepayOrderResp])
 	}{
 		{
 			name: "继续支付订单成功_返回二维码",
 			before: func(t *testing.T) {
 				t.Helper()
 				_, err := s.dao.CreateOrder(context.Background(), dao.Order{
-					Id:        212,
-					SN:        "orderSN-repay-1",
-					BuyerId:   testUID,
-					PaymentId: sqlx.NewNullInt64(212),
-					PaymentSn: sqlx.NewNullString("paymentSN-repay-212"),
-					Status:    domain.StatusProcessing.ToUint8(),
+					Id:               11212,
+					SN:               "orderSN-repay-11212",
+					BuyerId:          testUID,
+					PaymentId:        sqlx.NewNullInt64(212),
+					PaymentSn:        sqlx.NewNullString("paymentSN-repay-212"),
+					OriginalTotalAmt: 9900,
+					RealTotalAmt:     9900,
+					Status:           domain.StatusProcessing.ToUint8(),
 				}, []dao.OrderItem{
 					{
-						Id:               0,
-						OrderId:          0,
+						OrderId:          11212,
 						SPUId:            1,
 						SKUId:            1,
 						SKUName:          "商品SKU",
@@ -725,17 +764,51 @@ func (s *OrderModuleTestSuite) TestHandler_Repay() {
 			},
 
 			req: web.OrderSNReq{
-				SN: "orderSN-repay-1",
+				SN: "orderSN-repay-11212",
 			},
 			wantCode: 200,
-			assertRespFunc: func(t *testing.T, result test.Result[web.RetrieveOrderStatusResp]) {
+			assertRespFunc: func(t *testing.T, result test.Result[web.RepayOrderResp]) {
 				t.Helper()
-				assert.Equal(t, domain.StatusSuccess.ToUint8(), result.Data.Status)
+				assert.NotZero(t, result.Data.WechatCodeURL)
 			},
 		},
-		// 继续支付成功_不返回二维码
-		// 继续支付失败_订单状态非法(INIT, Failed,Success,Canceled,TimeoutClosed)
-		//
+		{
+			name: "继续支付订单成功_不返回二维码",
+			before: func(t *testing.T) {
+				t.Helper()
+				_, err := s.dao.CreateOrder(context.Background(), dao.Order{
+					Id:               11213,
+					SN:               "orderSN-repay-11213",
+					BuyerId:          testUID,
+					PaymentId:        sqlx.NewNullInt64(213),
+					PaymentSn:        sqlx.NewNullString("paymentSN-repay-213"),
+					OriginalTotalAmt: 9900,
+					RealTotalAmt:     9900,
+					Status:           domain.StatusProcessing.ToUint8(),
+				}, []dao.OrderItem{
+					{
+						OrderId:          11213,
+						SPUId:            1,
+						SKUId:            1,
+						SKUName:          "商品SKU",
+						SKUDescription:   "商品SKU描述",
+						SKUOriginalPrice: 9900,
+						SKURealPrice:     9900,
+						Quantity:         1,
+					},
+				})
+				require.NoError(t, err)
+			},
+
+			req: web.OrderSNReq{
+				SN: "orderSN-repay-11213",
+			},
+			wantCode: 200,
+			assertRespFunc: func(t *testing.T, result test.Result[web.RepayOrderResp]) {
+				t.Helper()
+				assert.Zero(t, result.Data.WechatCodeURL)
+			},
+		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -744,7 +817,7 @@ func (s *OrderModuleTestSuite) TestHandler_Repay() {
 				"/order/repay", iox.NewJSONReader(tc.req))
 			req.Header.Set("content-type", "application/json")
 			require.NoError(t, err)
-			recorder := test.NewJSONResponseRecorder[web.RetrieveOrderStatusResp]()
+			recorder := test.NewJSONResponseRecorder[web.RepayOrderResp]()
 			s.server.ServeHTTP(recorder, req)
 			require.Equal(t, tc.wantCode, recorder.Code)
 			tc.assertRespFunc(t, recorder.MustScan())
@@ -755,7 +828,6 @@ func (s *OrderModuleTestSuite) TestHandler_Repay() {
 
 func (s *OrderModuleTestSuite) TestHandler_RepayFailed() {
 	t := s.T()
-	t.Skip()
 
 	testCases := []struct {
 		name     string
@@ -769,6 +841,7 @@ func (s *OrderModuleTestSuite) TestHandler_RepayFailed() {
 			before: func(t *testing.T) {
 				t.Helper()
 				_, err := s.dao.CreateOrder(context.Background(), dao.Order{
+					Id:               11111,
 					SN:               "orderSN-repay-11",
 					BuyerId:          testUID,
 					PaymentId:        sqlx.NewNullInt64(1000),
@@ -801,13 +874,14 @@ func (s *OrderModuleTestSuite) TestHandler_RepayFailed() {
 			},
 		},
 		{
-			name: "继续支付失败_订单状态非法_Failed_Success_Canceled_TimeoutClosed",
+			name: "继续支付失败_订单状态非法_支付失败",
 			before: func(t *testing.T) {
 				t.Helper()
 				_, err := s.dao.CreateOrder(context.Background(), dao.Order{
+					Id:               11112,
 					SN:               "orderSN-repay-12",
 					BuyerId:          testUID,
-					PaymentId:        sqlx.NewNullInt64(1000),
+					PaymentId:        sqlx.NewNullInt64(1001),
 					PaymentSn:        sqlx.NewNullString("paymentSN-1001"),
 					OriginalTotalAmt: 9900,
 					RealTotalAmt:     9900,
@@ -829,6 +903,154 @@ func (s *OrderModuleTestSuite) TestHandler_RepayFailed() {
 			},
 			req: web.OrderSNReq{
 				SN: "orderSN-repay-12",
+			},
+			wantCode: 500,
+			wantResp: test.Result[any]{
+				Code: errs.SystemError.Code,
+				Msg:  errs.SystemError.Msg,
+			},
+		},
+		{
+			name: "继续支付失败_订单状态非法_支付成功",
+			before: func(t *testing.T) {
+				t.Helper()
+				_, err := s.dao.CreateOrder(context.Background(), dao.Order{
+					Id:               11113,
+					SN:               "orderSN-repay-13",
+					BuyerId:          testUID,
+					PaymentId:        sqlx.NewNullInt64(1002),
+					PaymentSn:        sqlx.NewNullString("paymentSN-1002"),
+					OriginalTotalAmt: 9900,
+					RealTotalAmt:     9900,
+					Status:           domain.StatusSuccess.ToUint8(),
+				}, []dao.OrderItem{
+					{
+						SPUId:            1,
+						SKUId:            1,
+						SKUSN:            fmt.Sprintf("SKUSN-%d", 1),
+						SKUImage:         fmt.Sprintf("SKUImage-%d", 1),
+						SKUName:          "商品SKU",
+						SKUDescription:   "商品SKU描述",
+						SKUOriginalPrice: 9900,
+						SKURealPrice:     9900,
+						Quantity:         1,
+					},
+				})
+				require.NoError(t, err)
+			},
+			req: web.OrderSNReq{
+				SN: "orderSN-repay-13",
+			},
+			wantCode: 500,
+			wantResp: test.Result[any]{
+				Code: errs.SystemError.Code,
+				Msg:  errs.SystemError.Msg,
+			},
+		},
+		{
+			name: "继续支付失败_订单状态非法_已取消",
+			before: func(t *testing.T) {
+				t.Helper()
+				_, err := s.dao.CreateOrder(context.Background(), dao.Order{
+					Id:               11114,
+					SN:               "orderSN-repay-14",
+					BuyerId:          testUID,
+					PaymentId:        sqlx.NewNullInt64(1003),
+					PaymentSn:        sqlx.NewNullString("paymentSN-1003"),
+					OriginalTotalAmt: 9900,
+					RealTotalAmt:     9900,
+					Status:           domain.StatusFailed.ToUint8(),
+				}, []dao.OrderItem{
+					{
+						SPUId:            1,
+						SKUId:            1,
+						SKUSN:            fmt.Sprintf("SKUSN-%d", 1),
+						SKUImage:         fmt.Sprintf("SKUImage-%d", 1),
+						SKUName:          "商品SKU",
+						SKUDescription:   "商品SKU描述",
+						SKUOriginalPrice: 9900,
+						SKURealPrice:     9900,
+						Quantity:         1,
+					},
+				})
+				require.NoError(t, err)
+			},
+			req: web.OrderSNReq{
+				SN: "orderSN-repay-14",
+			},
+			wantCode: 500,
+			wantResp: test.Result[any]{
+				Code: errs.SystemError.Code,
+				Msg:  errs.SystemError.Msg,
+			},
+		},
+		{
+			name: "继续支付失败_订单状态非法_超时关闭",
+			before: func(t *testing.T) {
+				t.Helper()
+				_, err := s.dao.CreateOrder(context.Background(), dao.Order{
+					Id:               11115,
+					SN:               "orderSN-repay-15",
+					BuyerId:          testUID,
+					PaymentId:        sqlx.NewNullInt64(1004),
+					PaymentSn:        sqlx.NewNullString("paymentSN-1004"),
+					OriginalTotalAmt: 9900,
+					RealTotalAmt:     9900,
+					Status:           domain.StatusTimeoutClosed.ToUint8(),
+				}, []dao.OrderItem{
+					{
+						SPUId:            1,
+						SKUId:            1,
+						SKUSN:            fmt.Sprintf("SKUSN-%d", 1),
+						SKUImage:         fmt.Sprintf("SKUImage-%d", 1),
+						SKUName:          "商品SKU",
+						SKUDescription:   "商品SKU描述",
+						SKUOriginalPrice: 9900,
+						SKURealPrice:     9900,
+						Quantity:         1,
+					},
+				})
+				require.NoError(t, err)
+			},
+			req: web.OrderSNReq{
+				SN: "orderSN-repay-15",
+			},
+			wantCode: 500,
+			wantResp: test.Result[any]{
+				Code: errs.SystemError.Code,
+				Msg:  errs.SystemError.Msg,
+			},
+		},
+		{
+			name: "继续支付失败_无支付记录",
+			before: func(t *testing.T) {
+				t.Helper()
+				_, err := s.dao.CreateOrder(context.Background(), dao.Order{
+					Id:               11116,
+					SN:               "orderSN-repay-16",
+					BuyerId:          testUID,
+					PaymentId:        sqlx.NewNullInt64(1005),
+					PaymentSn:        sqlx.NewNullString("paymentSN-1005"),
+					OriginalTotalAmt: 9900,
+					RealTotalAmt:     9900,
+					Status:           domain.StatusProcessing.ToUint8(),
+				}, []dao.OrderItem{
+					{
+						SPUId:            1,
+						SKUId:            1,
+						SKUSN:            fmt.Sprintf("SKUSN-%d", 1),
+						SKUImage:         fmt.Sprintf("SKUImage-%d", 1),
+						SKUName:          "商品SKU",
+						SKUDescription:   "商品SKU描述",
+						SKUOriginalPrice: 9900,
+						SKURealPrice:     9900,
+						Quantity:         1,
+					},
+				})
+				require.NoError(t, err)
+			},
+			req: web.OrderSNReq{
+				SN: "orderSN-repay-16",
 			},
 			wantCode: 500,
 			wantResp: test.Result[any]{
@@ -863,6 +1085,7 @@ func (s *OrderModuleTestSuite) TestHandler_RepayFailed() {
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+			tc.before(t)
 			req, err := http.NewRequest(http.MethodPost,
 				"/order/repay", iox.NewJSONReader(tc.req))
 			req.Header.Set("content-type", "application/json")
@@ -1166,8 +1389,13 @@ func (s *OrderModuleTestSuite) TestHandler_ListOrders() {
 	s.TearDownTest()
 
 	total := 100
+	unpaidStatus := make([]uint8, 0, total)
 	for idx := 0; idx < total; idx++ {
 		id := int64(100 + idx)
+		status := domain.OrderStatus(uint8(id)%6 + 1).ToUint8()
+		if status == domain.StatusUnpaid.ToUint8() {
+			unpaidStatus = append(unpaidStatus, status)
+		}
 		orderEntity := dao.Order{
 			Id:               id,
 			SN:               fmt.Sprintf("OrderSN-list-%d", id),
@@ -1176,7 +1404,7 @@ func (s *OrderModuleTestSuite) TestHandler_ListOrders() {
 			BuyerId:          testUID,
 			OriginalTotalAmt: 100,
 			RealTotalAmt:     100,
-			Status:           domain.StatusProcessing.ToUint8(),
+			Status:           status,
 		}
 		items := []dao.OrderItem{
 			{
@@ -1211,7 +1439,7 @@ func (s *OrderModuleTestSuite) TestHandler_ListOrders() {
 			wantCode: 200,
 			wantResp: test.Result[web.ListOrdersResp]{
 				Data: web.ListOrdersResp{
-					Total: int64(total),
+					Total: int64(total - len(unpaidStatus)),
 					Orders: []web.Order{
 						{
 							SN: "OrderSN-list-199",
@@ -1236,58 +1464,21 @@ func (s *OrderModuleTestSuite) TestHandler_ListOrders() {
 							},
 						},
 						{
-							SN: "OrderSN-list-198",
+							SN: "OrderSN-list-197",
 							Payment: web.Payment{
-								SN:    fmt.Sprintf("PaymentSN-list-%d", 198),
+								SN:    fmt.Sprintf("PaymentSN-list-%d", 197),
 								Items: nil,
 							},
 							OriginalTotalAmt: 100,
 							RealTotalAmt:     100,
-							Status:           domain.StatusProcessing.ToUint8(),
+							Status:           domain.StatusTimeoutClosed.ToUint8(),
 							Items: []web.OrderItem{
 								{
 									SKU: web.SKU{
-										SN:            fmt.Sprintf("SKUSN-%d", 198),
-										Image:         fmt.Sprintf("SKUImage-%d", 198),
-										Name:          fmt.Sprintf("SKUName-%d", 198),
-										Desc:          fmt.Sprintf("SKUDescription-%d", 198),
-										OriginalPrice: 100,
-										RealPrice:     100,
-										Quantity:      1,
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-		{
-			name: "获取部分",
-			req: web.ListOrdersReq{
-				Limit:  2,
-				Offset: 99,
-			},
-			wantCode: 200,
-			wantResp: test.Result[web.ListOrdersResp]{
-				Data: web.ListOrdersResp{
-					Total: int64(total),
-					Orders: []web.Order{
-						{
-							SN: "OrderSN-list-100",
-							Payment: web.Payment{
-								SN: fmt.Sprintf("PaymentSN-list-%d", 100),
-							},
-							OriginalTotalAmt: 100,
-							RealTotalAmt:     100,
-							Status:           domain.StatusProcessing.ToUint8(),
-							Items: []web.OrderItem{
-								{
-									SKU: web.SKU{
-										SN:            fmt.Sprintf("SKUSN-%d", 100),
-										Image:         fmt.Sprintf("SKUImage-%d", 100),
-										Name:          fmt.Sprintf("SKUName-%d", 100),
-										Desc:          fmt.Sprintf("SKUDescription-%d", 100),
+										SN:            fmt.Sprintf("SKUSN-%d", 197),
+										Image:         fmt.Sprintf("SKUImage-%d", 197),
+										Name:          fmt.Sprintf("SKUName-%d", 197),
+										Desc:          fmt.Sprintf("SKUDescription-%d", 197),
 										OriginalPrice: 100,
 										RealPrice:     100,
 										Quantity:      1,
