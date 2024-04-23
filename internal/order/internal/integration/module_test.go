@@ -685,6 +685,196 @@ func (s *OrderModuleTestSuite) TestHandler_CreateOrderFailed() {
 	}
 }
 
+func (s *OrderModuleTestSuite) TestHandler_Repay() {
+	t := s.T()
+	t.Skip()
+
+	var testCases = []struct {
+		name string
+
+		before         func(t *testing.T)
+		req            web.OrderSNReq
+		wantCode       int
+		assertRespFunc func(t *testing.T, result test.Result[web.RetrieveOrderStatusResp])
+	}{
+		{
+			name: "继续支付订单成功_返回二维码",
+			before: func(t *testing.T) {
+				t.Helper()
+				_, err := s.dao.CreateOrder(context.Background(), dao.Order{
+					Id:        212,
+					SN:        "orderSN-repay-1",
+					BuyerId:   testUID,
+					PaymentId: sqlx.NewNullInt64(212),
+					PaymentSn: sqlx.NewNullString("paymentSN-repay-212"),
+					Status:    domain.StatusProcessing.ToUint8(),
+				}, []dao.OrderItem{
+					{
+						Id:               0,
+						OrderId:          0,
+						SPUId:            1,
+						SKUId:            1,
+						SKUName:          "商品SKU",
+						SKUDescription:   "商品SKU描述",
+						SKUOriginalPrice: 9900,
+						SKURealPrice:     9900,
+						Quantity:         1,
+					},
+				})
+				require.NoError(t, err)
+			},
+
+			req: web.OrderSNReq{
+				SN: "orderSN-repay-1",
+			},
+			wantCode: 200,
+			assertRespFunc: func(t *testing.T, result test.Result[web.RetrieveOrderStatusResp]) {
+				t.Helper()
+				assert.Equal(t, domain.StatusSuccess.ToUint8(), result.Data.Status)
+			},
+		},
+		// 继续支付成功_不返回二维码
+		// 继续支付失败_订单状态非法(INIT, Failed,Success,Canceled,TimeoutClosed)
+		//
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			tc.before(t)
+			req, err := http.NewRequest(http.MethodPost,
+				"/order/repay", iox.NewJSONReader(tc.req))
+			req.Header.Set("content-type", "application/json")
+			require.NoError(t, err)
+			recorder := test.NewJSONResponseRecorder[web.RetrieveOrderStatusResp]()
+			s.server.ServeHTTP(recorder, req)
+			require.Equal(t, tc.wantCode, recorder.Code)
+			tc.assertRespFunc(t, recorder.MustScan())
+		})
+	}
+
+}
+
+func (s *OrderModuleTestSuite) TestHandler_RepayFailed() {
+	t := s.T()
+	t.Skip()
+
+	testCases := []struct {
+		name     string
+		before   func(t *testing.T)
+		req      web.OrderSNReq
+		wantCode int
+		wantResp test.Result[any]
+	}{
+		{
+			name: "继续支付失败_订单状态非法_未支付",
+			before: func(t *testing.T) {
+				t.Helper()
+				_, err := s.dao.CreateOrder(context.Background(), dao.Order{
+					SN:               "orderSN-repay-11",
+					BuyerId:          testUID,
+					PaymentId:        sqlx.NewNullInt64(1000),
+					PaymentSn:        sqlx.NewNullString("paymentSN-1000"),
+					OriginalTotalAmt: 9900,
+					RealTotalAmt:     9900,
+					Status:           domain.StatusUnpaid.ToUint8(),
+				}, []dao.OrderItem{
+					{
+						SPUId:            1,
+						SKUId:            1,
+						SKUSN:            fmt.Sprintf("SKUSN-%d", 1),
+						SKUImage:         fmt.Sprintf("SKUImage-%d", 1),
+						SKUName:          "商品SKU",
+						SKUDescription:   "商品SKU描述",
+						SKUOriginalPrice: 9900,
+						SKURealPrice:     9900,
+						Quantity:         1,
+					},
+				})
+				require.NoError(t, err)
+			},
+			req: web.OrderSNReq{
+				SN: "orderSN-repay-11",
+			},
+			wantCode: 500,
+			wantResp: test.Result[any]{
+				Code: errs.SystemError.Code,
+				Msg:  errs.SystemError.Msg,
+			},
+		},
+		{
+			name: "继续支付失败_订单状态非法_Failed_Success_Canceled_TimeoutClosed",
+			before: func(t *testing.T) {
+				t.Helper()
+				_, err := s.dao.CreateOrder(context.Background(), dao.Order{
+					SN:               "orderSN-repay-12",
+					BuyerId:          testUID,
+					PaymentId:        sqlx.NewNullInt64(1000),
+					PaymentSn:        sqlx.NewNullString("paymentSN-1001"),
+					OriginalTotalAmt: 9900,
+					RealTotalAmt:     9900,
+					Status:           domain.StatusFailed.ToUint8(),
+				}, []dao.OrderItem{
+					{
+						SPUId:            1,
+						SKUId:            1,
+						SKUSN:            fmt.Sprintf("SKUSN-%d", 1),
+						SKUImage:         fmt.Sprintf("SKUImage-%d", 1),
+						SKUName:          "商品SKU",
+						SKUDescription:   "商品SKU描述",
+						SKUOriginalPrice: 9900,
+						SKURealPrice:     9900,
+						Quantity:         1,
+					},
+				})
+				require.NoError(t, err)
+			},
+			req: web.OrderSNReq{
+				SN: "orderSN-repay-12",
+			},
+			wantCode: 500,
+			wantResp: test.Result[any]{
+				Code: errs.SystemError.Code,
+				Msg:  errs.SystemError.Msg,
+			},
+		},
+		{
+			name:   "订单序列号为空",
+			before: func(t *testing.T) {},
+			req: web.OrderSNReq{
+				SN: "",
+			},
+			wantCode: 500,
+			wantResp: test.Result[any]{
+				Code: errs.SystemError.Code,
+				Msg:  errs.SystemError.Msg,
+			},
+		},
+		{
+			name:   "订单序列号非法",
+			before: func(t *testing.T) {},
+			req: web.OrderSNReq{
+				SN: "InvalidOrderSN",
+			},
+			wantCode: 500,
+			wantResp: test.Result[any]{
+				Code: errs.SystemError.Code,
+				Msg:  errs.SystemError.Msg,
+			},
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			req, err := http.NewRequest(http.MethodPost,
+				"/order/repay", iox.NewJSONReader(tc.req))
+			req.Header.Set("content-type", "application/json")
+			require.NoError(t, err)
+			recorder := test.NewJSONResponseRecorder[any]()
+			s.server.ServeHTTP(recorder, req)
+			require.Equal(t, tc.wantCode, recorder.Code)
+			assert.Equal(t, tc.wantResp, recorder.MustScan())
+		})
+	}
+}
+
 func (s *OrderModuleTestSuite) TestHandler_RetrieveOrderStatus() {
 	t := s.T()
 	var testCases = []struct {
@@ -896,7 +1086,7 @@ func (s *OrderModuleTestSuite) TestHandler_RetrieveOrderStatusFailed() {
 		wantResp test.Result[any]
 	}{
 		{
-			name: "订单状态非法",
+			name: "订单状态非法_用户不可见状态",
 			before: func(t *testing.T) {
 				t.Helper()
 				_, err := s.dao.CreateOrder(context.Background(), dao.Order{
@@ -1241,7 +1431,7 @@ func (s *OrderModuleTestSuite) TestHandler_RetrieveOrderDetailFailed() {
 		wantResp test.Result[any]
 	}{
 		{
-			name: "订单状态非法",
+			name: "订单状态非法_用户不可见状态",
 			before: func(t *testing.T) {
 				t.Helper()
 				_, err := s.dao.CreateOrder(context.Background(), dao.Order{
@@ -1389,6 +1579,7 @@ func (s *OrderModuleTestSuite) TestHandler_CancelOrderFailed() {
 		wantCode int
 		wantResp test.Result[any]
 	}{
+		// todo: 订单状态非法_INIT_Success_Failed_Canceled_TimeoutClosed
 		{
 			name: "订单序列号为空",
 			req: web.OrderSNReq{
@@ -1607,7 +1798,8 @@ func (s *OrderModuleTestSuite) TestJob_CloseTimeoutOrders() {
 				t.Helper()
 				for idx := 0; idx < total; idx++ {
 					id := int64(200 + idx)
-					orderEntity, err := s.dao.FindOrderBySN(context.Background(), fmt.Sprintf("OrderSN-close-%d", id))
+					orderEntity, err := s.dao.FindOrderByUIDAndSNAndStatus(context.Background(), id, fmt.Sprintf("OrderSN-close-%d", id),
+						domain.StatusTimeoutClosed.ToUint8())
 					assert.NoError(t, err)
 					assert.Equal(t, domain.StatusTimeoutClosed.ToUint8(), orderEntity.Status)
 				}
@@ -1651,7 +1843,8 @@ func (s *OrderModuleTestSuite) TestJob_CloseTimeoutOrders() {
 				t.Helper()
 				for idx := 0; idx < total; idx++ {
 					id := int64(300 + idx)
-					orderEntity, err := s.dao.FindOrderBySN(context.Background(), fmt.Sprintf("OrderSN-close-%d", id))
+					orderEntity, err := s.dao.FindOrderByUIDAndSNAndStatus(context.Background(), id, fmt.Sprintf("OrderSN-close-%d", id),
+						domain.StatusTimeoutClosed.ToUint8())
 					assert.NoError(t, err)
 					assert.Equal(t, domain.StatusTimeoutClosed.ToUint8(), orderEntity.Status)
 				}

@@ -38,8 +38,6 @@ type OrderDAO interface {
 	FindTimeoutOrders(ctx context.Context, offset, limit int, ctime int64) ([]Order, error)
 	CountTimeoutOrders(ctx context.Context, ctime int64) (int64, error)
 	CloseTimeoutOrders(ctx context.Context, orderIDs []int64, ctime int64) error
-
-	FindOrderBySN(ctx context.Context, sn string) (Order, error)
 }
 
 func NewOrderGORMDAO(db *egorm.Component) OrderDAO {
@@ -129,15 +127,16 @@ func (g *gormOrderDAO) CompleteOrder(ctx context.Context, uid, oid int64) error 
 
 func (g *gormOrderDAO) FindTimeoutOrders(ctx context.Context, offset, limit int, ctime int64) ([]Order, error) {
 	var res []Order
-	err := g.db.WithContext(ctx).Offset(offset).Limit(limit).Order("id DESC").
-		Find(&res, "status = ? AND Ctime <= ?", domain.StatusUnpaid.ToUint8(), ctime).Error
+	err := g.db.WithContext(ctx).Offset(offset).Limit(limit).Order("ctime DESC").
+		Where("status <= ? AND Ctime <= ?", domain.StatusProcessing.ToUint8(), ctime).
+		Find(&res).Error
 	return res, err
 }
 
 func (g *gormOrderDAO) CountTimeoutOrders(ctx context.Context, ctime int64) (int64, error) {
 	var res int64
 	err := g.db.WithContext(ctx).Model(&Order{}).
-		Where("status = ? AND Ctime <= ?", domain.StatusUnpaid.ToUint8(), ctime).
+		Where("status <= ? AND Ctime <= ?", domain.StatusProcessing.ToUint8(), ctime).
 		Select("COUNT(id)").Count(&res).Error
 	return res, err
 }
@@ -145,17 +144,11 @@ func (g *gormOrderDAO) CountTimeoutOrders(ctx context.Context, ctime int64) (int
 func (g *gormOrderDAO) CloseTimeoutOrders(ctx context.Context, orderIDs []int64, ctime int64) error {
 	timestamp := time.Now().UnixMilli()
 	return g.db.WithContext(ctx).Model(&Order{}).
-		Where("status = ? AND Ctime <= ? AND id IN ?", domain.StatusUnpaid.ToUint8(), ctime, orderIDs).
+		Where("status <= ? AND Ctime <= ? AND id IN ?", domain.StatusProcessing.ToUint8(), ctime, orderIDs).
 		Updates(map[string]any{
 			"status": domain.StatusTimeoutClosed.ToUint8(),
 			"utime":  timestamp,
 		}).Error
-}
-
-func (g *gormOrderDAO) FindOrderBySN(ctx context.Context, sn string) (Order, error) {
-	var res Order
-	err := g.db.WithContext(ctx).First(&res, "sn = ?", sn).Error
-	return res, err
 }
 
 type Order struct {
@@ -166,7 +159,7 @@ type Order struct {
 	PaymentSn        sql.NullString `gorm:"type:varchar(255);uniqueIndex:uniq_payment_sn;comment:支付序列号,冗余允许为NULL"`
 	OriginalTotalAmt int64          `gorm:"not null;comment:原始总价;单位为分, 999表示9.99元"`
 	RealTotalAmt     int64          `gorm:"not null;comment:实付总价;单位为分, 999表示9.99元"`
-	Status           uint8          `gorm:"type:tinyint unsigned;not null;default:1;comment:订单状态 1=未支付 2=处理中 3=支付成功(用户支付完成) 4=支付失败 5=已取消(用户主动取消) 6=已过期(订单超时关闭)"`
+	Status           uint8          `gorm:"type:tinyint unsigned;not null;default:1;index:idx_order_status;comment:订单状态 1=未支付 2=处理中 3=支付成功(用户支付完成) 4=支付失败 5=已取消(用户主动取消) 6=已过期(订单超时关闭)"`
 	Ctime            int64
 	Utime            int64
 }
