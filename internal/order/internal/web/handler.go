@@ -368,9 +368,13 @@ func (h *Handler) toOrderVOWithPaymentInfo(order domain.Order, pr payment.Paymen
 
 // CancelOrder 取消订单
 func (h *Handler) CancelOrder(ctx *ginx.Context, req OrderSNReq, sess session.Session) (ginx.Result, error) {
-	order, err := h.svc.FindUserVisibleOrderByUIDAndSN(ctx.Request.Context(), sess.Claims().Uid, req.SN)
+	uid := sess.Claims().Uid
+	order, err := h.svc.FindUserVisibleOrderByUIDAndSN(ctx.Request.Context(), uid, req.SN)
 	if err != nil {
 		return systemErrorResult, fmt.Errorf("查找订单失败: %w", err)
+	}
+	if order.Status != domain.StatusProcessing {
+		return systemErrorResult, fmt.Errorf("订单状态非法: %w, uid: %d, sn: %s", err, uid, req.SN)
 	}
 	err = h.svc.CancelOrder(ctx.Request.Context(), order.BuyerID, order.ID)
 	if err != nil {

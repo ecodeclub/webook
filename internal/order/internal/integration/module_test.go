@@ -959,7 +959,7 @@ func (s *OrderModuleTestSuite) TestHandler_RepayFailed() {
 					PaymentSn:        sqlx.NewNullString("paymentSN-1003"),
 					OriginalTotalAmt: 9900,
 					RealTotalAmt:     9900,
-					Status:           domain.StatusFailed.ToUint8(),
+					Status:           domain.StatusCanceled.ToUint8(),
 				}, []dao.OrderItem{
 					{
 						SPUId:            1,
@@ -1766,13 +1766,199 @@ func (s *OrderModuleTestSuite) TestHandler_CancelOrderFailed() {
 	t := s.T()
 	testCases := []struct {
 		name     string
+		before   func(t *testing.T)
 		req      web.OrderSNReq
 		wantCode int
 		wantResp test.Result[any]
 	}{
-		// todo: 订单状态非法_INIT_Success_Failed_Canceled_TimeoutClosed
 		{
-			name: "订单序列号为空",
+			name: "取消订单失败_订单状态非法_未支付",
+			before: func(t *testing.T) {
+				t.Helper()
+				_, err := s.dao.CreateOrder(context.Background(), dao.Order{
+					Id:               21111,
+					SN:               "orderSN-cancel-11",
+					BuyerId:          testUID,
+					PaymentId:        sqlx.NewNullInt64(2000),
+					PaymentSn:        sqlx.NewNullString("paymentSN-2000"),
+					OriginalTotalAmt: 9900,
+					RealTotalAmt:     9900,
+					Status:           domain.StatusUnpaid.ToUint8(),
+				}, []dao.OrderItem{
+					{
+						SPUId:            1,
+						SKUId:            1,
+						SKUSN:            fmt.Sprintf("SKUSN-%d", 1),
+						SKUImage:         fmt.Sprintf("SKUImage-%d", 1),
+						SKUName:          "商品SKU",
+						SKUDescription:   "商品SKU描述",
+						SKUOriginalPrice: 9900,
+						SKURealPrice:     9900,
+						Quantity:         1,
+					},
+				})
+				require.NoError(t, err)
+			},
+			req: web.OrderSNReq{
+				SN: "orderSN-cancel-11",
+			},
+			wantCode: 500,
+			wantResp: test.Result[any]{
+				Code: errs.SystemError.Code,
+				Msg:  errs.SystemError.Msg,
+			},
+		},
+		{
+			name: "取消订单失败_订单状态非法_支付失败",
+			before: func(t *testing.T) {
+				t.Helper()
+				_, err := s.dao.CreateOrder(context.Background(), dao.Order{
+					Id:               21112,
+					SN:               "orderSN-cancel-12",
+					BuyerId:          testUID,
+					PaymentId:        sqlx.NewNullInt64(2001),
+					PaymentSn:        sqlx.NewNullString("paymentSN-2001"),
+					OriginalTotalAmt: 9900,
+					RealTotalAmt:     9900,
+					Status:           domain.StatusFailed.ToUint8(),
+				}, []dao.OrderItem{
+					{
+						SPUId:            1,
+						SKUId:            1,
+						SKUSN:            fmt.Sprintf("SKUSN-%d", 1),
+						SKUImage:         fmt.Sprintf("SKUImage-%d", 1),
+						SKUName:          "商品SKU",
+						SKUDescription:   "商品SKU描述",
+						SKUOriginalPrice: 9900,
+						SKURealPrice:     9900,
+						Quantity:         1,
+					},
+				})
+				require.NoError(t, err)
+			},
+			req: web.OrderSNReq{
+				SN: "orderSN-cancel-12",
+			},
+			wantCode: 500,
+			wantResp: test.Result[any]{
+				Code: errs.SystemError.Code,
+				Msg:  errs.SystemError.Msg,
+			},
+		},
+		{
+			name: "取消订单失败_订单状态非法_支付成功",
+			before: func(t *testing.T) {
+				t.Helper()
+				_, err := s.dao.CreateOrder(context.Background(), dao.Order{
+					Id:               21113,
+					SN:               "orderSN-cancel-13",
+					BuyerId:          testUID,
+					PaymentId:        sqlx.NewNullInt64(2002),
+					PaymentSn:        sqlx.NewNullString("paymentSN-2002"),
+					OriginalTotalAmt: 9900,
+					RealTotalAmt:     9900,
+					Status:           domain.StatusSuccess.ToUint8(),
+				}, []dao.OrderItem{
+					{
+						SPUId:            1,
+						SKUId:            1,
+						SKUSN:            fmt.Sprintf("SKUSN-%d", 1),
+						SKUImage:         fmt.Sprintf("SKUImage-%d", 1),
+						SKUName:          "商品SKU",
+						SKUDescription:   "商品SKU描述",
+						SKUOriginalPrice: 9900,
+						SKURealPrice:     9900,
+						Quantity:         1,
+					},
+				})
+				require.NoError(t, err)
+			},
+			req: web.OrderSNReq{
+				SN: "orderSN-cancel-13",
+			},
+			wantCode: 500,
+			wantResp: test.Result[any]{
+				Code: errs.SystemError.Code,
+				Msg:  errs.SystemError.Msg,
+			},
+		},
+		{
+			name: "取消订单失败_订单状态非法_已取消",
+			before: func(t *testing.T) {
+				t.Helper()
+				_, err := s.dao.CreateOrder(context.Background(), dao.Order{
+					Id:               21114,
+					SN:               "orderSN-cancel-14",
+					BuyerId:          testUID,
+					PaymentId:        sqlx.NewNullInt64(2003),
+					PaymentSn:        sqlx.NewNullString("paymentSN-2003"),
+					OriginalTotalAmt: 9900,
+					RealTotalAmt:     9900,
+					Status:           domain.StatusCanceled.ToUint8(),
+				}, []dao.OrderItem{
+					{
+						SPUId:            1,
+						SKUId:            1,
+						SKUSN:            fmt.Sprintf("SKUSN-%d", 1),
+						SKUImage:         fmt.Sprintf("SKUImage-%d", 1),
+						SKUName:          "商品SKU",
+						SKUDescription:   "商品SKU描述",
+						SKUOriginalPrice: 9900,
+						SKURealPrice:     9900,
+						Quantity:         1,
+					},
+				})
+				require.NoError(t, err)
+			},
+			req: web.OrderSNReq{
+				SN: "orderSN-cancel-14",
+			},
+			wantCode: 500,
+			wantResp: test.Result[any]{
+				Code: errs.SystemError.Code,
+				Msg:  errs.SystemError.Msg,
+			},
+		},
+		{
+			name: "取消订单失败_订单状态非法_超时关闭",
+			before: func(t *testing.T) {
+				t.Helper()
+				_, err := s.dao.CreateOrder(context.Background(), dao.Order{
+					Id:               21115,
+					SN:               "orderSN-cancel-15",
+					BuyerId:          testUID,
+					PaymentId:        sqlx.NewNullInt64(2004),
+					PaymentSn:        sqlx.NewNullString("paymentSN-2004"),
+					OriginalTotalAmt: 9900,
+					RealTotalAmt:     9900,
+					Status:           domain.StatusTimeoutClosed.ToUint8(),
+				}, []dao.OrderItem{
+					{
+						SPUId:            1,
+						SKUId:            1,
+						SKUSN:            fmt.Sprintf("SKUSN-%d", 1),
+						SKUImage:         fmt.Sprintf("SKUImage-%d", 1),
+						SKUName:          "商品SKU",
+						SKUDescription:   "商品SKU描述",
+						SKUOriginalPrice: 9900,
+						SKURealPrice:     9900,
+						Quantity:         1,
+					},
+				})
+				require.NoError(t, err)
+			},
+			req: web.OrderSNReq{
+				SN: "orderSN-cancel-15",
+			},
+			wantCode: 500,
+			wantResp: test.Result[any]{
+				Code: errs.SystemError.Code,
+				Msg:  errs.SystemError.Msg,
+			},
+		},
+		{
+			name:   "订单序列号为空",
+			before: func(t *testing.T) {},
 			req: web.OrderSNReq{
 				SN: "",
 			},
@@ -1783,7 +1969,8 @@ func (s *OrderModuleTestSuite) TestHandler_CancelOrderFailed() {
 			},
 		},
 		{
-			name: "订单序列号非法",
+			name:   "订单序列号非法",
+			before: func(t *testing.T) {},
 			req: web.OrderSNReq{
 				SN: "InvalidOrderSN",
 			},
@@ -1796,6 +1983,7 @@ func (s *OrderModuleTestSuite) TestHandler_CancelOrderFailed() {
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+			tc.before(t)
 			req, err := http.NewRequest(http.MethodPost,
 				"/order/cancel", iox.NewJSONReader(tc.req))
 			req.Header.Set("content-type", "application/json")
