@@ -49,7 +49,8 @@ func NewHandler(svc service.Service, paymentSvc payment.Service, productSvc prod
 func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g := server.Group("/order")
 	g.POST("/preview", ginx.BS[PreviewOrderReq](h.PreviewOrder))
-	g.POST("/create", ginx.BS[CreateOrderReq](h.CreateOrderAndPayment))
+	g.POST("/create", ginx.BS[CreateOrderReq](h.CreateOrder))
+	g.POST("/repay", ginx.BS[OrderSNReq](h.RepayOrder))
 	g.POST("", ginx.BS[OrderSNReq](h.RetrieveOrderStatus))
 	g.POST("/list", ginx.BS[ListOrdersReq](h.ListOrders))
 	g.POST("/detail", ginx.BS[OrderSNReq](h.RetrieveOrderDetail))
@@ -109,36 +110,32 @@ func (h *Handler) toSKUVO(sku domain.SKU) SKU {
 	}
 }
 
-// CreateOrderAndPayment 创建订单和支付
-func (h *Handler) CreateOrderAndPayment(ctx *ginx.Context, req CreateOrderReq, sess session.Session) (ginx.Result, error) {
+// CreateOrder 创建订单和支付
+func (h *Handler) CreateOrder(ctx *ginx.Context, req CreateOrderReq, sess session.Session) (ginx.Result, error) {
 
 	if err := h.checkRequestID(ctx.Request.Context(), req.RequestID); err != nil {
 		return systemErrorResult, fmt.Errorf("请求ID错误: %w", err)
 	}
 
-	order, err := h.createOrder(ctx, req.SKUs, sess.Claims().Uid)
+	uid := sess.Claims().Uid
+	order, err := h.createOrder(ctx, req.SKUs, uid)
 	if err != nil {
-		// 创建订单失败
-		return systemErrorResult, fmt.Errorf("创建订单失败: %w", err)
+		return systemErrorResult, fmt.Errorf("创建订单失败: %w, uid: %d", err, uid)
 	}
 
 	p, err := h.createPayment(ctx, order, req.PaymentItems)
 	if err != nil {
-		// 创建支付失败
 		return systemErrorResult, fmt.Errorf("创建支付失败: %w", err)
 	}
 
-	err = h.svc.UpdateOrderPaymentIDAndPaymentSN(ctx.Request.Context(), order.BuyerID, order.ID, p.ID, p.SN)
+	err = h.svc.UpdateUnpaidOrderPaymentInfo(ctx.Request.Context(), order.BuyerID, order.ID, p.ID, p.SN)
 	if err != nil {
-		return systemErrorResult, fmt.Errorf("订单冗余支付ID及SN失败: %w", err)
+		return systemErrorResult, err
 	}
 
-	// 微信支付需要返回二维码URL
-	var wechatCodeURL string
-	for _, r := range p.Records {
-		if payment.ChannelTypeWechat == r.Channel {
-			wechatCodeURL = r.WechatCodeURL
-		}
+	wechatCodeURL, err := h.processPaymentForOrder(ctx.Request.Context(), order.ID)
+	if err != nil {
+		return systemErrorResult, err
 	}
 
 	return ginx.Result{
@@ -256,9 +253,48 @@ func (h *Handler) createPayment(ctx context.Context, order domain.Order, payment
 	})
 }
 
+func (h *Handler) processPaymentForOrder(ctx context.Context, oid int64) (string, error) {
+	p, err := h.paymentSvc.PayByOrderID(ctx, oid)
+	if err != nil {
+		return "", fmt.Errorf("执行支付失败: %w, oid: %d", err, oid)
+	}
+	// 微信支付需要返回二维码URL
+	var wechatCodeURL string
+	for _, r := range p.Records {
+		if payment.ChannelTypeWechat == r.Channel {
+			wechatCodeURL = r.WechatCodeURL
+		}
+	}
+	return wechatCodeURL, nil
+}
+
+// RepayOrder 继续支付订单
+func (h *Handler) RepayOrder(ctx *ginx.Context, req OrderSNReq, sess session.Session) (ginx.Result, error) {
+
+	uid := sess.Claims().Uid
+	order, err := h.svc.FindUserVisibleOrderByUIDAndSN(ctx.Request.Context(), uid, req.SN)
+	if err != nil {
+		return systemErrorResult, fmt.Errorf("订单未找到: %w", err)
+	}
+
+	if order.Status != domain.StatusProcessing {
+		return systemErrorResult, fmt.Errorf("订单状态非法: %w, uid: %d, sn: %s", err, uid, req.SN)
+	}
+
+	wechatCodeURL, err := h.processPaymentForOrder(ctx.Request.Context(), order.ID)
+	if err != nil {
+		return systemErrorResult, fmt.Errorf("执行支付失败: %w", err)
+	}
+	return ginx.Result{
+		Data: RepayOrderResp{
+			WechatCodeURL: wechatCodeURL,
+		},
+	}, nil
+}
+
 // RetrieveOrderStatus 获取订单状态
 func (h *Handler) RetrieveOrderStatus(ctx *ginx.Context, req OrderSNReq, sess session.Session) (ginx.Result, error) {
-	order, err := h.svc.FindOrderByUIDAndOrderSN(ctx.Request.Context(), sess.Claims().Uid, req.SN)
+	order, err := h.svc.FindUserVisibleOrderByUIDAndSN(ctx.Request.Context(), sess.Claims().Uid, req.SN)
 	if err != nil {
 		return systemErrorResult, fmt.Errorf("订单未找到: %w", err)
 	}
@@ -271,7 +307,7 @@ func (h *Handler) RetrieveOrderStatus(ctx *ginx.Context, req OrderSNReq, sess se
 
 // ListOrders 分页查询用户订单
 func (h *Handler) ListOrders(ctx *ginx.Context, req ListOrdersReq, sess session.Session) (ginx.Result, error) {
-	orders, total, err := h.svc.FindOrdersByUID(ctx, sess.Claims().Uid, req.Offset, req.Limit)
+	orders, total, err := h.svc.FindUserVisibleOrdersByUID(ctx, sess.Claims().Uid, req.Offset, req.Limit)
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -304,7 +340,7 @@ func (h *Handler) toOrderVO(order domain.Order) Order {
 
 // RetrieveOrderDetail 查看订单详情
 func (h *Handler) RetrieveOrderDetail(ctx *ginx.Context, req OrderSNReq, sess session.Session) (ginx.Result, error) {
-	order, err := h.svc.FindOrderByUIDAndOrderSN(ctx.Request.Context(), sess.Claims().Uid, req.SN)
+	order, err := h.svc.FindUserVisibleOrderByUIDAndSN(ctx.Request.Context(), sess.Claims().Uid, req.SN)
 	if err != nil {
 		return systemErrorResult, fmt.Errorf("订单未找到: %w", err)
 	}
@@ -332,9 +368,13 @@ func (h *Handler) toOrderVOWithPaymentInfo(order domain.Order, pr payment.Paymen
 
 // CancelOrder 取消订单
 func (h *Handler) CancelOrder(ctx *ginx.Context, req OrderSNReq, sess session.Session) (ginx.Result, error) {
-	order, err := h.svc.FindOrderByUIDAndOrderSN(ctx.Request.Context(), sess.Claims().Uid, req.SN)
+	uid := sess.Claims().Uid
+	order, err := h.svc.FindUserVisibleOrderByUIDAndSN(ctx.Request.Context(), uid, req.SN)
 	if err != nil {
 		return systemErrorResult, fmt.Errorf("查找订单失败: %w", err)
+	}
+	if order.Status != domain.StatusProcessing {
+		return systemErrorResult, fmt.Errorf("订单状态非法: %w, uid: %d, sn: %s", err, uid, req.SN)
 	}
 	err = h.svc.CancelOrder(ctx.Request.Context(), order.BuyerID, order.ID)
 	if err != nil {

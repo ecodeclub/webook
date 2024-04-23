@@ -21,10 +21,12 @@ func (s OrderStatus) ToUint8() uint8 {
 }
 
 const (
-	StatusUnpaid    OrderStatus = 1
-	StatusCompleted OrderStatus = 2
-	StatusCanceled  OrderStatus = 3
-	StatusExpired   OrderStatus = 4
+	StatusUnpaid        OrderStatus = 1
+	StatusProcessing    OrderStatus = 2
+	StatusSuccess       OrderStatus = 3
+	StatusFailed        OrderStatus = 4
+	StatusCanceled      OrderStatus = 5
+	StatusTimeoutClosed OrderStatus = 6
 )
 
 type Order struct {

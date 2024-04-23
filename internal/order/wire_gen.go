@@ -32,11 +32,12 @@ func InitModule(db *gorm.DB, cache ecache.Cache, q mq.MQ, pm *payment.Module, pp
 	service := InitService(db)
 	handler := InitHandler(cache, service, pm, ppm, cm)
 	completeOrderConsumer := initCompleteOrderConsumer(service, q)
-	closeExpiredOrdersJob := initCloseExpiredOrdersJob(service)
+	closeTimeoutOrdersJob := initCloseExpiredOrdersJob(service)
 	module := &Module{
 		Hdl:                       handler,
 		c:                         completeOrderConsumer,
-		CloseExpiredOrdersCronJob: closeExpiredOrdersJob,
+		Svc:                       service,
+		CloseExpiredOrdersCronJob: closeTimeoutOrdersJob,
 	}
 	return module, nil
 }
@@ -56,7 +57,7 @@ type Handler = web.Handler
 
 type Service = service.Service
 
-type CloseExpiredOrdersJob = job.CloseExpiredOrdersJob
+type CloseTimeoutOrdersJob = job.CloseTimeoutOrdersJob
 
 var HandlerSet = wire.NewSet(sequencenumber.NewGenerator, web.NewHandler)
 
@@ -84,9 +85,9 @@ func initCompleteOrderConsumer(svc2 service.Service, q mq.MQ) *event.CompleteOrd
 	return consumer
 }
 
-func initCloseExpiredOrdersJob(svc2 service.Service) *job.CloseExpiredOrdersJob {
+func initCloseExpiredOrdersJob(svc2 service.Service) *CloseTimeoutOrdersJob {
 	minutes := int64(30)
 	seconds := int64(10)
-	limit := int(100)
+	limit := 100
 	return job.NewCloseExpiredOrdersJob(svc2, minutes, seconds, limit)
 }

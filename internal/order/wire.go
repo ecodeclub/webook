@@ -39,7 +39,7 @@ import (
 
 type Handler = web.Handler
 type Service = service.Service
-type CloseExpiredOrdersJob = job.CloseExpiredOrdersJob
+type CloseTimeoutOrdersJob = job.CloseTimeoutOrdersJob
 
 var HandlerSet = wire.NewSet(
 	sequencenumber.NewGenerator,
@@ -90,9 +90,9 @@ func initCompleteOrderConsumer(svc service.Service, q mq.MQ) *event.CompleteOrde
 	return consumer
 }
 
-func initCloseExpiredOrdersJob(svc service.Service) *job.CloseExpiredOrdersJob {
+func initCloseExpiredOrdersJob(svc service.Service) *CloseTimeoutOrdersJob {
 	minutes := int64(30)
 	seconds := int64(10)
-	limit := int(100)
+	limit := 100
 	return job.NewCloseExpiredOrdersJob(svc, minutes, seconds, limit)
 }

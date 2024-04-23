@@ -16,11 +16,11 @@ package order
 
 import (
 	"github.com/ecodeclub/webook/internal/order/internal/event"
-	"github.com/ecodeclub/webook/internal/order/internal/job"
 )
 
 type Module struct {
 	Hdl                       *Handler
 	c                         *event.CompleteOrderConsumer
-	CloseExpiredOrdersCronJob *job.CloseExpiredOrdersJob
+	Svc                       Service
+	CloseExpiredOrdersCronJob *CloseTimeoutOrdersJob
 }

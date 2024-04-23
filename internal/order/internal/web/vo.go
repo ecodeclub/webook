@@ -48,15 +48,21 @@ type CreateOrderReq struct {
 }
 
 type CreateOrderResp struct {
-	SN            string `json:"sn"` // 前端用于轮训订单状态,然后根据状态/时间限制来跳转
+	SN            string `json:"sn"`
 	WechatCodeURL string `json:"wechatCodeURL,omitempty"`
 }
 
-// OrderSNReq 获取订单状态、获取订单详情、取消订单
+// OrderSNReq 继续支付订单、获取订单状态、获取订单详情、取消订单
 type OrderSNReq struct {
 	SN string `json:"sn"`
 }
 
+// RepayOrderResp 继续支付
+type RepayOrderResp struct {
+	WechatCodeURL string `json:"wechatCodeURL,omitempty"`
+}
+
+// RetrieveOrderStatusResp 获取订单状态
 type RetrieveOrderStatusResp struct {
 	Status uint8 `json:"status"`
 }

@@ -25,17 +25,17 @@ import (
 	"github.com/gotomicro/ego/task/ecron"
 )
 
-var _ ecron.NamedJob = (*CloseExpiredOrdersJob)(nil)
+var _ ecron.NamedJob = (*CloseTimeoutOrdersJob)(nil)
 
-type CloseExpiredOrdersJob struct {
+type CloseTimeoutOrdersJob struct {
 	svc     service.Service
 	minutes int64
 	seconds int64
 	limit   int
 }
 
-func NewCloseExpiredOrdersJob(svc service.Service, minutes, seconds int64, limit int) *CloseExpiredOrdersJob {
-	return &CloseExpiredOrdersJob{
+func NewCloseExpiredOrdersJob(svc service.Service, minutes, seconds int64, limit int) *CloseTimeoutOrdersJob {
+	return &CloseTimeoutOrdersJob{
 		svc:     svc,
 		minutes: minutes,
 		seconds: seconds,
@@ -43,16 +43,16 @@ func NewCloseExpiredOrdersJob(svc service.Service, minutes, seconds int64, limit
 	}
 }
 
-func (c *CloseExpiredOrdersJob) Name() string {
-	return "CloseExpiredOrdersJob"
+func (c *CloseTimeoutOrdersJob) Name() string {
+	return "CloseTimeoutOrdersJob"
 }
 
-func (c *CloseExpiredOrdersJob) Run(ctx context.Context) error {
+func (c *CloseTimeoutOrdersJob) Run(ctx context.Context) error {
 	// 冗余10秒
 	ctime := time.Now().Add(time.Duration(-c.minutes)*time.Minute + time.Duration(-c.seconds)*time.Second).UnixMilli()
 
 	for {
-		orders, total, err := c.svc.FindExpiredOrders(ctx, 0, c.limit, ctime)
+		orders, total, err := c.svc.FindTimeoutOrders(ctx, 0, c.limit, ctime)
 		if err != nil {
 			return fmt.Errorf("获取过期订单失败: %w", err)
 		}
@@ -61,7 +61,7 @@ func (c *CloseExpiredOrdersJob) Run(ctx context.Context) error {
 			return src.ID
 		})
 
-		err = c.svc.CloseExpiredOrders(ctx, ids, ctime)
+		err = c.svc.CloseTimeoutOrders(ctx, ids, ctime)
 		if err != nil {
 			return fmt.Errorf("关闭过期订单失败: %w", err)
 		}
