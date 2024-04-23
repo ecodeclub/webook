@@ -38,10 +38,14 @@ func NewHandler(handler wechat.NotifyHandler, nativeSvc *wechat.NativePaymentSer
 		l:         elog.DefaultLogger}
 }
 
-func (h *Handler) PrivateRoutes(_ *gin.Engine) {}
+func (h *Handler) PrivateRoutes(_ *gin.Engine) {
+
+}
 
 func (h *Handler) PublicRoutes(server *gin.Engine) {
 	server.Any("/pay/callback", ginx.W(h.HandleWechatNativePayCallBack))
+	// 测试环境专用
+	server.Any("/pay/mock_cb", ginx.B[payments.Transaction](h.MockWechatCallback))
 }
 
 func (h *Handler) HandleWechatNativePayCallBack(ctx *ginx.Context) (ginx.Result, error) {

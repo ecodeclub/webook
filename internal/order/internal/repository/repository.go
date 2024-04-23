@@ -93,7 +93,8 @@ func (o *orderRepository) UpdateUnpaidOrderPaymentInfo(ctx context.Context, uid,
 func (o *orderRepository) FindUserVisibleOrderByUIDAndSN(ctx context.Context, uid int64, sn string) (domain.Order, error) {
 	order, err := o.dao.FindOrderByUIDAndSNAndStatus(ctx, uid, sn, domain.StatusProcessing.ToUint8())
 	if err != nil {
-		return domain.Order{}, fmt.Errorf("通过订单序列号及买家ID查找订单失败: %w", err)
+		return domain.Order{}, fmt.Errorf(
+			"通过订单序列号及买家ID查找订单失败: %w, uid: %d, sn: %s", err, uid, sn)
 	}
 
 	orderItems, err := o.dao.FindOrderItemsByOrderID(ctx, order.Id)

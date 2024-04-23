@@ -14,31 +14,16 @@
 
 package web
 
-import (
-	"github.com/ecodeclub/ginx"
-	"github.com/ecodeclub/ginx/session"
-	"github.com/ecodeclub/webook/internal/credit/internal/service"
-	"github.com/gin-gonic/gin"
-)
+import "github.com/gin-gonic/gin"
 
+// Handler C 端接口
 type Handler struct {
-	svc service.Service
 }
 
-func NewHandler(svc service.Service) *Handler {
-	return &Handler{svc: svc}
+func NewHandler() *Handler {
+	return &Handler{}
 }
 
 func (h *Handler) PrivateRoutes(server *gin.Engine) {
-	g := server.Group("/credit")
-	g.POST("/detail", ginx.S(h.QueryCredits))
-}
 
-func (h *Handler) QueryCredits(ctx *ginx.Context, sess session.Session) (ginx.Result, error) {
-	c, _ := h.svc.GetCreditsByUID(ctx.Request.Context(), sess.Claims().Uid)
-	return ginx.Result{
-		Data: Credit{
-			Amount: c.TotalAmount,
-		},
-	}, nil
 }

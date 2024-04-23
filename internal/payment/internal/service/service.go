@@ -31,7 +31,7 @@ import (
 type Service interface {
 	CreatePayment(ctx context.Context, payment domain.Payment) (domain.Payment, error)
 	GetPaymentChannels(ctx context.Context) []domain.PaymentChannel
-	FindPaymentByID(ctx context.Context, paymentID int64) (domain.Payment, error)
+	FindPaymentByID(ctx context.Context, pmtID int64) (domain.Payment, error)
 	PayByOrderID(ctx context.Context, oid int64) (domain.Payment, error)
 }
 
@@ -66,6 +66,7 @@ type service struct {
 
 // CreatePayment 创建支付记录(支付主记录 + 支付渠道流水记录) 订单模块会同步调用该模块, 生成支付计划
 func (s *service) CreatePayment(ctx context.Context, payment domain.Payment) (domain.Payment, error) {
+
 	// 3. 同步调用“支付模块”获取支付ID和支付SN和二维码
 	//    1)创建支付, 支付记录, 冗余订单ID和订单SN
 	//    2)调用“积分模块” 扣减积分
@@ -125,8 +126,8 @@ func (s *service) GetPaymentChannels(ctx context.Context) []domain.PaymentChanne
 	}
 }
 
-func (s *service) FindPaymentByID(ctx context.Context, id int64) (domain.Payment, error) {
-	return domain.Payment{}, nil
+func (s *service) FindPaymentByID(ctx context.Context, pmtID int64) (domain.Payment, error) {
+	return s.repo.FindPaymentByID(ctx, pmtID)
 }
 
 // PayByOrderID 通过订单序ID支付,查找并执行支付计划

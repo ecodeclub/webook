@@ -5,5 +5,6 @@ import (
 )
 
 type App struct {
-	Web *egin.Component
+	Web   *egin.Component
+	Admin AdminServer
 }

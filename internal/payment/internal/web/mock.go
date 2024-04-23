@@ -12,33 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:build mock
+
 package web
 
 import (
 	"github.com/ecodeclub/ginx"
-	"github.com/ecodeclub/ginx/session"
-	"github.com/ecodeclub/webook/internal/credit/internal/service"
-	"github.com/gin-gonic/gin"
+	"github.com/wechatpay-apiv3/wechatpay-go/services/payments"
 )
 
-type Handler struct {
-	svc service.Service
-}
-
-func NewHandler(svc service.Service) *Handler {
-	return &Handler{svc: svc}
-}
-
-func (h *Handler) PrivateRoutes(server *gin.Engine) {
-	g := server.Group("/credit")
-	g.POST("/detail", ginx.S(h.QueryCredits))
-}
-
-func (h *Handler) QueryCredits(ctx *ginx.Context, sess session.Session) (ginx.Result, error) {
-	c, _ := h.svc.GetCreditsByUID(ctx.Request.Context(), sess.Claims().Uid)
-	return ginx.Result{
-		Data: Credit{
-			Amount: c.TotalAmount,
-		},
-	}, nil
+func (h *Handler) MockWechatCallback(ctx *ginx.Context, req payments.Transaction) (ginx.Result, error) {
+	err := h.nativeSvc.HandleCallback(ctx, &req)
+	return ginx.Result{}, err
 }
