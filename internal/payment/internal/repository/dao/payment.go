@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"time"
 
+	"golang.org/x/sync/errgroup"
+
 	"github.com/ecodeclub/webook/internal/payment/internal/domain"
 	"gorm.io/gorm"
 )
@@ -27,6 +29,7 @@ import (
 type PaymentDAO interface {
 	FindOrCreate(ctx context.Context, pmt Payment, records []PaymentRecord) (int64, error)
 	FindPaymentByOrderSN(ctx context.Context, orderSN string) (Payment, []PaymentRecord, error)
+	FindPaymentByID(ctx context.Context, pmtID int64) (Payment, []PaymentRecord, error)
 	Update(ctx context.Context, pmt Payment, records []PaymentRecord) error
 
 	Insert(ctx context.Context, pmt Payment) error
@@ -94,6 +97,23 @@ func (p *PaymentGORMDAO) Update(ctx context.Context, pmt Payment, records []Paym
 
 func (p *PaymentGORMDAO) FindPaymentByOrderSN(ctx context.Context, orderSN string) (Payment, []PaymentRecord, error) {
 	return Payment{}, nil, nil
+}
+
+func (p *PaymentGORMDAO) FindPaymentByID(ctx context.Context, pmtID int64) (Payment, []PaymentRecord, error) {
+	db := p.db.WithContext(ctx)
+	var (
+		eg      errgroup.Group
+		pmt     Payment
+		records []PaymentRecord
+	)
+	eg.Go(func() error {
+		return db.Where("payment_id = ?", pmtID).Find(&records).Error
+	})
+	eg.Go(func() error {
+		return db.Where("id = ?", pmtID).First(&pmt).Error
+	})
+
+	return pmt, records, eg.Wait()
 }
 
 func (p *PaymentGORMDAO) GetPayment(ctx context.Context, bizTradeNO string) (Payment, error) {

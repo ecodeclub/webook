@@ -33,6 +33,7 @@ type PaymentRepository interface {
 	// UpdatePayment 这个设计有点差，因为
 	FindExpiredPayment(ctx context.Context, offset int, limit int, t time.Time) ([]domain.Payment, error)
 	GetPayment(ctx context.Context, bizTradeNO string) (domain.Payment, error)
+	FindPaymentByID(ctx context.Context, pmtID int64) (domain.Payment, error)
 }
 
 func NewPaymentRepository(d dao.PaymentDAO) PaymentRepository {
@@ -43,6 +44,11 @@ func NewPaymentRepository(d dao.PaymentDAO) PaymentRepository {
 
 type paymentRepository struct {
 	dao dao.PaymentDAO
+}
+
+func (p *paymentRepository) FindPaymentByID(ctx context.Context, pmtID int64) (domain.Payment, error) {
+	pmt, records, err := p.dao.FindPaymentByID(ctx, pmtID)
+	return p.toDomain(pmt, records), err
 }
 
 func (p *paymentRepository) CreatePayment(ctx context.Context, pmt domain.Payment) (domain.Payment, error) {

@@ -17,6 +17,7 @@ import (
 	"github.com/ecodeclub/webook/internal/payment"
 	"github.com/ecodeclub/webook/internal/pkg/middleware"
 	"github.com/ecodeclub/webook/internal/product"
+	"github.com/ecodeclub/webook/internal/project"
 	baguwen "github.com/ecodeclub/webook/internal/question"
 	"github.com/ecodeclub/webook/internal/skill"
 	"github.com/google/wire"
@@ -77,9 +78,14 @@ func InitApp() (*App, error) {
 		return nil, err
 	}
 	handler8 := orderModule.Hdl
-	component := initGinxServer(provider, checkMembershipMiddlewareBuilder, handler, questionSetHandler, webHandler, handler2, handler3, handler4, handler5, handler6, handler7, handler8)
+	projectModule := project.InitModule()
+	handler9 := projectModule.Hdl
+	component := initGinxServer(provider, checkMembershipMiddlewareBuilder, handler, questionSetHandler, webHandler, handler2, handler3, handler4, handler5, handler6, handler7, handler8, handler9)
+	adminHandler := projectModule.AdminHdl
+	adminServer := InitAdminServer(adminHandler)
 	app := &App{
-		Web: component,
+		Web:   component,
+		Admin: adminServer,
 	}
 	return app, nil
 }
