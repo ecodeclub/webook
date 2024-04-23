@@ -1566,7 +1566,7 @@ func (s *OrderModuleTestSuite) TestJob_CloseTimeoutOrders() {
 	testCases := []struct {
 		name       string
 		before     func(t *testing.T)
-		getJobFunc func(t *testing.T) *job.CloseExpiredOrdersJob
+		getJobFunc func(t *testing.T) *job.CloseTimeoutOrdersJob
 		after      func(t *testing.T)
 	}{
 		{
@@ -1599,7 +1599,7 @@ func (s *OrderModuleTestSuite) TestJob_CloseTimeoutOrders() {
 					require.NoError(s.T(), err)
 				}
 			},
-			getJobFunc: func(t *testing.T) *job.CloseExpiredOrdersJob {
+			getJobFunc: func(t *testing.T) *job.CloseTimeoutOrdersJob {
 				t.Helper()
 				return job.NewCloseExpiredOrdersJob(s.svc, 0, 0, 10)
 			},
@@ -1643,7 +1643,7 @@ func (s *OrderModuleTestSuite) TestJob_CloseTimeoutOrders() {
 					require.NoError(s.T(), err)
 				}
 			},
-			getJobFunc: func(t *testing.T) *job.CloseExpiredOrdersJob {
+			getJobFunc: func(t *testing.T) *job.CloseTimeoutOrdersJob {
 				t.Helper()
 				return job.NewCloseExpiredOrdersJob(s.svc, 0, 0, total)
 			},

@@ -23,7 +23,7 @@ import (
 	"github.com/gotomicro/ego/task/ecron"
 )
 
-func InitCronJobs(cjob *order.CloseExpiredOrdersJob) []*ecron.Component {
+func InitCronJobs(cjob *order.CloseTimeoutOrdersJob) []*ecron.Component {
 	return []*ecron.Component{
 		ecron.Load("cron.order.close").Build(ecron.WithJob(funcJobWrapper(cjob))),
 	}
