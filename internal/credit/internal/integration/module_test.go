@@ -1768,7 +1768,7 @@ func (s *ModuleTestSuite) TestJob_CloseExpiredLockedCreditLogs() {
 	testCases := []struct {
 		name       string
 		before     func(t *testing.T)
-		getJobFunc func(t *testing.T) *job.CloseExpiredLockedCreditsJob
+		getJobFunc func(t *testing.T) *job.CloseTimeoutLockedCreditsJob
 		after      func(t *testing.T)
 	}{
 		{
@@ -1808,9 +1808,9 @@ func (s *ModuleTestSuite) TestJob_CloseExpiredLockedCreditLogs() {
 					require.NoError(t, err)
 				}
 			},
-			getJobFunc: func(t *testing.T) *job.CloseExpiredLockedCreditsJob {
+			getJobFunc: func(t *testing.T) *job.CloseTimeoutLockedCreditsJob {
 				t.Helper()
-				return job.NewCloseExpiredOrdersJob(s.svc, 0, 0, 10)
+				return job.NewCloseTimeoutLockedCreditsJob(s.svc, 0, 0, 10)
 			},
 			after: func(t *testing.T) {
 				t.Helper()
@@ -1870,9 +1870,9 @@ func (s *ModuleTestSuite) TestJob_CloseExpiredLockedCreditLogs() {
 					require.NoError(t, err)
 				}
 			},
-			getJobFunc: func(t *testing.T) *job.CloseExpiredLockedCreditsJob {
+			getJobFunc: func(t *testing.T) *job.CloseTimeoutLockedCreditsJob {
 				t.Helper()
-				return job.NewCloseExpiredOrdersJob(s.svc, 0, 0, total)
+				return job.NewCloseTimeoutLockedCreditsJob(s.svc, 0, 0, total)
 			},
 			after: func(t *testing.T) {
 				t.Helper()

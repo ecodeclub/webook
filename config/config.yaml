@@ -20,17 +20,16 @@ kafka:
   addresses:
     - kafka:9092
   topics:
-    - name: payment_successful
+    - name: payment_successful_events
       partitions: 2
     - name: user_registration_events
       partitions: 2
-    - name: order_complete_events
+    - name: credit_increase_events
       partitions: 2
     - name: member_update_events
       partitions: 2
 
 cron:
-  order:
-    close:
-      enableSeconds: true          # 是否使用秒作解析器，默认否
-      spec: "0 0 0 * * *"           # 执行时间，每天 00:00:00 开始执行
+  close:
+    enableSeconds: true          # 是否使用秒作解析器，默认否
+    spec: "0 0 0 * * *"           # 执行时间，每天 00:00:00 开始执行
