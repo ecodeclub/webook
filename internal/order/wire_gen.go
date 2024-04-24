@@ -34,10 +34,10 @@ func InitModule(db *gorm.DB, cache ecache.Cache, q mq.MQ, pm *payment.Module, pp
 	paymentConsumer := initCompleteOrderConsumer(service, q)
 	closeTimeoutOrdersJob := initCloseExpiredOrdersJob(service)
 	module := &Module{
-		Hdl:                       handler,
-		c:                         paymentConsumer,
-		Svc:                       service,
-		CloseExpiredOrdersCronJob: closeTimeoutOrdersJob,
+		Hdl:                   handler,
+		c:                     paymentConsumer,
+		Svc:                   service,
+		CloseTimeoutOrdersJob: closeTimeoutOrdersJob,
 	}
 	return module, nil
 }
