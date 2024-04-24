@@ -32,12 +32,11 @@ type OrderDAO interface {
 	FindOrderItemsByOrderID(ctx context.Context, oid int64) ([]OrderItem, error)
 	CountOrdersByUID(ctx context.Context, uid int64, status uint8) (int64, error)
 	FindOrdersByUID(ctx context.Context, offset, limit int, uid int64, status uint8) ([]Order, error)
-	CancelOrder(ctx context.Context, uid, oid int64) error
-	CompleteOrder(ctx context.Context, uid, oid int64) error
-
+	SetOrderCanceled(ctx context.Context, uid, oid int64) error
+	SetOrderStatus(ctx context.Context, uid, oid int64, status uint8) error
 	FindTimeoutOrders(ctx context.Context, offset, limit int, ctime int64) ([]Order, error)
 	CountTimeoutOrders(ctx context.Context, ctime int64) (int64, error)
-	CloseTimeoutOrders(ctx context.Context, orderIDs []int64, ctime int64) error
+	SetOrdersTimeoutClosed(ctx context.Context, orderIDs []int64, ctime int64) error
 }
 
 func NewOrderGORMDAO(db *egorm.Component) OrderDAO {
@@ -114,14 +113,13 @@ func (g *gormOrderDAO) FindOrdersByUID(ctx context.Context, offset, limit int, u
 	return res, err
 }
 
-func (g *gormOrderDAO) CancelOrder(ctx context.Context, uid, oid int64) error {
+func (g *gormOrderDAO) SetOrderCanceled(ctx context.Context, uid, oid int64) error {
 	order := Order{Status: domain.StatusCanceled.ToUint8(), Utime: time.Now().UnixMilli()}
 	return g.db.WithContext(ctx).Where("buyer_id = ? AND id = ? AND status = ?", uid, oid, domain.StatusProcessing.ToUint8()).Updates(order).Error
 }
 
-func (g *gormOrderDAO) CompleteOrder(ctx context.Context, uid, oid int64) error {
-	// 已收到用户的付款,不管当前处于什么状态一律标记为已完成
-	order := Order{Status: domain.StatusSuccess.ToUint8(), Utime: time.Now().UnixMilli()}
+func (g *gormOrderDAO) SetOrderStatus(ctx context.Context, uid, oid int64, status uint8) error {
+	order := Order{Status: status, Utime: time.Now().UnixMilli()}
 	return g.db.WithContext(ctx).Where("buyer_id = ? AND id = ?", uid, oid).Updates(order).Error
 }
 
@@ -141,7 +139,7 @@ func (g *gormOrderDAO) CountTimeoutOrders(ctx context.Context, ctime int64) (int
 	return res, err
 }
 
-func (g *gormOrderDAO) CloseTimeoutOrders(ctx context.Context, orderIDs []int64, ctime int64) error {
+func (g *gormOrderDAO) SetOrdersTimeoutClosed(ctx context.Context, orderIDs []int64, ctime int64) error {
 	timestamp := time.Now().UnixMilli()
 	return g.db.WithContext(ctx).Model(&Order{}).
 		Where("status <= ? AND Ctime <= ? AND id IN ?", domain.StatusProcessing.ToUint8(), ctime, orderIDs).

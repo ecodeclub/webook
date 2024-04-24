@@ -88,7 +88,8 @@ func (p *PaymentService) Pay(ctx context.Context, pmt domain.Payment) (domain.Pa
 		// 如果发送, 这边也应该同步修改支付记录的状体为支付失败
 		err3 := p.producer.Produce(ctx, event.PaymentEvent{
 			OrderSN: pmt.OrderSN,
-			Status:  int64(domain.PaymentStatusFailed),
+			PayerID: pmt.PayerID,
+			Status:  uint8(domain.PaymentStatusFailed),
 		})
 		if err3 != nil {
 			p.l.Error("发送积分支付成功事件失败",
@@ -103,7 +104,8 @@ func (p *PaymentService) Pay(ctx context.Context, pmt domain.Payment) (domain.Pa
 	// {user_id, “购买商品”, order_id, order_sn, paidAmount}
 	err4 := p.producer.Produce(ctx, event.PaymentEvent{
 		OrderSN: pmt.OrderSN,
-		Status:  int64(domain.PaymentStatusPaid),
+		PayerID: pmt.PayerID,
+		Status:  uint8(domain.PaymentStatusPaid),
 	})
 	if err4 != nil {
 		p.l.Error("发送积分支付成功事件失败",

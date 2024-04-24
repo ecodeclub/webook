@@ -189,7 +189,8 @@ func (n *NativePaymentService) updateByTxn(ctx context.Context, txn *payments.Tr
 	// 就是处于结束状态
 	err1 := n.producer.Produce(ctx, event.PaymentEvent{
 		OrderSN: pmt.OrderSN,
-		Status:  int64(pmt.Status),
+		PayerID: pmt.PayerID,
+		Status:  uint8(pmt.Status),
 	})
 	if err1 != nil {
 		// 要做好监控和告警
