@@ -20,7 +20,8 @@ import (
 )
 
 type Module struct {
-	Hdl *web.Handler
-	Svc Service
-	c   *event.CreditIncreaseConsumer
+	Hdl                          *web.Handler
+	Svc                          Service
+	c                            *event.CreditIncreaseConsumer
+	CloseTimeoutLockedCreditsJob *CloseTimeoutLockedCreditsJob
 }

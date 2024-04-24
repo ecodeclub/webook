@@ -54,12 +54,13 @@ func InitApp() (*App, error) {
 		product.InitModule,
 		wire.FieldsOf(new(*product.Module), "Hdl"),
 		order.InitModule,
-		wire.FieldsOf(new(*order.Module), "Hdl"),
+		wire.FieldsOf(new(*order.Module), "Hdl", "CloseTimeoutOrdersJob"),
 		payment.InitModule,
 		credit.InitModule,
-
+		wire.FieldsOf(new(*credit.Module), "Hdl", "CloseTimeoutLockedCreditsJob"),
 		project.InitModule,
 		wire.FieldsOf(new(*project.Module), "AdminHdl", "Hdl"),
+		initCronJobs,
 		// 这两个顺序不要换
 		initGinxServer,
 		InitAdminServer,

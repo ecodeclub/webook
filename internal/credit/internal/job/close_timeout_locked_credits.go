@@ -23,17 +23,17 @@ import (
 	"github.com/gotomicro/ego/task/ecron"
 )
 
-var _ ecron.NamedJob = (*CloseExpiredLockedCreditsJob)(nil)
+var _ ecron.NamedJob = (*CloseTimeoutLockedCreditsJob)(nil)
 
-type CloseExpiredLockedCreditsJob struct {
+type CloseTimeoutLockedCreditsJob struct {
 	svc     service.Service
 	minutes int64
 	seconds int64
 	limit   int
 }
 
-func NewCloseExpiredOrdersJob(svc service.Service, minutes, seconds int64, limit int) *CloseExpiredLockedCreditsJob {
-	return &CloseExpiredLockedCreditsJob{
+func NewCloseTimeoutLockedCreditsJob(svc service.Service, minutes, seconds int64, limit int) *CloseTimeoutLockedCreditsJob {
+	return &CloseTimeoutLockedCreditsJob{
 		svc:     svc,
 		minutes: minutes,
 		seconds: seconds,
@@ -41,11 +41,11 @@ func NewCloseExpiredOrdersJob(svc service.Service, minutes, seconds int64, limit
 	}
 }
 
-func (c *CloseExpiredLockedCreditsJob) Name() string {
-	return "CloseExpiredLockedCreditsJob"
+func (c *CloseTimeoutLockedCreditsJob) Name() string {
+	return "CloseTimeoutLockedCreditsJob"
 }
 
-func (c *CloseExpiredLockedCreditsJob) Run(ctx context.Context) error {
+func (c *CloseTimeoutLockedCreditsJob) Run(ctx context.Context) error {
 	// 冗余10秒
 	ctime := time.Now().Add(time.Duration(-c.minutes)*time.Minute + time.Duration(-c.seconds)*time.Second).UnixMilli()
 

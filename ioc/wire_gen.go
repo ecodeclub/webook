@@ -80,12 +80,17 @@ func InitApp() (*App, error) {
 	handler8 := orderModule.Hdl
 	projectModule := project.InitModule()
 	handler9 := projectModule.Hdl
-	component := initGinxServer(provider, checkMembershipMiddlewareBuilder, handler, questionSetHandler, webHandler, handler2, handler3, handler4, handler5, handler6, handler7, handler8, handler9)
+	handler10 := creditModule.Hdl
+	component := initGinxServer(provider, checkMembershipMiddlewareBuilder, handler, questionSetHandler, webHandler, handler2, handler3, handler4, handler5, handler6, handler7, handler8, handler9, handler10)
 	adminHandler := projectModule.AdminHdl
 	adminServer := InitAdminServer(adminHandler)
+	closeTimeoutOrdersJob := orderModule.CloseTimeoutOrdersJob
+	closeTimeoutLockedCreditsJob := creditModule.CloseTimeoutLockedCreditsJob
+	v := initCronJobs(closeTimeoutOrdersJob, closeTimeoutLockedCreditsJob)
 	app := &App{
 		Web:   component,
 		Admin: adminServer,
+		Jobs:  v,
 	}
 	return app, nil
 }

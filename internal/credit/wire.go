@@ -24,6 +24,7 @@ import (
 	"github.com/ecodeclub/mq-api"
 	"github.com/ecodeclub/webook/internal/credit/internal/domain"
 	"github.com/ecodeclub/webook/internal/credit/internal/event"
+	"github.com/ecodeclub/webook/internal/credit/internal/job"
 	"github.com/ecodeclub/webook/internal/credit/internal/repository"
 	"github.com/ecodeclub/webook/internal/credit/internal/repository/dao"
 	"github.com/ecodeclub/webook/internal/credit/internal/service"
@@ -36,6 +37,7 @@ type Credit = domain.Credit
 type CreditLog = domain.CreditLog
 type Service = service.Service
 type Handler = web.Handler
+type CloseTimeoutLockedCreditsJob = job.CloseTimeoutLockedCreditsJob
 
 func InitModule(db *egorm.Component, q mq.MQ, e ecache.Cache) (*Module, error) {
 	wire.Build(wire.Struct(
@@ -43,6 +45,7 @@ func InitModule(db *egorm.Component, q mq.MQ, e ecache.Cache) (*Module, error) {
 		InitService,
 		InitHandler,
 		initCreditConsumer,
+		initCloseTimeoutLockedCreditsJob,
 	)
 	return new(Module), nil
 }
@@ -73,4 +76,11 @@ func initCreditConsumer(svc service.Service, q mq.MQ) *event.CreditIncreaseConsu
 	}
 	c.Start(context.Background())
 	return c
+}
+
+func initCloseTimeoutLockedCreditsJob(svc service.Service) *CloseTimeoutLockedCreditsJob {
+	minutes := int64(30)
+	seconds := int64(10)
+	limit := 100
+	return job.NewCloseTimeoutLockedCreditsJob(svc, minutes, seconds, limit)
 }

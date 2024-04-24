@@ -14,6 +14,7 @@ import (
 	"github.com/ecodeclub/mq-api"
 	"github.com/ecodeclub/webook/internal/credit/internal/domain"
 	"github.com/ecodeclub/webook/internal/credit/internal/event"
+	"github.com/ecodeclub/webook/internal/credit/internal/job"
 	"github.com/ecodeclub/webook/internal/credit/internal/repository"
 	"github.com/ecodeclub/webook/internal/credit/internal/repository/dao"
 	"github.com/ecodeclub/webook/internal/credit/internal/service"
@@ -28,10 +29,12 @@ func InitModule(db *gorm.DB, q mq.MQ, e ecache.Cache) (*Module, error) {
 	service := InitService(db)
 	handler := InitHandler(service)
 	creditIncreaseConsumer := initCreditConsumer(service, q)
+	closeTimeoutLockedCreditsJob := initCloseTimeoutLockedCreditsJob(service)
 	module := &Module{
-		Hdl: handler,
-		Svc: service,
-		c:   creditIncreaseConsumer,
+		Hdl:                          handler,
+		Svc:                          service,
+		c:                            creditIncreaseConsumer,
+		CloseTimeoutLockedCreditsJob: closeTimeoutLockedCreditsJob,
 	}
 	return module, nil
 }
@@ -45,6 +48,8 @@ type CreditLog = domain.CreditLog
 type Service = service.Service
 
 type Handler = web.Handler
+
+type CloseTimeoutLockedCreditsJob = job.CloseTimeoutLockedCreditsJob
 
 var (
 	once = &sync.Once{}
@@ -72,4 +77,11 @@ func initCreditConsumer(svc2 service.Service, q mq.MQ) *event.CreditIncreaseCons
 	}
 	c.Start(context.Background())
 	return c
+}
+
+func initCloseTimeoutLockedCreditsJob(svc2 service.Service) *CloseTimeoutLockedCreditsJob {
+	minutes := int64(30)
+	seconds := int64(10)
+	limit := 100
+	return job.NewCloseTimeoutLockedCreditsJob(svc2, minutes, seconds, limit)
 }
