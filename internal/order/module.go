@@ -19,8 +19,8 @@ import (
 )
 
 type Module struct {
-	Hdl                       *Handler
-	c                         *event.PaymentConsumer
-	Svc                       Service
-	CloseExpiredOrdersCronJob *CloseTimeoutOrdersJob
+	Hdl                   *Handler
+	c                     *event.PaymentConsumer
+	Svc                   Service
+	CloseTimeoutOrdersJob *CloseTimeoutOrdersJob
 }
