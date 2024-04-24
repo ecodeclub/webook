@@ -71,9 +71,13 @@ type Channel = domain.PaymentChannel
 
 type ChannelType = domain.ChannelType
 
-var ChannelTypeCredit = domain.ChannelTypeCredit
+const ChannelTypeCredit = domain.ChannelTypeCredit
 
-var ChannelTypeWechat = domain.ChannelTypeWechat
+const ChannelTypeWechat = domain.ChannelTypeWechat
+
+const PaymentStatusPaid = domain.PaymentStatusPaid
+
+const PaymentStatusFailed = domain.PaymentStatusFailed
 
 type Service = service.Service
 

@@ -1996,22 +1996,22 @@ func (s *OrderModuleTestSuite) TestHandler_CancelOrderFailed() {
 	}
 }
 
-func (s *OrderModuleTestSuite) TestConsumer_ConsumeCompleteOrder() {
+func (s *OrderModuleTestSuite) TestPaymentConsumer_Consume() {
 	t := s.T()
 
-	producer, er := s.mq.Producer("order_complete_events")
+	producer, er := s.mq.Producer("payment_successful_events")
 	require.NoError(t, er)
 
 	testCases := []struct {
 		name string
 
 		before         func(t *testing.T, producer mq.Producer, message *mq.Message)
-		evt            event.CompleteOrderEvent
-		after          func(t *testing.T)
+		evt            event.PaymentEvent
+		after          func(t *testing.T, orderSN string)
 		errRequireFunc require.ErrorAssertionFunc
 	}{
 		{
-			name: "完成订单成功",
+			name: "设置支付成功成功",
 			before: func(t *testing.T, producer mq.Producer, message *mq.Message) {
 				t.Helper()
 				_, err := s.dao.CreateOrder(context.Background(), dao.Order{
@@ -2040,20 +2040,21 @@ func (s *OrderModuleTestSuite) TestConsumer_ConsumeCompleteOrder() {
 				_, err = producer.Produce(context.Background(), message)
 				require.NoError(t, err)
 			},
-			evt: event.CompleteOrderEvent{
+			evt: event.PaymentEvent{
 				OrderSN: "orderSN-22",
-				BuyerID: testUID,
+				PayerID: testUID,
+				Status:  uint8(payment.PaymentStatusPaid),
 			},
-			after: func(t *testing.T) {
+			after: func(t *testing.T, orderSN string) {
 				t.Helper()
-				orderEntity, err := s.dao.FindOrderByUIDAndSNAndStatus(context.Background(), testUID, "orderSN-22", domain.StatusSuccess.ToUint8())
+				orderEntity, err := s.dao.FindOrderByUIDAndSNAndStatus(context.Background(), testUID, orderSN, domain.StatusSuccess.ToUint8())
 				assert.NoError(t, err)
-				assert.NotZero(t, orderEntity)
+				assert.Equal(t, domain.StatusSuccess.ToUint8(), orderEntity.Status)
 			},
 			errRequireFunc: require.NoError,
 		},
 		{
-			name: "完成订单失败_订单序列号为空",
+			name: "设置支付成功失败_订单序列号为空",
 			before: func(t *testing.T, producer mq.Producer, message *mq.Message) {
 				_, err := producer.Produce(context.Background(), message)
 				require.NoError(t, err)
@@ -2061,15 +2062,16 @@ func (s *OrderModuleTestSuite) TestConsumer_ConsumeCompleteOrder() {
 				_, err = producer.Produce(context.Background(), message)
 				require.NoError(t, err)
 			},
-			evt: event.CompleteOrderEvent{
+			evt: event.PaymentEvent{
 				OrderSN: "",
-				BuyerID: testUID,
+				PayerID: testUID,
+				Status:  uint8(payment.PaymentStatusPaid),
 			},
-			after:          func(t *testing.T) {},
+			after:          func(t *testing.T, orderSN string) {},
 			errRequireFunc: require.Error,
 		},
 		{
-			name: "完成订单失败_订单序列号非法",
+			name: "设置支付成功失败_订单序列号非法",
 			before: func(t *testing.T, producer mq.Producer, message *mq.Message) {
 				_, err := producer.Produce(context.Background(), message)
 				require.NoError(t, err)
@@ -2077,15 +2079,16 @@ func (s *OrderModuleTestSuite) TestConsumer_ConsumeCompleteOrder() {
 				_, err = producer.Produce(context.Background(), message)
 				require.NoError(t, err)
 			},
-			evt: event.CompleteOrderEvent{
+			evt: event.PaymentEvent{
 				OrderSN: "InvalidOrderSN",
-				BuyerID: testUID,
+				PayerID: testUID,
+				Status:  uint8(payment.PaymentStatusPaid),
 			},
-			after:          func(t *testing.T) {},
+			after:          func(t *testing.T, orderSN string) {},
 			errRequireFunc: require.Error,
 		},
 		{
-			name: "完成订单失败_买家ID非法",
+			name: "设置支付成功失败_买家ID非法",
 			before: func(t *testing.T, producer mq.Producer, message *mq.Message) {
 				_, err := producer.Produce(context.Background(), message)
 				require.NoError(t, err)
@@ -2093,21 +2096,158 @@ func (s *OrderModuleTestSuite) TestConsumer_ConsumeCompleteOrder() {
 				_, err = producer.Produce(context.Background(), message)
 				require.NoError(t, err)
 			},
-			evt: event.CompleteOrderEvent{
+			evt: event.PaymentEvent{
 				OrderSN: "OrderSN-3",
-				BuyerID: 0,
+				PayerID: 0,
+				Status:  uint8(payment.PaymentStatusPaid),
 			},
-			after:          func(t *testing.T) {},
+			after:          func(t *testing.T, orderSN string) {},
+			errRequireFunc: require.Error,
+		},
+		{
+			name: "设置支付失败成功",
+			before: func(t *testing.T, producer mq.Producer, message *mq.Message) {
+				t.Helper()
+				_, err := s.dao.CreateOrder(context.Background(), dao.Order{
+					SN:        "orderSN-23",
+					BuyerId:   testUID,
+					PaymentId: sqlx.NewNullInt64(23),
+					PaymentSn: sqlx.NewNullString("paymentSN-23"),
+					Status:    domain.StatusProcessing.ToUint8(),
+				}, []dao.OrderItem{
+					{
+						SPUId:            1,
+						SKUId:            1,
+						SKUName:          "商品SKU",
+						SKUDescription:   "商品SKU描述",
+						SKUOriginalPrice: 9900,
+						SKURealPrice:     9900,
+						Quantity:         1,
+					},
+				})
+				require.NoError(t, err)
+
+				_, err = producer.Produce(context.Background(), message)
+				require.NoError(t, err)
+
+				// 模拟重试
+				_, err = producer.Produce(context.Background(), message)
+				require.NoError(t, err)
+			},
+			evt: event.PaymentEvent{
+				OrderSN: "orderSN-23",
+				PayerID: testUID,
+				Status:  uint8(payment.PaymentStatusFailed),
+			},
+			after: func(t *testing.T, orderSN string) {
+				t.Helper()
+				orderEntity, err := s.dao.FindOrderByUIDAndSNAndStatus(context.Background(), testUID, orderSN, domain.StatusFailed.ToUint8())
+				assert.NoError(t, err)
+				assert.Equal(t, domain.StatusFailed.ToUint8(), orderEntity.Status)
+			},
+			errRequireFunc: require.NoError,
+		},
+		{
+			name: "设置支付失败失败_订单序列号为空",
+			before: func(t *testing.T, producer mq.Producer, message *mq.Message) {
+				_, err := producer.Produce(context.Background(), message)
+				require.NoError(t, err)
+				// 模拟重试
+				_, err = producer.Produce(context.Background(), message)
+				require.NoError(t, err)
+			},
+			evt: event.PaymentEvent{
+				OrderSN: "",
+				PayerID: testUID,
+				Status:  uint8(payment.PaymentStatusFailed),
+			},
+			after:          func(t *testing.T, orderSN string) {},
+			errRequireFunc: require.Error,
+		},
+		{
+			name: "设置支付失败失败_订单序列号非法",
+			before: func(t *testing.T, producer mq.Producer, message *mq.Message) {
+				_, err := producer.Produce(context.Background(), message)
+				require.NoError(t, err)
+				// 模拟重试
+				_, err = producer.Produce(context.Background(), message)
+				require.NoError(t, err)
+			},
+			evt: event.PaymentEvent{
+				OrderSN: "InvalidOrderSN",
+				PayerID: testUID,
+				Status:  uint8(payment.PaymentStatusFailed),
+			},
+			after:          func(t *testing.T, orderSN string) {},
+			errRequireFunc: require.Error,
+		},
+		{
+			name: "设置支付失败失败_买家ID非法",
+			before: func(t *testing.T, producer mq.Producer, message *mq.Message) {
+				_, err := producer.Produce(context.Background(), message)
+				require.NoError(t, err)
+				// 模拟重试
+				_, err = producer.Produce(context.Background(), message)
+				require.NoError(t, err)
+			},
+			evt: event.PaymentEvent{
+				OrderSN: "OrderSN-3",
+				PayerID: 0,
+				Status:  uint8(payment.PaymentStatusFailed),
+			},
+			after:          func(t *testing.T, orderSN string) {},
+			errRequireFunc: require.Error,
+		},
+		{
+			name: "设置支付失败或成功失败_支付状态非法",
+			before: func(t *testing.T, producer mq.Producer, message *mq.Message) {
+				t.Helper()
+				_, err := s.dao.CreateOrder(context.Background(), dao.Order{
+					SN:        "orderSN-24",
+					BuyerId:   testUID,
+					PaymentId: sqlx.NewNullInt64(24),
+					PaymentSn: sqlx.NewNullString("paymentSN-24"),
+					Status:    domain.StatusProcessing.ToUint8(),
+				}, []dao.OrderItem{
+					{
+						SPUId:            1,
+						SKUId:            1,
+						SKUName:          "商品SKU",
+						SKUDescription:   "商品SKU描述",
+						SKUOriginalPrice: 9900,
+						SKURealPrice:     9900,
+						Quantity:         1,
+					},
+				})
+				require.NoError(t, err)
+
+				_, err = producer.Produce(context.Background(), message)
+				require.NoError(t, err)
+
+				// 模拟重试
+				_, err = producer.Produce(context.Background(), message)
+				require.NoError(t, err)
+			},
+			evt: event.PaymentEvent{
+				OrderSN: "OrderSN-24",
+				PayerID: testUID,
+			},
+			after: func(t *testing.T, orderSN string) {
+				t.Helper()
+				orderEntity, err := s.dao.FindOrderByUIDAndSNAndStatus(context.Background(), testUID, orderSN, domain.StatusProcessing.ToUint8())
+				assert.NoError(t, err)
+				assert.Equal(t, domain.StatusProcessing.ToUint8(), orderEntity.Status)
+			},
 			errRequireFunc: require.Error,
 		},
 	}
 
-	consumer, err := event.NewCompleteOrderConsumer(s.svc, s.mq)
+	consumer, err := event.NewPaymentConsumer(s.svc, s.mq)
 	require.NoError(t, err)
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			message := s.newOrderCompleteEvent(t, tc.evt)
+			message := s.newPaymentEvent(t, tc.evt)
 			tc.before(t, producer, message)
 
 			err = consumer.Consume(context.Background())
@@ -2116,12 +2256,12 @@ func (s *OrderModuleTestSuite) TestConsumer_ConsumeCompleteOrder() {
 			err = consumer.Consume(context.Background())
 			tc.errRequireFunc(t, err)
 
-			tc.after(t)
+			tc.after(t, tc.evt.OrderSN)
 		})
 	}
 }
 
-func (s *OrderModuleTestSuite) newOrderCompleteEvent(t *testing.T, evt event.CompleteOrderEvent) *mq.Message {
+func (s *OrderModuleTestSuite) newPaymentEvent(t *testing.T, evt event.PaymentEvent) *mq.Message {
 	t.Helper()
 	marshal, err := json.Marshal(evt)
 	require.NoError(t, err)
@@ -2171,7 +2311,7 @@ func (s *OrderModuleTestSuite) TestJob_CloseTimeoutOrders() {
 			},
 			getJobFunc: func(t *testing.T) *job.CloseTimeoutOrdersJob {
 				t.Helper()
-				return job.NewCloseExpiredOrdersJob(s.svc, 0, 0, 10)
+				return job.NewCloseTimeoutOrdersJob(s.svc, 0, 0, 10)
 			},
 			after: func(t *testing.T) {
 				t.Helper()
@@ -2216,7 +2356,7 @@ func (s *OrderModuleTestSuite) TestJob_CloseTimeoutOrders() {
 			},
 			getJobFunc: func(t *testing.T) *job.CloseTimeoutOrdersJob {
 				t.Helper()
-				return job.NewCloseExpiredOrdersJob(s.svc, 0, 0, total)
+				return job.NewCloseTimeoutOrdersJob(s.svc, 0, 0, total)
 			},
 			after: func(t *testing.T) {
 				t.Helper()

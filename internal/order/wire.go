@@ -81,8 +81,8 @@ func InitService(db *gorm.DB) service.Service {
 	return svc
 }
 
-func initCompleteOrderConsumer(svc service.Service, q mq.MQ) *event.CompleteOrderConsumer {
-	consumer, err := event.NewCompleteOrderConsumer(svc, q)
+func initCompleteOrderConsumer(svc service.Service, q mq.MQ) *event.PaymentConsumer {
+	consumer, err := event.NewPaymentConsumer(svc, q)
 	if err != nil {
 		panic(err)
 	}
@@ -94,5 +94,5 @@ func initCloseExpiredOrdersJob(svc service.Service) *CloseTimeoutOrdersJob {
 	minutes := int64(30)
 	seconds := int64(10)
 	limit := 100
-	return job.NewCloseExpiredOrdersJob(svc, minutes, seconds, limit)
+	return job.NewCloseTimeoutOrdersJob(svc, minutes, seconds, limit)
 }

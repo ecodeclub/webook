@@ -34,7 +34,7 @@ type CloseTimeoutOrdersJob struct {
 	limit   int
 }
 
-func NewCloseExpiredOrdersJob(svc service.Service, minutes, seconds int64, limit int) *CloseTimeoutOrdersJob {
+func NewCloseTimeoutOrdersJob(svc service.Service, minutes, seconds int64, limit int) *CloseTimeoutOrdersJob {
 	return &CloseTimeoutOrdersJob{
 		svc:     svc,
 		minutes: minutes,

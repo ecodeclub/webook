@@ -31,11 +31,11 @@ import (
 func InitModule(db *gorm.DB, cache ecache.Cache, q mq.MQ, pm *payment.Module, ppm *product.Module, cm *credit.Module) (*Module, error) {
 	service := InitService(db)
 	handler := InitHandler(cache, service, pm, ppm, cm)
-	completeOrderConsumer := initCompleteOrderConsumer(service, q)
+	paymentConsumer := initCompleteOrderConsumer(service, q)
 	closeTimeoutOrdersJob := initCloseExpiredOrdersJob(service)
 	module := &Module{
 		Hdl:                       handler,
-		c:                         completeOrderConsumer,
+		c:                         paymentConsumer,
 		Svc:                       service,
 		CloseExpiredOrdersCronJob: closeTimeoutOrdersJob,
 	}
@@ -76,8 +76,8 @@ func InitService(db *gorm.DB) service.Service {
 	return svc
 }
 
-func initCompleteOrderConsumer(svc2 service.Service, q mq.MQ) *event.CompleteOrderConsumer {
-	consumer, err := event.NewCompleteOrderConsumer(svc2, q)
+func initCompleteOrderConsumer(svc2 service.Service, q mq.MQ) *event.PaymentConsumer {
+	consumer, err := event.NewPaymentConsumer(svc2, q)
 	if err != nil {
 		panic(err)
 	}
@@ -89,5 +89,5 @@ func initCloseExpiredOrdersJob(svc2 service.Service) *CloseTimeoutOrdersJob {
 	minutes := int64(30)
 	seconds := int64(10)
 	limit := 100
-	return job.NewCloseExpiredOrdersJob(svc2, minutes, seconds, limit)
+	return job.NewCloseTimeoutOrdersJob(svc2, minutes, seconds, limit)
 }

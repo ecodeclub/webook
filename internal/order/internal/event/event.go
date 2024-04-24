@@ -14,9 +14,12 @@
 
 package event
 
-const orderCompleteEvents = "order_complete_events"
+const (
+	paymentEvents = "payment_successful_events"
+)
 
-type CompleteOrderEvent struct {
+type PaymentEvent struct {
 	OrderSN string `json:"orderSN"`
-	BuyerID int64  `json:"buyerID"`
+	PayerID int64  `json:"payerID"`
+	Status  uint8  `json:"status"` // Success, Failed
 }
