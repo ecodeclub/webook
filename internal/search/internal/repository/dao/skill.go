@@ -81,6 +81,9 @@ func (s *skillElasticDAO) SearchSkill(ctx context.Context, qids, cids []int64, k
 	for _, hit := range resp.Hits.Hits {
 		var ele Skill
 		err = json.Unmarshal(hit.Source, &ele)
+		if err != nil {
+			return nil, err
+		}
 		res = append(res, ele)
 	}
 	return res, nil
