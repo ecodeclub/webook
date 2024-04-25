@@ -39,6 +39,44 @@ func (m *MockService) EXPECT() *MockServiceMockRecorder {
 	return m.recorder
 }
 
+// Delete mocks base method.
+func (m *MockService) Delete(ctx context.Context, qid int64) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Delete", ctx, qid)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Delete indicates an expected call of Delete.
+func (mr *MockServiceMockRecorder) Delete(ctx, qid any) *ServiceDeleteCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockService)(nil).Delete), ctx, qid)
+	return &ServiceDeleteCall{Call: call}
+}
+
+// ServiceDeleteCall wrap *gomock.Call
+type ServiceDeleteCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *ServiceDeleteCall) Return(arg0 error) *ServiceDeleteCall {
+	c.Call = c.Call.Return(arg0)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *ServiceDeleteCall) Do(f func(context.Context, int64) error) *ServiceDeleteCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *ServiceDeleteCall) DoAndReturn(f func(context.Context, int64) error) *ServiceDeleteCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // Detail mocks base method.
 func (m *MockService) Detail(ctx context.Context, qid int64) (domain.Question, error) {
 	m.ctrl.T.Helper()
