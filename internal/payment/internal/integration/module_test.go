@@ -375,3 +375,68 @@ func (s *PaymentModuleTestSuite) TestService_GetPaymentChannels() {
 		{Type: domain.ChannelTypeWechat, Desc: "微信"},
 	}, channels)
 }
+
+func (s *PaymentModuleTestSuite) TestService_PayByOrderID() {
+	t := s.T()
+	t.Skip()
+
+	testCases := []struct {
+		name           string
+		before         func(t *testing.T, pmt payment.Payment)
+		pmt            payment.Payment
+		errRequireFunc func(t require.TestingT, err error, i ...interface{})
+		after          func(t *testing.T, expected payment.Payment)
+	}{
+		{
+			name: "支付成功_仅积分支付",
+			before: func(t *testing.T, pmt payment.Payment) {
+				t.Helper()
+				_, err := s.module.Svc.CreatePayment(context.Background(), pmt)
+				require.NoError(t, err)
+			},
+			pmt: payment.Payment{
+				OrderID:          200001,
+				OrderSN:          "order-pay-200001",
+				PayerID:          200001,
+				OrderDescription: "月会员 * 1",
+				TotalAmount:      990,
+				Records: []domain.PaymentRecord{
+					{
+						Description: "月会员 * 1",
+						Channel:     domain.ChannelTypeCredit,
+						Amount:      990,
+					},
+				},
+			},
+			errRequireFunc: func(t require.TestingT, err error, i ...interface{}) {
+				require.NoError(t, err)
+			},
+			after: func(t *testing.T, expected payment.Payment) {
+				t.Helper()
+				actual, err := s.module.Svc.FindPaymentByID(context.Background(), expected.ID)
+				require.NoError(t, err)
+				require.Equal(t, expected, actual)
+				require.Equal(t, domain.PaymentStatusProcessing, actual.Status)
+			},
+		},
+		// 支付成功_仅积分支付_状态改变
+		// 支付成功_仅微信支付_状态改变_返回二维码
+		// 支付成功_混合支付_状态改变_返回二维码
+
+		// 支付失败_积分不足
+		// 支付失败_混合支付失败_积分不足
+		// 支付失败_混合支付失败_微信返回二维码失败
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			tc.before(t, tc.pmt)
+			pmt, err := s.module.Svc.PayByOrderID(context.Background(), tc.pmt.OrderID)
+			tc.errRequireFunc(t, err)
+			if err == nil {
+				tc.after(t, pmt)
+			}
+		})
+	}
+}
