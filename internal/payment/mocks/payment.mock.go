@@ -40,18 +40,18 @@ func (m *MockService) EXPECT() *MockServiceMockRecorder {
 }
 
 // CreatePayment mocks base method.
-func (m *MockService) CreatePayment(ctx context.Context, payment domain.Payment) (domain.Payment, error) {
+func (m *MockService) CreatePayment(ctx context.Context, pmt domain.Payment) (domain.Payment, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreatePayment", ctx, payment)
+	ret := m.ctrl.Call(m, "CreatePayment", ctx, pmt)
 	ret0, _ := ret[0].(domain.Payment)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // CreatePayment indicates an expected call of CreatePayment.
-func (mr *MockServiceMockRecorder) CreatePayment(ctx, payment any) *ServiceCreatePaymentCall {
+func (mr *MockServiceMockRecorder) CreatePayment(ctx, pmt any) *ServiceCreatePaymentCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreatePayment", reflect.TypeOf((*MockService)(nil).CreatePayment), ctx, payment)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreatePayment", reflect.TypeOf((*MockService)(nil).CreatePayment), ctx, pmt)
 	return &ServiceCreatePaymentCall{Call: call}
 }
 
@@ -79,18 +79,18 @@ func (c *ServiceCreatePaymentCall) DoAndReturn(f func(context.Context, domain.Pa
 }
 
 // FindPaymentByID mocks base method.
-func (m *MockService) FindPaymentByID(ctx context.Context, paymentID int64) (domain.Payment, error) {
+func (m *MockService) FindPaymentByID(ctx context.Context, pmtID int64) (domain.Payment, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "FindPaymentByID", ctx, paymentID)
+	ret := m.ctrl.Call(m, "FindPaymentByID", ctx, pmtID)
 	ret0, _ := ret[0].(domain.Payment)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // FindPaymentByID indicates an expected call of FindPaymentByID.
-func (mr *MockServiceMockRecorder) FindPaymentByID(ctx, paymentID any) *ServiceFindPaymentByIDCall {
+func (mr *MockServiceMockRecorder) FindPaymentByID(ctx, pmtID any) *ServiceFindPaymentByIDCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindPaymentByID", reflect.TypeOf((*MockService)(nil).FindPaymentByID), ctx, paymentID)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindPaymentByID", reflect.TypeOf((*MockService)(nil).FindPaymentByID), ctx, pmtID)
 	return &ServiceFindPaymentByIDCall{Call: call}
 }
 

@@ -18,7 +18,6 @@ import (
 	"github.com/ecodeclub/webook/internal/payment/internal/repository"
 	"github.com/ecodeclub/webook/internal/payment/internal/repository/dao"
 	"github.com/ecodeclub/webook/internal/payment/internal/service"
-	credit2 "github.com/ecodeclub/webook/internal/payment/internal/service/credit"
 	"github.com/ecodeclub/webook/internal/payment/internal/service/wechat"
 	"github.com/ecodeclub/webook/internal/payment/internal/web"
 	"github.com/ecodeclub/webook/internal/payment/ioc"
@@ -50,8 +49,7 @@ func InitModule(db *gorm.DB, mq2 mq.MQ, c ecache.Cache, cm *credit.Module) (*Mod
 	webHandler := web.NewHandler(notifyHandler, nativePaymentService)
 	serviceService := cm.Svc
 	generator := sequencenumber.NewGenerator()
-	paymentService := credit2.NewCreditPaymentService(serviceService, paymentRepository, paymentEventProducer, v, generator, component)
-	service2 := service.NewService(nativePaymentService, paymentService, generator, paymentRepository)
+	service2 := service.NewService(nativePaymentService, serviceService, generator, paymentRepository)
 	module := &Module{
 		Hdl: webHandler,
 		Svc: service2,
@@ -75,9 +73,9 @@ const ChannelTypeCredit = domain.ChannelTypeCredit
 
 const ChannelTypeWechat = domain.ChannelTypeWechat
 
-const PaymentStatusPaid = domain.PaymentStatusPaid
+const StatusPaidSuccess = domain.PaymentStatusPaidSuccess
 
-const PaymentStatusFailed = domain.PaymentStatusFailed
+const StatusFailed = domain.PaymentStatusPaidFailed
 
 type Service = service.Service
 

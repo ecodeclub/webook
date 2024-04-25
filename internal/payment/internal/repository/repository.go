@@ -17,15 +17,19 @@ package repository
 import (
 	"context"
 	"database/sql"
-	"log"
 	"time"
 
+	"github.com/ecodeclub/ekit/slice"
 	"github.com/ecodeclub/webook/internal/payment/internal/domain"
 	"github.com/ecodeclub/webook/internal/payment/internal/repository/dao"
 )
 
 type PaymentRepository interface {
 	CreatePayment(ctx context.Context, payment domain.Payment) (domain.Payment, error)
+	FindPaymentByID(ctx context.Context, pmtID int64) (domain.Payment, error)
+
+	// 下方为待重构
+
 	UpdatePayment(ctx context.Context, pmt domain.Payment) error
 	FindPaymentByOrderSN(ctx context.Context, orderSN string) (domain.Payment, error)
 
@@ -33,7 +37,6 @@ type PaymentRepository interface {
 	// UpdatePayment 这个设计有点差，因为
 	FindExpiredPayment(ctx context.Context, offset int, limit int, t time.Time) ([]domain.Payment, error)
 	GetPayment(ctx context.Context, bizTradeNO string) (domain.Payment, error)
-	FindPaymentByID(ctx context.Context, pmtID int64) (domain.Payment, error)
 }
 
 func NewPaymentRepository(d dao.PaymentDAO) PaymentRepository {
@@ -46,21 +49,13 @@ type paymentRepository struct {
 	dao dao.PaymentDAO
 }
 
-func (p *paymentRepository) FindPaymentByID(ctx context.Context, pmtID int64) (domain.Payment, error) {
-	pmt, records, err := p.dao.FindPaymentByID(ctx, pmtID)
-	return p.toDomain(pmt, records), err
-}
-
 func (p *paymentRepository) CreatePayment(ctx context.Context, pmt domain.Payment) (domain.Payment, error) {
-	log.Printf("pmt = %#v\n", pmt)
 	pp, records := p.toEntity(pmt)
-	log.Printf("p = %#v, r = %#v\n", pp, records)
-	id, err := p.dao.FindOrCreate(ctx, pp, records)
+	daoPmt, daoRecords, err := p.dao.FindOrCreate(ctx, pp, records)
 	if err != nil {
 		return domain.Payment{}, err
 	}
-	pmt.ID = id
-	return pmt, nil
+	return p.toDomain(daoPmt, daoRecords), nil
 }
 
 func (p *paymentRepository) toEntity(pmt domain.Payment) (dao.Payment, []dao.PaymentRecord) {
@@ -68,26 +63,57 @@ func (p *paymentRepository) toEntity(pmt domain.Payment) (dao.Payment, []dao.Pay
 		Id:               pmt.ID,
 		SN:               pmt.SN,
 		OrderId:          pmt.OrderID,
-		OrderSn:          sql.NullString{String: pmt.OrderSN, Valid: true},
+		OrderSn:          sql.NullString{String: pmt.OrderSN, Valid: pmt.OrderSN != ""},
 		PayerId:          pmt.PayerID,
 		OrderDescription: pmt.OrderDescription,
 		TotalAmount:      pmt.TotalAmount,
 		PaidAt:           pmt.PaidAt,
 		Status:           pmt.Status.ToUnit8(),
 	}
-	records := make([]dao.PaymentRecord, 0, len(pmt.Records))
-	for _, r := range pmt.Records {
-		records = append(records, dao.PaymentRecord{
-			PaymentId:    r.PaymentID,
-			PaymentNO3rd: sql.NullString{String: r.PaymentNO3rd, Valid: r.PaymentNO3rd != ""},
-			Description:  r.Description,
-			Channel:      r.Channel.ToUnit8(),
-			Amount:       r.Amount,
-			PaidAt:       r.PaidAt,
-			Status:       r.Status.ToUnit8(),
-		})
-	}
+	records := slice.Map(pmt.Records, func(idx int, src domain.PaymentRecord) dao.PaymentRecord {
+		return dao.PaymentRecord{
+			PaymentId:    src.PaymentID,
+			PaymentNO3rd: sql.NullString{String: src.PaymentNO3rd, Valid: src.PaymentNO3rd != ""},
+			Description:  src.Description,
+			Channel:      src.Channel.ToUnit8(),
+			Amount:       src.Amount,
+			PaidAt:       src.PaidAt,
+			Status:       src.Status.ToUnit8(),
+		}
+	})
 	return pp, records
+}
+
+func (p *paymentRepository) toDomain(pmt dao.Payment, records []dao.PaymentRecord) domain.Payment {
+	return domain.Payment{
+		ID:               pmt.Id,
+		SN:               pmt.SN,
+		PayerID:          pmt.PayerId,
+		OrderID:          pmt.OrderId,
+		OrderSN:          pmt.OrderSn.String,
+		OrderDescription: pmt.OrderDescription,
+		TotalAmount:      pmt.TotalAmount,
+		PaidAt:           pmt.PaidAt,
+		Status:           domain.PaymentStatus(pmt.Status),
+		Records: slice.Map(records, func(idx int, src dao.PaymentRecord) domain.PaymentRecord {
+			return domain.PaymentRecord{
+				PaymentID:    src.PaymentId,
+				PaymentNO3rd: src.PaymentNO3rd.String,
+				Description:  src.Description,
+				Channel:      domain.ChannelType(src.Channel),
+				Amount:       src.Amount,
+				PaidAt:       src.PaidAt,
+				Status:       domain.PaymentStatus(src.Status),
+			}
+		}),
+		Ctime: pmt.Ctime,
+		Utime: pmt.Utime,
+	}
+}
+
+func (p *paymentRepository) FindPaymentByID(ctx context.Context, pmtID int64) (domain.Payment, error) {
+	pmt, records, err := p.dao.FindPaymentByID(ctx, pmtID)
+	return p.toDomain(pmt, records), err
 }
 
 func (p *paymentRepository) UpdatePayment(ctx context.Context, pmt domain.Payment) error {
@@ -103,38 +129,6 @@ func (p *paymentRepository) UpdatePayment(ctx context.Context, pmt domain.Paymen
 func (p *paymentRepository) FindPaymentByOrderSN(ctx context.Context, orderSN string) (domain.Payment, error) {
 	pmt, records, err := p.dao.FindPaymentByOrderSN(ctx, orderSN)
 	return p.toDomain(pmt, records), err
-}
-
-func (p *paymentRepository) toDomain(pmt dao.Payment, records []dao.PaymentRecord) domain.Payment {
-
-	rs := make([]domain.PaymentRecord, 0, len(records))
-
-	for i := 0; i < len(records); i++ {
-		rs = append(rs, domain.PaymentRecord{
-			PaymentID:    records[i].PaymentId,
-			PaymentNO3rd: records[i].PaymentNO3rd.String,
-			Description:  records[i].Description,
-			Channel:      domain.ChannelType(records[i].Channel),
-			Amount:       records[i].Amount,
-			PaidAt:       records[i].PaidAt,
-			Status:       domain.PaymentStatus(records[i].Status),
-		})
-	}
-
-	return domain.Payment{
-		ID:               pmt.Id,
-		SN:               pmt.SN,
-		PayerID:          pmt.PayerId,
-		OrderID:          pmt.OrderId,
-		OrderSN:          pmt.OrderSn.String,
-		OrderDescription: pmt.OrderDescription,
-		TotalAmount:      pmt.TotalAmount,
-		PaidAt:           pmt.PaidAt,
-		Status:           domain.PaymentStatus(pmt.Status),
-		Records:          rs,
-		Ctime:            pmt.Ctime,
-		Utime:            pmt.Utime,
-	}
 }
 
 func (p *paymentRepository) GetPayment(ctx context.Context, bizTradeNO string) (domain.Payment, error) {

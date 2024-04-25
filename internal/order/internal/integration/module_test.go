@@ -2043,7 +2043,7 @@ func (s *OrderModuleTestSuite) TestPaymentConsumer_Consume() {
 			evt: event.PaymentEvent{
 				OrderSN: "orderSN-22",
 				PayerID: testUID,
-				Status:  uint8(payment.PaymentStatusPaid),
+				Status:  uint8(payment.StatusPaidSuccess),
 			},
 			after: func(t *testing.T, orderSN string) {
 				t.Helper()
@@ -2065,7 +2065,7 @@ func (s *OrderModuleTestSuite) TestPaymentConsumer_Consume() {
 			evt: event.PaymentEvent{
 				OrderSN: "",
 				PayerID: testUID,
-				Status:  uint8(payment.PaymentStatusPaid),
+				Status:  uint8(payment.StatusPaidSuccess),
 			},
 			after:          func(t *testing.T, orderSN string) {},
 			errRequireFunc: require.Error,
@@ -2082,7 +2082,7 @@ func (s *OrderModuleTestSuite) TestPaymentConsumer_Consume() {
 			evt: event.PaymentEvent{
 				OrderSN: "InvalidOrderSN",
 				PayerID: testUID,
-				Status:  uint8(payment.PaymentStatusPaid),
+				Status:  uint8(payment.StatusPaidSuccess),
 			},
 			after:          func(t *testing.T, orderSN string) {},
 			errRequireFunc: require.Error,
@@ -2099,7 +2099,7 @@ func (s *OrderModuleTestSuite) TestPaymentConsumer_Consume() {
 			evt: event.PaymentEvent{
 				OrderSN: "OrderSN-3",
 				PayerID: 0,
-				Status:  uint8(payment.PaymentStatusPaid),
+				Status:  uint8(payment.StatusPaidSuccess),
 			},
 			after:          func(t *testing.T, orderSN string) {},
 			errRequireFunc: require.Error,
@@ -2137,7 +2137,7 @@ func (s *OrderModuleTestSuite) TestPaymentConsumer_Consume() {
 			evt: event.PaymentEvent{
 				OrderSN: "orderSN-23",
 				PayerID: testUID,
-				Status:  uint8(payment.PaymentStatusFailed),
+				Status:  uint8(payment.StatusFailed),
 			},
 			after: func(t *testing.T, orderSN string) {
 				t.Helper()
@@ -2159,7 +2159,7 @@ func (s *OrderModuleTestSuite) TestPaymentConsumer_Consume() {
 			evt: event.PaymentEvent{
 				OrderSN: "",
 				PayerID: testUID,
-				Status:  uint8(payment.PaymentStatusFailed),
+				Status:  uint8(payment.StatusFailed),
 			},
 			after:          func(t *testing.T, orderSN string) {},
 			errRequireFunc: require.Error,
@@ -2176,7 +2176,7 @@ func (s *OrderModuleTestSuite) TestPaymentConsumer_Consume() {
 			evt: event.PaymentEvent{
 				OrderSN: "InvalidOrderSN",
 				PayerID: testUID,
-				Status:  uint8(payment.PaymentStatusFailed),
+				Status:  uint8(payment.StatusFailed),
 			},
 			after:          func(t *testing.T, orderSN string) {},
 			errRequireFunc: require.Error,
@@ -2193,7 +2193,7 @@ func (s *OrderModuleTestSuite) TestPaymentConsumer_Consume() {
 			evt: event.PaymentEvent{
 				OrderSN: "OrderSN-3",
 				PayerID: 0,
-				Status:  uint8(payment.PaymentStatusFailed),
+				Status:  uint8(payment.StatusFailed),
 			},
 			after:          func(t *testing.T, orderSN string) {},
 			errRequireFunc: require.Error,

@@ -15,7 +15,6 @@ import (
 	"github.com/ecodeclub/webook/internal/payment/internal/repository"
 	"github.com/ecodeclub/webook/internal/payment/internal/repository/dao"
 	"github.com/ecodeclub/webook/internal/payment/internal/service"
-	credit2 "github.com/ecodeclub/webook/internal/payment/internal/service/credit"
 	"github.com/ecodeclub/webook/internal/payment/internal/service/wechat"
 	"github.com/ecodeclub/webook/internal/payment/internal/web"
 	"github.com/ecodeclub/webook/internal/payment/ioc"
@@ -37,8 +36,7 @@ func InitModule(p event.PaymentEventProducer, paymentDDLFunc func() int64, cm *c
 	handler := web.NewHandler(h, nativePaymentService)
 	serviceService := cm.Svc
 	generator := sequencenumber.NewGenerator()
-	paymentService := credit2.NewCreditPaymentService(serviceService, paymentRepository, p, paymentDDLFunc, generator, component)
-	service2 := service.NewService(nativePaymentService, paymentService, generator, paymentRepository)
+	service2 := service.NewService(nativePaymentService, serviceService, generator, paymentRepository)
 	module := &payment.Module{
 		Hdl: handler,
 		Svc: service2,

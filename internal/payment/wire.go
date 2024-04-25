@@ -28,7 +28,6 @@ import (
 	"github.com/ecodeclub/webook/internal/payment/internal/repository"
 	"github.com/ecodeclub/webook/internal/payment/internal/repository/dao"
 	"github.com/ecodeclub/webook/internal/payment/internal/service"
-	credit2 "github.com/ecodeclub/webook/internal/payment/internal/service/credit"
 	"github.com/ecodeclub/webook/internal/payment/internal/service/wechat"
 	"github.com/ecodeclub/webook/internal/payment/internal/web"
 	"github.com/ecodeclub/webook/internal/payment/ioc"
@@ -49,8 +48,8 @@ type ChannelType = domain.ChannelType
 
 const ChannelTypeCredit = domain.ChannelTypeCredit
 const ChannelTypeWechat = domain.ChannelTypeWechat
-const PaymentStatusPaid = domain.PaymentStatusPaid
-const PaymentStatusFailed = domain.PaymentStatusFailed
+const StatusPaidSuccess = domain.PaymentStatusPaidSuccess
+const StatusFailed = domain.PaymentStatusPaidFailed
 
 type Service = service.Service
 
@@ -71,7 +70,6 @@ func InitModule(db *egorm.Component,
 		initPaymentEventProducer,
 		web.NewHandler,
 		service.NewService,
-		credit2.NewCreditPaymentService,
 		repository.NewPaymentRepository,
 		paymentDDLFunc,
 		sequencenumber.NewGenerator,

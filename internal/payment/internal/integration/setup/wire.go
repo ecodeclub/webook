@@ -25,7 +25,6 @@ import (
 	"github.com/ecodeclub/webook/internal/payment/internal/repository"
 	"github.com/ecodeclub/webook/internal/payment/internal/repository/dao"
 	"github.com/ecodeclub/webook/internal/payment/internal/service"
-	credit2 "github.com/ecodeclub/webook/internal/payment/internal/service/credit"
 	"github.com/ecodeclub/webook/internal/payment/internal/service/wechat"
 	"github.com/ecodeclub/webook/internal/payment/internal/web"
 	"github.com/ecodeclub/webook/internal/payment/ioc"
@@ -49,7 +48,6 @@ func InitModule(p event.PaymentEventProducer,
 		InitDAO,
 		web.NewHandler,
 		service.NewService,
-		credit2.NewCreditPaymentService,
 		repository.NewPaymentRepository,
 		sequencenumber.NewGenerator,
 		wire.FieldsOf(new(*credit.Module), "Svc"),

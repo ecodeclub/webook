@@ -19,9 +19,9 @@ import (
 	"fmt"
 	"slices"
 
+	"github.com/ecodeclub/webook/internal/credit"
 	"github.com/ecodeclub/webook/internal/payment/internal/domain"
 	"github.com/ecodeclub/webook/internal/payment/internal/repository"
-	"github.com/ecodeclub/webook/internal/payment/internal/service/credit"
 	"github.com/ecodeclub/webook/internal/payment/internal/service/wechat"
 	"github.com/ecodeclub/webook/internal/pkg/sequencenumber"
 	"github.com/gotomicro/ego/core/elog"
@@ -29,14 +29,14 @@ import (
 
 //go:generate mockgen -source=service.go -package=paymentmocks -destination=../../mocks/payment.mock.go -typed Service
 type Service interface {
-	CreatePayment(ctx context.Context, payment domain.Payment) (domain.Payment, error)
+	CreatePayment(ctx context.Context, pmt domain.Payment) (domain.Payment, error)
 	GetPaymentChannels(ctx context.Context) []domain.PaymentChannel
 	FindPaymentByID(ctx context.Context, pmtID int64) (domain.Payment, error)
 	PayByOrderID(ctx context.Context, oid int64) (domain.Payment, error)
 }
 
 func NewService(wechatSvc *wechat.NativePaymentService,
-	creditSvc *credit.PaymentService,
+	creditSvc credit.Service,
 	snGenerator *sequencenumber.Generator,
 	repo repository.PaymentRepository) Service {
 	return &service{
@@ -50,10 +50,34 @@ func NewService(wechatSvc *wechat.NativePaymentService,
 
 type service struct {
 	wechatSvc   *wechat.NativePaymentService
-	creditSvc   *credit.PaymentService
+	creditSvc   credit.Service
 	snGenerator *sequencenumber.Generator
 	repo        repository.PaymentRepository
 	l           *elog.Component
+}
+
+// CreatePayment 创建支付记录 内部不做校验
+// 订单ID、订单SN、订单描述、支付金额、支付者ID、支付渠道记录不能为零值
+func (s *service) CreatePayment(ctx context.Context, pmt domain.Payment) (domain.Payment, error) {
+	sn, err := s.snGenerator.Generate(pmt.PayerID)
+	if err != nil {
+		return domain.Payment{}, err
+	}
+	pmt.SN = sn
+	return s.repo.CreatePayment(ctx, pmt)
+}
+
+// GetPaymentChannels 获取支持的支付渠道
+func (s *service) GetPaymentChannels(_ context.Context) []domain.PaymentChannel {
+	return []domain.PaymentChannel{
+		{Type: domain.ChannelTypeCredit, Desc: "积分"},
+		{Type: domain.ChannelTypeWechat, Desc: "微信"},
+	}
+}
+
+// FindPaymentByID 根据支付主记录ID查找支付记录
+func (s *service) FindPaymentByID(ctx context.Context, pmtID int64) (domain.Payment, error) {
+	return s.repo.FindPaymentByID(ctx, pmtID)
 }
 
 // 订单模块 调用 支付模块 创建支付记录
@@ -64,9 +88,8 @@ type service struct {
 // CreditPay(ctx,
 // 1) 订单 -> 2) 支付 -> 3) 积分
 
-// CreatePayment 创建支付记录(支付主记录 + 支付渠道流水记录) 订单模块会同步调用该模块, 生成支付计划
-func (s *service) CreatePayment(ctx context.Context, payment domain.Payment) (domain.Payment, error) {
-
+// CreatePaymentV1 创建支付记录(支付主记录 + 支付渠道流水记录) 订单模块会同步调用该模块, 生成支付计划
+func (s *service) CreatePaymentV1(ctx context.Context, payment domain.Payment) (domain.Payment, error) {
 	// 3. 同步调用“支付模块”获取支付ID和支付SN和二维码
 	//    1)创建支付, 支付记录, 冗余订单ID和订单SN
 	//    2)调用“积分模块” 扣减积分
@@ -93,7 +116,8 @@ func (s *service) CreatePayment(ctx context.Context, payment domain.Payment) (do
 		switch payment.Records[0].Channel {
 		case domain.ChannelTypeCredit:
 			// 仅积分支付
-			return s.creditSvc.Pay(ctx, payment)
+			// return s.creditSvc.Pay(ctx, payment)
+			return domain.Payment{}, nil
 		case domain.ChannelTypeWechat:
 			// 仅微信支付
 			return s.wechatSvc.Prepay(ctx, payment)
@@ -104,30 +128,18 @@ func (s *service) CreatePayment(ctx context.Context, payment domain.Payment) (do
 }
 
 // prepayByWechatAndCredit 用微信和积分预支付
-func (s *service) prepayByWechatAndCredit(ctx context.Context, payment domain.Payment) (domain.Payment, error) {
+func (s *service) prepayByWechatAndCredit(ctx context.Context, pmt domain.Payment) (domain.Payment, error) {
 
-	p, err := s.creditSvc.Prepay(ctx, payment)
-	if err != nil {
-		return domain.Payment{}, fmt.Errorf("积分与微信混合支付失败: %w", err)
-	}
-
-	pp, err2 := s.wechatSvc.Prepay(ctx, p)
+	// p, err := s.creditSvc.Prepay(ctx, payment)
+	// if err != nil {
+	// 	return domain.Payment{}, fmt.Errorf("积分与微信混合支付失败: %w", err)
+	// }
+	pp, err2 := s.wechatSvc.Prepay(ctx, pmt)
 	if err2 != nil {
 		return domain.Payment{}, fmt.Errorf("积分与微信混合支付失败: %w", err2)
 	}
 
 	return pp, nil
-}
-
-func (s *service) GetPaymentChannels(ctx context.Context) []domain.PaymentChannel {
-	return []domain.PaymentChannel{
-		{Type: domain.ChannelTypeCredit, Desc: "积分"},
-		{Type: domain.ChannelTypeWechat, Desc: "微信"},
-	}
-}
-
-func (s *service) FindPaymentByID(ctx context.Context, pmtID int64) (domain.Payment, error) {
-	return s.repo.FindPaymentByID(ctx, pmtID)
 }
 
 // PayByOrderID 通过订单序ID支付,查找并执行支付计划

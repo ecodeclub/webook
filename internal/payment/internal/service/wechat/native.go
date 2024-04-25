@@ -76,11 +76,11 @@ func NewNativePaymentService(svc NativeAPIService,
 		// todo: 配置回调URL
 		notifyURL: "http://wechat.meoying.com/pay/callback",
 		nativeCallBackTypeToPaymentStatus: map[string]domain.PaymentStatus{
-			"SUCCESS":  domain.PaymentStatusPaid,
-			"PAYERROR": domain.PaymentStatusFailed,
+			"SUCCESS":  domain.PaymentStatusPaidSuccess,
+			"PAYERROR": domain.PaymentStatusPaidFailed,
 			"NOTPAY":   domain.PaymentStatusUnpaid,
-			"CLOSED":   domain.PaymentStatusFailed,
-			"REVOKED":  domain.PaymentStatusFailed,
+			"CLOSED":   domain.PaymentStatusPaidFailed,
+			"REVOKED":  domain.PaymentStatusPaidFailed,
 			"REFUND":   domain.PaymentStatusRefund,
 		},
 	}

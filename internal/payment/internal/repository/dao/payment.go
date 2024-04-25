@@ -27,9 +27,12 @@ import (
 )
 
 type PaymentDAO interface {
-	FindOrCreate(ctx context.Context, pmt Payment, records []PaymentRecord) (int64, error)
-	FindPaymentByOrderSN(ctx context.Context, orderSN string) (Payment, []PaymentRecord, error)
+	FindOrCreate(ctx context.Context, pmt Payment, records []PaymentRecord) (Payment, []PaymentRecord, error)
 	FindPaymentByID(ctx context.Context, pmtID int64) (Payment, []PaymentRecord, error)
+
+	// 下方待重构
+
+	FindPaymentByOrderSN(ctx context.Context, orderSN string) (Payment, []PaymentRecord, error)
 	Update(ctx context.Context, pmt Payment, records []PaymentRecord) error
 
 	Insert(ctx context.Context, pmt Payment) error
@@ -46,37 +49,43 @@ func NewPaymentGORMDAO(db *gorm.DB) PaymentDAO {
 	return &PaymentGORMDAO{db: db}
 }
 
-func (p *PaymentGORMDAO) FindOrCreate(ctx context.Context, pmt Payment, records []PaymentRecord) (int64, error) {
-	var id int64
-	err := p.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-
+func (g *PaymentGORMDAO) FindOrCreate(ctx context.Context, pmt Payment, records []PaymentRecord) (Payment, []PaymentRecord, error) {
+	err := g.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		now := time.Now().UnixMilli()
-		if pmt.Id == 0 {
-			pmt.Ctime, pmt.Utime = now, now
-		}
-
-		if err := tx.FirstOrCreate(&pmt, Payment{OrderSn: pmt.OrderSn}).Error; err != nil {
+		pmt.Ctime, pmt.Utime = now, now
+		if err := tx.FirstOrCreate(&pmt, "order_id = ? AND order_sn = ?", pmt.OrderId, pmt.OrderSn).Error; err != nil {
 			return fmt.Errorf("创建支付主记录失败: %w", err)
 		}
-
 		for i := 0; i < len(records); i++ {
-			id = pmt.Id
-			records[i].PaymentId = id
+			records[i].PaymentId = pmt.Id
 			records[i].Ctime, records[i].Utime = now, now
-
+			if err := tx.FirstOrCreate(&records[i], "payment_id = ? AND channel = ?", records[i].PaymentId, records[i].Channel).Error; err != nil {
+				return fmt.Errorf("创建支付渠道记录失败: %w", err)
+			}
 		}
-		if err := tx.Create(records).Error; err != nil {
-			return fmt.Errorf("创建支付渠道记录失败: %w", err)
-		}
-
 		return nil
 	})
-	return id, err
+	return pmt, records, err
 }
 
-func (p *PaymentGORMDAO) Update(ctx context.Context, pmt Payment, records []PaymentRecord) error {
+func (g *PaymentGORMDAO) FindPaymentByID(ctx context.Context, pmtID int64) (Payment, []PaymentRecord, error) {
+	var (
+		eg      errgroup.Group
+		pmt     Payment
+		records []PaymentRecord
+	)
+	eg.Go(func() error {
+		return g.db.WithContext(ctx).Where("id = ?", pmtID).First(&pmt).Error
+	})
+	eg.Go(func() error {
+		return g.db.WithContext(ctx).Where("payment_id = ?", pmtID).Order("channel desc").Find(&records).Error
+	})
+	return pmt, records, eg.Wait()
+}
+
+func (g *PaymentGORMDAO) Update(ctx context.Context, pmt Payment, records []PaymentRecord) error {
 	now := time.Now().UnixMilli()
-	return p.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	return g.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		pmt.Utime = now
 		// todo: pmt中要跟新, paidAt, status,
 		if err := tx.Model(&Payment{}).Where("order_sn = ?", pmt.OrderSn).Updates(&pmt).Error; err != nil {
@@ -95,43 +104,26 @@ func (p *PaymentGORMDAO) Update(ctx context.Context, pmt Payment, records []Paym
 	})
 }
 
-func (p *PaymentGORMDAO) FindPaymentByOrderSN(ctx context.Context, orderSN string) (Payment, []PaymentRecord, error) {
+func (g *PaymentGORMDAO) FindPaymentByOrderSN(ctx context.Context, orderSN string) (Payment, []PaymentRecord, error) {
 	return Payment{}, nil, nil
 }
 
-func (p *PaymentGORMDAO) FindPaymentByID(ctx context.Context, pmtID int64) (Payment, []PaymentRecord, error) {
-	db := p.db.WithContext(ctx)
-	var (
-		eg      errgroup.Group
-		pmt     Payment
-		records []PaymentRecord
-	)
-	eg.Go(func() error {
-		return db.Where("payment_id = ?", pmtID).Find(&records).Error
-	})
-	eg.Go(func() error {
-		return db.Where("id = ?", pmtID).First(&pmt).Error
-	})
-
-	return pmt, records, eg.Wait()
-}
-
-func (p *PaymentGORMDAO) GetPayment(ctx context.Context, bizTradeNO string) (Payment, error) {
+func (g *PaymentGORMDAO) GetPayment(ctx context.Context, bizTradeNO string) (Payment, error) {
 	var res Payment
-	err := p.db.WithContext(ctx).Where("biz_trade_no = ?", bizTradeNO).First(&res).Error
+	err := g.db.WithContext(ctx).Where("biz_trade_no = ?", bizTradeNO).First(&res).Error
 	return res, err
 }
 
-func (p *PaymentGORMDAO) FindExpiredPayment(ctx context.Context, offset int, limit int, t time.Time) ([]Payment, error) {
+func (g *PaymentGORMDAO) FindExpiredPayment(ctx context.Context, offset int, limit int, t time.Time) ([]Payment, error) {
 	var res []Payment
-	err := p.db.WithContext(ctx).Where("status = ? AND utime < ?", domain.PaymentStatusUnpaid.ToUnit8(), t.UnixMilli()).Offset(offset).Limit(limit).Find(&res).Error
+	err := g.db.WithContext(ctx).Where("status = ? AND utime < ?", domain.PaymentStatusUnpaid.ToUnit8(), t.UnixMilli()).Offset(offset).Limit(limit).Find(&res).Error
 	return res, err
 }
 
-func (p *PaymentGORMDAO) UpdateTxnIDAndStatus(ctx context.Context,
+func (g *PaymentGORMDAO) UpdateTxnIDAndStatus(ctx context.Context,
 	bizTradeNo string,
 	txnID string, status int64) error {
-	return p.db.WithContext(ctx).Model(&Payment{}).
+	return g.db.WithContext(ctx).Model(&Payment{}).
 		Where("biz_trade_no = ?", bizTradeNo).
 		Updates(map[string]any{
 			"txn_id": txnID,
@@ -140,11 +132,11 @@ func (p *PaymentGORMDAO) UpdateTxnIDAndStatus(ctx context.Context,
 		}).Error
 }
 
-func (p *PaymentGORMDAO) Insert(ctx context.Context, pmt Payment) error {
+func (g *PaymentGORMDAO) Insert(ctx context.Context, pmt Payment) error {
 	now := time.Now().UnixMilli()
 	pmt.Utime = now
 	pmt.Ctime = now
-	return p.db.WithContext(ctx).Create(&pmt).Error
+	return g.db.WithContext(ctx).Create(&pmt).Error
 }
 
 type Payment struct {
@@ -163,13 +155,13 @@ type Payment struct {
 
 type PaymentRecord struct {
 	Id           int64          `gorm:"primaryKey;autoIncrement;comment:支付记录自增ID"`
-	PaymentId    int64          `gorm:"not null;index:idx_payment_id,comment:支付自增ID"`
+	PaymentId    int64          `gorm:"not null;uniqueIndex:unq_idx_payment_id_channel;comment:支付自增ID"`
 	PaymentNO3rd sql.NullString `gorm:"column:payment_no_3rd;type:varchar(255);uniqueIndex:uniq_payment_no_3rd;comment:支付单号, 支付渠道的事务ID"`
 	Description  string         `gorm:"type:varchar(255);not null;comment:本次支付的简要描述"`
-	Channel      uint8          `gorm:"type:tinyint unsigned;not null;default:1;comment:支付渠道 1=积分, 2=微信"`
+	Channel      uint8          `gorm:"type:tinyint unsigned;not null;default:1;uniqueIndex:unq_idx_payment_id_channel;comment:支付渠道 1=积分, 2=微信"`
 	Amount       int64          `gorm:"not null;comment:支付金额"`
 	PaidAt       int64          `gorm:"comment:支付时间"`
-	Status       uint8          `gorm:"type:tinyint unsigned;not null;default:1;comment:支付状态 1=未支付 2=已支付 3=已失败"`
+	Status       uint8          `gorm:"type:tinyint unsigned;not null;default:1;comment:支付状态 1=未支付 2=处理中 3=支付成功 4=支付失败"`
 	Ctime        int64
 	Utime        int64
 }
