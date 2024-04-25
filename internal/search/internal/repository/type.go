@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+
 	"github.com/ecodeclub/webook/internal/search/internal/domain"
 )
 

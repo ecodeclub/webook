@@ -2,9 +2,10 @@ package testioc
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/gotomicro/ego/core/econf"
 	"github.com/olivere/elastic/v7"
-	"time"
 )
 
 func InitES() *elastic.Client {

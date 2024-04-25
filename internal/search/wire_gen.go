@@ -7,12 +7,13 @@
 package baguwen
 
 import (
+	"sync"
+
 	"github.com/ecodeclub/webook/internal/search/internal/repository"
 	"github.com/ecodeclub/webook/internal/search/internal/repository/dao"
 	"github.com/ecodeclub/webook/internal/search/internal/service"
 	"github.com/ecodeclub/webook/internal/search/internal/web"
 	"github.com/olivere/elastic/v7"
-	"sync"
 )
 
 // Injectors from wire.go:

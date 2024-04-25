@@ -3,10 +3,11 @@ package dao
 import (
 	"context"
 	"encoding/json"
-	"github.com/ecodeclub/ekit/slice"
-	"github.com/olivere/elastic/v7"
 	"strconv"
 	"strings"
+
+	"github.com/ecodeclub/ekit/slice"
+	"github.com/olivere/elastic/v7"
 )
 
 const (

@@ -2,9 +2,10 @@ package repository
 
 import (
 	"context"
+	"time"
+
 	"github.com/ecodeclub/webook/internal/search/internal/domain"
 	"github.com/ecodeclub/webook/internal/search/internal/repository/dao"
-	"time"
 )
 
 type skillRepo struct {

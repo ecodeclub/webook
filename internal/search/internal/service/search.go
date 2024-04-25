@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/ecodeclub/webook/internal/search/internal/domain"
 	"github.com/ecodeclub/webook/internal/search/internal/repository"

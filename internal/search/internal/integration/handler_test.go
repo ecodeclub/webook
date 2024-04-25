@@ -3,6 +3,11 @@ package integration
 import (
 	"context"
 	"encoding/json"
+	"net/http"
+	"strconv"
+	"testing"
+	"time"
+
 	"github.com/ecodeclub/ekit/iox"
 	"github.com/ecodeclub/ginx/session"
 	"github.com/ecodeclub/webook/internal/pkg/middleware"
@@ -18,10 +23,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
-	"net/http"
-	"strconv"
-	"testing"
-	"time"
 )
 
 const uid = 123

@@ -3,9 +3,10 @@ package dao
 import (
 	"context"
 	_ "embed"
+	"time"
+
 	"github.com/olivere/elastic/v7"
 	"golang.org/x/sync/errgroup"
-	"time"
 )
 
 var (

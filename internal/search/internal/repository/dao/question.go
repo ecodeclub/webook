@@ -3,9 +3,10 @@ package dao
 import (
 	"context"
 	"encoding/json"
-	"github.com/olivere/elastic/v7"
 	"strconv"
 	"strings"
+
+	"github.com/olivere/elastic/v7"
 )
 
 const (

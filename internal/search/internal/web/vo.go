@@ -1,8 +1,9 @@
 package web
 
 import (
-	"github.com/ecodeclub/webook/internal/search/internal/domain"
 	"time"
+
+	"github.com/ecodeclub/webook/internal/search/internal/domain"
 )
 
 type SearchReq struct {

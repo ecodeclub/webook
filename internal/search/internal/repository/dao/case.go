@@ -3,10 +3,11 @@ package dao
 import (
 	"context"
 	"encoding/json"
-	"github.com/ecodeclub/webook/internal/search/internal/domain"
-	"github.com/olivere/elastic/v7"
 	"strconv"
 	"strings"
+
+	"github.com/ecodeclub/webook/internal/search/internal/domain"
+	"github.com/olivere/elastic/v7"
 )
 
 const CaseIndexName = "case_index"
