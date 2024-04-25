@@ -24,6 +24,8 @@ import (
 	"testing"
 	"time"
 
+	"gorm.io/gorm"
+
 	"github.com/ecodeclub/ekit/sqlx"
 	"github.com/ecodeclub/webook/internal/pkg/middleware"
 
@@ -537,6 +539,81 @@ func (s *HandlerTestSuite) TestSync() {
 			require.NoError(t, err)
 		})
 	}
+}
+
+func (s *HandlerTestSuite) TestDelete() {
+	testCases := []struct {
+		name string
+
+		qid    int64
+		before func(t *testing.T)
+		after  func(t *testing.T)
+
+		wantCode int
+		wantResp test.Result[any]
+	}{
+		{
+			name: "删除成功",
+			qid:  123,
+			before: func(t *testing.T) {
+				ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+				defer cancel()
+				var qid int64 = 123
+				// prepare data
+				_, err := s.dao.Sync(ctx, dao.Question{
+					Id: qid,
+				}, []dao.AnswerElement{
+					{
+						Qid: qid,
+					},
+				})
+				require.NoError(t, err)
+				err = s.db.Create(&dao.QuestionSetQuestion{
+					QID: qid,
+				}).Error
+				require.NoError(t, err)
+			},
+			after: func(t *testing.T) {
+				ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+				defer cancel()
+				var qid int64 = 123
+				_, _, err := s.dao.GetPubByID(ctx, qid)
+				assert.Equal(t, err, gorm.ErrRecordNotFound)
+				_, _, err = s.dao.GetByID(ctx, qid)
+				assert.Equal(t, err, gorm.ErrRecordNotFound)
+				var res []dao.QuestionSetQuestion
+				err = s.db.Where("qid = ?").Find(&res).Error
+				assert.NoError(t, err)
+				assert.Equal(t, 0, len(res))
+			},
+			wantCode: 200,
+			wantResp: test.Result[any]{},
+		},
+		{
+			name: "删除不存在的 Question",
+			qid:  124,
+			before: func(t *testing.T) {
+			},
+			after: func(t *testing.T) {
+			},
+			wantCode: 200,
+			wantResp: test.Result[any]{},
+		},
+	}
+
+	for _, tc := range testCases {
+		s.T().Run(tc.name, func(t *testing.T) {
+			req, err := http.NewRequest(http.MethodPost,
+				"/question/delete", iox.NewJSONReader(web.Qid{Qid: tc.qid}))
+			req.Header.Set("content-type", "application/json")
+			require.NoError(t, err)
+			recorder := test.NewJSONResponseRecorder[any]()
+			s.server.ServeHTTP(recorder, req)
+			require.Equal(t, tc.wantCode, recorder.Code)
+			assert.Equal(t, tc.wantResp, recorder.MustScan())
+		})
+	}
+
 }
 
 func (s *HandlerTestSuite) TestPubDetail() {

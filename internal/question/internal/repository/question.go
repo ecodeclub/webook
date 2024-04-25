@@ -37,6 +37,9 @@ type Repository interface {
 	Total(ctx context.Context) (int64, error)
 	Update(ctx context.Context, question *domain.Question) error
 	Create(ctx context.Context, question *domain.Question) (int64, error)
+	// Delete 会直接删除制作库和线上库的数据
+	Delete(ctx context.Context, qid int64) error
+
 	GetById(ctx context.Context, qid int64) (domain.Question, error)
 	GetPubByID(ctx context.Context, qid int64) (domain.Question, error)
 	GetPubByIDs(ctx context.Context, ids []int64) ([]domain.Question, error)
@@ -75,6 +78,10 @@ func (c *CachedRepository) GetById(ctx context.Context, qid int64) (domain.Quest
 		return domain.Question{}, err
 	}
 	return c.toDomainWithAnswer(data, eles), nil
+}
+
+func (c *CachedRepository) Delete(ctx context.Context, qid int64) error {
+	return c.dao.Delete(ctx, qid)
 }
 
 func (c *CachedRepository) Update(ctx context.Context, question *domain.Question) error {

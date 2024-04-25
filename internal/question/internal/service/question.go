@@ -29,11 +29,13 @@ type Service interface {
 	Save(ctx context.Context, question *domain.Question) (int64, error)
 	Publish(ctx context.Context, que *domain.Question) (int64, error)
 	List(ctx context.Context, offset int, limit int) ([]domain.Question, int64, error)
+	Detail(ctx context.Context, qid int64) (domain.Question, error)
+	// Delete 会直接删除制作库和线上库的数据
+	Delete(ctx context.Context, qid int64) error
 
 	PubList(ctx context.Context, offset int, limit int) ([]domain.Question, int64, error)
 	// GetPubByIDs 目前只会获取基础信息，也就是不包括答案在内的信息
 	GetPubByIDs(ctx context.Context, ids []int64) ([]domain.Question, error)
-	Detail(ctx context.Context, qid int64) (domain.Question, error)
 	PubDetail(ctx context.Context, qid int64) (domain.Question, error)
 }
 
@@ -51,6 +53,10 @@ func (s *service) PubDetail(ctx context.Context, qid int64) (domain.Question, er
 
 func (s *service) Detail(ctx context.Context, qid int64) (domain.Question, error) {
 	return s.repo.GetById(ctx, qid)
+}
+
+func (s *service) Delete(ctx context.Context, qid int64) error {
+	return s.repo.Delete(ctx, qid)
 }
 
 func (s *service) List(ctx context.Context, offset int, limit int) ([]domain.Question, int64, error) {
