@@ -86,6 +86,9 @@ func (q *questionElasticDAO) SearchQuestion(ctx context.Context, keywords []stri
 	for _, hit := range resp.Hits.Hits {
 		var ele Question
 		err = json.Unmarshal(hit.Source, &ele)
+		if err != nil {
+			return nil, err
+		}
 		res = append(res, ele)
 	}
 	return res, nil

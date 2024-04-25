@@ -60,6 +60,9 @@ func (c *CaseElasticDAO) SearchCase(ctx context.Context, keywords []string) ([]C
 	for _, hit := range resp.Hits.Hits {
 		var ele Case
 		err = json.Unmarshal(hit.Source, &ele)
+		if err != nil {
+			return nil, err
+		}
 		res = append(res, ele)
 	}
 	return res, nil

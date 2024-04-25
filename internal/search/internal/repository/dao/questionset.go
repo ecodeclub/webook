@@ -57,6 +57,9 @@ func (q *questionSetElasticDAO) SearchQuestionSet(ctx context.Context, qids []in
 	for _, hit := range resp.Hits.Hits {
 		var ele QuestionSet
 		err = json.Unmarshal(hit.Source, &ele)
+		if err != nil {
+			return nil, err
+		}
 		res = append(res, ele)
 	}
 	return res, nil
