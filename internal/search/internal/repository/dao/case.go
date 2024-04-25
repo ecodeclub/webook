@@ -35,9 +35,9 @@ type CaseElasticDAO struct {
 const (
 	caseTitleBoost    = 30
 	caseLabelBoost    = 29
-	caseKeywordsBoost = 15
-	caseContentBoost  = 10
-	caseGuidanceBoost = 5
+	caseKeywordsBoost = 3
+	caseContentBoost  = 2
+	caseGuidanceBoost = 1
 )
 
 func (c *CaseElasticDAO) SearchCase(ctx context.Context, keywords []string) ([]Case, error) {
@@ -46,7 +46,7 @@ func (c *CaseElasticDAO) SearchCase(ctx context.Context, keywords []string) ([]C
 	query := elastic.NewBoolQuery().Must(
 		elastic.NewBoolQuery().Should(
 			elastic.NewMatchQuery("title", queryString).Boost(caseTitleBoost),
-			elastic.NewTermsQueryFromStrings("labels", queryString).Boost(caseLabelBoost),
+			elastic.NewTermsQueryFromStrings("labels", keywords...).Boost(caseLabelBoost),
 			elastic.NewMatchQuery("keywords", queryString).Boost(caseKeywordsBoost),
 			elastic.NewMatchQuery("shorthand", queryString).Boost(caseKeywordsBoost),
 			elastic.NewMatchQuery("content", queryString).Boost(caseContentBoost),
