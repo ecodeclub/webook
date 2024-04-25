@@ -1,0 +1,61 @@
+{
+  "mappings": {
+    "properties": {
+      "id": { "type": "long" },
+      "uid": { "type": "long" },
+      "title": { "type": "text" },
+      "labels": { "type": "keyword" },
+      "content": { "type": "text" },
+      "status": { "type": "keyword" },
+      "answer": {
+        "properties": {
+          "analysis": {
+            "properties": {
+              "id": { "type": "long" },
+              "content": { "type": "text" },
+              "keywords": { "type": "text" },
+              "shorthand": { "type": "text" },
+              "highlight": { "type": "text" },
+              "guidance": { "type": "text" },
+              "utime": { "type": "long" }
+            }
+          },
+          "basic": {
+            "properties": {
+              "id": { "type": "long" },
+              "content": { "type": "text" },
+              "keywords": { "type": "text" },
+              "shorthand": { "type": "text" },
+              "highlight": { "type": "text" },
+              "guidance": { "type": "text" },
+              "utime": { "type": "long" }
+            }
+          },
+          "intermediate": {
+            "properties": {
+              "id": { "type": "long" },
+              "content": { "type": "text" },
+              "keywords": { "type": "text" },
+              "shorthand": { "type": "text" },
+              "highlight": { "type": "text" },
+              "guidance": { "type": "text" },
+              "utime": { "type": "long" }
+            }
+          },
+          "advanced": {
+            "properties": {
+              "id": { "type": "long" },
+              "content": { "type": "text" },
+              "keywords": { "type": "text" },
+              "shorthand": { "type": "text" },
+              "highlight": { "type": "text" },
+              "guidance": { "type": "text" },
+              "utime": { "type": "long" }
+            }
+          }
+        }
+      },
+      "utime": { "type": "long" }
+    }
+  }
+}

@@ -37,3 +37,21 @@ services:
       - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
     networks:
       default:
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.13.0
+    container_name: elasticsearch
+    environment:
+      - discovery.type=single-node
+      - "xpack.security.enabled=false"
+      - "ES_JAVA_OPTS=-Xms84m -Xmx512m"
+    ports:
+      - "9200:9200"
+  kibana:
+    #    注意检查你的 ElasticSearch 版本，这边我将 ES 也改到了这个版本
+    image: docker.elastic.co/kibana/kibana:7.13.0
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - i18n.locale=zh-CN
+    ports:
+      - "5601:5601"
