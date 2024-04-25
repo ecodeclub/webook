@@ -39,13 +39,13 @@ import (
 
 type Handler = web.Handler
 type Service = service.Service
-type CloseExpiredOrdersJob = job.CloseExpiredOrdersJob
+type CloseTimeoutOrdersJob = job.CloseTimeoutOrdersJob
 
 var HandlerSet = wire.NewSet(
 	sequencenumber.NewGenerator,
 	web.NewHandler)
 
-func InitModule(db *egorm.Component, cache ecache.Cache, q mq.MQ, paymentSvc payment.Service, productSvc product.Service, creditSvc credit.Service) (*Module, error) {
+func InitModule(db *egorm.Component, cache ecache.Cache, q mq.MQ, pm *payment.Module, ppm *product.Module, cm *credit.Module) (*Module, error) {
 	wire.Build(
 		wire.Struct(new(Module), "*"),
 		InitService,
@@ -56,8 +56,11 @@ func InitModule(db *egorm.Component, cache ecache.Cache, q mq.MQ, paymentSvc pay
 	return new(Module), nil
 }
 
-func InitHandler(cache ecache.Cache, svc service.Service, paymentSvc payment.Service, productSvc product.Service, creditSvc credit.Service) *Handler {
+func InitHandler(cache ecache.Cache, svc service.Service, pm *payment.Module, ppm *product.Module, cm *credit.Module) *Handler {
 	wire.Build(
+		wire.FieldsOf(new(*payment.Module), "Svc"),
+		wire.FieldsOf(new(*product.Module), "Svc"),
+		wire.FieldsOf(new(*credit.Module), "Svc"),
 		sequencenumber.NewGenerator,
 		web.NewHandler)
 	return new(Handler)
@@ -78,8 +81,8 @@ func InitService(db *gorm.DB) service.Service {
 	return svc
 }
 
-func initCompleteOrderConsumer(svc service.Service, q mq.MQ) *event.CompleteOrderConsumer {
-	consumer, err := event.NewCompleteOrderConsumer(svc, q)
+func initCompleteOrderConsumer(svc service.Service, q mq.MQ) *event.PaymentConsumer {
+	consumer, err := event.NewPaymentConsumer(svc, q)
 	if err != nil {
 		panic(err)
 	}
@@ -87,9 +90,9 @@ func initCompleteOrderConsumer(svc service.Service, q mq.MQ) *event.CompleteOrde
 	return consumer
 }
 
-func initCloseExpiredOrdersJob(svc service.Service) *job.CloseExpiredOrdersJob {
+func initCloseExpiredOrdersJob(svc service.Service) *CloseTimeoutOrdersJob {
 	minutes := int64(30)
 	seconds := int64(10)
-	limit := int(100)
-	return job.NewCloseExpiredOrdersJob(svc, minutes, seconds, limit)
+	limit := 100
+	return job.NewCloseTimeoutOrdersJob(svc, minutes, seconds, limit)
 }

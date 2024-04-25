@@ -24,7 +24,7 @@ import (
 
 	creditmocks "github.com/ecodeclub/webook/internal/credit/mocks"
 	"github.com/ecodeclub/webook/internal/payment/internal/domain"
-	"github.com/ecodeclub/webook/internal/payment/internal/events"
+	"github.com/ecodeclub/webook/internal/payment/internal/event"
 	"github.com/ecodeclub/webook/internal/payment/internal/repository"
 	"github.com/ecodeclub/webook/internal/payment/internal/repository/dao"
 	credit2 "github.com/ecodeclub/webook/internal/payment/internal/service/credit"
@@ -38,7 +38,9 @@ import (
 	"go.uber.org/mock/gomock"
 )
 
-const testUID = int64(789)
+func TestCreditPaymentServiceTestSuite(t *testing.T) {
+	suite.Run(t, new(CreditPaymentServiceTestSuite))
+}
 
 type CreditPaymentServiceTestSuite struct {
 	suite.Suite
@@ -82,7 +84,7 @@ func (s *CreditPaymentServiceTestSuite) TestPay() {
 
 		mockedCreditService := creditmocks.NewMockService(ctrl)
 		paymentNo3rd := int64(1)
-		mockedCreditService.EXPECT().TryDeductCredits(gomock.Any(), gomock.Any()).Return(paymentNo3rd, int64(10), nil)
+		mockedCreditService.EXPECT().TryDeductCredits(gomock.Any(), gomock.Any()).Return(paymentNo3rd, nil)
 		mockedCreditService.EXPECT().ConfirmDeductCredits(gomock.Any(), testUID, paymentNo3rd).Return(nil)
 		// mockedCreditService.EXPECT().CancelDeductCredits(gomock.Any(), paymentNo3rd).Return(nil)
 
@@ -181,14 +183,10 @@ func (s *CreditPaymentServiceTestSuite) TestPay() {
 }
 
 type fakeProducer struct {
-	paymentEvents []events.PaymentEvent
+	paymentEvents []event.PaymentEvent
 }
 
-func (f *fakeProducer) ProducePaymentEvent(_ context.Context, evt events.PaymentEvent) error {
+func (f *fakeProducer) Produce(_ context.Context, evt event.PaymentEvent) error {
 	f.paymentEvents = append(f.paymentEvents, evt)
 	return nil
-}
-
-func TestCreditPaymentServiceTestSuite(t *testing.T) {
-	suite.Run(t, new(CreditPaymentServiceTestSuite))
 }

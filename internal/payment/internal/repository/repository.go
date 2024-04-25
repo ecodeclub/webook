@@ -33,6 +33,7 @@ type PaymentRepository interface {
 	// UpdatePayment 这个设计有点差，因为
 	FindExpiredPayment(ctx context.Context, offset int, limit int, t time.Time) ([]domain.Payment, error)
 	GetPayment(ctx context.Context, bizTradeNO string) (domain.Payment, error)
+	FindPaymentByID(ctx context.Context, pmtID int64) (domain.Payment, error)
 }
 
 func NewPaymentRepository(d dao.PaymentDAO) PaymentRepository {
@@ -43,6 +44,11 @@ func NewPaymentRepository(d dao.PaymentDAO) PaymentRepository {
 
 type paymentRepository struct {
 	dao dao.PaymentDAO
+}
+
+func (p *paymentRepository) FindPaymentByID(ctx context.Context, pmtID int64) (domain.Payment, error) {
+	pmt, records, err := p.dao.FindPaymentByID(ctx, pmtID)
+	return p.toDomain(pmt, records), err
 }
 
 func (p *paymentRepository) CreatePayment(ctx context.Context, pmt domain.Payment) (domain.Payment, error) {
@@ -66,9 +72,8 @@ func (p *paymentRepository) toEntity(pmt domain.Payment) (dao.Payment, []dao.Pay
 		PayerId:          pmt.PayerID,
 		OrderDescription: pmt.OrderDescription,
 		TotalAmount:      pmt.TotalAmount,
-		PayDDL:           pmt.PayDDL,
 		PaidAt:           pmt.PaidAt,
-		Status:           pmt.Status,
+		Status:           pmt.Status.ToUnit8(),
 	}
 	records := make([]dao.PaymentRecord, 0, len(pmt.Records))
 	for _, r := range pmt.Records {
@@ -76,18 +81,18 @@ func (p *paymentRepository) toEntity(pmt domain.Payment) (dao.Payment, []dao.Pay
 			PaymentId:    r.PaymentID,
 			PaymentNO3rd: sql.NullString{String: r.PaymentNO3rd, Valid: r.PaymentNO3rd != ""},
 			Description:  r.Description,
-			Channel:      r.Channel,
+			Channel:      r.Channel.ToUnit8(),
 			Amount:       r.Amount,
 			PaidAt:       r.PaidAt,
-			Status:       r.Status,
+			Status:       r.Status.ToUnit8(),
 		})
 	}
 	return pp, records
 }
 
 func (p *paymentRepository) UpdatePayment(ctx context.Context, pmt domain.Payment) error {
-	// todo: 应该是OrderSN, paymentNo3rd(txn_id), Status
-	// return p.dao.UpdateTxnIDAndStatus(ctx, pmt.OrderSN, pmt.OrderSN, pmt.Status)
+	// todo: 应该是OrderSN, paymentNo3rd(txn_id), PaymentStatus
+	// return p.dao.UpdateTxnIDAndStatus(ctx, pmt.OrderSN, pmt.OrderSN, pmt.PaymentStatus)
 
 	// 通过pmt.OrderSN -> pmt.ID -> []records{ {微信}, {积分}}
 	// 找到的records可能有两条 —— 微信和积分
@@ -109,10 +114,10 @@ func (p *paymentRepository) toDomain(pmt dao.Payment, records []dao.PaymentRecor
 			PaymentID:    records[i].PaymentId,
 			PaymentNO3rd: records[i].PaymentNO3rd.String,
 			Description:  records[i].Description,
-			Channel:      records[i].Channel,
+			Channel:      domain.ChannelType(records[i].Channel),
 			Amount:       records[i].Amount,
 			PaidAt:       records[i].PaidAt,
-			Status:       records[i].Status,
+			Status:       domain.PaymentStatus(records[i].Status),
 		})
 	}
 
@@ -124,9 +129,8 @@ func (p *paymentRepository) toDomain(pmt dao.Payment, records []dao.PaymentRecor
 		OrderSN:          pmt.OrderSn.String,
 		OrderDescription: pmt.OrderDescription,
 		TotalAmount:      pmt.TotalAmount,
-		PayDDL:           pmt.PayDDL,
 		PaidAt:           pmt.PaidAt,
-		Status:           pmt.Status,
+		Status:           domain.PaymentStatus(pmt.Status),
 		Records:          rs,
 		Ctime:            pmt.Ctime,
 		Utime:            pmt.Utime,
@@ -159,7 +163,7 @@ func (p *paymentRepository) toEntity2(pmt domain.Payment) dao.Payment {
 		TotalAmount:      pmt.TotalAmount,
 		OrderSn:          sql.NullString{String: pmt.OrderSN, Valid: true},
 		OrderDescription: pmt.OrderDescription,
-		Status:           domain.PaymentStatusUnpaid,
+		Status:           domain.PaymentStatusUnpaid.ToUnit8(),
 	}
 }
 
@@ -168,6 +172,6 @@ func (p *paymentRepository) toDomain2(pmt dao.Payment) domain.Payment {
 		TotalAmount:      pmt.TotalAmount,
 		OrderSN:          pmt.OrderSn.String,
 		OrderDescription: pmt.OrderDescription,
-		Status:           pmt.Status,
+		Status:           domain.PaymentStatus(pmt.Status),
 	}
 }

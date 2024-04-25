@@ -37,6 +37,11 @@ var HandlerSet = wire.NewSet(
 	InitService,
 	web.NewHandler)
 
+func InitModule(db *egorm.Component) (*Module, error) {
+	wire.Build(HandlerSet, wire.Struct(new(Module), "*"))
+	return new(Module), nil
+}
+
 func InitHandler(db *egorm.Component) *Handler {
 	wire.Build(HandlerSet)
 	return new(Handler)
@@ -60,6 +65,10 @@ type Handler = web.Handler
 
 type Service = service.Service
 
-type Product = domain.Product
 type SKU = domain.SKU
 type SPU = domain.SPU
+type Status = domain.Status
+
+const StatusOffShelf = domain.StatusOffShelf
+const StatusOnShelf = domain.StatusOnShelf
+const SaleTypeUnlimited = domain.SaleTypeUnlimited

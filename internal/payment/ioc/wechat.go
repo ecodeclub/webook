@@ -18,7 +18,7 @@ import (
 	"context"
 	"os"
 
-	"github.com/ecodeclub/webook/internal/payment/internal/events"
+	"github.com/ecodeclub/webook/internal/payment/internal/event"
 	"github.com/ecodeclub/webook/internal/payment/internal/repository"
 	"github.com/ecodeclub/webook/internal/payment/internal/service/wechat"
 	"github.com/gotomicro/ego/core/elog"
@@ -56,15 +56,19 @@ func InitWechatClient(cfg WechatConfig) *core.Client {
 }
 
 func InitWechatNativeService(
-	cli *core.Client,
+	native wechat.NativeAPIService,
 	repo repository.PaymentRepository,
-	producer events.Producer,
+	producer event.PaymentEventProducer,
 	paymentDDLFunc func() int64,
 	l *elog.Component,
 	cfg WechatConfig) *wechat.NativePaymentService {
-	return wechat.NewNativePaymentService(&native.NativeApiService{
+	return wechat.NewNativePaymentService(native, repo, producer, paymentDDLFunc, l, cfg.AppID, cfg.MchID)
+}
+
+func InitNativeApiService(cli *core.Client) *native.NativeApiService {
+	return &native.NativeApiService{
 		Client: cli,
-	}, repo, producer, paymentDDLFunc, l, cfg.AppID, cfg.MchID)
+	}
 }
 
 func InitWechatNotifyHandler(cfg WechatConfig) *notify.Handler {

@@ -12,17 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package wechat
+package project
 
-import (
-	"context"
+import "github.com/ecodeclub/webook/internal/project/internal/web"
 
-	"github.com/wechatpay-apiv3/wechatpay-go/core"
-	"github.com/wechatpay-apiv3/wechatpay-go/services/payments"
-	"github.com/wechatpay-apiv3/wechatpay-go/services/payments/native"
-)
+type AdminHandler = web.AdminHandler
+type Handler = web.Handler
 
-type NativeAPIService interface {
-	Prepay(ctx context.Context, req native.PrepayRequest) (resp *native.PrepayResponse, result *core.APIResult, err error)
-	QueryOrderByOutTradeNo(ctx context.Context, req native.QueryOrderByOutTradeNoRequest) (resp *payments.Transaction, result *core.APIResult, err error)
+type Module struct {
+	AdminHdl *AdminHandler
+	Hdl      *Handler
 }

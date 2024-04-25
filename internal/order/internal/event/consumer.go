@@ -21,29 +21,30 @@ import (
 
 	"github.com/ecodeclub/mq-api"
 	"github.com/ecodeclub/webook/internal/order/internal/service"
+	"github.com/ecodeclub/webook/internal/payment"
 	"github.com/gotomicro/ego/core/elog"
 )
 
-type CompleteOrderConsumer struct {
+type PaymentConsumer struct {
 	svc      service.Service
 	consumer mq.Consumer
 	logger   *elog.Component
 }
 
-func NewCompleteOrderConsumer(svc service.Service, q mq.MQ) (*CompleteOrderConsumer, error) {
+func NewPaymentConsumer(svc service.Service, q mq.MQ) (*PaymentConsumer, error) {
 	const groupID = "order"
-	consumer, err := q.Consumer(orderCompleteEvents, groupID)
+	consumer, err := q.Consumer(paymentEvents, groupID)
 	if err != nil {
 		return nil, err
 	}
-	return &CompleteOrderConsumer{
+	return &PaymentConsumer{
 		svc:      svc,
 		consumer: consumer,
 		logger:   elog.DefaultLogger,
 	}, nil
 }
 
-func (c *CompleteOrderConsumer) Start(ctx context.Context) {
+func (c *PaymentConsumer) Start(ctx context.Context) {
 	go func() {
 		for {
 			er := c.Consume(ctx)
@@ -54,34 +55,45 @@ func (c *CompleteOrderConsumer) Start(ctx context.Context) {
 	}()
 }
 
-func (c *CompleteOrderConsumer) Consume(ctx context.Context) error {
+func (c *PaymentConsumer) Consume(ctx context.Context) error {
 	msg, err := c.consumer.Consume(ctx)
 	if err != nil {
 		return fmt.Errorf("获取消息失败: %w", err)
 	}
 
-	var evt CompleteOrderEvent
+	var evt PaymentEvent
 	err = json.Unmarshal(msg.Value, &evt)
 	if err != nil {
 		return fmt.Errorf("解析消息失败: %w", err)
 	}
 	// 收到该消息表示用户支付成功,所以不管订单当前的状态是什么都要设置为“已支付完成”
-	order, err := c.svc.FindOrderByUIDAndOrderSN(ctx, evt.BuyerID, evt.OrderSN)
+	order, err := c.svc.FindUserVisibleOrderByUIDAndSN(ctx, evt.PayerID, evt.OrderSN)
 	if err != nil {
 		c.logger.Error("订单未找到",
 			elog.FieldErr(err),
 			elog.String("order_sn", evt.OrderSN),
-			elog.Int64("buyer_id", evt.BuyerID),
+			elog.Int64("buyer_id", evt.PayerID),
 		)
 		return fmt.Errorf("订单未找到: %w", err)
 	}
 
-	err = c.svc.CompleteOrder(ctx, order.BuyerID, order.ID)
+	var warnMessage string
+	if evt.Status == uint8(payment.PaymentStatusPaid) {
+		err = c.svc.SucceedOrder(ctx, order.BuyerID, order.ID)
+		warnMessage = "设置订单'支付成功'状态失败"
+	} else if evt.Status == uint8(payment.PaymentStatusFailed) {
+		err = c.svc.FailOrder(ctx, order.BuyerID, order.ID)
+		warnMessage = "设置订单'支付失败'状态失败"
+	} else {
+		return fmt.Errorf("未支付状态: %d", evt.Status)
+	}
+
 	if err != nil {
-		c.logger.Warn("完成订单失败",
+		c.logger.Warn(warnMessage,
 			elog.FieldErr(err),
 			elog.Int64("order_id", order.ID),
 			elog.Int64("buyer_id", order.BuyerID))
 	}
 	return err
+
 }

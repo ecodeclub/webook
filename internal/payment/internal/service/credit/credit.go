@@ -25,10 +25,11 @@ import (
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/ecodeclub/webook/internal/credit"
 	"github.com/ecodeclub/webook/internal/payment/internal/domain"
-	"github.com/ecodeclub/webook/internal/payment/internal/events"
+	"github.com/ecodeclub/webook/internal/payment/internal/event"
 	"github.com/ecodeclub/webook/internal/payment/internal/repository"
 	"github.com/ecodeclub/webook/internal/pkg/sequencenumber"
 	"github.com/gotomicro/ego/core/elog"
+	"github.com/lithammer/shortuuid/v4"
 )
 
 var (
@@ -38,7 +39,7 @@ var (
 type PaymentService struct {
 	svc            credit.Service
 	repo           repository.PaymentRepository
-	producer       events.Producer
+	producer       event.PaymentEventProducer
 	paymentDDLFunc func() int64
 	snGenerator    *sequencenumber.Generator
 	l              *elog.Component
@@ -50,7 +51,7 @@ type PaymentService struct {
 
 func NewCreditPaymentService(svc credit.Service,
 	repo repository.PaymentRepository,
-	producer events.Producer,
+	producer event.PaymentEventProducer,
 	paymentDDLFunc func() int64,
 	snGenerator *sequencenumber.Generator,
 	l *elog.Component,
@@ -85,9 +86,10 @@ func (p *PaymentService) Pay(ctx context.Context, pmt domain.Payment) (domain.Pa
 
 		// todo: 是否需要发送“支付失败”消息?
 		// 如果发送, 这边也应该同步修改支付记录的状体为支付失败
-		err3 := p.producer.ProducePaymentEvent(ctx, events.PaymentEvent{
+		err3 := p.producer.Produce(ctx, event.PaymentEvent{
 			OrderSN: pmt.OrderSN,
-			Status:  domain.PaymentStatusFailed,
+			PayerID: pmt.PayerID,
+			Status:  uint8(domain.PaymentStatusFailed),
 		})
 		if err3 != nil {
 			p.l.Error("发送积分支付成功事件失败",
@@ -100,9 +102,10 @@ func (p *PaymentService) Pay(ctx context.Context, pmt domain.Payment) (domain.Pa
 
 	// todo: 发送“支付成功”消息
 	// {user_id, “购买商品”, order_id, order_sn, paidAmount}
-	err4 := p.producer.ProducePaymentEvent(ctx, events.PaymentEvent{
+	err4 := p.producer.Produce(ctx, event.PaymentEvent{
 		OrderSN: pmt.OrderSN,
-		Status:  domain.PaymentStatusPaid,
+		PayerID: pmt.PayerID,
+		Status:  uint8(domain.PaymentStatusPaid),
 	})
 	if err4 != nil {
 		p.l.Error("发送积分支付成功事件失败",
@@ -135,7 +138,6 @@ func (p *PaymentService) Prepay(ctx context.Context, pmt domain.Payment) (domain
 		return domain.Payment{}, fmt.Errorf("预扣积分失败")
 	}
 
-	pmt.PayDDL = p.paymentDDLFunc()
 	pmt.Status = domain.PaymentStatusUnpaid
 	pmt.Records = []domain.PaymentRecord{
 		{
@@ -162,8 +164,15 @@ func (p *PaymentService) Prepay(ctx context.Context, pmt domain.Payment) (domain
 func (p *PaymentService) tryDeductCredits(ctx context.Context, uid int64, amount uint64) (txID int64, err error) {
 	strategy, _ := retry.NewExponentialBackoffRetryStrategy(p.initialInterval, p.maxInterval, p.maxRetries)
 	for {
-
-		txID, err := p.svc.TryDeductCredits(ctx, credit.Credit{Uid: uid, ChangeAmount: amount})
+		txID, err := p.svc.TryDeductCredits(ctx, credit.Credit{Uid: uid, Logs: []credit.CreditLog{
+			{
+				Key:          shortuuid.New(),
+				ChangeAmount: int64(amount),
+				Biz:          "payment",
+				BizId:        0,
+				Desc:         "",
+			},
+		}})
 		if err == nil {
 			return txID, nil
 		}

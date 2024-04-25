@@ -21,10 +21,14 @@ import (
 	"github.com/ecodeclub/webook/internal/member/internal/repository"
 )
 
+var (
+	ErrDuplicatedMemberRecord = repository.ErrDuplicatedMemberRecord
+)
+
 //go:generate mockgen -source=./service.go -package=membermocks --destination=../../mocks/member.mock.go -typed Service
 type Service interface {
-	GetMembershipInfo(ctx context.Context, userID int64) (domain.Member, error)
-	CreateNewMembership(ctx context.Context, member domain.Member) (int64, error)
+	GetMembershipInfo(ctx context.Context, uid int64) (domain.Member, error)
+	ActivateMembership(ctx context.Context, member domain.Member) error
 }
 
 type service struct {
@@ -35,10 +39,10 @@ func NewMemberService(repo repository.MemberRepository) Service {
 	return &service{repo: repo}
 }
 
-func (s *service) GetMembershipInfo(ctx context.Context, userID int64) (domain.Member, error) {
-	return s.repo.FindByUID(ctx, userID)
+func (s *service) GetMembershipInfo(ctx context.Context, uid int64) (domain.Member, error) {
+	return s.repo.FindByUID(ctx, uid)
 }
 
-func (s *service) CreateNewMembership(ctx context.Context, member domain.Member) (int64, error) {
-	return s.repo.Create(ctx, member)
+func (s *service) ActivateMembership(ctx context.Context, member domain.Member) error {
+	return s.repo.Upsert(ctx, member)
 }

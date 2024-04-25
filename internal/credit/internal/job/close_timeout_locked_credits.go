@@ -19,23 +19,21 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/ecodeclub/ekit/slice"
-	"github.com/ecodeclub/webook/internal/order/internal/domain"
-	"github.com/ecodeclub/webook/internal/order/internal/service"
+	"github.com/ecodeclub/webook/internal/credit/internal/service"
 	"github.com/gotomicro/ego/task/ecron"
 )
 
-var _ ecron.NamedJob = (*CloseExpiredOrdersJob)(nil)
+var _ ecron.NamedJob = (*CloseTimeoutLockedCreditsJob)(nil)
 
-type CloseExpiredOrdersJob struct {
+type CloseTimeoutLockedCreditsJob struct {
 	svc     service.Service
 	minutes int64
 	seconds int64
 	limit   int
 }
 
-func NewCloseExpiredOrdersJob(svc service.Service, minutes, seconds int64, limit int) *CloseExpiredOrdersJob {
-	return &CloseExpiredOrdersJob{
+func NewCloseTimeoutLockedCreditsJob(svc service.Service, minutes, seconds int64, limit int) *CloseTimeoutLockedCreditsJob {
+	return &CloseTimeoutLockedCreditsJob{
 		svc:     svc,
 		minutes: minutes,
 		seconds: seconds,
@@ -43,30 +41,28 @@ func NewCloseExpiredOrdersJob(svc service.Service, minutes, seconds int64, limit
 	}
 }
 
-func (c *CloseExpiredOrdersJob) Name() string {
-	return "CloseExpiredOrdersJob"
+func (c *CloseTimeoutLockedCreditsJob) Name() string {
+	return "CloseTimeoutLockedCreditsJob"
 }
 
-func (c *CloseExpiredOrdersJob) Run(ctx context.Context) error {
+func (c *CloseTimeoutLockedCreditsJob) Run(ctx context.Context) error {
 	// 冗余10秒
 	ctime := time.Now().Add(time.Duration(-c.minutes)*time.Minute + time.Duration(-c.seconds)*time.Second).UnixMilli()
 
 	for {
-		orders, total, err := c.svc.FindExpiredOrders(ctx, 0, c.limit, ctime)
+		creditLogs, total, err := c.svc.FindExpiredLockedCreditLogs(ctx, 0, c.limit, ctime)
 		if err != nil {
-			return fmt.Errorf("获取过期订单失败: %w", err)
+			return fmt.Errorf("获取超时的预扣积分流水: %w", err)
 		}
 
-		ids := slice.Map(orders, func(idx int, src domain.Order) int64 {
-			return src.ID
-		})
-
-		err = c.svc.CloseExpiredOrders(ctx, ids, ctime)
-		if err != nil {
-			return fmt.Errorf("关闭过期订单失败: %w", err)
+		for _, log := range creditLogs {
+			err = c.svc.CancelDeductCredits(ctx, log.Uid, log.ID)
+			if err != nil {
+				return fmt.Errorf("取消超时的预扣积分失败: %w", err)
+			}
 		}
 
-		if len(orders) < c.limit {
+		if len(creditLogs) < c.limit {
 			break
 		}
 

@@ -77,7 +77,7 @@ func TestCheck(t *testing.T) {
 				newExpired := time.Now().Add(time.Hour)
 				service.EXPECT().GetMembershipInfo(gomock.Any(), int64(2795)).
 					Return(member.Member{
-						UID:   2795,
+						Uid:   2795,
 						EndAt: newExpired.UnixMilli(),
 					}, nil)
 
@@ -139,7 +139,7 @@ func TestCheck(t *testing.T) {
 				newExpired := time.Now().Add(-time.Hour)
 				service.EXPECT().GetMembershipInfo(gomock.Any(), int64(2795)).
 					Return(member.Member{
-						UID:   2795,
+						Uid:   2795,
 						EndAt: newExpired.UnixMilli(),
 					}, nil)
 
@@ -169,7 +169,7 @@ func TestCheck(t *testing.T) {
 				newExpired := time.Now().Add(time.Hour)
 				service.EXPECT().GetMembershipInfo(gomock.Any(), int64(2795)).
 					Return(member.Member{
-						UID:   2795,
+						Uid:   2795,
 						EndAt: newExpired.UnixMilli(),
 					}, nil)
 

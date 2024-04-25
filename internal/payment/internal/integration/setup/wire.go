@@ -17,18 +17,67 @@
 package startup
 
 import (
+	"sync"
+
+	"github.com/ecodeclub/webook/internal/credit"
 	"github.com/ecodeclub/webook/internal/payment"
-	"github.com/ecodeclub/webook/internal/payment/internal/service/credit"
+	"github.com/ecodeclub/webook/internal/payment/internal/event"
+	"github.com/ecodeclub/webook/internal/payment/internal/repository"
+	"github.com/ecodeclub/webook/internal/payment/internal/repository/dao"
+	"github.com/ecodeclub/webook/internal/payment/internal/service"
+	credit2 "github.com/ecodeclub/webook/internal/payment/internal/service/credit"
+	"github.com/ecodeclub/webook/internal/payment/internal/service/wechat"
+	"github.com/ecodeclub/webook/internal/payment/internal/web"
+	"github.com/ecodeclub/webook/internal/payment/ioc"
+	"github.com/ecodeclub/webook/internal/pkg/sequencenumber"
 	testioc "github.com/ecodeclub/webook/internal/test/ioc"
 	"github.com/google/wire"
+	"github.com/gotomicro/ego/core/elog"
+	"gorm.io/gorm"
 )
 
-// func InitHandler(paymentSvc payment.Service, productSvc product.Service, creditSvc credit.Service) (*web.Handler, error) {
-// 	wire.Build(testioc.BaseSet, order.InitHandler)
-// 	return new(web.Handler), nil
-// }
+func InitModule(p event.PaymentEventProducer,
+	paymentDDLFunc func() int64,
+	cm *credit.Module,
+	h wechat.NotifyHandler,
+	native wechat.NativeAPIService) *payment.Module {
+	wire.Build(
+		testioc.BaseSet,
+		initLogger,
+		initWechatConfig,
+		ioc.InitWechatNativeService,
+		InitDAO,
+		web.NewHandler,
+		service.NewService,
+		credit2.NewCreditPaymentService,
+		repository.NewPaymentRepository,
+		sequencenumber.NewGenerator,
+		wire.FieldsOf(new(*credit.Module), "Svc"),
+		wire.Struct(new(payment.Module), "*"),
+	)
+	return new(payment.Module)
+}
 
-func InitCreditPaymentService(paymentDDLFunc func() int64) *credit.PaymentService {
-	wire.Build(testioc.BaseSet, payment.RepoSet)
-	return new(credit.PaymentService)
+var (
+	once       = &sync.Once{}
+	paymentDAO dao.PaymentDAO
+)
+
+func InitDAO(db *gorm.DB) dao.PaymentDAO {
+	once.Do(func() {
+		_ = dao.InitTables(db)
+		paymentDAO = dao.NewPaymentGORMDAO(db)
+	})
+	return paymentDAO
+}
+
+func initLogger() *elog.Component {
+	return elog.DefaultLogger
+}
+
+func initWechatConfig() ioc.WechatConfig {
+	return ioc.WechatConfig{
+		AppID: "MockAPPID",
+		MchID: "MockMchID",
+	}
 }

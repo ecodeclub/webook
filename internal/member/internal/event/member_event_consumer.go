@@ -17,8 +17,8 @@ package event
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
-	"time"
 
 	"github.com/ecodeclub/mq-api"
 	"github.com/ecodeclub/webook/internal/member/internal/domain"
@@ -26,62 +26,71 @@ import (
 	"github.com/gotomicro/ego/core/elog"
 )
 
-type RegistrationEventConsumer struct {
+type MemberEventConsumer struct {
 	svc      service.Service
 	consumer mq.Consumer
-	endAt    int64
 	logger   *elog.Component
 }
 
-func NewRegistrationEventConsumer(svc service.Service,
-	q mq.MQ) (*RegistrationEventConsumer, error) {
-	const groupID = "member"
-	consumer, err := q.Consumer(userRegistrationEvents, groupID)
+func NewMemberEventConsumer(svc service.Service, q mq.MQ) (*MemberEventConsumer, error) {
+	groupID := "member"
+	consumer, err := q.Consumer(memberUpdateEvents, groupID)
 	if err != nil {
 		return nil, err
 	}
-	return &RegistrationEventConsumer{
+	return &MemberEventConsumer{
 		svc:      svc,
 		consumer: consumer,
-		endAt:    time.Date(2024, 6, 30, 23, 59, 59, 0, time.UTC).UnixMilli(),
-		logger:   elog.DefaultLogger,
-	}, nil
+		logger:   elog.DefaultLogger}, nil
 }
 
 // Start 后面要考虑借助 ctx 来优雅退出
-func (c *RegistrationEventConsumer) Start(ctx context.Context) {
+func (c *MemberEventConsumer) Start(ctx context.Context) {
 	go func() {
 		for {
 			er := c.Consume(ctx)
 			if er != nil {
-				c.logger.Error("消费注册事件失败", elog.FieldErr(er))
+				c.logger.Error("消费会员事件失败", elog.FieldErr(er))
 			}
 		}
 	}()
 }
 
-func (c *RegistrationEventConsumer) Consume(ctx context.Context) error {
+func (c *MemberEventConsumer) Consume(ctx context.Context) error {
 	msg, err := c.consumer.Consume(ctx)
 	if err != nil {
 		return fmt.Errorf("获取消息失败: %w", err)
 	}
 
-	var evt RegistrationEvent
+	var evt MemberEvent
 	err = json.Unmarshal(msg.Value, &evt)
 	if err != nil {
 		return fmt.Errorf("解析消息失败: %w", err)
 	}
-	_, err = c.svc.CreateNewMembership(ctx, domain.Member{
-		UID:     evt.Uid,
-		StartAt: time.Now().UnixMilli(),
-		EndAt:   c.endAt,
+
+	err = c.svc.ActivateMembership(ctx, domain.Member{
+		Uid: evt.Uid,
+		Records: []domain.MemberRecord{
+			{
+				Key:   evt.Key,
+				Days:  evt.Days,
+				Biz:   evt.Biz,
+				BizId: evt.BizId,
+				Desc:  evt.Action,
+			},
+		},
 	})
 
-	if err != nil {
-		c.logger.Error("创建会员记录失败",
+	if errors.Is(err, service.ErrDuplicatedMemberRecord) {
+		c.logger.Warn("重复消费",
 			elog.FieldErr(err),
-			elog.Int64("uid", evt.Uid),
+			elog.Any("MemberEvent", evt),
 		)
+		// 重复消费时,吞掉错误
+		return nil
+	}
+	if err != nil {
+		c.logger.Error("开通/重新激活/续约会员失败", elog.Any("MemberEvent", evt))
 	}
 	return err
 }

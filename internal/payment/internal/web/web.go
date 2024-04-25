@@ -19,29 +19,33 @@ import (
 	"github.com/ecodeclub/webook/internal/payment/internal/service/wechat"
 	"github.com/gin-gonic/gin"
 	"github.com/gotomicro/ego/core/elog"
-	"github.com/wechatpay-apiv3/wechatpay-go/core/notify"
 	"github.com/wechatpay-apiv3/wechatpay-go/services/payments"
 )
 
 var _ ginx.Handler = &Handler{}
 
 type Handler struct {
-	handler   *notify.Handler
+	// handler   *notify.Handler
+	handler   wechat.NotifyHandler
 	l         *elog.Component
 	nativeSvc *wechat.NativePaymentService
 }
 
-func NewHandler(handler *notify.Handler, nativeSvc *wechat.NativePaymentService) *Handler {
+func NewHandler(handler wechat.NotifyHandler, nativeSvc *wechat.NativePaymentService) *Handler {
 	return &Handler{
 		handler:   handler,
 		nativeSvc: nativeSvc,
 		l:         elog.DefaultLogger}
 }
 
-func (h *Handler) PrivateRoutes(_ *gin.Engine) {}
+func (h *Handler) PrivateRoutes(_ *gin.Engine) {
+
+}
 
 func (h *Handler) PublicRoutes(server *gin.Engine) {
 	server.Any("/pay/callback", ginx.W(h.HandleWechatNativePayCallBack))
+	// 测试环境专用
+	server.Any("/pay/mock_cb", ginx.B[payments.Transaction](h.MockWechatCallback))
 }
 
 func (h *Handler) HandleWechatNativePayCallBack(ctx *ginx.Context) (ginx.Result, error) {

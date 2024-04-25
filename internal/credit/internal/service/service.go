@@ -21,23 +21,24 @@ import (
 
 	"github.com/ecodeclub/webook/internal/credit/internal/domain"
 	"github.com/ecodeclub/webook/internal/credit/internal/repository"
+	"golang.org/x/sync/errgroup"
 )
 
 var (
-	ErrCreditNotEnough = errors.New("积分不足")
+	ErrCreditNotEnough     = repository.ErrCreditNotEnough
+	ErrDuplicatedCreditLog = repository.ErrDuplicatedCreditLog
+	ErrInvalidCreditLog    = errors.New("积分流水信息非法")
+	ErrRecordNotFound      = repository.ErrRecordNotFound
 )
 
-//go:generate mockgen -source=./service.go -destination=../../mocks/credit.mock.go -package=creditmocks Service
+//go:generate mockgen -source=./service.go -destination=../../mocks/credit.mock.go -package=creditmocks -typed Service
 type Service interface {
 	AddCredits(ctx context.Context, credit domain.Credit) error
 	GetCreditsByUID(ctx context.Context, uid int64) (domain.Credit, error)
 	TryDeductCredits(ctx context.Context, credit domain.Credit) (id int64, err error)
 	ConfirmDeductCredits(ctx context.Context, uid, tid int64) error
 	CancelDeductCredits(ctx context.Context, uid, tid int64) error
-}
-
-func NewService(repo repository.CreditRepository) Service {
-	return &service{repo: repo}
+	FindExpiredLockedCreditLogs(ctx context.Context, offset int, limit int, ctime int64) ([]domain.CreditLog, int64, error)
 }
 
 type service struct {
@@ -49,20 +50,27 @@ func NewCreditService(repo repository.CreditRepository) Service {
 }
 
 func (s *service) AddCredits(ctx context.Context, credit domain.Credit) error {
+	if len(credit.Logs) != 1 {
+		return fmt.Errorf("%w", ErrInvalidCreditLog)
+	}
 	return s.repo.AddCredits(ctx, credit)
 }
 
 func (s *service) GetCreditsByUID(ctx context.Context, uid int64) (domain.Credit, error) {
-	return s.repo.GetCreditByUID(ctx, uid)
+	c, err := s.repo.GetCreditByUID(ctx, uid)
+	if errors.Is(err, ErrRecordNotFound) {
+		return domain.Credit{Uid: uid}, nil
+	}
+	return c, err
 }
 
 func (s *service) TryDeductCredits(ctx context.Context, credit domain.Credit) (id int64, err error) {
-	c, err := s.repo.GetCreditByUID(ctx, credit.Uid)
+	if len(credit.Logs) != 1 {
+		return 0, fmt.Errorf("%w", ErrInvalidCreditLog)
+	}
+	_, err = s.repo.GetCreditByUID(ctx, credit.Uid)
 	if err != nil {
 		return 0, err
-	}
-	if credit.ChangeAmount > c.TotalAmount {
-		return 0, fmt.Errorf("%w", ErrCreditNotEnough)
 	}
 	return s.repo.TryDeductCredits(ctx, credit)
 }
@@ -73,4 +81,24 @@ func (s *service) ConfirmDeductCredits(ctx context.Context, uid, tid int64) erro
 
 func (s *service) CancelDeductCredits(ctx context.Context, uid, tid int64) error {
 	return s.repo.CancelDeductCredits(ctx, uid, tid)
+}
+
+func (s *service) FindExpiredLockedCreditLogs(ctx context.Context, offset int, limit int, ctime int64) ([]domain.CreditLog, int64, error) {
+	var (
+		eg    errgroup.Group
+		cs    []domain.CreditLog
+		total int64
+	)
+	eg.Go(func() error {
+		var err error
+		cs, err = s.repo.FindExpiredLockedCreditLogs(ctx, offset, limit, ctime)
+		return err
+	})
+
+	eg.Go(func() error {
+		var err error
+		total, err = s.repo.TotalExpiredLockedCreditLogs(ctx, ctime)
+		return err
+	})
+	return cs, total, eg.Wait()
 }

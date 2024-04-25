@@ -15,8 +15,10 @@
 package web
 
 import (
+	"github.com/ecodeclub/ekit/slice"
 	"github.com/ecodeclub/ginx"
 	"github.com/ecodeclub/ginx/session"
+	"github.com/ecodeclub/webook/internal/product/internal/domain"
 	"github.com/ecodeclub/webook/internal/product/internal/service"
 	"github.com/gin-gonic/gin"
 )
@@ -31,30 +33,47 @@ func NewHandler(svc service.Service) *Handler {
 
 func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g := server.Group("/product")
-	g.POST("/detail", ginx.BS[ProductSNReq](h.RetrieveProductDetail))
+	g.POST("/spu/detail", ginx.BS[SNReq](h.RetrieveSPUDetail))
+	g.POST("/sku/detail", ginx.BS[SNReq](h.RetrieveSKUDetail))
 }
 
-func (h *Handler) RetrieveProductDetail(ctx *ginx.Context, req ProductSNReq, _ session.Session) (ginx.Result, error) {
-	p, err := h.svc.FindBySN(ctx.Request.Context(), req.SN)
+func (h *Handler) RetrieveSPUDetail(ctx *ginx.Context, req SNReq, _ session.Session) (ginx.Result, error) {
+	spu, err := h.svc.FindSPUBySN(ctx.Request.Context(), req.SN)
 	if err != nil {
 		return systemErrorResult, err
 	}
 	return ginx.Result{
-		Data: Product{
-			SPU: ProductSPU{
-				SN:   p.SPU.SN,
-				Name: p.SPU.Name,
-				Desc: p.SPU.Desc,
-			},
-			SKU: ProductSKU{
-				SN:         p.SKU.SN,
-				Name:       p.SKU.Name,
-				Desc:       p.SKU.Desc,
-				Price:      p.SKU.Price,
-				Stock:      p.SKU.Stock,
-				StockLimit: p.SKU.StockLimit,
-				SaleType:   p.SKU.SaleType,
-			},
+		Data: SPU{
+			SN:   spu.SN,
+			Name: spu.Name,
+			Desc: spu.Desc,
+			SKUs: slice.Map(spu.SKUs, func(idx int, src domain.SKU) SKU {
+				return h.toSKU(src)
+			}),
 		},
+	}, nil
+}
+
+func (h *Handler) toSKU(sku domain.SKU) SKU {
+	return SKU{
+		SN:         sku.SN,
+		Name:       sku.Name,
+		Desc:       sku.Desc,
+		Price:      sku.Price,
+		Stock:      sku.Stock,
+		StockLimit: sku.StockLimit,
+		SaleType:   sku.SaleType.ToUint8(),
+		Attrs:      sku.Attrs,
+		Image:      sku.Image,
+	}
+}
+
+func (h *Handler) RetrieveSKUDetail(ctx *ginx.Context, req SNReq, _ session.Session) (ginx.Result, error) {
+	sku, err := h.svc.FindSKUBySN(ctx.Request.Context(), req.SN)
+	if err != nil {
+		return systemErrorResult, err
+	}
+	return ginx.Result{
+		Data: h.toSKU(sku),
 	}, nil
 }

@@ -21,33 +21,44 @@ func (s OrderStatus) ToUint8() uint8 {
 }
 
 const (
-	StatusUnpaid    OrderStatus = 1
-	StatusCompleted OrderStatus = 2
-	StatusCanceled  OrderStatus = 3
-	StatusExpired   OrderStatus = 4
+	StatusUnpaid        OrderStatus = 1
+	StatusProcessing    OrderStatus = 2
+	StatusSuccess       OrderStatus = 3
+	StatusFailed        OrderStatus = 4
+	StatusCanceled      OrderStatus = 5
+	StatusTimeoutClosed OrderStatus = 6
 )
 
 type Order struct {
-	ID                 int64
-	SN                 string
-	BuyerID            int64
-	PaymentID          int64
-	PaymentSN          string
-	OriginalTotalPrice int64
-	RealTotalPrice     int64
-	Status             OrderStatus
-	Items              []OrderItem
-	Ctime              int64
-	Utime              int64
+	ID               int64
+	SN               string
+	BuyerID          int64
+	Payment          Payment
+	OriginalTotalAmt int64
+	RealTotalAmt     int64
+	Status           OrderStatus
+	Items            []OrderItem
+	Ctime            int64
+	Utime            int64
+}
+
+type Payment struct {
+	ID int64
+	SN string
 }
 
 type OrderItem struct {
-	OrderID          int64
-	SPUID            int64
-	SKUID            int64
-	SKUName          string
-	SKUDescription   string
-	SKUOriginalPrice int64
-	SKURealPrice     int64
-	Quantity         int64
+	SKU SKU
+}
+
+type SKU struct {
+	SPUID         int64
+	ID            int64
+	SN            string
+	Image         string
+	Name          string
+	Description   string
+	OriginalPrice int64
+	RealPrice     int64
+	Quantity      int64
 }

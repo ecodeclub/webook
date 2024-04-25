@@ -14,29 +14,27 @@
 
 package web
 
-type ProductSNReq struct {
+type SNReq struct {
 	SN string `json:"sn"`
 }
 
-type Product struct {
-	SPU ProductSPU `json:"spu"`
-	SKU ProductSKU `json:"sku"`
-}
-
-type ProductSPU struct {
+type SPU struct {
 	SN   string `json:"sn"`
 	Name string `json:"name"`
 	Desc string `json:"desc"`
+	SKUs []SKU  `json:"skus"`
 }
 
-type ProductSKU struct {
+type SKU struct {
 	SN         string `json:"sn"`
 	Name       string `json:"name"`
 	Desc       string `json:"desc"`
 	Price      int64  `json:"price"`
 	Stock      int64  `json:"stock"`
 	StockLimit int64  `json:"stockLimit"`
-	SaleType   int64  `json:"saleType"`
+	SaleType   uint8  `json:"saleType"`
+	Attrs      string `json:"attrs,omitempty"`
+	Image      string `json:"image"`
 	// SaleStart  int64  `json:"saleStart"`
 	// SaleEnd    int64  `json:"saleEnd"`
 }

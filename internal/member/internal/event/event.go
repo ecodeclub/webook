@@ -19,3 +19,14 @@ const userRegistrationEvents = "user_registration_events"
 type RegistrationEvent struct {
 	Uid int64 `json:"uid"`
 }
+
+const memberUpdateEvents = "member_update_events"
+
+type MemberEvent struct {
+	Key    string `json:"key"`
+	Uid    int64  `json:"uid"`    // 用户A      用户C
+	Days   uint64 `json:"days"`   // 31天会员   366天会员
+	Biz    string `json:"biz"`    // user      order  对应的包名
+	BizId  int64  `json:"biz_id"` // user_id=A order_id
+	Action string `json:"action"` // 首次注册   购买会员
+}

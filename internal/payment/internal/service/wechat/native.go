@@ -22,7 +22,7 @@ import (
 
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/ecodeclub/webook/internal/payment/internal/domain"
-	"github.com/ecodeclub/webook/internal/payment/internal/events"
+	"github.com/ecodeclub/webook/internal/payment/internal/event"
 	"github.com/ecodeclub/webook/internal/payment/internal/repository"
 	"github.com/gotomicro/ego/core/elog"
 	"github.com/wechatpay-apiv3/wechatpay-go/core"
@@ -32,10 +32,16 @@ import (
 
 var errUnknownTransactionState = errors.New("未知的微信事务状态")
 
+//go:generate mockgen -source=./native.go -package=wechatmocks -destination=./mocks/native.mock.go -typed NativeAPIService
+type NativeAPIService interface {
+	Prepay(ctx context.Context, req native.PrepayRequest) (resp *native.PrepayResponse, result *core.APIResult, err error)
+	QueryOrderByOutTradeNo(ctx context.Context, req native.QueryOrderByOutTradeNoRequest) (resp *payments.Transaction, result *core.APIResult, err error)
+}
+
 type NativePaymentService struct {
 	svc            NativeAPIService
 	repo           repository.PaymentRepository
-	producer       events.Producer
+	producer       event.PaymentEventProducer
 	paymentDDLFunc func() int64
 	l              *elog.Component
 
@@ -50,12 +56,12 @@ type NativePaymentService struct {
 	// REVOKED：已撤销（付款码支付）
 	// USERPAYING：用户支付中（付款码支付）
 	// PAYERROR：支付失败(其他原因，如银行返回失败)
-	nativeCallBackTypeToPaymentStatus map[string]int64
+	nativeCallBackTypeToPaymentStatus map[string]domain.PaymentStatus
 }
 
 func NewNativePaymentService(svc NativeAPIService,
 	repo repository.PaymentRepository,
-	producer events.Producer,
+	producer event.PaymentEventProducer,
 	paymentDDLFunc func() int64,
 	l *elog.Component,
 	appid, mchid string) *NativePaymentService {
@@ -69,7 +75,7 @@ func NewNativePaymentService(svc NativeAPIService,
 		mchID:          mchid,
 		// todo: 配置回调URL
 		notifyURL: "http://wechat.meoying.com/pay/callback",
-		nativeCallBackTypeToPaymentStatus: map[string]int64{
+		nativeCallBackTypeToPaymentStatus: map[string]domain.PaymentStatus{
 			"SUCCESS":  domain.PaymentStatusPaid,
 			"PAYERROR": domain.PaymentStatusFailed,
 			"NOTPAY":   domain.PaymentStatusUnpaid,
@@ -82,9 +88,8 @@ func NewNativePaymentService(svc NativeAPIService,
 
 func (n *NativePaymentService) Prepay(ctx context.Context, pmt domain.Payment) (domain.Payment, error) {
 
-	var amount int64
 	r, ok := slice.Find(pmt.Records, func(src domain.PaymentRecord) bool {
-		return src.Channel == domain.ChannelTypeCredit
+		return src.Channel == domain.ChannelTypeWechat
 	})
 	if !ok || r.Amount == 0 {
 		return domain.Payment{}, fmt.Errorf("缺少微信支付金额信息")
@@ -100,7 +105,7 @@ func (n *NativePaymentService) Prepay(ctx context.Context, pmt domain.Payment) (
 			NotifyUrl:   core.String(n.notifyURL),
 			Amount: &native.Amount{
 				Currency: core.String("CNY"),
-				Total:    core.Int64(amount),
+				Total:    core.Int64(r.Amount),
 			},
 		},
 	)
@@ -108,14 +113,13 @@ func (n *NativePaymentService) Prepay(ctx context.Context, pmt domain.Payment) (
 		return domain.Payment{}, fmt.Errorf("微信预支付失败: %w", err)
 	}
 
-	pmt.PayDDL = n.paymentDDLFunc()
 	pmt.Status = domain.PaymentStatusUnpaid
 
 	pmt.Records = []domain.PaymentRecord{
 		{
 			Description: pmt.OrderDescription,
 			Channel:     domain.ChannelTypeWechat,
-			Amount:      amount,
+			Amount:      r.Amount,
 			Status:      domain.PaymentStatusUnpaid,
 		},
 	}
@@ -183,9 +187,10 @@ func (n *NativePaymentService) updateByTxn(ctx context.Context, txn *payments.Tr
 	}
 
 	// 就是处于结束状态
-	err1 := n.producer.ProducePaymentEvent(ctx, events.PaymentEvent{
+	err1 := n.producer.Produce(ctx, event.PaymentEvent{
 		OrderSN: pmt.OrderSN,
-		Status:  pmt.Status,
+		PayerID: pmt.PayerID,
+		Status:  uint8(pmt.Status),
 	})
 	if err1 != nil {
 		// 要做好监控和告警

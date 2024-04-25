@@ -48,98 +48,99 @@ func NewHandler(svc service.Service, paymentSvc payment.Service, productSvc prod
 
 func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g := server.Group("/order")
-	g.POST("/preview", ginx.BS[PreviewOrderReq](h.RetrievePreviewOrder))
-	g.POST("/create", ginx.BS[CreateOrderReq](h.CreateOrderAndPayment))
-	g.POST("", ginx.BS[RetrieveOrderStatusReq](h.RetrieveOrderStatus))
+	g.POST("/preview", ginx.BS[PreviewOrderReq](h.PreviewOrder))
+	g.POST("/create", ginx.BS[CreateOrderReq](h.CreateOrder))
+	g.POST("/repay", ginx.BS[OrderSNReq](h.RepayOrder))
+	g.POST("", ginx.BS[OrderSNReq](h.RetrieveOrderStatus))
 	g.POST("/list", ginx.BS[ListOrdersReq](h.ListOrders))
-	g.POST("/detail", ginx.BS[RetrieveOrderDetailReq](h.RetrieveOrderDetail))
-	g.POST("/cancel", ginx.BS[CancelOrderReq](h.CancelOrder))
+	g.POST("/detail", ginx.BS[OrderSNReq](h.RetrieveOrderDetail))
+	g.POST("/cancel", ginx.BS[OrderSNReq](h.CancelOrder))
 }
 
 func (h *Handler) PublicRoutes(_ *gin.Engine) {}
 
-// RetrievePreviewOrder 获取订单预览信息, 此时订单尚未创建
-func (h *Handler) RetrievePreviewOrder(ctx *ginx.Context, req PreviewOrderReq, sess session.Session) (ginx.Result, error) {
-	p, err := h.productSvc.FindBySN(ctx.Request.Context(), req.ProductSKUSN)
+// PreviewOrder 获取订单预览信息, 此时订单尚未创建
+func (h *Handler) PreviewOrder(ctx *ginx.Context, req PreviewOrderReq, sess session.Session) (ginx.Result, error) {
+
+	orderItems, originalTotalPrice, realTotalPrice, err := h.getDomainOrderItems(ctx, req.SKUs)
 	if err != nil {
-		return systemErrorResult, fmt.Errorf("商品SKU序列号非法: %w", err)
+		return systemErrorResult, fmt.Errorf("获取预览订单项失败: %w", err)
 	}
-	if req.Quantity < 1 || req.Quantity > p.SKU.Stock {
-		// todo: 重新审视stockLimit的意义及用法
-		return systemErrorResult, fmt.Errorf("要购买的商品数量非法")
-	}
+
 	c, err := h.creditSvc.GetCreditsByUID(ctx.Request.Context(), sess.Claims().Uid)
 	if err != nil {
 		return systemErrorResult, fmt.Errorf("获取用户积分失败: %w", err)
 	}
+
+	pcs := h.paymentSvc.GetPaymentChannels(ctx.Request.Context())
+	items := make([]PaymentItem, 0, len(pcs))
+	for _, pc := range pcs {
+		items = append(items, PaymentItem{Type: int64(pc.Type)})
+	}
+
 	return ginx.Result{
 		Data: PreviewOrderResp{
-			Credits:  c.TotalAmount,
-			Payments: h.toPaymentChannelVO(ctx),
-			Products: h.toProductVO(p, req.Quantity),
-			Policy:   "请注意: 虚拟商品、一旦支持成功不退、不换,请谨慎操作",
+			Order: Order{
+				Payment: Payment{
+					Items: items,
+				},
+				OriginalTotalAmt: originalTotalPrice,
+				RealTotalAmt:     realTotalPrice,
+				Items: slice.Map(orderItems, func(idx int, src domain.OrderItem) OrderItem {
+					return OrderItem{
+						SKU: h.toSKUVO(src.SKU),
+					}
+				}),
+			},
+			Credits: c.TotalAmount,
+			Policy:  "请注意: 虚拟商品、一旦支持成功不退、不换,请谨慎操作",
 		},
 	}, nil
 }
 
-func (h *Handler) toPaymentChannelVO(ctx *ginx.Context) []Payment {
-	pcs := h.paymentSvc.GetPaymentChannels(ctx.Request.Context())
-	channels := make([]Payment, 0, len(pcs))
-	for _, pc := range pcs {
-		channels = append(channels, Payment{Type: pc.Type})
-	}
-	return channels
-}
-
-func (h *Handler) toProductVO(p product.Product, quantity int64) []Product {
-	return []Product{
-		{
-			SPUSN:         p.SPU.SN,
-			SKUSN:         p.SKU.SN,
-			Name:          p.SKU.Name,
-			Desc:          p.SKU.Desc,
-			OriginalPrice: p.SKU.Price,
-			RealPrice:     p.SKU.Price, // 引入优惠券时, 需要获取用户的优惠信息,动态计算
-			Quantity:      quantity,
-		},
+func (h *Handler) toSKUVO(sku domain.SKU) SKU {
+	return SKU{
+		SN:            sku.SN,
+		Image:         sku.Image,
+		Name:          sku.Name,
+		Desc:          sku.Description,
+		OriginalPrice: sku.OriginalPrice,
+		RealPrice:     sku.RealPrice, // 引入优惠券时, 需要获取用户的优惠信息,动态计算
+		Quantity:      sku.Quantity,
 	}
 }
 
-// CreateOrderAndPayment 创建订单和支付
-func (h *Handler) CreateOrderAndPayment(ctx *ginx.Context, req CreateOrderReq, sess session.Session) (ginx.Result, error) {
+// CreateOrder 创建订单和支付
+func (h *Handler) CreateOrder(ctx *ginx.Context, req CreateOrderReq, sess session.Session) (ginx.Result, error) {
 
 	if err := h.checkRequestID(ctx.Request.Context(), req.RequestID); err != nil {
 		return systemErrorResult, fmt.Errorf("请求ID错误: %w", err)
 	}
 
-	order, err := h.createOrder(ctx, req, sess.Claims().Uid)
+	uid := sess.Claims().Uid
+	order, err := h.createOrder(ctx, req.SKUs, uid)
 	if err != nil {
-		// 创建订单失败
-		return systemErrorResult, fmt.Errorf("创建订单失败: %w", err)
+		return systemErrorResult, fmt.Errorf("创建订单失败: %w, uid: %d", err, uid)
 	}
 
-	p, err := h.createPayment(ctx, order, req.Payments)
+	p, err := h.createPayment(ctx, order, req.PaymentItems)
 	if err != nil {
-		// 创建支付失败
 		return systemErrorResult, fmt.Errorf("创建支付失败: %w", err)
 	}
 
-	err = h.svc.UpdateOrderPaymentIDAndPaymentSN(ctx.Request.Context(), order.BuyerID, order.ID, p.ID, p.SN)
+	err = h.svc.UpdateUnpaidOrderPaymentInfo(ctx.Request.Context(), order.BuyerID, order.ID, p.ID, p.SN)
 	if err != nil {
-		return systemErrorResult, fmt.Errorf("订单冗余支付ID及SN失败: %w", err)
+		return systemErrorResult, err
 	}
 
-	// 微信支付需要返回二维码URL
-	var wechatCodeURL string
-	for _, r := range p.Records {
-		if payment.ChannelTypeWechat == r.Channel {
-			wechatCodeURL = r.WechatCodeURL
-		}
+	wechatCodeURL, err := h.processPaymentForOrder(ctx.Request.Context(), order.ID)
+	if err != nil {
+		return systemErrorResult, err
 	}
 
 	return ginx.Result{
 		Data: CreateOrderResp{
-			OrderSN:       order.SN,
+			SN:            order.SN,
 			WechatCodeURL: wechatCodeURL,
 		},
 	}, nil
@@ -155,6 +156,8 @@ func (h *Handler) checkRequestID(ctx context.Context, requestID string) error {
 	if !val.KeyNotFound() {
 		return fmt.Errorf("重复请求")
 	}
+	// TODO: 这里有一个隐患，就是如果要是最终并没有创建 ORDER 成功，
+	//       这会要求用户必须重新创建一个订单
 	if err := h.cache.Set(ctx, key, requestID, 0); err != nil {
 		return fmt.Errorf("缓存请求ID失败: %w", err)
 	}
@@ -162,19 +165,13 @@ func (h *Handler) checkRequestID(ctx context.Context, requestID string) error {
 }
 
 func (h *Handler) createOrderRequestKey(requestID string) string {
-	return fmt.Sprintf("webook:order:create:%s", requestID)
+	return fmt.Sprintf("order:create:%s", requestID)
 }
 
-func (h *Handler) createOrder(ctx context.Context, req CreateOrderReq, buyerID int64) (domain.Order, error) {
-	orderItems, originalTotalPrice, realTotalPrice, err := h.getOrderItems(ctx, req)
+func (h *Handler) createOrder(ctx context.Context, skus []SKU, buyerID int64) (domain.Order, error) {
+	orderItems, originalTotalAmt, realTotalAmt, err := h.getDomainOrderItems(ctx, skus)
 	if err != nil {
 		return domain.Order{}, err
-	}
-	if originalTotalPrice != req.OriginalTotalPrice {
-		return domain.Order{}, fmt.Errorf("商品总原价非法")
-	}
-	if realTotalPrice != req.RealTotalPrice {
-		return domain.Order{}, fmt.Errorf("商品总实价非法")
 	}
 
 	orderSN, err := h.snGenerator.Generate(buyerID)
@@ -183,83 +180,134 @@ func (h *Handler) createOrder(ctx context.Context, req CreateOrderReq, buyerID i
 	}
 
 	return h.svc.CreateOrder(ctx, domain.Order{
-		SN:                 orderSN,
-		BuyerID:            buyerID,
-		OriginalTotalPrice: originalTotalPrice,
-		RealTotalPrice:     realTotalPrice,
-		Items:              orderItems,
+		SN:               orderSN,
+		BuyerID:          buyerID,
+		OriginalTotalAmt: originalTotalAmt,
+		RealTotalAmt:     realTotalAmt,
+		Items:            orderItems,
 	})
 }
 
-func (h *Handler) getOrderItems(ctx context.Context, req CreateOrderReq) ([]domain.OrderItem, int64, int64, error) {
-	if len(req.Products) == 0 {
+func (h *Handler) getDomainOrderItems(ctx context.Context, skus []SKU) ([]domain.OrderItem, int64, int64, error) {
+	if len(skus) == 0 {
 		return nil, 0, 0, fmt.Errorf("商品信息非法")
 	}
-	orderItems := make([]domain.OrderItem, 0, len(req.Products))
-	originalTotalPrice, realTotalPrice := int64(0), int64(0)
-	for _, p := range req.Products {
-		pp, err := h.productSvc.FindBySN(ctx, p.SKUSN)
+	orderItems := make([]domain.OrderItem, 0, len(skus))
+	originalTotalAmt, realTotalAmt := int64(0), int64(0)
+	for _, sku := range skus {
+		productSKU, err := h.productSvc.FindSKUBySN(ctx, sku.SN)
 		if err != nil {
 			// SN非法
 			return nil, 0, 0, fmt.Errorf("商品SKUSN非法: %w", err)
 		}
-		if p.Quantity < 1 || p.Quantity > pp.SKU.Stock {
+		if sku.Quantity < 1 || sku.Quantity > productSKU.Stock {
 			// todo: 重新审视stockLimit的意义及用法
+			// 暂时不需要修改
 			return nil, 0, 0, fmt.Errorf("商品数量非法")
 		}
-
 		item := domain.OrderItem{
-			SPUID:            pp.SPU.ID,
-			SKUID:            pp.SKU.ID,
-			SKUName:          pp.SKU.Name,
-			SKUDescription:   pp.SKU.Desc,
-			SKUOriginalPrice: pp.SKU.Price,
-			SKURealPrice:     pp.SKU.Price, // 引入优惠券时,需要重新计算
-			Quantity:         p.Quantity,
+			SKU: domain.SKU{
+				SPUID:         productSKU.SPUID,
+				ID:            productSKU.ID,
+				SN:            productSKU.SN,
+				Image:         productSKU.Image,
+				Name:          productSKU.Name,
+				Description:   productSKU.Desc,
+				OriginalPrice: productSKU.Price,
+				RealPrice:     productSKU.Price, // 引入优惠券时,需要重新计算
+				Quantity:      sku.Quantity,
+			},
 		}
-		originalTotalPrice += item.SKUOriginalPrice * p.Quantity
-		realTotalPrice += item.SKURealPrice * p.Quantity
+		originalTotalAmt += item.SKU.OriginalPrice * sku.Quantity
+		realTotalAmt += item.SKU.RealPrice * sku.Quantity
 		orderItems = append(orderItems, item)
 	}
-	return orderItems, originalTotalPrice, realTotalPrice, nil
+	return orderItems, originalTotalAmt, realTotalAmt, nil
 }
 
-func (h *Handler) createPayment(ctx context.Context, order domain.Order, paymentChannels []Payment) (payment.Payment, error) {
+func (h *Handler) createPayment(ctx context.Context, order domain.Order, paymentChannels []PaymentItem) (payment.Payment, error) {
+	// TODO: 针对订单生成更精确的订单描述信息
+	orderDescription := "面窝吧"
 	records := make([]payment.Record, 0, len(paymentChannels))
+	realTotalAmt := int64(0)
 	for _, pc := range paymentChannels {
-		if pc.Type != payment.ChannelTypeCredit && pc.Type != payment.ChannelTypeWechat {
+		if pc.Type != int64(payment.ChannelTypeCredit) && pc.Type != int64(payment.ChannelTypeWechat) {
 			return payment.Payment{}, fmt.Errorf("支付渠道非法")
 		}
 		records = append(records, payment.Record{
 			Amount:  pc.Amount,
-			Channel: pc.Type,
+			Channel: payment.ChannelType(pc.Type),
 		})
+		realTotalAmt += pc.Amount
+	}
+	if realTotalAmt != order.RealTotalAmt {
+		return payment.Payment{}, fmt.Errorf("支付信息错误：金额不匹配")
 	}
 	return h.paymentSvc.CreatePayment(ctx, payment.Payment{
-		OrderID:     order.ID,
-		OrderSN:     order.SN,
-		PayerID:     order.BuyerID,
-		TotalAmount: order.RealTotalPrice,
-		Records:     records,
+		OrderID:          order.ID,
+		OrderSN:          order.SN,
+		PayerID:          order.BuyerID,
+		OrderDescription: orderDescription,
+		TotalAmount:      order.RealTotalAmt,
+		Records:          records,
 	})
 }
 
+func (h *Handler) processPaymentForOrder(ctx context.Context, oid int64) (string, error) {
+	p, err := h.paymentSvc.PayByOrderID(ctx, oid)
+	if err != nil {
+		return "", fmt.Errorf("执行支付失败: %w, oid: %d", err, oid)
+	}
+	// 微信支付需要返回二维码URL
+	var wechatCodeURL string
+	for _, r := range p.Records {
+		if payment.ChannelTypeWechat == r.Channel {
+			wechatCodeURL = r.WechatCodeURL
+		}
+	}
+	return wechatCodeURL, nil
+}
+
+// RepayOrder 继续支付订单
+func (h *Handler) RepayOrder(ctx *ginx.Context, req OrderSNReq, sess session.Session) (ginx.Result, error) {
+
+	uid := sess.Claims().Uid
+	order, err := h.svc.FindUserVisibleOrderByUIDAndSN(ctx.Request.Context(), uid, req.SN)
+	if err != nil {
+		return systemErrorResult, fmt.Errorf("订单未找到: %w", err)
+	}
+
+	if order.Status != domain.StatusProcessing {
+		return systemErrorResult, fmt.Errorf("订单状态非法: %w, uid: %d, sn: %s", err, uid, req.SN)
+	}
+
+	wechatCodeURL, err := h.processPaymentForOrder(ctx.Request.Context(), order.ID)
+	if err != nil {
+		return systemErrorResult, fmt.Errorf("执行支付失败: %w", err)
+	}
+	return ginx.Result{
+		Data: RepayOrderResp{
+			WechatCodeURL: wechatCodeURL,
+		},
+	}, nil
+}
+
 // RetrieveOrderStatus 获取订单状态
-func (h *Handler) RetrieveOrderStatus(ctx *ginx.Context, req RetrieveOrderStatusReq, sess session.Session) (ginx.Result, error) {
-	order, err := h.svc.FindOrderByUIDAndOrderSN(ctx.Request.Context(), sess.Claims().Uid, req.OrderSN)
+func (h *Handler) RetrieveOrderStatus(ctx *ginx.Context, req OrderSNReq, sess session.Session) (ginx.Result, error) {
+	order, err := h.svc.FindUserVisibleOrderByUIDAndSN(ctx.Request.Context(), sess.Claims().Uid, req.SN)
 	if err != nil {
 		return systemErrorResult, fmt.Errorf("订单未找到: %w", err)
 	}
 	return ginx.Result{
 		Data: RetrieveOrderStatusResp{
-			OrderStatus: order.Status.ToUint8(),
+			Status: order.Status.ToUint8(),
 		},
 	}, nil
 }
 
 // ListOrders 分页查询用户订单
 func (h *Handler) ListOrders(ctx *ginx.Context, req ListOrdersReq, sess session.Session) (ginx.Result, error) {
-	orders, total, err := h.svc.FindOrdersByUID(ctx, sess.Claims().Uid, req.Offset, req.Limit)
+	orders, total, err := h.svc.FindUserVisibleOrdersByUID(ctx, sess.Claims().Uid, req.Offset, req.Limit)
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -275,20 +323,14 @@ func (h *Handler) ListOrders(ctx *ginx.Context, req ListOrdersReq, sess session.
 
 func (h *Handler) toOrderVO(order domain.Order) Order {
 	return Order{
-		SN:                 order.SN,
-		PaymentSN:          order.PaymentSN,
-		OriginalTotalPrice: order.OriginalTotalPrice,
-		RealTotalPrice:     order.RealTotalPrice,
-		Status:             order.Status.ToUint8(),
+		SN:               order.SN,
+		Payment:          Payment{SN: order.Payment.SN},
+		OriginalTotalAmt: order.OriginalTotalAmt,
+		RealTotalAmt:     order.RealTotalAmt,
+		Status:           order.Status.ToUint8(),
 		Items: slice.Map(order.Items, func(idx int, src domain.OrderItem) OrderItem {
 			return OrderItem{
-				SPUID:            src.SPUID,
-				SKUID:            src.SKUID,
-				SKUName:          src.SKUName,
-				SKUDescription:   src.SKUDescription,
-				SKUOriginalPrice: src.SKUOriginalPrice,
-				SKURealPrice:     src.SKURealPrice,
-				Quantity:         src.Quantity,
+				SKU: h.toSKUVO(src.SKU),
 			}
 		}),
 		Ctime: order.Ctime,
@@ -297,12 +339,12 @@ func (h *Handler) toOrderVO(order domain.Order) Order {
 }
 
 // RetrieveOrderDetail 查看订单详情
-func (h *Handler) RetrieveOrderDetail(ctx *ginx.Context, req RetrieveOrderDetailReq, sess session.Session) (ginx.Result, error) {
-	order, err := h.svc.FindOrderByUIDAndOrderSN(ctx.Request.Context(), sess.Claims().Uid, req.OrderSN)
+func (h *Handler) RetrieveOrderDetail(ctx *ginx.Context, req OrderSNReq, sess session.Session) (ginx.Result, error) {
+	order, err := h.svc.FindUserVisibleOrderByUIDAndSN(ctx.Request.Context(), sess.Claims().Uid, req.SN)
 	if err != nil {
 		return systemErrorResult, fmt.Errorf("订单未找到: %w", err)
 	}
-	paymentInfo, err := h.paymentSvc.FindPaymentByID(ctx.Request.Context(), order.PaymentID)
+	paymentInfo, err := h.paymentSvc.FindPaymentByID(ctx.Request.Context(), order.Payment.ID)
 	if err != nil {
 		return systemErrorResult, fmt.Errorf("支付未找到: %w", err)
 	}
@@ -315,9 +357,9 @@ func (h *Handler) RetrieveOrderDetail(ctx *ginx.Context, req RetrieveOrderDetail
 
 func (h *Handler) toOrderVOWithPaymentInfo(order domain.Order, pr payment.Payment) Order {
 	vo := h.toOrderVO(order)
-	vo.Payments = slice.Map(pr.Records, func(idx int, src payment.Record) Payment {
-		return Payment{
-			Type:   src.Channel,
+	vo.Payment.Items = slice.Map(pr.Records, func(idx int, src payment.Record) PaymentItem {
+		return PaymentItem{
+			Type:   int64(src.Channel),
 			Amount: src.Amount,
 		}
 	})
@@ -325,10 +367,14 @@ func (h *Handler) toOrderVOWithPaymentInfo(order domain.Order, pr payment.Paymen
 }
 
 // CancelOrder 取消订单
-func (h *Handler) CancelOrder(ctx *ginx.Context, req CancelOrderReq, sess session.Session) (ginx.Result, error) {
-	order, err := h.svc.FindOrderByUIDAndOrderSN(ctx.Request.Context(), sess.Claims().Uid, req.OrderSN)
+func (h *Handler) CancelOrder(ctx *ginx.Context, req OrderSNReq, sess session.Session) (ginx.Result, error) {
+	uid := sess.Claims().Uid
+	order, err := h.svc.FindUserVisibleOrderByUIDAndSN(ctx.Request.Context(), uid, req.SN)
 	if err != nil {
 		return systemErrorResult, fmt.Errorf("查找订单失败: %w", err)
+	}
+	if order.Status != domain.StatusProcessing {
+		return systemErrorResult, fmt.Errorf("订单状态非法: %w, uid: %d, sn: %s", err, uid, req.SN)
 	}
 	err = h.svc.CancelOrder(ctx.Request.Context(), order.BuyerID, order.ID)
 	if err != nil {

@@ -14,9 +14,14 @@
 
 package credit
 
-import "github.com/ecodeclub/webook/internal/credit/internal/event"
+import (
+	"github.com/ecodeclub/webook/internal/credit/internal/event"
+	"github.com/ecodeclub/webook/internal/credit/internal/web"
+)
 
 type Module struct {
-	Svc Service
-	c   *event.CreditIncreaseConsumer
+	Hdl                          *web.Handler
+	Svc                          Service
+	c                            *event.CreditIncreaseConsumer
+	CloseTimeoutLockedCreditsJob *CloseTimeoutLockedCreditsJob
 }

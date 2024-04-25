@@ -15,8 +15,15 @@
 package domain
 
 type Member struct {
-	ID      int64
-	UID     int64
-	StartAt int64
+	Uid     int64
 	EndAt   int64
+	Records []MemberRecord
+}
+
+type MemberRecord struct {
+	Key   string
+	Days  uint64
+	Biz   string
+	BizId int64
+	Desc  string
 }

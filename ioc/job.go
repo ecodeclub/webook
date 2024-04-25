@@ -18,14 +18,19 @@ import (
 	"context"
 	"time"
 
+	"github.com/ecodeclub/webook/internal/credit"
 	"github.com/ecodeclub/webook/internal/order"
 	"github.com/gotomicro/ego/core/elog"
 	"github.com/gotomicro/ego/task/ecron"
 )
 
-func InitCronJobs(cjob *order.CloseExpiredOrdersJob) []*ecron.Component {
+func initCronJobs(
+	oJob *order.CloseTimeoutOrdersJob,
+	cJob *credit.CloseTimeoutLockedCreditsJob,
+) []*ecron.Component {
 	return []*ecron.Component{
-		ecron.Load("cron.order.close").Build(ecron.WithJob(funcJobWrapper(cjob))),
+		ecron.Load("cron.close").Build(ecron.WithJob(funcJobWrapper(oJob))),
+		ecron.Load("cron.close").Build(ecron.WithJob(funcJobWrapper(cJob))),
 	}
 }
 

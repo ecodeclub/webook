@@ -27,10 +27,12 @@ import (
 	"github.com/gotomicro/ego/core/elog"
 )
 
+//go:generate mockgen -source=service.go -package=paymentmocks -destination=../../mocks/payment.mock.go -typed Service
 type Service interface {
 	CreatePayment(ctx context.Context, payment domain.Payment) (domain.Payment, error)
 	GetPaymentChannels(ctx context.Context) []domain.PaymentChannel
-	FindPaymentByID(ctx context.Context, paymentID int64) (domain.Payment, error)
+	FindPaymentByID(ctx context.Context, pmtID int64) (domain.Payment, error)
+	PayByOrderID(ctx context.Context, oid int64) (domain.Payment, error)
 }
 
 func NewService(wechatSvc *wechat.NativePaymentService,
@@ -62,8 +64,9 @@ type service struct {
 // CreditPay(ctx,
 // 1) 订单 -> 2) 支付 -> 3) 积分
 
-// CreatePayment 创建支付记录(支付主记录 + 支付渠道流水记录) 订单模块会同步调用该模块
+// CreatePayment 创建支付记录(支付主记录 + 支付渠道流水记录) 订单模块会同步调用该模块, 生成支付计划
 func (s *service) CreatePayment(ctx context.Context, payment domain.Payment) (domain.Payment, error) {
+
 	// 3. 同步调用“支付模块”获取支付ID和支付SN和二维码
 	//    1)创建支付, 支付记录, 冗余订单ID和订单SN
 	//    2)调用“积分模块” 扣减积分
@@ -76,22 +79,6 @@ func (s *service) CreatePayment(ctx context.Context, payment domain.Payment) (do
 	}
 	payment.SN = paymentSN
 
-	if len(payment.Records) == 1 {
-		switch payment.Records[0].Channel {
-		case domain.ChannelTypeCredit:
-			// 仅积分支付
-			return s.creditSvc.Pay(ctx, payment)
-		case domain.ChannelTypeWechat:
-			// 仅微信支
-			return s.wechatSvc.Prepay(ctx, payment)
-		}
-	}
-
-	return s.prepayByWechatAndCredit(ctx, payment)
-}
-
-// prepayByWechatAndCredit 用微信和积分预支付
-func (s *service) prepayByWechatAndCredit(ctx context.Context, payment domain.Payment) (domain.Payment, error) {
 	// 积分支付优先
 	slices.SortFunc(payment.Records, func(a, b domain.PaymentRecord) int {
 		if a.Channel < b.Channel {
@@ -101,6 +88,23 @@ func (s *service) prepayByWechatAndCredit(ctx context.Context, payment domain.Pa
 		}
 		return 0
 	})
+
+	if len(payment.Records) == 1 {
+		switch payment.Records[0].Channel {
+		case domain.ChannelTypeCredit:
+			// 仅积分支付
+			return s.creditSvc.Pay(ctx, payment)
+		case domain.ChannelTypeWechat:
+			// 仅微信支付
+			return s.wechatSvc.Prepay(ctx, payment)
+		}
+	}
+
+	return s.prepayByWechatAndCredit(ctx, payment)
+}
+
+// prepayByWechatAndCredit 用微信和积分预支付
+func (s *service) prepayByWechatAndCredit(ctx context.Context, payment domain.Payment) (domain.Payment, error) {
 
 	p, err := s.creditSvc.Prepay(ctx, payment)
 	if err != nil {
@@ -122,11 +126,12 @@ func (s *service) GetPaymentChannels(ctx context.Context) []domain.PaymentChanne
 	}
 }
 
-func (s *service) FindPaymentByID(ctx context.Context, id int64) (domain.Payment, error) {
-	return domain.Payment{}, nil
+func (s *service) FindPaymentByID(ctx context.Context, pmtID int64) (domain.Payment, error) {
+	return s.repo.FindPaymentByID(ctx, pmtID)
 }
 
-// PayByOrderSN 通过订单序列号支付
-func (s *service) PayByOrderSN(ctx context.Context, orderSN string) (domain.Payment, error) {
+// PayByOrderID 通过订单序ID支付,查找并执行支付计划
+func (s *service) PayByOrderID(ctx context.Context, oid int64) (domain.Payment, error) {
+	// 幂等
 	return domain.Payment{}, nil
 }
