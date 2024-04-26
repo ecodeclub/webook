@@ -19,7 +19,6 @@ package integration
 import (
 	"context"
 	"testing"
-	"time"
 
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/ecodeclub/ginx/session"
@@ -29,6 +28,7 @@ import (
 	"github.com/ecodeclub/webook/internal/payment/internal/domain"
 	evtmocks "github.com/ecodeclub/webook/internal/payment/internal/event/mocks"
 	startup "github.com/ecodeclub/webook/internal/payment/internal/integration/setup"
+	"github.com/ecodeclub/webook/internal/payment/internal/service"
 	wechatmocks "github.com/ecodeclub/webook/internal/payment/internal/service/wechat/mocks"
 	testioc "github.com/ecodeclub/webook/internal/test/ioc"
 	"github.com/ego-component/egorm"
@@ -48,98 +48,12 @@ func TestPaymentModule(t *testing.T) {
 
 type PaymentModuleTestSuite struct {
 	suite.Suite
-	server *egin.Component
-	db     *egorm.Component
-	module *payment.Module
-	ctrl   *gomock.Controller
+	db *egorm.Component
 }
 
 func (s *PaymentModuleTestSuite) SetupSuite() {
-	s.ctrl = gomock.NewController(s.T())
-
-	s.module = startup.InitModule(
-		s.getMockProducer(),
-		s.paymentDDLFunc(),
-		s.getMockCreditService(),
-		s.getMockNotifyHandler(),
-		s.getMockNativeAPIService())
-
-	econf.Set("server", map[string]any{"contextTimeout": "1s"})
-	server := egin.Load("server").Build()
-	server.Use(func(ctx *gin.Context) {
-		ctx.Set("_session", session.NewMemorySession(session.Claims{
-			Uid: testUID,
-		}))
-	})
-	s.module.Hdl.PublicRoutes(server.Engine)
-	s.server = server
 	s.db = testioc.InitDB()
-}
-
-func (s *PaymentModuleTestSuite) getMockNativeAPIService() *wechatmocks.MockNativeAPIService {
-	mockNativeAPI := wechatmocks.NewMockNativeAPIService(s.ctrl)
-	return mockNativeAPI
-}
-
-func (s *PaymentModuleTestSuite) getMockNotifyHandler() *wechatmocks.MockNotifyHandler {
-	mockNotifyHandler := wechatmocks.NewMockNotifyHandler(s.ctrl)
-	return mockNotifyHandler
-}
-
-func (s *PaymentModuleTestSuite) getMockProducer() *evtmocks.MockPaymentEventProducer {
-	mockProducer := evtmocks.NewMockPaymentEventProducer(s.ctrl)
-	return mockProducer
-}
-
-func (s *PaymentModuleTestSuite) getMockCreditService() *credit.Module {
-	mockCreditSvc := creditmocks.NewMockService(s.ctrl)
-
-	// credits := map[int64]credit.Credit {
-	// 	testUID: {
-	// 		Uid:               testUID,
-	// 		TotalAmount:       0,
-	// 		LockedTotalAmount: 0,
-	// 		Logs:              nil,
-	// 	},
-	// }
-	// creditLogs := map[int64]map[int64]credit.CreditLog {
-	// 	testUID: {
-	// 		1: {
-	// 			Key:          "",
-	// 			ChangeAmount: 0,
-	// 			Biz:          "",
-	// 			BizId:        0,
-	// 			Desc:         "",
-	// 		},
-	// 	},
-	// }
-
-	// mockCreditSvc.EXPECT().TryDeductCredits(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, c credit.Credit) (int64, error) {
-	// 	logs, ok := creditLogs[c.Uid]
-	// 	if !ok {
-	// 		return 0, errors.New("未配置uid")
-	// 	}
-	// 	return , nil
-	// })
-
-	mockCreditSvc.EXPECT().TryDeductCredits(gomock.Any(), gomock.Any()).AnyTimes().Return(int64(1), nil)
-
-	return &credit.Module{Svc: mockCreditSvc}
-}
-
-func (s *PaymentModuleTestSuite) paymentDDLFunc() func() int64 {
-	return func() int64 {
-		return time.Now().Add(1 * time.Minute).UnixMilli()
-		// return time.Now().Add(time.Minute * 30).UnixMilli()
-	}
-}
-
-func (s *PaymentModuleTestSuite) getCreditMockService() *creditmocks.MockService {
-	mockedCreditSvc := creditmocks.NewMockService(s.ctrl)
-	mockedCreditSvc.EXPECT().GetCreditsByUID(gomock.Any(), testUID).AnyTimes().Return(credit.Credit{
-		TotalAmount: 1000,
-	}, nil)
-	return mockedCreditSvc
+	startup.InitDAO(s.db)
 }
 
 func (s *PaymentModuleTestSuite) TearDownSuite() {
@@ -147,8 +61,6 @@ func (s *PaymentModuleTestSuite) TearDownSuite() {
 	require.NoError(s.T(), err)
 	err = s.db.Exec("DROP TABLE `payment_records`").Error
 	require.NoError(s.T(), err)
-
-	s.ctrl.Finish()
 }
 
 func (s *PaymentModuleTestSuite) TearDownTest() {
@@ -164,8 +76,9 @@ func (s *PaymentModuleTestSuite) TestService_CreatePayment() {
 	testCases := []struct {
 		name           string
 		pmt            domain.Payment
+		newSvcFunc     func(t *testing.T, ctrl *gomock.Controller) service.Service
 		errRequireFunc require.ErrorAssertionFunc
-		after          func(t *testing.T, expected payment.Payment)
+		after          func(t *testing.T, svc service.Service, expected payment.Payment)
 	}{
 		{
 			name: "仅积分支付_首次创建支付记录成功",
@@ -183,11 +96,13 @@ func (s *PaymentModuleTestSuite) TestService_CreatePayment() {
 					},
 				},
 			},
-			errRequireFunc: func(t require.TestingT, err error, i ...interface{}) {
-				require.NoError(t, err)
+			newSvcFunc: func(t *testing.T, ctrl *gomock.Controller) service.Service {
+				t.Helper()
+				return startup.InitService(nil, &credit.Module{}, nil)
 			},
-			after: func(t *testing.T, expected payment.Payment) {
-				actual, err := s.module.Svc.FindPaymentByID(context.Background(), expected.ID)
+			errRequireFunc: require.NoError,
+			after: func(t *testing.T, svc service.Service, expected payment.Payment) {
+				actual, err := svc.FindPaymentByID(context.Background(), expected.ID)
 				require.NoError(t, err)
 				require.Equal(t, expected, actual)
 			},
@@ -208,11 +123,13 @@ func (s *PaymentModuleTestSuite) TestService_CreatePayment() {
 					},
 				},
 			},
-			errRequireFunc: func(t require.TestingT, err error, i ...interface{}) {
-				require.NoError(t, err)
+			newSvcFunc: func(t *testing.T, ctrl *gomock.Controller) service.Service {
+				t.Helper()
+				return startup.InitService(nil, &credit.Module{}, nil)
 			},
-			after: func(t *testing.T, expected payment.Payment) {
-				actual, err := s.module.Svc.FindPaymentByID(context.Background(), expected.ID)
+			errRequireFunc: require.NoError,
+			after: func(t *testing.T, svc service.Service, expected payment.Payment) {
+				actual, err := svc.FindPaymentByID(context.Background(), expected.ID)
 				require.NoError(t, err)
 				require.Equal(t, expected, actual)
 			},
@@ -233,11 +150,13 @@ func (s *PaymentModuleTestSuite) TestService_CreatePayment() {
 					},
 				},
 			},
-			errRequireFunc: func(t require.TestingT, err error, i ...interface{}) {
-				require.NoError(t, err)
+			newSvcFunc: func(t *testing.T, ctrl *gomock.Controller) service.Service {
+				t.Helper()
+				return startup.InitService(nil, &credit.Module{}, nil)
 			},
-			after: func(t *testing.T, expected payment.Payment) {
-				actual, err := s.module.Svc.FindPaymentByID(context.Background(), expected.ID)
+			errRequireFunc: require.NoError,
+			after: func(t *testing.T, svc service.Service, expected payment.Payment) {
+				actual, err := svc.FindPaymentByID(context.Background(), expected.ID)
 				require.NoError(t, err)
 				require.Equal(t, expected, actual)
 			},
@@ -258,11 +177,13 @@ func (s *PaymentModuleTestSuite) TestService_CreatePayment() {
 					},
 				},
 			},
-			errRequireFunc: func(t require.TestingT, err error, i ...interface{}) {
-				require.NoError(t, err)
+			newSvcFunc: func(t *testing.T, ctrl *gomock.Controller) service.Service {
+				t.Helper()
+				return startup.InitService(nil, &credit.Module{}, nil)
 			},
-			after: func(t *testing.T, expected payment.Payment) {
-				actual, err := s.module.Svc.FindPaymentByID(context.Background(), expected.ID)
+			errRequireFunc: require.NoError,
+			after: func(t *testing.T, svc service.Service, expected payment.Payment) {
+				actual, err := svc.FindPaymentByID(context.Background(), expected.ID)
 				require.NoError(t, err)
 				require.Equal(t, expected, actual)
 			},
@@ -288,11 +209,13 @@ func (s *PaymentModuleTestSuite) TestService_CreatePayment() {
 					},
 				},
 			},
-			errRequireFunc: func(t require.TestingT, err error, i ...interface{}) {
-				require.NoError(t, err)
+			newSvcFunc: func(t *testing.T, ctrl *gomock.Controller) service.Service {
+				t.Helper()
+				return startup.InitService(nil, &credit.Module{}, nil)
 			},
-			after: func(t *testing.T, expected payment.Payment) {
-				actual, err := s.module.Svc.FindPaymentByID(context.Background(), expected.ID)
+			errRequireFunc: require.NoError,
+			after: func(t *testing.T, svc service.Service, expected payment.Payment) {
+				actual, err := svc.FindPaymentByID(context.Background(), expected.ID)
 				require.NoError(t, err)
 				require.Equal(t, expected, actual)
 			},
@@ -318,11 +241,13 @@ func (s *PaymentModuleTestSuite) TestService_CreatePayment() {
 					},
 				},
 			},
-			errRequireFunc: func(t require.TestingT, err error, i ...interface{}) {
-				require.NoError(t, err)
+			newSvcFunc: func(t *testing.T, ctrl *gomock.Controller) service.Service {
+				t.Helper()
+				return startup.InitService(nil, &credit.Module{}, nil)
 			},
-			after: func(t *testing.T, expected payment.Payment) {
-				actual, err := s.module.Svc.FindPaymentByID(context.Background(), expected.ID)
+			errRequireFunc: require.NoError,
+			after: func(t *testing.T, svc service.Service, expected payment.Payment) {
+				actual, err := svc.FindPaymentByID(context.Background(), expected.ID)
 				require.NoError(t, err)
 				require.Equal(t, expected, actual)
 			},
@@ -332,11 +257,17 @@ func (s *PaymentModuleTestSuite) TestService_CreatePayment() {
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			pmt, err := s.module.Svc.CreatePayment(context.Background(), tc.pmt)
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			svc := tc.newSvcFunc(t, ctrl)
+
+			pmt, err := svc.CreatePayment(context.Background(), tc.pmt)
+
 			tc.errRequireFunc(t, err)
 			if err == nil {
 				s.requirePayment(t, tc.pmt, pmt)
-				tc.after(t, pmt)
+				tc.after(t, svc, pmt)
 			}
 		})
 	}
@@ -346,7 +277,6 @@ func (s *PaymentModuleTestSuite) requirePayment(t *testing.T, expected, actual d
 	require.NotZero(t, actual.ID)
 	require.NotZero(t, actual.SN)
 	require.NotZero(t, actual.Ctime)
-	require.NotZero(t, actual.Utime)
 	actual.Records = slice.Map(actual.Records, func(idx int, src domain.PaymentRecord) domain.PaymentRecord {
 		require.NotZero(t, src.PaymentID)
 		require.Equal(t, actual.ID, src.PaymentID)
@@ -359,7 +289,6 @@ func (s *PaymentModuleTestSuite) requirePayment(t *testing.T, expected, actual d
 	actual.ID = 0
 	actual.SN = ""
 	actual.Ctime = 0
-	actual.Utime = 0
 	actual.Status = domain.PaymentStatus(0)
 	require.ElementsMatch(t, expected.Records, actual.Records)
 	expected.Records, actual.Records = nil, nil
@@ -368,31 +297,32 @@ func (s *PaymentModuleTestSuite) requirePayment(t *testing.T, expected, actual d
 
 func (s *PaymentModuleTestSuite) TestService_GetPaymentChannels() {
 	t := s.T()
-
-	channels := s.module.Svc.GetPaymentChannels(context.Background())
+	svc := startup.InitService(nil, &credit.Module{}, nil)
+	channels := svc.GetPaymentChannels(context.Background())
 	require.Equal(t, []domain.PaymentChannel{
 		{Type: domain.ChannelTypeCredit, Desc: "积分"},
 		{Type: domain.ChannelTypeWechat, Desc: "微信"},
 	}, channels)
 }
 
-func (s *PaymentModuleTestSuite) TestService_PayByOrderID() {
+func (s *PaymentModuleTestSuite) TestService_PayByID() {
 	t := s.T()
-	t.Skip()
 
 	testCases := []struct {
 		name           string
-		before         func(t *testing.T, pmt payment.Payment)
+		before         func(t *testing.T, svc service.Service, pmt payment.Payment) int64
 		pmt            payment.Payment
-		errRequireFunc func(t require.TestingT, err error, i ...interface{})
-		after          func(t *testing.T, expected payment.Payment)
+		newSvcFunc     func(t *testing.T, ctrl *gomock.Controller) service.Service
+		errRequireFunc require.ErrorAssertionFunc
+		after          func(t *testing.T, svc service.Service, expected payment.Payment)
 	}{
 		{
 			name: "支付成功_仅积分支付",
-			before: func(t *testing.T, pmt payment.Payment) {
+			before: func(t *testing.T, svc service.Service, pmt payment.Payment) int64 {
 				t.Helper()
-				_, err := s.module.Svc.CreatePayment(context.Background(), pmt)
+				p, err := svc.CreatePayment(context.Background(), pmt)
 				require.NoError(t, err)
+				return p.ID
 			},
 			pmt: payment.Payment{
 				OrderID:          200001,
@@ -408,15 +338,37 @@ func (s *PaymentModuleTestSuite) TestService_PayByOrderID() {
 					},
 				},
 			},
+			newSvcFunc: func(t *testing.T, ctrl *gomock.Controller) service.Service {
+				t.Helper()
+
+				mockProducer := evtmocks.NewMockPaymentEventProducer(ctrl)
+				mockProducer.EXPECT().Produce(gomock.Any(), gomock.Any()).Return(nil)
+
+				mockCreditSvc := creditmocks.NewMockService(ctrl)
+				mockCreditSvc.EXPECT().TryDeductCredits(gomock.Any(), gomock.Any()).Return(int64(1), nil)
+				mockCreditSvc.EXPECT().ConfirmDeductCredits(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+
+				return startup.InitService(mockProducer, &credit.Module{Svc: mockCreditSvc}, nil)
+			},
 			errRequireFunc: func(t require.TestingT, err error, i ...interface{}) {
 				require.NoError(t, err)
 			},
-			after: func(t *testing.T, expected payment.Payment) {
+			after: func(t *testing.T, svc service.Service, expected payment.Payment) {
 				t.Helper()
-				actual, err := s.module.Svc.FindPaymentByID(context.Background(), expected.ID)
+				actual, err := svc.FindPaymentByID(context.Background(), expected.ID)
 				require.NoError(t, err)
+
 				require.Equal(t, expected, actual)
-				require.Equal(t, domain.PaymentStatusProcessing, actual.Status)
+				require.Equal(t, domain.PaymentStatusPaidSuccess, actual.Status)
+				require.NotZero(t, actual.PaidAt)
+
+				r, ok := slice.Find(actual.Records, func(src domain.PaymentRecord) bool {
+					return src.Channel == domain.ChannelTypeCredit
+				})
+				require.True(t, ok)
+				require.Equal(t, domain.PaymentStatusPaidSuccess, r.Status)
+				require.NotZero(t, r.PaymentNO3rd)
+				require.NotZero(t, r.PaidAt)
 			},
 		},
 		// 支付成功_仅积分支付_状态改变
@@ -431,12 +383,52 @@ func (s *PaymentModuleTestSuite) TestService_PayByOrderID() {
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			tc.before(t, tc.pmt)
-			pmt, err := s.module.Svc.PayByID(context.Background(), tc.pmt.OrderID)
+
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			svc := tc.newSvcFunc(t, ctrl)
+			pmtID := tc.before(t, svc, tc.pmt)
+
+			pmt, err := svc.PayByID(context.Background(), pmtID)
+
 			tc.errRequireFunc(t, err)
 			if err == nil {
-				tc.after(t, pmt)
+				tc.after(t, svc, pmt)
 			}
 		})
 	}
+}
+
+func (s *PaymentModuleTestSuite) TestHandler_Callback() {
+	t := s.T()
+	t.Skip()
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockProducer := evtmocks.NewMockPaymentEventProducer(ctrl)
+	mockProducer.EXPECT().Produce(gomock.Any(), gomock.Any()).Return(nil)
+
+	mockCreditSvc := creditmocks.NewMockService(ctrl)
+	mockCreditSvc.EXPECT().TryDeductCredits(gomock.Any(), gomock.Any()).Return(int64(1), nil)
+	mockCreditSvc.EXPECT().ConfirmDeductCredits(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+
+	mockNativeAPIService := wechatmocks.NewMockNativeAPIService(ctrl)
+	mockNotifyHandler := wechatmocks.NewMockNotifyHandler(ctrl)
+
+	handler := startup.InitHandler(
+		mockProducer,
+		&credit.Module{Svc: mockCreditSvc},
+		mockNativeAPIService,
+		mockNotifyHandler,
+	)
+	econf.Set("server", map[string]any{"contextTimeout": "1s"})
+	server := egin.Load("server").Build()
+	server.Use(func(ctx *gin.Context) {
+		ctx.Set("_session", session.NewMemorySession(session.Claims{
+			Uid: testUID,
+		}))
+	})
+	handler.PublicRoutes(server.Engine)
 }

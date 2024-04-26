@@ -29,14 +29,14 @@ import (
 type PaymentDAO interface {
 	FindOrCreate(ctx context.Context, pmt Payment, records []PaymentRecord) (Payment, []PaymentRecord, error)
 	FindPaymentByID(ctx context.Context, pmtID int64) (Payment, []PaymentRecord, error)
+	UpdateByOrderSN(ctx context.Context, pmt Payment, records []PaymentRecord) error
 
 	// 下方待重构
 
+	UpdateTxnIDAndStatus(ctx context.Context, bizTradeNo string, txnID string, status uint8) error
 	FindPaymentByOrderSN(ctx context.Context, orderSN string) (Payment, []PaymentRecord, error)
-	Update(ctx context.Context, pmt Payment, records []PaymentRecord) error
 
 	Insert(ctx context.Context, pmt Payment) error
-	UpdateTxnIDAndStatus(ctx context.Context, bizTradeNo string, txnID string, status int64) error
 	FindExpiredPayment(ctx context.Context, offset int, limit int, t time.Time) ([]Payment, error)
 	GetPayment(ctx context.Context, bizTradeNO string) (Payment, error)
 }
@@ -83,24 +83,44 @@ func (g *PaymentGORMDAO) FindPaymentByID(ctx context.Context, pmtID int64) (Paym
 	return pmt, records, eg.Wait()
 }
 
-func (g *PaymentGORMDAO) Update(ctx context.Context, pmt Payment, records []PaymentRecord) error {
-	now := time.Now().UnixMilli()
+func (g *PaymentGORMDAO) UpdateByOrderSN(ctx context.Context, pmt Payment, records []PaymentRecord) error {
+	utime := time.Now().UnixMilli()
 	return g.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		pmt.Utime = now
-		// todo: pmt中要跟新, paidAt, status,
+		pmt.Utime = utime
+		// 确保pmt中更新paidAt, status,
 		if err := tx.Model(&Payment{}).Where("order_sn = ?", pmt.OrderSn).Updates(&pmt).Error; err != nil {
 			return fmt.Errorf("更新支付主记录失败: %w", err)
 		}
 
+		if err := tx.First(&pmt, "order_sn = ?", pmt.OrderSn).Error; err != nil {
+			return fmt.Errorf("查找支付主记录失败: %w", err)
+		}
+
 		for i := 0; i < len(records); i++ {
-			records[i].Utime = now
-			// todo: record中要更新, paidAt, status, paymentNo3rd
+			records[i].Utime = utime
+			// 	需要确保record中要更新, paidAt, status, paymentNo3rd
 			if err := tx.Model(&PaymentRecord{}).Where("payment_id = ? AND Channel = ?", pmt.Id, records[i].Channel).Updates(&records[i]).Error; err != nil {
 				return fmt.Errorf("更新支付记录表失败: %w", err)
 			}
 		}
 
 		return nil
+	})
+}
+
+func (g *PaymentGORMDAO) UpdateTxnIDAndStatus(ctx context.Context, orderSN string, txnID string, status uint8) error {
+	return g.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		values := map[string]any{
+			"payment_no_3rd": txnID,
+			"status":         status,
+			"utime":          time.Now().UnixMilli(),
+		}
+		if status == domain.PaymentStatusPaidSuccess.ToUnit8() {
+			values["paid_at"] = time.Now().UnixMilli()
+		}
+		err := tx.Model(Payment{}).Where("order_sn = ?", orderSN).
+			Updates(values).Error
+		return err
 	})
 }
 
@@ -118,18 +138,6 @@ func (g *PaymentGORMDAO) FindExpiredPayment(ctx context.Context, offset int, lim
 	var res []Payment
 	err := g.db.WithContext(ctx).Where("status = ? AND utime < ?", domain.PaymentStatusUnpaid.ToUnit8(), t.UnixMilli()).Offset(offset).Limit(limit).Find(&res).Error
 	return res, err
-}
-
-func (g *PaymentGORMDAO) UpdateTxnIDAndStatus(ctx context.Context,
-	bizTradeNo string,
-	txnID string, status int64) error {
-	return g.db.WithContext(ctx).Model(&Payment{}).
-		Where("biz_trade_no = ?", bizTradeNo).
-		Updates(map[string]any{
-			"txn_id": txnID,
-			"status": status,
-			"utime":  time.Now().UnixMilli(),
-		}).Error
 }
 
 func (g *PaymentGORMDAO) Insert(ctx context.Context, pmt Payment) error {

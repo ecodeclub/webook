@@ -27,10 +27,10 @@ import (
 type PaymentRepository interface {
 	CreatePayment(ctx context.Context, payment domain.Payment) (domain.Payment, error)
 	FindPaymentByID(ctx context.Context, pmtID int64) (domain.Payment, error)
+	UpdatePayment(ctx context.Context, pmt domain.Payment) error
 
 	// 下方为待重构
 
-	UpdatePayment(ctx context.Context, pmt domain.Payment) error
 	FindPaymentByOrderSN(ctx context.Context, orderSN string) (domain.Payment, error)
 
 	AddPayment(ctx context.Context, pmt domain.Payment) error
@@ -107,7 +107,6 @@ func (p *paymentRepository) toDomain(pmt dao.Payment, records []dao.PaymentRecor
 			}
 		}),
 		Ctime: pmt.Ctime,
-		Utime: pmt.Utime,
 	}
 }
 
@@ -117,13 +116,10 @@ func (p *paymentRepository) FindPaymentByID(ctx context.Context, pmtID int64) (d
 }
 
 func (p *paymentRepository) UpdatePayment(ctx context.Context, pmt domain.Payment) error {
-	// todo: 应该是OrderSN, paymentNo3rd(txn_id), PaymentStatus
-	// return p.dao.UpdateTxnIDAndStatus(ctx, pmt.OrderSN, pmt.OrderSN, pmt.PaymentStatus)
-
-	// 通过pmt.OrderSN -> pmt.ID -> []records{ {微信}, {积分}}
+	// 确保设置OrderSN,pmt.OrderSN -> pmt.ID -> []records{ {微信}, {积分}}
 	// 找到的records可能有两条 —— 微信和积分
 	entity, records := p.toEntity(pmt)
-	return p.dao.Update(ctx, entity, records)
+	return p.dao.UpdateByOrderSN(ctx, entity, records)
 }
 
 func (p *paymentRepository) FindPaymentByOrderSN(ctx context.Context, orderSN string) (domain.Payment, error) {

@@ -18,7 +18,6 @@ package payment
 
 import (
 	"sync"
-	"time"
 
 	"github.com/ecodeclub/ecache"
 	"github.com/ecodeclub/mq-api"
@@ -34,7 +33,6 @@ import (
 	"github.com/ecodeclub/webook/internal/pkg/sequencenumber"
 	"github.com/ego-component/egorm"
 	"github.com/google/wire"
-	"github.com/gotomicro/ego/core/elog"
 	"github.com/wechatpay-apiv3/wechatpay-go/core/notify"
 	"github.com/wechatpay-apiv3/wechatpay-go/services/payments/native"
 	"gorm.io/gorm"
@@ -58,7 +56,6 @@ func InitModule(db *egorm.Component,
 	c ecache.Cache,
 	cm *credit.Module) (*Module, error) {
 	wire.Build(
-		initLogger,
 		ioc.InitWechatNativeService,
 		ioc.InitWechatConfig,
 		ioc.InitWechatNotifyHandler,
@@ -71,7 +68,6 @@ func InitModule(db *egorm.Component,
 		web.NewHandler,
 		service.NewService,
 		repository.NewPaymentRepository,
-		paymentDDLFunc,
 		sequencenumber.NewGenerator,
 		wire.FieldsOf(new(*credit.Module), "Svc"),
 		wire.Struct(new(Module), "*"),
@@ -100,20 +96,10 @@ func initPaymentEventProducer(mq mq.MQ) (event.PaymentEventProducer, error) {
 	return event.NewPaymentEventProducer(p)
 }
 
-func paymentDDLFunc() func() int64 {
-	return func() int64 {
-		return time.Now().Add(time.Minute * 30).UnixMilli()
-	}
-}
-
 func initDAO(db *gorm.DB) dao.PaymentDAO {
 	once.Do(func() {
 		_ = dao.InitTables(db)
 		paymentDAO = dao.NewPaymentGORMDAO(db)
 	})
 	return paymentDAO
-}
-
-func initLogger() *elog.Component {
-	return elog.DefaultLogger
 }

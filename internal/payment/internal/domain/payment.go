@@ -62,7 +62,6 @@ type Payment struct {
 	Status           PaymentStatus
 	Records          []PaymentRecord
 	Ctime            int64
-	Utime            int64
 }
 
 type PaymentChannel struct {
