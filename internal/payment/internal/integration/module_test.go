@@ -432,7 +432,7 @@ func (s *PaymentModuleTestSuite) TestService_PayByOrderID() {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			tc.before(t, tc.pmt)
-			pmt, err := s.module.Svc.PayByOrderID(context.Background(), tc.pmt.OrderID)
+			pmt, err := s.module.Svc.PayByID(context.Background(), tc.pmt.OrderID)
 			tc.errRequireFunc(t, err)
 			if err == nil {
 				tc.after(t, pmt)

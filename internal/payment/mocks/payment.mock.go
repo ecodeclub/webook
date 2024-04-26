@@ -155,41 +155,41 @@ func (c *ServiceGetPaymentChannelsCall) DoAndReturn(f func(context.Context) []do
 	return c
 }
 
-// PayByOrderID mocks base method.
-func (m *MockService) PayByOrderID(ctx context.Context, oid int64) (domain.Payment, error) {
+// PayByID mocks base method.
+func (m *MockService) PayByID(ctx context.Context, pmtID int64) (domain.Payment, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "PayByOrderID", ctx, oid)
+	ret := m.ctrl.Call(m, "PayByID", ctx, pmtID)
 	ret0, _ := ret[0].(domain.Payment)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// PayByOrderID indicates an expected call of PayByOrderID.
-func (mr *MockServiceMockRecorder) PayByOrderID(ctx, oid any) *ServicePayByOrderIDCall {
+// PayByID indicates an expected call of PayByID.
+func (mr *MockServiceMockRecorder) PayByID(ctx, pmtID any) *ServicePayByIDCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PayByOrderID", reflect.TypeOf((*MockService)(nil).PayByOrderID), ctx, oid)
-	return &ServicePayByOrderIDCall{Call: call}
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PayByID", reflect.TypeOf((*MockService)(nil).PayByID), ctx, pmtID)
+	return &ServicePayByIDCall{Call: call}
 }
 
-// ServicePayByOrderIDCall wrap *gomock.Call
-type ServicePayByOrderIDCall struct {
+// ServicePayByIDCall wrap *gomock.Call
+type ServicePayByIDCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *ServicePayByOrderIDCall) Return(arg0 domain.Payment, arg1 error) *ServicePayByOrderIDCall {
+func (c *ServicePayByIDCall) Return(arg0 domain.Payment, arg1 error) *ServicePayByIDCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *ServicePayByOrderIDCall) Do(f func(context.Context, int64) (domain.Payment, error)) *ServicePayByOrderIDCall {
+func (c *ServicePayByIDCall) Do(f func(context.Context, int64) (domain.Payment, error)) *ServicePayByIDCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *ServicePayByOrderIDCall) DoAndReturn(f func(context.Context, int64) (domain.Payment, error)) *ServicePayByOrderIDCall {
+func (c *ServicePayByIDCall) DoAndReturn(f func(context.Context, int64) (domain.Payment, error)) *ServicePayByIDCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

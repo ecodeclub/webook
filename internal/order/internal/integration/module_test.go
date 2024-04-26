@@ -188,12 +188,12 @@ func (s *OrderModuleTestSuite) getPaymentMockService() *paymentmocks.MockService
 		return r, nil
 	}).AnyTimes()
 
-	paymentSvc.EXPECT().PayByOrderID(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, oid int64) (payment.Payment, error) {
-		if oid == 11212 {
+	paymentSvc.EXPECT().PayByID(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, pmtID int64) (payment.Payment, error) {
+		if pmtID == 212 {
 			return payment.Payment{
 				ID:          212,
 				SN:          "paymentSN-repay-212",
-				OrderID:     oid,
+				OrderID:     11212,
 				OrderSN:     fmt.Sprintf("orderSN-repay-11%d", 212),
 				TotalAmount: 9990,
 				Records: []payment.Record{
@@ -212,11 +212,11 @@ func (s *OrderModuleTestSuite) getPaymentMockService() *paymentmocks.MockService
 					},
 				},
 			}, nil
-		} else if oid == 11213 {
+		} else if pmtID == 213 {
 			return payment.Payment{
 				ID:          213,
 				SN:          "paymentSN-repay-213",
-				OrderID:     oid,
+				OrderID:     11213,
 				OrderSN:     fmt.Sprintf("orderSN-repay-11%d", 213),
 				TotalAmount: 9990,
 				Records: []payment.Record{
@@ -229,7 +229,7 @@ func (s *OrderModuleTestSuite) getPaymentMockService() *paymentmocks.MockService
 				},
 			}, nil
 		}
-		r, ok := tables[oid]
+		r, ok := tables[pmtID]
 		if !ok {
 			return payment.Payment{}, fmt.Errorf(fmt.Sprintf("未配置的支付id=%d", id))
 		}

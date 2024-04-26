@@ -32,7 +32,7 @@ type Service interface {
 	CreatePayment(ctx context.Context, pmt domain.Payment) (domain.Payment, error)
 	GetPaymentChannels(ctx context.Context) []domain.PaymentChannel
 	FindPaymentByID(ctx context.Context, pmtID int64) (domain.Payment, error)
-	PayByOrderID(ctx context.Context, oid int64) (domain.Payment, error)
+	PayByID(ctx context.Context, pmtID int64) (domain.Payment, error)
 }
 
 func NewService(wechatSvc *wechat.NativePaymentService,
@@ -78,6 +78,12 @@ func (s *service) GetPaymentChannels(_ context.Context) []domain.PaymentChannel 
 // FindPaymentByID 根据支付主记录ID查找支付记录
 func (s *service) FindPaymentByID(ctx context.Context, pmtID int64) (domain.Payment, error) {
 	return s.repo.FindPaymentByID(ctx, pmtID)
+}
+
+// PayByID 通过支付主记录ID支付,查找并执行支付计划
+func (s *service) PayByID(ctx context.Context, pmtID int64) (domain.Payment, error) {
+	// 幂等
+	return domain.Payment{}, nil
 }
 
 // 订单模块 调用 支付模块 创建支付记录
@@ -140,10 +146,4 @@ func (s *service) prepayByWechatAndCredit(ctx context.Context, pmt domain.Paymen
 	}
 
 	return pp, nil
-}
-
-// PayByOrderID 通过订单序ID支付,查找并执行支付计划
-func (s *service) PayByOrderID(ctx context.Context, oid int64) (domain.Payment, error) {
-	// 幂等
-	return domain.Payment{}, nil
 }
