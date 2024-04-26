@@ -130,7 +130,7 @@ func (s *service) FindPaymentByID(ctx context.Context, pmtID int64) (domain.Paym
 	return s.repo.FindPaymentByID(ctx, pmtID)
 }
 
-// PayByID 通过订单序ID支付,查找并执行支付计划
+// PayByID 通过支付主记录ID支付,查找并执行支付计划
 func (s *service) PayByID(ctx context.Context, pmtID int64) (domain.Payment, error) {
 	// 幂等
 	return domain.Payment{}, nil
