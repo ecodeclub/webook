@@ -17,7 +17,6 @@ package service
 import (
 	"context"
 	"fmt"
-	"slices"
 	"strconv"
 	"time"
 
@@ -108,38 +107,23 @@ func (s *service) PayByID(ctx context.Context, pmtID int64) (domain.Payment, err
 		return domain.Payment{}, fmt.Errorf("执行支付操作失败: %w, pmtID: %d", err, pmtID)
 	}
 
-	// 幂等 判定状态,如果为processing, 忽略更新
+	// todo: 幂等 判定状态,如果为processing, 忽略更新
 	return pmt, err
 }
 
 func (s *service) executePayment(ctx context.Context, pmt *domain.Payment) error {
-	// 积分支付优先
-	slices.SortFunc(pmt.Records, func(a, b domain.PaymentRecord) int {
-		if a.Channel < b.Channel {
-			return -1
-		} else if a.Channel > b.Channel {
-			return 1
-		}
-		return 0
-	})
-
-	var err error
 	if len(pmt.Records) == 1 {
 		switch pmt.Records[0].Channel {
 		case domain.ChannelTypeCredit:
 			// 仅积分支付
-			err = s.payByCredit(ctx, pmt)
+			return s.payByCredit(ctx, pmt)
 		case domain.ChannelTypeWechat:
-			// 仅微信支付
-			return nil
+			// 仅微信预支付
+			return s.prepayByWechat(ctx, pmt)
 		}
 	}
-
-	if err != nil {
-		return err
-	}
-
-	return s.sendPaymentEvent(ctx, pmt)
+	// 混合预支付
+	return s.prepayByWechatAndCredit(ctx, pmt)
 }
 
 func (s *service) payByCredit(ctx context.Context, pmt *domain.Payment) error {
@@ -165,25 +149,27 @@ func (s *service) payByCredit(ctx context.Context, pmt *domain.Payment) error {
 		},
 	})
 	if err != nil {
-		return err
+		return fmt.Errorf("预扣积分失败: %w", err)
 	}
 
 	err = s.creditSvc.ConfirmDeductCredits(ctx, pmt.PayerID, tid)
 	if err != nil {
-		return err
+		_ = s.creditSvc.CancelDeductCredits(ctx, pmt.PayerID, tid)
+		return fmt.Errorf("确认扣减积分失败: %w", err)
 	}
 
 	// 更新字段
-	s.setPaymentFields(pmt, idx, strconv.FormatInt(tid, 10))
+	s.setPaymentSuccess(pmt, idx, strconv.FormatInt(tid, 10))
 	err = s.repo.UpdatePayment(ctx, *pmt)
 	if err != nil {
 		// 这里有一个小问题，就是如果超时了的话，你都不知道更新成功了没
+		_ = s.creditSvc.CancelDeductCredits(ctx, pmt.PayerID, tid)
 		return err
 	}
-	return nil
+	return s.sendPaymentEvent(ctx, pmt)
 }
 
-func (s *service) setPaymentFields(pmt *domain.Payment, idx int, paymentNO3rd string) {
+func (s *service) setPaymentSuccess(pmt *domain.Payment, idx int, paymentNO3rd string) {
 	pmt.Status = domain.PaymentStatusPaidSuccess
 	pmt.PaidAt = time.Now().UnixMilli()
 	pmt.Records[idx].Status = pmt.Status
@@ -209,68 +195,76 @@ func (s *service) sendPaymentEvent(ctx context.Context, pmt *domain.Payment) err
 	return nil
 }
 
-// 订单模块 调用 支付模块 创建支付记录
-//    domain.Payment {ID, SN, buyer_id, orderID, orderSN, []paymentChanenl{{1, 积分, 2000}, {2, 微信, 7990, codeURL}},
-//  Pay(ctx, domain.Payment) (domain.Payment[填充后],  err error)
-//  含有微信就要调用 Prepay()
-//  WechatPrepay(
-// CreditPay(ctx,
-// 1) 订单 -> 2) 支付 -> 3) 积分
-
-// CreatePaymentV1 创建支付记录(支付主记录 + 支付渠道流水记录) 订单模块会同步调用该模块, 生成支付计划
-func (s *service) CreatePaymentV1(ctx context.Context, payment domain.Payment) (domain.Payment, error) {
-	// 3. 同步调用“支付模块”获取支付ID和支付SN和二维码
-	//    1)创建支付, 支付记录, 冗余订单ID和订单SN
-	//    2)调用“积分模块” 扣减积分
-	//    3)调用“微信”, 获取二维码
-
-	// 填充公共字段
-	paymentSN, err := s.snGenerator.Generate(payment.PayerID)
+func (s *service) prepayByWechat(ctx context.Context, pmt *domain.Payment) error {
+	codeURL, err := s.wechatSvc.Prepay(ctx, *pmt)
 	if err != nil {
-		return domain.Payment{}, fmt.Errorf("生成支付序列号失败: %w", err)
+		return err
 	}
-	payment.SN = paymentSN
-
-	// 积分支付优先
-	slices.SortFunc(payment.Records, func(a, b domain.PaymentRecord) int {
-		if a.Channel < b.Channel {
-			return -1
-		} else if a.Channel > b.Channel {
-			return 1
-		}
-		return 0
+	// 设置字段
+	idx := slice.IndexFunc(pmt.Records, func(src domain.PaymentRecord) bool {
+		return src.Channel == domain.ChannelTypeWechat
 	})
-
-	if len(payment.Records) == 1 {
-		switch payment.Records[0].Channel {
-		case domain.ChannelTypeCredit:
-			// 仅积分支付
-			// return s.creditSvc.Pay(ctx, payment)
-			return domain.Payment{}, nil
-		case domain.ChannelTypeWechat:
-			// 仅微信支付
-			// return s.wechatSvc.Prepay(ctx, payment)
-			return domain.Payment{}, nil
-		}
+	pmt.Records[idx].WechatCodeURL = codeURL
+	pmt.Status = domain.PaymentStatusProcessing
+	pmt.Records[idx].Status = domain.PaymentStatusProcessing
+	err = s.repo.UpdatePayment(ctx, *pmt)
+	if err != nil {
+		// 这里有一个小问题，就是如果超时了的话，你都不知道更新成功了没
+		return err
 	}
-
-	return s.prepayByWechatAndCredit(ctx, payment)
+	return nil
 }
 
-// prepayByWechatAndCredit 用微信和积分预支付
-func (s *service) prepayByWechatAndCredit(ctx context.Context, pmt domain.Payment) (domain.Payment, error) {
+func (s *service) prepayByWechatAndCredit(ctx context.Context, pmt *domain.Payment) error {
 
-	// p, err := s.creditSvc.Prepay(ctx, payment)
-	// if err != nil {
-	// 	return domain.Payment{}, fmt.Errorf("积分与微信混合支付失败: %w", err)
-	// }
-	// pp, err2 := s.wechatSvc.Prepay(ctx, pmt)
-	// if err2 != nil {
-	// 	return domain.Payment{}, fmt.Errorf("积分与微信混合支付失败: %w", err2)
-	// }
-	//
-	// return pp, nil
-	return domain.Payment{}, nil
+	creditIdx := slice.IndexFunc(pmt.Records, func(src domain.PaymentRecord) bool {
+		return src.Channel == domain.ChannelTypeCredit
+	})
+
+	if creditIdx == -1 || pmt.Records[creditIdx].Amount == 0 {
+		return fmt.Errorf("缺少积分支付金额信息")
+	}
+
+	tid, err := s.creditSvc.TryDeductCredits(context.Background(), credit.Credit{
+		Uid: pmt.PayerID,
+		Logs: []credit.CreditLog{
+			{
+				Key:          pmt.OrderSN,
+				ChangeAmount: pmt.Records[creditIdx].Amount,
+				Biz:          "order",
+				BizId:        pmt.OrderID,
+				Desc:         pmt.Records[creditIdx].Description,
+			},
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("预扣积分失败: %w", err)
+	}
+
+	codeURL, err := s.wechatSvc.Prepay(ctx, *pmt)
+	if err != nil {
+		_ = s.creditSvc.CancelDeductCredits(ctx, pmt.PayerID, tid)
+		return err
+	}
+
+	// 设置字段
+	wechatIdx := slice.IndexFunc(pmt.Records, func(src domain.PaymentRecord) bool {
+		return src.Channel == domain.ChannelTypeWechat
+	})
+
+	pmt.Status = domain.PaymentStatusProcessing
+	pmt.Records[wechatIdx].WechatCodeURL = codeURL
+	pmt.Records[wechatIdx].Status = domain.PaymentStatusProcessing
+	pmt.Records[creditIdx].PaymentNO3rd = strconv.FormatInt(tid, 10)
+	pmt.Records[creditIdx].Status = domain.PaymentStatusProcessing
+
+	err = s.repo.UpdatePayment(ctx, *pmt)
+	if err != nil {
+		// 这里有一个小问题，就是如果超时了的话，你都不知道更新成功了没
+		_ = s.creditSvc.CancelDeductCredits(ctx, pmt.PayerID, tid)
+		return err
+	}
+	return nil
 }
 
 func (s *service) HandleWechatCallback(ctx context.Context, txn *payments.Transaction) error {
