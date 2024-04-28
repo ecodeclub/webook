@@ -28,15 +28,11 @@ type PaymentRepository interface {
 	CreatePayment(ctx context.Context, payment domain.Payment) (domain.Payment, error)
 	FindPaymentByID(ctx context.Context, pmtID int64) (domain.Payment, error)
 	UpdatePayment(ctx context.Context, pmt domain.Payment) error
+	FindPaymentByOrderSN(ctx context.Context, orderSN string) (domain.Payment, error)
 
 	// 下方为待重构
 
-	FindPaymentByOrderSN(ctx context.Context, orderSN string) (domain.Payment, error)
-
-	AddPayment(ctx context.Context, pmt domain.Payment) error
-	// UpdatePayment 这个设计有点差，因为
 	FindExpiredPayment(ctx context.Context, offset int, limit int, t time.Time) ([]domain.Payment, error)
-	GetPayment(ctx context.Context, bizTradeNO string) (domain.Payment, error)
 }
 
 func NewPaymentRepository(d dao.PaymentDAO) PaymentRepository {
@@ -127,11 +123,6 @@ func (p *paymentRepository) FindPaymentByOrderSN(ctx context.Context, orderSN st
 	return p.toDomain(pmt, records), err
 }
 
-func (p *paymentRepository) GetPayment(ctx context.Context, bizTradeNO string) (domain.Payment, error) {
-	r, err := p.dao.GetPayment(ctx, bizTradeNO)
-	return p.toDomain2(r), err
-}
-
 func (p *paymentRepository) FindExpiredPayment(ctx context.Context, offset int, limit int, t time.Time) ([]domain.Payment, error) {
 	pmts, err := p.dao.FindExpiredPayment(ctx, offset, limit, t)
 	if err != nil {
@@ -142,19 +133,6 @@ func (p *paymentRepository) FindExpiredPayment(ctx context.Context, offset int, 
 		res = append(res, p.toDomain2(pmt))
 	}
 	return res, nil
-}
-
-func (p *paymentRepository) AddPayment(ctx context.Context, pmt domain.Payment) error {
-	return p.dao.Insert(ctx, p.toEntity2(pmt))
-}
-
-func (p *paymentRepository) toEntity2(pmt domain.Payment) dao.Payment {
-	return dao.Payment{
-		TotalAmount:      pmt.TotalAmount,
-		OrderSn:          sql.NullString{String: pmt.OrderSN, Valid: true},
-		OrderDescription: pmt.OrderDescription,
-		Status:           domain.PaymentStatusUnpaid.ToUnit8(),
-	}
 }
 
 func (p *paymentRepository) toDomain2(pmt dao.Payment) domain.Payment {

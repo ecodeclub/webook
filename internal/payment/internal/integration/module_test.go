@@ -22,23 +22,21 @@ import (
 	"testing"
 
 	"github.com/ecodeclub/ekit/slice"
-	"github.com/ecodeclub/ginx/session"
 	"github.com/ecodeclub/webook/internal/credit"
 	creditmocks "github.com/ecodeclub/webook/internal/credit/mocks"
 	"github.com/ecodeclub/webook/internal/payment"
 	"github.com/ecodeclub/webook/internal/payment/internal/domain"
+	"github.com/ecodeclub/webook/internal/payment/internal/event"
 	evtmocks "github.com/ecodeclub/webook/internal/payment/internal/event/mocks"
 	startup "github.com/ecodeclub/webook/internal/payment/internal/integration/setup"
 	"github.com/ecodeclub/webook/internal/payment/internal/service"
 	wechatmocks "github.com/ecodeclub/webook/internal/payment/internal/service/wechat/mocks"
 	testioc "github.com/ecodeclub/webook/internal/test/ioc"
 	"github.com/ego-component/egorm"
-	"github.com/gin-gonic/gin"
-	"github.com/gotomicro/ego/core/econf"
-	"github.com/gotomicro/ego/server/egin"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"github.com/wechatpay-apiv3/wechatpay-go/core"
+	"github.com/wechatpay-apiv3/wechatpay-go/services/payments"
 	"github.com/wechatpay-apiv3/wechatpay-go/services/payments/native"
 	"go.uber.org/mock/gomock"
 )
@@ -345,7 +343,12 @@ func (s *PaymentModuleTestSuite) TestService_PayByID() {
 				t.Helper()
 
 				mockProducer := evtmocks.NewMockPaymentEventProducer(ctrl)
-				mockProducer.EXPECT().Produce(gomock.Any(), gomock.Any()).Return(nil)
+				evt := event.PaymentEvent{
+					OrderSN: "order-pay-200001",
+					PayerID: int64(200001),
+					Status:  domain.PaymentStatusPaidSuccess.ToUnit8(),
+				}
+				mockProducer.EXPECT().Produce(gomock.Any(), evt).Return(nil)
 
 				mockCreditSvc := creditmocks.NewMockService(ctrl)
 				mockCreditSvc.EXPECT().TryDeductCredits(gomock.Any(), gomock.Any()).Return(int64(1), nil)
@@ -398,7 +401,12 @@ func (s *PaymentModuleTestSuite) TestService_PayByID() {
 				t.Helper()
 
 				mockProducer := evtmocks.NewMockPaymentEventProducer(ctrl)
-				mockProducer.EXPECT().Produce(gomock.Any(), gomock.Any()).Return(errors.New("mock: 发送消息"))
+				evt := event.PaymentEvent{
+					OrderSN: "order-pay-200006",
+					PayerID: int64(200006),
+					Status:  domain.PaymentStatusPaidSuccess.ToUnit8(),
+				}
+				mockProducer.EXPECT().Produce(gomock.Any(), evt).Return(errors.New("mock: 发送消息"))
 
 				mockCreditSvc := creditmocks.NewMockService(ctrl)
 				mockCreditSvc.EXPECT().TryDeductCredits(gomock.Any(), gomock.Any()).Return(int64(4), nil)
@@ -522,7 +530,7 @@ func (s *PaymentModuleTestSuite) TestService_PayByID() {
 			after:          func(t *testing.T, svc service.Service, expected payment.Payment) {},
 		},
 		{
-			name: "支付成功_仅微信支付",
+			name: "预支付成功_仅微信支付",
 			before: func(t *testing.T, svc service.Service, pmt payment.Payment) int64 {
 				t.Helper()
 				p, err := svc.CreatePayment(context.Background(), pmt)
@@ -578,7 +586,7 @@ func (s *PaymentModuleTestSuite) TestService_PayByID() {
 			},
 		},
 		{
-			name: "支付成功_仅微信支付_获取二维码失败",
+			name: "预支付失败_仅微信支付_获取二维码失败",
 			before: func(t *testing.T, svc service.Service, pmt payment.Payment) int64 {
 				t.Helper()
 				p, err := svc.CreatePayment(context.Background(), pmt)
@@ -611,7 +619,7 @@ func (s *PaymentModuleTestSuite) TestService_PayByID() {
 			after:          func(t *testing.T, svc service.Service, expected payment.Payment) {},
 		},
 		{
-			name: "支付成功_仅微信支付_支付金额非法",
+			name: "预支付失败_仅微信支付_支付金额非法",
 			before: func(t *testing.T, svc service.Service, pmt payment.Payment) int64 {
 				t.Helper()
 				p, err := svc.CreatePayment(context.Background(), pmt)
@@ -639,7 +647,7 @@ func (s *PaymentModuleTestSuite) TestService_PayByID() {
 			after:          func(t *testing.T, svc service.Service, expected payment.Payment) {},
 		},
 		{
-			name: "支付成功_混合支付",
+			name: "预支付成功_混合支付",
 			before: func(t *testing.T, svc service.Service, pmt payment.Payment) int64 {
 				t.Helper()
 				p, err := svc.CreatePayment(context.Background(), pmt)
@@ -715,7 +723,7 @@ func (s *PaymentModuleTestSuite) TestService_PayByID() {
 			},
 		},
 		{
-			name: "支付失败_混合支付_积分支付金额非法",
+			name: "预支付失败_混合支付_积分支付金额非法",
 			before: func(t *testing.T, svc service.Service, pmt payment.Payment) int64 {
 				t.Helper()
 				p, err := svc.CreatePayment(context.Background(), pmt)
@@ -748,7 +756,7 @@ func (s *PaymentModuleTestSuite) TestService_PayByID() {
 			after:          func(t *testing.T, svc service.Service, expected payment.Payment) {},
 		},
 		{
-			name: "支付失败_混合支付_微信支付金额非法",
+			name: "预支付失败_混合支付_微信支付金额非法",
 			before: func(t *testing.T, svc service.Service, pmt payment.Payment) int64 {
 				t.Helper()
 				p, err := svc.CreatePayment(context.Background(), pmt)
@@ -785,7 +793,7 @@ func (s *PaymentModuleTestSuite) TestService_PayByID() {
 			after:          func(t *testing.T, svc service.Service, expected payment.Payment) {},
 		},
 		{
-			name: "支付失败_混合支付_获取二维码失败",
+			name: "预支付失败_混合支付_获取二维码失败",
 			before: func(t *testing.T, svc service.Service, pmt payment.Payment) int64 {
 				t.Helper()
 				p, err := svc.CreatePayment(context.Background(), pmt)
@@ -827,7 +835,7 @@ func (s *PaymentModuleTestSuite) TestService_PayByID() {
 			after:          func(t *testing.T, svc service.Service, expected payment.Payment) {},
 		},
 		{
-			name: "支付失败_混合支付_预扣积分失败",
+			name: "预支付失败_混合支付_预扣积分失败",
 			before: func(t *testing.T, svc service.Service, pmt payment.Payment) int64 {
 				t.Helper()
 				p, err := svc.CreatePayment(context.Background(), pmt)
@@ -886,37 +894,808 @@ func (s *PaymentModuleTestSuite) TestService_PayByID() {
 	}
 }
 
-func (s *PaymentModuleTestSuite) TestHandler_Callback() {
+func (s *PaymentModuleTestSuite) TestService_HandleWechatCallback() {
+	t := s.T()
+
+	const (
+		TradeStateSuccess  = "SUCCESS"  // 成功
+		TradeStatePayError = "PAYERROR" // 失败
+		TradeStateClosed   = "CLOSED"   // 失败
+		TradeStateRevoked  = "REVOKED"  // 失败
+		TradeStateNotPay   = "NOTPAY"   // 忽略, 同样还有USERPAYING和REFUND,三者属于同一等价类划分
+		TradeStateInvalid  = "INVALID"
+	)
+
+	testCases := []struct {
+		name           string
+		before         func(t *testing.T, svc service.Service) int64
+		txn            *payments.Transaction
+		newSvcFunc     func(t *testing.T, ctrl *gomock.Controller) service.Service
+		errRequireFunc require.ErrorAssertionFunc
+		after          func(t *testing.T, svc service.Service, pmtID int64)
+	}{
+		{
+			name: "处理'支付成功'支付通知_仅微信支付",
+			before: func(t *testing.T, svc service.Service) int64 {
+				t.Helper()
+				pmt, err := svc.CreatePayment(context.Background(), domain.Payment{
+					OrderID:          300001,
+					OrderSN:          "order-callback-300001",
+					PayerID:          300001,
+					OrderDescription: "季会员 * 1",
+					TotalAmount:      20000,
+					Records: []domain.PaymentRecord{
+						{
+							Description: "季会员 * 1",
+							Channel:     domain.ChannelTypeWechat,
+							Amount:      20000,
+						},
+					},
+				})
+				require.NoError(t, err)
+
+				_, err = svc.PayByID(context.Background(), pmt.ID)
+				require.NoError(t, err)
+
+				return pmt.ID
+			},
+			txn: &payments.Transaction{
+				OutTradeNo:    core.String("order-callback-300001"),
+				TransactionId: core.String("wechat-transaction-id-300001"),
+				TradeState:    core.String(TradeStateSuccess),
+			},
+			newSvcFunc: func(t *testing.T, ctrl *gomock.Controller) service.Service {
+				t.Helper()
+				mockProducer := evtmocks.NewMockPaymentEventProducer(ctrl)
+				evt := event.PaymentEvent{
+					OrderSN: "order-callback-300001",
+					PayerID: int64(300001),
+					Status:  domain.PaymentStatusPaidSuccess.ToUnit8(),
+				}
+				mockProducer.EXPECT().Produce(gomock.Any(), evt).Return(nil)
+
+				mockNativeAPIService := wechatmocks.NewMockNativeAPIService(ctrl)
+				resp := &native.PrepayResponse{CodeUrl: core.String("wechat_code_url_300001")}
+				result := &core.APIResult{}
+				mockNativeAPIService.EXPECT().Prepay(gomock.Any(), gomock.Any()).Return(resp, result, nil)
+
+				return startup.InitService(mockProducer, &credit.Module{}, mockNativeAPIService)
+			},
+			errRequireFunc: require.NoError,
+			after: func(t *testing.T, svc service.Service, pmtID int64) {
+				t.Helper()
+
+				actual, err := svc.FindPaymentByID(context.Background(), pmtID)
+				require.NoError(t, err)
+
+				require.Equal(t, domain.PaymentStatusPaidSuccess, actual.Status)
+				require.Equal(t, "order-callback-300001", actual.OrderSN)
+				require.NotZero(t, actual.PaidAt)
+
+				w, ok := slice.Find(actual.Records, func(src domain.PaymentRecord) bool {
+					return src.Channel == domain.ChannelTypeWechat
+				})
+				require.True(t, ok)
+				require.Equal(t, domain.PaymentStatusPaidSuccess, w.Status)
+				require.Equal(t, "wechat-transaction-id-300001", w.PaymentNO3rd)
+				require.Zero(t, w.WechatCodeURL)
+				require.NotZero(t, w.PaidAt)
+			},
+		},
+		{
+			name: "处理'支付失败'支付通知_仅微信支付",
+			before: func(t *testing.T, svc service.Service) int64 {
+				t.Helper()
+				pmt, err := svc.CreatePayment(context.Background(), domain.Payment{
+					OrderID:          300002,
+					OrderSN:          "order-callback-300002",
+					PayerID:          300002,
+					OrderDescription: "季会员 * 1",
+					TotalAmount:      20000,
+					Records: []domain.PaymentRecord{
+						{
+							Description: "季会员 * 1",
+							Channel:     domain.ChannelTypeWechat,
+							Amount:      20000,
+						},
+					},
+				})
+				require.NoError(t, err)
+
+				_, err = svc.PayByID(context.Background(), pmt.ID)
+				require.NoError(t, err)
+
+				return pmt.ID
+			},
+			txn: &payments.Transaction{
+				OutTradeNo:    core.String("order-callback-300002"),
+				TransactionId: core.String("wechat-transaction-id-300002"),
+				TradeState:    core.String(TradeStateClosed),
+			},
+			newSvcFunc: func(t *testing.T, ctrl *gomock.Controller) service.Service {
+				t.Helper()
+
+				mockProducer := evtmocks.NewMockPaymentEventProducer(ctrl)
+				evt := event.PaymentEvent{
+					OrderSN: "order-callback-300002",
+					PayerID: int64(300002),
+					Status:  domain.PaymentStatusPaidFailed.ToUnit8(),
+				}
+				mockProducer.EXPECT().Produce(gomock.Any(), evt).Return(nil)
+
+				mockNativeAPIService := wechatmocks.NewMockNativeAPIService(ctrl)
+				resp := &native.PrepayResponse{CodeUrl: core.String("wechat_code_url_300002")}
+				result := &core.APIResult{}
+				mockNativeAPIService.EXPECT().Prepay(gomock.Any(), gomock.Any()).Return(resp, result, nil)
+
+				return startup.InitService(mockProducer, &credit.Module{}, mockNativeAPIService)
+			},
+			errRequireFunc: require.NoError,
+			after: func(t *testing.T, svc service.Service, pmtID int64) {
+				t.Helper()
+
+				actual, err := svc.FindPaymentByID(context.Background(), pmtID)
+				require.NoError(t, err)
+
+				require.Equal(t, domain.PaymentStatusPaidFailed, actual.Status)
+				require.Equal(t, "order-callback-300002", actual.OrderSN)
+				require.Zero(t, actual.PaidAt)
+
+				w, ok := slice.Find(actual.Records, func(src domain.PaymentRecord) bool {
+					return src.Channel == domain.ChannelTypeWechat
+				})
+				require.True(t, ok)
+				require.Equal(t, domain.PaymentStatusPaidFailed, w.Status)
+				require.Equal(t, "wechat-transaction-id-300002", w.PaymentNO3rd)
+				require.Zero(t, w.WechatCodeURL)
+				require.Zero(t, w.PaidAt)
+			},
+		},
+		{
+			name: "忽略'未支付'通知_仅微信支付",
+			before: func(t *testing.T, svc service.Service) int64 {
+				t.Helper()
+				pmt, err := svc.CreatePayment(context.Background(), domain.Payment{
+					OrderID:          300003,
+					OrderSN:          "order-callback-300003",
+					PayerID:          300003,
+					OrderDescription: "季会员 * 1",
+					TotalAmount:      20000,
+					Records: []domain.PaymentRecord{
+						{
+							Description: "季会员 * 1",
+							Channel:     domain.ChannelTypeWechat,
+							Amount:      20000,
+						},
+					},
+				})
+				require.NoError(t, err)
+
+				_, err = svc.PayByID(context.Background(), pmt.ID)
+				require.NoError(t, err)
+
+				return pmt.ID
+			},
+			txn: &payments.Transaction{
+				OutTradeNo:    core.String("order-callback-300003"),
+				TransactionId: core.String("wechat-transaction-id-300003"),
+				TradeState:    core.String(TradeStateNotPay),
+			},
+			newSvcFunc: func(t *testing.T, ctrl *gomock.Controller) service.Service {
+				t.Helper()
+				mockNativeAPIService := wechatmocks.NewMockNativeAPIService(ctrl)
+				resp := &native.PrepayResponse{CodeUrl: core.String("wechat_code_url_300003")}
+				result := &core.APIResult{}
+				mockNativeAPIService.EXPECT().Prepay(gomock.Any(), gomock.Any()).Return(resp, result, nil)
+				return startup.InitService(nil, &credit.Module{}, mockNativeAPIService)
+			},
+			errRequireFunc: require.Error,
+			after: func(t *testing.T, svc service.Service, pmtID int64) {
+				t.Helper()
+
+				actual, err := svc.FindPaymentByID(context.Background(), pmtID)
+				require.NoError(t, err)
+
+				require.Equal(t, domain.PaymentStatusProcessing, actual.Status)
+				require.Equal(t, "order-callback-300003", actual.OrderSN)
+				require.Zero(t, actual.PaidAt)
+
+				w, ok := slice.Find(actual.Records, func(src domain.PaymentRecord) bool {
+					return src.Channel == domain.ChannelTypeWechat
+				})
+				require.True(t, ok)
+				require.Equal(t, domain.PaymentStatusProcessing, w.Status)
+				require.Zero(t, w.PaymentNO3rd)
+				require.Zero(t, w.WechatCodeURL)
+				require.Zero(t, w.PaidAt)
+			},
+		},
+		{
+			name: "忽略'非法状态'通知_仅微信支付",
+			before: func(t *testing.T, svc service.Service) int64 {
+				t.Helper()
+				pmt, err := svc.CreatePayment(context.Background(), domain.Payment{
+					OrderID:          300004,
+					OrderSN:          "order-callback-300004",
+					PayerID:          300004,
+					OrderDescription: "季会员 * 1",
+					TotalAmount:      20000,
+					Records: []domain.PaymentRecord{
+						{
+							Description: "季会员 * 1",
+							Channel:     domain.ChannelTypeWechat,
+							Amount:      20000,
+						},
+					},
+				})
+				require.NoError(t, err)
+
+				_, err = svc.PayByID(context.Background(), pmt.ID)
+				require.NoError(t, err)
+
+				return pmt.ID
+			},
+			txn: &payments.Transaction{
+				OutTradeNo:    core.String("order-callback-300004"),
+				TransactionId: core.String("wechat-transaction-id-300004"),
+				TradeState:    core.String(TradeStateInvalid),
+			},
+			newSvcFunc: func(t *testing.T, ctrl *gomock.Controller) service.Service {
+				t.Helper()
+				mockNativeAPIService := wechatmocks.NewMockNativeAPIService(ctrl)
+				resp := &native.PrepayResponse{CodeUrl: core.String("wechat_code_url_300004")}
+				result := &core.APIResult{}
+				mockNativeAPIService.EXPECT().Prepay(gomock.Any(), gomock.Any()).Return(resp, result, nil)
+				return startup.InitService(nil, &credit.Module{}, mockNativeAPIService)
+			},
+			errRequireFunc: require.Error,
+			after: func(t *testing.T, svc service.Service, pmtID int64) {
+				t.Helper()
+
+				actual, err := svc.FindPaymentByID(context.Background(), pmtID)
+				require.NoError(t, err)
+
+				require.Equal(t, domain.PaymentStatusProcessing, actual.Status)
+				require.Equal(t, "order-callback-300004", actual.OrderSN)
+				require.Zero(t, actual.PaidAt)
+
+				w, ok := slice.Find(actual.Records, func(src domain.PaymentRecord) bool {
+					return src.Channel == domain.ChannelTypeWechat
+				})
+				require.True(t, ok)
+				require.Equal(t, domain.PaymentStatusProcessing, w.Status)
+				require.Zero(t, w.PaymentNO3rd)
+				require.Zero(t, w.WechatCodeURL)
+				require.Zero(t, w.PaidAt)
+			},
+		},
+
+		{
+			name: "处理'支付成功'支付通知_混合支付",
+			before: func(t *testing.T, svc service.Service) int64 {
+				t.Helper()
+				pmt, err := svc.CreatePayment(context.Background(), domain.Payment{
+					OrderID:          300021,
+					OrderSN:          "order-callback-300021",
+					PayerID:          300021,
+					OrderDescription: "季会员 * 1",
+					TotalAmount:      30000,
+					Records: []domain.PaymentRecord{
+						{
+							Description: "季会员 * 1",
+							Channel:     domain.ChannelTypeWechat,
+							Amount:      20000,
+						},
+						{
+							Description: "季会员 * 1",
+							Channel:     domain.ChannelTypeCredit,
+							Amount:      10000,
+						},
+					},
+				})
+				require.NoError(t, err)
+
+				_, err = svc.PayByID(context.Background(), pmt.ID)
+				require.NoError(t, err)
+
+				return pmt.ID
+			},
+			txn: &payments.Transaction{
+				OutTradeNo:    core.String("order-callback-300021"),
+				TransactionId: core.String("wechat-transaction-id-300021"),
+				TradeState:    core.String(TradeStateSuccess),
+			},
+			newSvcFunc: func(t *testing.T, ctrl *gomock.Controller) service.Service {
+				t.Helper()
+
+				mockProducer := evtmocks.NewMockPaymentEventProducer(ctrl)
+				payerID := int64(300021)
+				evt := event.PaymentEvent{
+					OrderSN: "order-callback-300021",
+					PayerID: payerID,
+					Status:  domain.PaymentStatusPaidSuccess.ToUnit8(),
+				}
+				mockProducer.EXPECT().Produce(gomock.Any(), evt).Return(nil)
+
+				mockCreditSvc := creditmocks.NewMockService(ctrl)
+				tid := int64(10)
+				mockCreditSvc.EXPECT().TryDeductCredits(gomock.Any(), gomock.Any()).Return(tid, nil)
+				mockCreditSvc.EXPECT().ConfirmDeductCredits(gomock.Any(), payerID, tid).Return(nil)
+
+				mockNativeAPIService := wechatmocks.NewMockNativeAPIService(ctrl)
+				resp := &native.PrepayResponse{CodeUrl: core.String("wechat_code_url_300021")}
+				result := &core.APIResult{}
+				mockNativeAPIService.EXPECT().Prepay(gomock.Any(), gomock.Any()).Return(resp, result, nil)
+
+				return startup.InitService(mockProducer, &credit.Module{Svc: mockCreditSvc}, mockNativeAPIService)
+			},
+			errRequireFunc: require.NoError,
+			after: func(t *testing.T, svc service.Service, pmtID int64) {
+				t.Helper()
+
+				actual, err := svc.FindPaymentByID(context.Background(), pmtID)
+				require.NoError(t, err)
+
+				require.Equal(t, domain.PaymentStatusPaidSuccess, actual.Status)
+				require.Equal(t, "order-callback-300021", actual.OrderSN)
+				require.NotZero(t, actual.PaidAt)
+
+				w, ok := slice.Find(actual.Records, func(src domain.PaymentRecord) bool {
+					return src.Channel == domain.ChannelTypeWechat
+				})
+				require.True(t, ok)
+				require.Equal(t, domain.PaymentStatusPaidSuccess, w.Status)
+				require.Equal(t, "wechat-transaction-id-300021", w.PaymentNO3rd)
+				require.NotZero(t, w.PaidAt)
+				require.Zero(t, w.WechatCodeURL)
+
+				c, ok := slice.Find(actual.Records, func(src domain.PaymentRecord) bool {
+					return src.Channel == domain.ChannelTypeCredit
+				})
+				require.True(t, ok)
+				require.Equal(t, domain.PaymentStatusPaidSuccess, c.Status)
+				require.Equal(t, "10", c.PaymentNO3rd)
+				require.NotZero(t, c.PaidAt)
+			},
+		},
+		{
+			name: "处理'支付成功'支付通知_混合支付_确认扣减积分失败",
+			before: func(t *testing.T, svc service.Service) int64 {
+				t.Helper()
+				pmt, err := svc.CreatePayment(context.Background(), domain.Payment{
+					OrderID:          300023,
+					OrderSN:          "order-callback-300023",
+					PayerID:          300023,
+					OrderDescription: "季会员 * 1",
+					TotalAmount:      30000,
+					Records: []domain.PaymentRecord{
+						{
+							Description: "季会员 * 1",
+							Channel:     domain.ChannelTypeWechat,
+							Amount:      20000,
+						},
+						{
+							Description: "季会员 * 1",
+							Channel:     domain.ChannelTypeCredit,
+							Amount:      10000,
+						},
+					},
+				})
+				require.NoError(t, err)
+
+				_, err = svc.PayByID(context.Background(), pmt.ID)
+				require.NoError(t, err)
+
+				return pmt.ID
+			},
+			txn: &payments.Transaction{
+				OutTradeNo:    core.String("order-callback-300023"),
+				TransactionId: core.String("wechat-transaction-id-300023"),
+				TradeState:    core.String(TradeStateSuccess),
+			},
+			newSvcFunc: func(t *testing.T, ctrl *gomock.Controller) service.Service {
+				t.Helper()
+
+				mockProducer := evtmocks.NewMockPaymentEventProducer(ctrl)
+				payerID := int64(300023)
+				evt := event.PaymentEvent{
+					OrderSN: "order-callback-300023",
+					PayerID: payerID,
+					Status:  domain.PaymentStatusPaidSuccess.ToUnit8(),
+				}
+				mockProducer.EXPECT().Produce(gomock.Any(), evt).Return(nil)
+
+				mockCreditSvc := creditmocks.NewMockService(ctrl)
+				mockErr := errors.New("mock: 确认扣减积分失败")
+				tid := int64(12)
+				mockCreditSvc.EXPECT().TryDeductCredits(gomock.Any(), gomock.Any()).Return(tid, nil)
+				mockCreditSvc.EXPECT().ConfirmDeductCredits(gomock.Any(), payerID, tid).Return(mockErr)
+
+				mockNativeAPIService := wechatmocks.NewMockNativeAPIService(ctrl)
+				resp := &native.PrepayResponse{CodeUrl: core.String("wechat_code_url_300023")}
+				result := &core.APIResult{}
+				mockNativeAPIService.EXPECT().Prepay(gomock.Any(), gomock.Any()).Return(resp, result, nil)
+
+				return startup.InitService(mockProducer, &credit.Module{Svc: mockCreditSvc}, mockNativeAPIService)
+			},
+			errRequireFunc: require.NoError,
+			after: func(t *testing.T, svc service.Service, pmtID int64) {
+				t.Helper()
+
+				actual, err := svc.FindPaymentByID(context.Background(), pmtID)
+				require.NoError(t, err)
+
+				require.Equal(t, domain.PaymentStatusPaidSuccess, actual.Status)
+				require.Equal(t, "order-callback-300023", actual.OrderSN)
+				require.NotZero(t, actual.PaidAt)
+
+				w, ok := slice.Find(actual.Records, func(src domain.PaymentRecord) bool {
+					return src.Channel == domain.ChannelTypeWechat
+				})
+				require.True(t, ok)
+				require.Equal(t, domain.PaymentStatusPaidSuccess, w.Status)
+				require.Equal(t, "wechat-transaction-id-300023", w.PaymentNO3rd)
+				require.NotZero(t, w.PaidAt)
+				require.Zero(t, w.WechatCodeURL)
+
+				c, ok := slice.Find(actual.Records, func(src domain.PaymentRecord) bool {
+					return src.Channel == domain.ChannelTypeCredit
+				})
+				require.True(t, ok)
+				require.Equal(t, domain.PaymentStatusPaidSuccess, c.Status)
+				require.Equal(t, "12", c.PaymentNO3rd)
+				require.NotZero(t, c.PaidAt)
+			},
+		},
+		{
+			name: "处理'支付失败'支付通知_混合支付",
+			before: func(t *testing.T, svc service.Service) int64 {
+				t.Helper()
+				pmt, err := svc.CreatePayment(context.Background(), domain.Payment{
+					OrderID:          300022,
+					OrderSN:          "order-callback-300022",
+					PayerID:          300022,
+					OrderDescription: "季会员 * 1",
+					TotalAmount:      30000,
+					Records: []domain.PaymentRecord{
+						{
+							Description: "季会员 * 1",
+							Channel:     domain.ChannelTypeWechat,
+							Amount:      20000,
+						},
+						{
+							Description: "季会员 * 1",
+							Channel:     domain.ChannelTypeCredit,
+							Amount:      10000,
+						},
+					},
+				})
+				require.NoError(t, err)
+
+				_, err = svc.PayByID(context.Background(), pmt.ID)
+				require.NoError(t, err)
+
+				return pmt.ID
+			},
+			txn: &payments.Transaction{
+				OutTradeNo:    core.String("order-callback-300022"),
+				TransactionId: core.String("wechat-transaction-id-300022"),
+				TradeState:    core.String(TradeStatePayError),
+			},
+			newSvcFunc: func(t *testing.T, ctrl *gomock.Controller) service.Service {
+				t.Helper()
+
+				mockProducer := evtmocks.NewMockPaymentEventProducer(ctrl)
+				payerID := int64(300022)
+				evt := event.PaymentEvent{
+					OrderSN: "order-callback-300022",
+					PayerID: payerID,
+					Status:  domain.PaymentStatusPaidFailed.ToUnit8(),
+				}
+				mockProducer.EXPECT().Produce(gomock.Any(), evt).Return(nil)
+
+				mockCreditSvc := creditmocks.NewMockService(ctrl)
+				tid := int64(11)
+				mockCreditSvc.EXPECT().TryDeductCredits(gomock.Any(), gomock.Any()).Return(tid, nil)
+				mockCreditSvc.EXPECT().CancelDeductCredits(gomock.Any(), payerID, tid).Return(nil)
+
+				mockNativeAPIService := wechatmocks.NewMockNativeAPIService(ctrl)
+				resp := &native.PrepayResponse{CodeUrl: core.String("wechat_code_url_300022")}
+				result := &core.APIResult{}
+				mockNativeAPIService.EXPECT().Prepay(gomock.Any(), gomock.Any()).Return(resp, result, nil)
+
+				return startup.InitService(mockProducer, &credit.Module{Svc: mockCreditSvc}, mockNativeAPIService)
+			},
+			errRequireFunc: require.NoError,
+			after: func(t *testing.T, svc service.Service, pmtID int64) {
+				t.Helper()
+
+				actual, err := svc.FindPaymentByID(context.Background(), pmtID)
+				require.NoError(t, err)
+
+				require.Equal(t, domain.PaymentStatusPaidFailed, actual.Status)
+				require.Equal(t, "order-callback-300022", actual.OrderSN)
+				require.Zero(t, actual.PaidAt)
+
+				w, ok := slice.Find(actual.Records, func(src domain.PaymentRecord) bool {
+					return src.Channel == domain.ChannelTypeWechat
+				})
+				require.True(t, ok)
+				require.Equal(t, domain.PaymentStatusPaidFailed, w.Status)
+				require.Equal(t, "wechat-transaction-id-300022", w.PaymentNO3rd)
+				require.Zero(t, w.PaidAt)
+				require.Zero(t, w.WechatCodeURL)
+
+				c, ok := slice.Find(actual.Records, func(src domain.PaymentRecord) bool {
+					return src.Channel == domain.ChannelTypeCredit
+				})
+				require.True(t, ok)
+				require.Equal(t, domain.PaymentStatusPaidFailed, c.Status)
+				require.Equal(t, "11", c.PaymentNO3rd)
+				require.Zero(t, c.PaidAt)
+			},
+		},
+		{
+			name: "处理'支付失败'支付通知_混合支付_取消预扣失败",
+			before: func(t *testing.T, svc service.Service) int64 {
+				t.Helper()
+				pmt, err := svc.CreatePayment(context.Background(), domain.Payment{
+					OrderID:          300024,
+					OrderSN:          "order-callback-300024",
+					PayerID:          300024,
+					OrderDescription: "季会员 * 1",
+					TotalAmount:      30000,
+					Records: []domain.PaymentRecord{
+						{
+							Description: "季会员 * 1",
+							Channel:     domain.ChannelTypeWechat,
+							Amount:      20000,
+						},
+						{
+							Description: "季会员 * 1",
+							Channel:     domain.ChannelTypeCredit,
+							Amount:      10000,
+						},
+					},
+				})
+				require.NoError(t, err)
+
+				_, err = svc.PayByID(context.Background(), pmt.ID)
+				require.NoError(t, err)
+
+				return pmt.ID
+			},
+			txn: &payments.Transaction{
+				OutTradeNo:    core.String("order-callback-300024"),
+				TransactionId: core.String("wechat-transaction-id-300024"),
+				TradeState:    core.String(TradeStateRevoked),
+			},
+			newSvcFunc: func(t *testing.T, ctrl *gomock.Controller) service.Service {
+				t.Helper()
+
+				mockProducer := evtmocks.NewMockPaymentEventProducer(ctrl)
+				payerID := int64(300024)
+				evt := event.PaymentEvent{
+					OrderSN: "order-callback-300024",
+					PayerID: payerID,
+					Status:  domain.PaymentStatusPaidFailed.ToUnit8(),
+				}
+				mockProducer.EXPECT().Produce(gomock.Any(), evt).Return(nil)
+
+				mockCreditSvc := creditmocks.NewMockService(ctrl)
+				mockErr := errors.New("mock: 取消预扣积分失败")
+				tid := int64(13)
+				mockCreditSvc.EXPECT().TryDeductCredits(gomock.Any(), gomock.Any()).Return(tid, nil)
+				mockCreditSvc.EXPECT().CancelDeductCredits(gomock.Any(), payerID, tid).Return(mockErr)
+
+				mockNativeAPIService := wechatmocks.NewMockNativeAPIService(ctrl)
+				resp := &native.PrepayResponse{CodeUrl: core.String("wechat_code_url_300024")}
+				result := &core.APIResult{}
+				mockNativeAPIService.EXPECT().Prepay(gomock.Any(), gomock.Any()).Return(resp, result, nil)
+
+				return startup.InitService(mockProducer, &credit.Module{Svc: mockCreditSvc}, mockNativeAPIService)
+			},
+			errRequireFunc: require.NoError,
+			after: func(t *testing.T, svc service.Service, pmtID int64) {
+				t.Helper()
+
+				actual, err := svc.FindPaymentByID(context.Background(), pmtID)
+				require.NoError(t, err)
+
+				require.Equal(t, domain.PaymentStatusPaidFailed, actual.Status)
+				require.Equal(t, "order-callback-300024", actual.OrderSN)
+				require.Zero(t, actual.PaidAt)
+
+				w, ok := slice.Find(actual.Records, func(src domain.PaymentRecord) bool {
+					return src.Channel == domain.ChannelTypeWechat
+				})
+				require.True(t, ok)
+				require.Equal(t, domain.PaymentStatusPaidFailed, w.Status)
+				require.Equal(t, "wechat-transaction-id-300024", w.PaymentNO3rd)
+				require.Zero(t, w.PaidAt)
+				require.Zero(t, w.WechatCodeURL)
+
+				c, ok := slice.Find(actual.Records, func(src domain.PaymentRecord) bool {
+					return src.Channel == domain.ChannelTypeCredit
+				})
+				require.True(t, ok)
+				require.Equal(t, domain.PaymentStatusPaidFailed, c.Status)
+				require.Equal(t, "13", c.PaymentNO3rd)
+				require.Zero(t, c.PaidAt)
+			},
+		},
+		{
+			name: "忽略'未支付'通知_混合支付",
+			before: func(t *testing.T, svc service.Service) int64 {
+				t.Helper()
+				pmt, err := svc.CreatePayment(context.Background(), domain.Payment{
+					OrderID:          300025,
+					OrderSN:          "order-callback-300025",
+					PayerID:          300025,
+					OrderDescription: "季会员 * 1",
+					TotalAmount:      30000,
+					Records: []domain.PaymentRecord{
+						{
+							Description: "季会员 * 1",
+							Channel:     domain.ChannelTypeWechat,
+							Amount:      20000,
+						},
+						{
+							Description: "季会员 * 1",
+							Channel:     domain.ChannelTypeCredit,
+							Amount:      10000,
+						},
+					},
+				})
+				require.NoError(t, err)
+
+				_, err = svc.PayByID(context.Background(), pmt.ID)
+				require.NoError(t, err)
+
+				return pmt.ID
+			},
+			txn: &payments.Transaction{
+				OutTradeNo:    core.String("order-callback-300025"),
+				TransactionId: core.String("wechat-transaction-id-300025"),
+				TradeState:    core.String(TradeStateNotPay),
+			},
+			newSvcFunc: func(t *testing.T, ctrl *gomock.Controller) service.Service {
+				t.Helper()
+
+				mockCreditSvc := creditmocks.NewMockService(ctrl)
+				mockCreditSvc.EXPECT().TryDeductCredits(gomock.Any(), gomock.Any()).Return(int64(14), nil)
+
+				mockNativeAPIService := wechatmocks.NewMockNativeAPIService(ctrl)
+				resp := &native.PrepayResponse{CodeUrl: core.String("wechat_code_url_300025")}
+				result := &core.APIResult{}
+				mockNativeAPIService.EXPECT().Prepay(gomock.Any(), gomock.Any()).Return(resp, result, nil)
+
+				return startup.InitService(nil, &credit.Module{Svc: mockCreditSvc}, mockNativeAPIService)
+			},
+			errRequireFunc: require.Error,
+			after: func(t *testing.T, svc service.Service, pmtID int64) {
+				t.Helper()
+
+				actual, err := svc.FindPaymentByID(context.Background(), pmtID)
+				require.NoError(t, err)
+
+				require.Equal(t, domain.PaymentStatusProcessing, actual.Status)
+				require.Equal(t, "order-callback-300025", actual.OrderSN)
+				require.Zero(t, actual.PaidAt)
+
+				w, ok := slice.Find(actual.Records, func(src domain.PaymentRecord) bool {
+					return src.Channel == domain.ChannelTypeWechat
+				})
+				require.True(t, ok)
+				require.Equal(t, domain.PaymentStatusProcessing, w.Status)
+				require.Zero(t, w.PaymentNO3rd)
+				require.Zero(t, w.PaidAt)
+				require.Zero(t, w.WechatCodeURL)
+
+				c, ok := slice.Find(actual.Records, func(src domain.PaymentRecord) bool {
+					return src.Channel == domain.ChannelTypeCredit
+				})
+				require.True(t, ok)
+				require.Equal(t, domain.PaymentStatusProcessing, c.Status)
+				require.Equal(t, "14", c.PaymentNO3rd)
+				require.Zero(t, c.PaidAt)
+			},
+		},
+		{
+			name: "忽略'非法订单SN'通知_混合支付",
+			before: func(t *testing.T, svc service.Service) int64 {
+				t.Helper()
+				pmt, err := svc.CreatePayment(context.Background(), domain.Payment{
+					OrderID:          300026,
+					OrderSN:          "order-callback-300026",
+					PayerID:          300026,
+					OrderDescription: "季会员 * 1",
+					TotalAmount:      30000,
+					Records: []domain.PaymentRecord{
+						{
+							Description: "季会员 * 1",
+							Channel:     domain.ChannelTypeWechat,
+							Amount:      20000,
+						},
+						{
+							Description: "季会员 * 1",
+							Channel:     domain.ChannelTypeCredit,
+							Amount:      10000,
+						},
+					},
+				})
+				require.NoError(t, err)
+
+				_, err = svc.PayByID(context.Background(), pmt.ID)
+				require.NoError(t, err)
+
+				return pmt.ID
+			},
+			txn: &payments.Transaction{
+				OutTradeNo:    core.String("order-callback-invalid-300026"),
+				TransactionId: core.String("wechat-transaction-id-300026"),
+				TradeState:    core.String(TradeStateSuccess),
+			},
+			newSvcFunc: func(t *testing.T, ctrl *gomock.Controller) service.Service {
+				t.Helper()
+
+				mockCreditSvc := creditmocks.NewMockService(ctrl)
+				mockCreditSvc.EXPECT().TryDeductCredits(gomock.Any(), gomock.Any()).Return(int64(15), nil)
+
+				mockNativeAPIService := wechatmocks.NewMockNativeAPIService(ctrl)
+				resp := &native.PrepayResponse{CodeUrl: core.String("wechat_code_url_300026")}
+				result := &core.APIResult{}
+				mockNativeAPIService.EXPECT().Prepay(gomock.Any(), gomock.Any()).Return(resp, result, nil)
+
+				return startup.InitService(nil, &credit.Module{Svc: mockCreditSvc}, mockNativeAPIService)
+			},
+			errRequireFunc: require.Error,
+			after: func(t *testing.T, svc service.Service, pmtID int64) {
+				t.Helper()
+
+				actual, err := svc.FindPaymentByID(context.Background(), pmtID)
+				require.NoError(t, err)
+
+				require.Equal(t, domain.PaymentStatusProcessing, actual.Status)
+				require.Equal(t, "order-callback-300026", actual.OrderSN)
+				require.Zero(t, actual.PaidAt)
+
+				w, ok := slice.Find(actual.Records, func(src domain.PaymentRecord) bool {
+					return src.Channel == domain.ChannelTypeWechat
+				})
+				require.True(t, ok)
+				require.Equal(t, domain.PaymentStatusProcessing, w.Status)
+				require.Zero(t, w.PaymentNO3rd)
+				require.Zero(t, w.PaidAt)
+				require.Zero(t, w.WechatCodeURL)
+
+				c, ok := slice.Find(actual.Records, func(src domain.PaymentRecord) bool {
+					return src.Channel == domain.ChannelTypeCredit
+				})
+				require.True(t, ok)
+				require.Equal(t, domain.PaymentStatusProcessing, c.Status)
+				require.Equal(t, "15", c.PaymentNO3rd)
+				require.Zero(t, c.PaidAt)
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			svc := tc.newSvcFunc(t, ctrl)
+			pmtID := tc.before(t, svc)
+			err := svc.HandleWechatCallback(context.Background(), tc.txn)
+			tc.errRequireFunc(t, err)
+			tc.after(t, svc, pmtID)
+		})
+	}
+}
+
+func (s *PaymentModuleTestSuite) TestJob_SyncWechatOrder() {
 	t := s.T()
 	t.Skip()
-	// todo: Callback 仅微信支付
-	// todo: Callback 混合支付
-	// todo: Callback 非法状态,忽略退款、忽略取消支付(用户扫码没支付/识别,记录日志, 忽略)
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	mockProducer := evtmocks.NewMockPaymentEventProducer(ctrl)
-	mockProducer.EXPECT().Produce(gomock.Any(), gomock.Any()).Return(nil)
-
-	mockCreditSvc := creditmocks.NewMockService(ctrl)
-	mockCreditSvc.EXPECT().TryDeductCredits(gomock.Any(), gomock.Any()).Return(int64(1), nil)
-	mockCreditSvc.EXPECT().ConfirmDeductCredits(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
-
-	mockNativeAPIService := wechatmocks.NewMockNativeAPIService(ctrl)
-	mockNotifyHandler := wechatmocks.NewMockNotifyHandler(ctrl)
-
-	handler := startup.InitHandler(
-		mockProducer,
-		&credit.Module{Svc: mockCreditSvc},
-		mockNativeAPIService,
-		mockNotifyHandler,
-	)
-	econf.Set("server", map[string]any{"contextTimeout": "1s"})
-	server := egin.Load("server").Build()
-	server.Use(func(ctx *gin.Context) {
-		ctx.Set("_session", session.NewMemorySession(session.Claims{
-			Uid: testUID,
-		}))
-	})
-	handler.PublicRoutes(server.Engine)
 }

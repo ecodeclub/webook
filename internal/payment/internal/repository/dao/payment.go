@@ -30,15 +30,11 @@ type PaymentDAO interface {
 	FindOrCreate(ctx context.Context, pmt Payment, records []PaymentRecord) (Payment, []PaymentRecord, error)
 	FindPaymentByID(ctx context.Context, pmtID int64) (Payment, []PaymentRecord, error)
 	UpdateByOrderSN(ctx context.Context, pmt Payment, records []PaymentRecord) error
+	FindPaymentByOrderSN(ctx context.Context, orderSN string) (Payment, []PaymentRecord, error)
 
 	// 下方待重构
 
-	UpdateTxnIDAndStatus(ctx context.Context, bizTradeNo string, txnID string, status uint8) error
-	FindPaymentByOrderSN(ctx context.Context, orderSN string) (Payment, []PaymentRecord, error)
-
-	Insert(ctx context.Context, pmt Payment) error
 	FindExpiredPayment(ctx context.Context, offset int, limit int, t time.Time) ([]Payment, error)
-	GetPayment(ctx context.Context, bizTradeNO string) (Payment, error)
 }
 
 type PaymentGORMDAO struct {
@@ -108,43 +104,25 @@ func (g *PaymentGORMDAO) UpdateByOrderSN(ctx context.Context, pmt Payment, recor
 	})
 }
 
-func (g *PaymentGORMDAO) UpdateTxnIDAndStatus(ctx context.Context, orderSN string, txnID string, status uint8) error {
-	return g.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		values := map[string]any{
-			"payment_no_3rd": txnID,
-			"status":         status,
-			"utime":          time.Now().UnixMilli(),
-		}
-		if status == domain.PaymentStatusPaidSuccess.ToUnit8() {
-			values["paid_at"] = time.Now().UnixMilli()
-		}
-		err := tx.Model(Payment{}).Where("order_sn = ?", orderSN).
-			Updates(values).Error
-		return err
-	})
-}
-
 func (g *PaymentGORMDAO) FindPaymentByOrderSN(ctx context.Context, orderSN string) (Payment, []PaymentRecord, error) {
-	return Payment{}, nil, nil
-}
-
-func (g *PaymentGORMDAO) GetPayment(ctx context.Context, bizTradeNO string) (Payment, error) {
-	var res Payment
-	err := g.db.WithContext(ctx).Where("biz_trade_no = ?", bizTradeNO).First(&res).Error
-	return res, err
+	var pmt Payment
+	var records []PaymentRecord
+	err := g.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.First(&pmt, "order_sn = ?", orderSN).Error; err != nil {
+			return fmt.Errorf("查找支付主记录失败: %w", err)
+		}
+		if err := tx.Find(&records, "payment_id = ?", pmt.Id).Error; err != nil {
+			return fmt.Errorf("查找支付渠道记录失败: %w", err)
+		}
+		return nil
+	})
+	return pmt, records, err
 }
 
 func (g *PaymentGORMDAO) FindExpiredPayment(ctx context.Context, offset int, limit int, t time.Time) ([]Payment, error) {
 	var res []Payment
 	err := g.db.WithContext(ctx).Where("status = ? AND utime < ?", domain.PaymentStatusUnpaid.ToUnit8(), t.UnixMilli()).Offset(offset).Limit(limit).Find(&res).Error
 	return res, err
-}
-
-func (g *PaymentGORMDAO) Insert(ctx context.Context, pmt Payment) error {
-	now := time.Now().UnixMilli()
-	pmt.Utime = now
-	pmt.Ctime = now
-	return g.db.WithContext(ctx).Create(&pmt).Error
 }
 
 type Payment struct {

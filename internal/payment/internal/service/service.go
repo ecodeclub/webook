@@ -106,8 +106,6 @@ func (s *service) PayByID(ctx context.Context, pmtID int64) (domain.Payment, err
 	if err != nil {
 		return domain.Payment{}, fmt.Errorf("执行支付操作失败: %w, pmtID: %d", err, pmtID)
 	}
-
-	// todo: 幂等 判定状态,如果为processing, 忽略更新
 	return pmt, err
 }
 
@@ -279,20 +277,58 @@ func (s *service) HandleWechatCallback(ctx context.Context, txn *payments.Transa
 		return err
 	}
 
-	err = s.sendPaymentEvent(ctx, &pmt)
-	if err != nil {
-		return err
-	}
+	p, _ := s.repo.FindPaymentByOrderSN(context.Background(), pmt.OrderSN)
+	pmt.PayerID = p.PayerID
+	pmt.Records = p.Records
 
-	// 如果为混合支付,执行积分回调操作
+	// 支付主记录和微信支付渠道支付成功后,就发送消息
+	_ = s.sendPaymentEvent(ctx, &pmt)
+
 	return s.handleCreditCallback(ctx, pmt)
 }
 
 func (s *service) handleCreditCallback(ctx context.Context, pmt domain.Payment) error {
-	// 查找支付主记录及是否含有积分支付渠道记录
-	// 如果找到, 通过pmt,生成新的主记录+积分渠道记录
-	// s.repo.UpdatePayment()
-	return nil
+	r, ok := slice.Find(pmt.Records, func(src domain.PaymentRecord) bool {
+		return src.Channel == domain.ChannelTypeCredit
+	})
+	if !ok {
+		// 仅微信支付,直接返回nil
+		return nil
+	}
+
+	uid := pmt.PayerID
+	tid, _ := strconv.ParseInt(r.PaymentNO3rd, 10, 64)
+	if pmt.Status == domain.PaymentStatusPaidSuccess {
+		err := s.creditSvc.ConfirmDeductCredits(ctx, uid, tid)
+		if err != nil {
+			s.l.Warn("确认扣减积分失败",
+				elog.Int64("uid", uid),
+				elog.Int64("tid", tid),
+			)
+		}
+	} else {
+		err := s.creditSvc.CancelDeductCredits(ctx, uid, tid)
+		if err != nil {
+			s.l.Warn("确认扣减积分失败",
+				elog.Int64("uid", uid),
+				elog.Int64("tid", tid),
+			)
+		}
+	}
+
+	pp := domain.Payment{
+		OrderSN: pmt.OrderSN,
+		PaidAt:  pmt.PaidAt,
+		Status:  pmt.Status,
+		Records: []domain.PaymentRecord{
+			{
+				PaymentNO3rd: r.PaymentNO3rd,
+				Channel:      r.Channel,
+				PaidAt:       pmt.PaidAt,
+				Status:       pmt.Status,
+			},
+		}}
+	return s.repo.UpdatePayment(ctx, pp)
 }
 
 func (s *service) FindExpiredPayment(ctx context.Context, offset, limit int, t time.Time) ([]domain.Payment, error) {

@@ -28,7 +28,10 @@ import (
 	"github.com/wechatpay-apiv3/wechatpay-go/services/payments/native"
 )
 
-var errUnknownTransactionState = errors.New("未知的微信事务状态")
+var (
+	errUnknownTransactionState = errors.New("未知的微信事务状态")
+	errIgnoredPaymentStatus    = errors.New("忽略的支付状态")
+)
 
 //go:generate mockgen -source=./native.go -package=wechatmocks -destination=./mocks/native.mock.go -typed NativeAPIService
 type NativeAPIService interface {
@@ -61,14 +64,15 @@ func NewNativePaymentService(svc NativeAPIService, appid, mchid string) *NativeP
 		appID: appid,
 		mchID: mchid,
 		// todo: 配置回调URL
-		notifyURL: "http://wechat.meoying.com/pay/callback",
+		notifyURL: "https://wechat.meoying.com/pay/callback",
 		nativeCallBackTypeToPaymentStatus: map[string]domain.PaymentStatus{
-			"SUCCESS":  domain.PaymentStatusPaidSuccess,
-			"PAYERROR": domain.PaymentStatusPaidFailed,
-			"NOTPAY":   domain.PaymentStatusUnpaid,
-			"CLOSED":   domain.PaymentStatusPaidFailed,
-			"REVOKED":  domain.PaymentStatusPaidFailed,
-			"REFUND":   domain.PaymentStatusRefund,
+			"SUCCESS":    domain.PaymentStatusPaidSuccess, // 支付成功
+			"PAYERROR":   domain.PaymentStatusPaidFailed,  // 支付失败(其他原因，如银行返回失败)
+			"CLOSED":     domain.PaymentStatusPaidFailed,  // 已关闭
+			"REVOKED":    domain.PaymentStatusPaidFailed,  // 已撤销（付款码支付）
+			"NOTPAY":     domain.PaymentStatusUnpaid,      // 未支付
+			"USERPAYING": domain.PaymentStatusProcessing,  // 用户支付中（付款码支付）
+			"REFUND":     domain.PaymentStatusRefund,      // 转入退款
 		},
 	}
 }
@@ -108,8 +112,20 @@ func (n *NativePaymentService) ConvertTransactionToDomain(txn *payments.Transact
 	if !ok {
 		return domain.Payment{}, fmt.Errorf("%w, %s", errUnknownTransactionState, *txn.TradeState)
 	}
+
+	if status != domain.PaymentStatusPaidSuccess && status != domain.PaymentStatusPaidFailed {
+		n.l.Warn("忽略的微信支付通知状态",
+			elog.String("TradeState", *txn.TradeState),
+			elog.Any("PaymentStatus", status),
+		)
+		return domain.Payment{}, fmt.Errorf("%w, %d", errIgnoredPaymentStatus, status.ToUnit8())
+	}
+
 	// 更新支付主记录+微信渠道支付记录两条数据的状态
-	paidAt := time.Now().UnixMilli()
+	var paidAt int64
+	if status == domain.PaymentStatusPaidSuccess {
+		paidAt = time.Now().UnixMilli()
+	}
 	return domain.Payment{
 		OrderSN: *txn.OutTradeNo,
 		PaidAt:  paidAt,
