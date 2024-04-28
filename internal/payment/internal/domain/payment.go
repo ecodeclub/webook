@@ -32,10 +32,11 @@ func (s PaymentStatus) ToUnit8() uint8 {
 }
 
 const (
-	PaymentStatusUnpaid PaymentStatus = 1
-	PaymentStatusPaid   PaymentStatus = 2
-	PaymentStatusFailed PaymentStatus = 3
-	PaymentStatusRefund PaymentStatus = 4
+	PaymentStatusUnpaid      PaymentStatus = 1
+	PaymentStatusProcessing  PaymentStatus = 2
+	PaymentStatusPaidSuccess PaymentStatus = 3
+	PaymentStatusPaidFailed  PaymentStatus = 4
+	PaymentStatusRefund      PaymentStatus = 5
 )
 
 type Amount struct {
@@ -61,7 +62,6 @@ type Payment struct {
 	Status           PaymentStatus
 	Records          []PaymentRecord
 	Ctime            int64
-	Utime            int64
 }
 
 type PaymentChannel struct {

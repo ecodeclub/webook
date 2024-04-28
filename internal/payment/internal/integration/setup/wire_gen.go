@@ -10,43 +10,35 @@ import (
 	"sync"
 
 	"github.com/ecodeclub/webook/internal/credit"
-	"github.com/ecodeclub/webook/internal/payment"
 	"github.com/ecodeclub/webook/internal/payment/internal/event"
 	"github.com/ecodeclub/webook/internal/payment/internal/repository"
 	"github.com/ecodeclub/webook/internal/payment/internal/repository/dao"
 	"github.com/ecodeclub/webook/internal/payment/internal/service"
-	credit2 "github.com/ecodeclub/webook/internal/payment/internal/service/credit"
 	"github.com/ecodeclub/webook/internal/payment/internal/service/wechat"
-	"github.com/ecodeclub/webook/internal/payment/internal/web"
 	"github.com/ecodeclub/webook/internal/payment/ioc"
 	"github.com/ecodeclub/webook/internal/pkg/sequencenumber"
 	testioc "github.com/ecodeclub/webook/internal/test/ioc"
-	"github.com/gotomicro/ego/core/elog"
+	"github.com/google/wire"
 	"gorm.io/gorm"
 )
 
 // Injectors from wire.go:
 
-func InitModule(p event.PaymentEventProducer, paymentDDLFunc func() int64, cm *credit.Module, h wechat.NotifyHandler, native wechat.NativeAPIService) *payment.Module {
+func InitService(p event.PaymentEventProducer, cm *credit.Module, native wechat.NativeAPIService) service.Service {
+	wechatConfig := initWechatConfig()
+	nativePaymentService := ioc.InitWechatNativeService(native, wechatConfig)
+	serviceService := cm.Svc
+	generator := sequencenumber.NewGenerator()
 	db := testioc.InitDB()
 	daoPaymentDAO := InitDAO(db)
 	paymentRepository := repository.NewPaymentRepository(daoPaymentDAO)
-	component := initLogger()
-	wechatConfig := initWechatConfig()
-	nativePaymentService := ioc.InitWechatNativeService(native, paymentRepository, p, paymentDDLFunc, component, wechatConfig)
-	handler := web.NewHandler(h, nativePaymentService)
-	serviceService := cm.Svc
-	generator := sequencenumber.NewGenerator()
-	paymentService := credit2.NewCreditPaymentService(serviceService, paymentRepository, p, paymentDDLFunc, generator, component)
-	service2 := service.NewService(nativePaymentService, paymentService, generator, paymentRepository)
-	module := &payment.Module{
-		Hdl: handler,
-		Svc: service2,
-	}
-	return module
+	service2 := service.NewService(nativePaymentService, serviceService, generator, paymentRepository, p)
+	return service2
 }
 
 // wire.go:
+
+var serviceSet = wire.NewSet(testioc.BaseSet, initWechatConfig, ioc.InitWechatNativeService, InitDAO, repository.NewPaymentRepository, sequencenumber.NewGenerator, service.NewService)
 
 var (
 	once       = &sync.Once{}
@@ -59,10 +51,6 @@ func InitDAO(db *gorm.DB) dao.PaymentDAO {
 		paymentDAO = dao.NewPaymentGORMDAO(db)
 	})
 	return paymentDAO
-}
-
-func initLogger() *elog.Component {
-	return elog.DefaultLogger
 }
 
 func initWechatConfig() ioc.WechatConfig {

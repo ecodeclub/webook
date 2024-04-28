@@ -25,37 +25,32 @@ import (
 	"github.com/ecodeclub/webook/internal/payment/internal/repository"
 	"github.com/ecodeclub/webook/internal/payment/internal/repository/dao"
 	"github.com/ecodeclub/webook/internal/payment/internal/service"
-	credit2 "github.com/ecodeclub/webook/internal/payment/internal/service/credit"
 	"github.com/ecodeclub/webook/internal/payment/internal/service/wechat"
-	"github.com/ecodeclub/webook/internal/payment/internal/web"
 	"github.com/ecodeclub/webook/internal/payment/ioc"
 	"github.com/ecodeclub/webook/internal/pkg/sequencenumber"
 	testioc "github.com/ecodeclub/webook/internal/test/ioc"
 	"github.com/google/wire"
-	"github.com/gotomicro/ego/core/elog"
 	"gorm.io/gorm"
 )
 
-func InitModule(p event.PaymentEventProducer,
-	paymentDDLFunc func() int64,
+var serviceSet = wire.NewSet(
+	testioc.BaseSet,
+	initWechatConfig,
+	ioc.InitWechatNativeService,
+	InitDAO,
+	repository.NewPaymentRepository,
+	sequencenumber.NewGenerator,
+	service.NewService,
+)
+
+func InitService(p event.PaymentEventProducer,
 	cm *credit.Module,
-	h wechat.NotifyHandler,
-	native wechat.NativeAPIService) *payment.Module {
+	native wechat.NativeAPIService) payment.Service {
 	wire.Build(
-		testioc.BaseSet,
-		initLogger,
-		initWechatConfig,
-		ioc.InitWechatNativeService,
-		InitDAO,
-		web.NewHandler,
-		service.NewService,
-		credit2.NewCreditPaymentService,
-		repository.NewPaymentRepository,
-		sequencenumber.NewGenerator,
+		serviceSet,
 		wire.FieldsOf(new(*credit.Module), "Svc"),
-		wire.Struct(new(payment.Module), "*"),
 	)
-	return new(payment.Module)
+	return nil
 }
 
 var (
@@ -69,10 +64,6 @@ func InitDAO(db *gorm.DB) dao.PaymentDAO {
 		paymentDAO = dao.NewPaymentGORMDAO(db)
 	})
 	return paymentDAO
-}
-
-func initLogger() *elog.Component {
-	return elog.DefaultLogger
 }
 
 func initWechatConfig() ioc.WechatConfig {

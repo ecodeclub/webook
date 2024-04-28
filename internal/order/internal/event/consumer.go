@@ -78,10 +78,10 @@ func (c *PaymentConsumer) Consume(ctx context.Context) error {
 	}
 
 	var warnMessage string
-	if evt.Status == uint8(payment.PaymentStatusPaid) {
+	if evt.Status == uint8(payment.StatusPaidSuccess) {
 		err = c.svc.SucceedOrder(ctx, order.BuyerID, order.ID)
 		warnMessage = "设置订单'支付成功'状态失败"
-	} else if evt.Status == uint8(payment.PaymentStatusFailed) {
+	} else if evt.Status == uint8(payment.StatusFailed) {
 		err = c.svc.FailOrder(ctx, order.BuyerID, order.ID)
 		warnMessage = "设置订单'支付失败'状态失败"
 	} else {

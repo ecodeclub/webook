@@ -81,7 +81,8 @@ func InitApp() (*App, error) {
 	projectModule := project.InitModule()
 	handler9 := projectModule.Hdl
 	handler10 := creditModule.Hdl
-	component := initGinxServer(provider, checkMembershipMiddlewareBuilder, handler, questionSetHandler, webHandler, handler2, handler3, handler4, handler5, handler6, handler7, handler8, handler9, handler10)
+	handler11 := paymentModule.Hdl
+	component := initGinxServer(provider, checkMembershipMiddlewareBuilder, handler, questionSetHandler, webHandler, handler2, handler3, handler4, handler5, handler6, handler7, handler8, handler9, handler10, handler11)
 	adminHandler := projectModule.AdminHdl
 	adminServer := InitAdminServer(adminHandler)
 	closeTimeoutOrdersJob := orderModule.CloseTimeoutOrdersJob

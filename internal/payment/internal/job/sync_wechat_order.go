@@ -18,12 +18,12 @@ import (
 	"context"
 	"time"
 
-	"github.com/ecodeclub/webook/internal/payment/internal/service/wechat"
+	"github.com/ecodeclub/webook/internal/payment/internal/service"
 	"github.com/gotomicro/ego/core/elog"
 )
 
 type SyncWechatOrderJob struct {
-	svc *wechat.NativePaymentService
+	svc service.Service
 	l   *elog.Component
 }
 
@@ -47,6 +47,8 @@ func (s *SyncWechatOrderJob) Run() error {
 		}
 
 		for _, pmt := range payments {
+			// todo: pmt.Record.Channel != Wechat 直接关闭
+			// todo: == wechat 与微信同步对账
 			ctx, cancel = context.WithTimeout(context.Background(), time.Second)
 			err = s.svc.SyncWechatInfo(ctx, pmt.OrderSN)
 			if err != nil {
