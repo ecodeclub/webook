@@ -15,7 +15,6 @@ import (
 	"github.com/ecodeclub/webook/internal/payment/internal/repository/dao"
 	"github.com/ecodeclub/webook/internal/payment/internal/service"
 	"github.com/ecodeclub/webook/internal/payment/internal/service/wechat"
-	"github.com/ecodeclub/webook/internal/payment/internal/web"
 	"github.com/ecodeclub/webook/internal/payment/ioc"
 	"github.com/ecodeclub/webook/internal/pkg/sequencenumber"
 	testioc "github.com/ecodeclub/webook/internal/test/ioc"
@@ -24,12 +23,6 @@ import (
 )
 
 // Injectors from wire.go:
-
-func InitHandler(p event.PaymentEventProducer, cm *credit.Module, native wechat.NativeAPIService, h wechat.NotifyHandler) *web.Handler {
-	service := InitService(p, cm, native)
-	handler := web.NewHandler(h, service)
-	return handler
-}
 
 func InitService(p event.PaymentEventProducer, cm *credit.Module, native wechat.NativeAPIService) service.Service {
 	wechatConfig := initWechatConfig()

@@ -26,7 +26,6 @@ import (
 	"github.com/ecodeclub/webook/internal/payment/internal/repository/dao"
 	"github.com/ecodeclub/webook/internal/payment/internal/service"
 	"github.com/ecodeclub/webook/internal/payment/internal/service/wechat"
-	"github.com/ecodeclub/webook/internal/payment/internal/web"
 	"github.com/ecodeclub/webook/internal/payment/ioc"
 	"github.com/ecodeclub/webook/internal/pkg/sequencenumber"
 	testioc "github.com/ecodeclub/webook/internal/test/ioc"
@@ -43,17 +42,6 @@ var serviceSet = wire.NewSet(
 	sequencenumber.NewGenerator,
 	service.NewService,
 )
-
-func InitHandler(p event.PaymentEventProducer,
-	cm *credit.Module,
-	native wechat.NativeAPIService,
-	h wechat.NotifyHandler) *payment.Handler {
-	wire.Build(
-		InitService,
-		web.NewHandler,
-	)
-	return new(payment.Handler)
-}
 
 func InitService(p event.PaymentEventProducer,
 	cm *credit.Module,
