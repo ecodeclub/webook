@@ -16,52 +16,81 @@ package job
 
 import (
 	"context"
+	"fmt"
 	"time"
 
+	"github.com/ecodeclub/ekit/slice"
+	"github.com/ecodeclub/webook/internal/payment/internal/domain"
 	"github.com/ecodeclub/webook/internal/payment/internal/service"
 	"github.com/gotomicro/ego/core/elog"
+	"github.com/gotomicro/ego/task/ecron"
 )
 
+var _ ecron.NamedJob = (*SyncWechatOrderJob)(nil)
+
 type SyncWechatOrderJob struct {
-	svc service.Service
-	l   *elog.Component
+	svc     service.Service
+	minutes int64
+	seconds int64
+	limit   int
+	l       *elog.Component
+}
+
+func NewSyncWechatOrderJob(svc service.Service, minutes int64, seconds int64, limit int) *SyncWechatOrderJob {
+	return &SyncWechatOrderJob{
+		svc:     svc,
+		minutes: minutes,
+		seconds: seconds,
+		limit:   limit,
+		l:       elog.DefaultLogger}
 }
 
 func (s *SyncWechatOrderJob) Name() string {
 	return "sync_wechat_order_job"
 }
 
-func (s *SyncWechatOrderJob) Run() error {
-	offset := 0
-	// 也可以做成参数
-	const limit = 100
-	// 三十分钟之前的订单我们就认为已经过期了。
-	now := time.Now().Add(-time.Minute * 30)
+func (s *SyncWechatOrderJob) Run(ctx context.Context) error {
+
+	ctime := time.Now().Add(time.Duration(-s.minutes)*time.Minute + time.Duration(-s.seconds)*time.Second).UnixMilli()
 
 	for {
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
-		payments, err := s.svc.FindExpiredPayment(ctx, offset, limit, now)
-		cancel()
+
+		payments, total, err := s.svc.FindTimeoutPayments(ctx, 0, s.limit, ctime)
 		if err != nil {
-			return err
+			return fmt.Errorf("获取过期支付记录失败: %w", err)
 		}
 
 		for _, pmt := range payments {
-			// todo: pmt.Record.Channel != Wechat 直接关闭
-			// todo: == wechat 与微信同步对账
-			ctx, cancel = context.WithTimeout(context.Background(), time.Second)
-			err = s.svc.SyncWechatInfo(ctx, pmt.OrderSN)
+			_, ok := slice.Find(pmt.Records, func(src domain.PaymentRecord) bool {
+				return src.Channel == domain.ChannelTypeWechat
+			})
+			if !ok {
+				// 非微信支付渠道支付,直接关闭
+				err = s.svc.CloseTimeoutPayment(ctx, pmt.ID)
+				if err != nil {
+					s.l.Error("关闭超时支付失败",
+						elog.FieldErr(err),
+						elog.Int64("payment_id", pmt.ID),
+					)
+				}
+				continue
+			}
+			err = s.svc.SyncWechatInfo(ctx, pmt)
 			if err != nil {
 				s.l.Error("同步微信支付信息失败",
-					elog.String("trade_no", pmt.OrderSN),
-					elog.FieldErr(err))
+					elog.FieldErr(err),
+					elog.String("OutTradeNo", pmt.OrderSN),
+				)
 			}
-			cancel()
 		}
-		if len(payments) < limit {
-			// 没数据了
+
+		if len(payments) < s.limit {
 			return nil
 		}
-		offset = offset + len(payments)
+
+		if int64(s.limit) >= total {
+			return nil
+		}
+
 	}
 }
