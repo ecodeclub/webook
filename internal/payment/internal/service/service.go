@@ -157,7 +157,12 @@ func (s *service) payByCredit(ctx context.Context, pmt *domain.Payment) error {
 	}
 
 	// 更新字段
-	s.setPaymentSuccess(pmt, idx, strconv.FormatInt(tid, 10))
+	pmt.Status = domain.PaymentStatusPaidSuccess
+	pmt.PaidAt = time.Now().UnixMilli()
+	pmt.Records[idx].Status = pmt.Status
+	pmt.Records[idx].PaidAt = pmt.PaidAt
+	pmt.Records[idx].PaymentNO3rd = strconv.FormatInt(tid, 10)
+
 	err = s.repo.UpdatePayment(ctx, *pmt)
 	if err != nil {
 		// 这里有一个小问题，就是如果超时了的话，你都不知道更新成功了没
@@ -167,20 +172,12 @@ func (s *service) payByCredit(ctx context.Context, pmt *domain.Payment) error {
 	return s.sendPaymentEvent(ctx, pmt)
 }
 
-func (s *service) setPaymentSuccess(pmt *domain.Payment, idx int, paymentNO3rd string) {
-	pmt.Status = domain.PaymentStatusPaidSuccess
-	pmt.PaidAt = time.Now().UnixMilli()
-	pmt.Records[idx].Status = pmt.Status
-	pmt.Records[idx].PaidAt = pmt.PaidAt
-	pmt.Records[idx].PaymentNO3rd = paymentNO3rd
-}
-
 func (s *service) sendPaymentEvent(ctx context.Context, pmt *domain.Payment) error {
 	// 就是处于结束状态
 	evt := event.PaymentEvent{
 		OrderSN: pmt.OrderSN,
 		PayerID: pmt.PayerID,
-		Status:  uint8(pmt.Status),
+		Status:  pmt.Status.ToUnit8(),
 	}
 	err := s.producer.Produce(ctx, evt)
 	if err != nil {
