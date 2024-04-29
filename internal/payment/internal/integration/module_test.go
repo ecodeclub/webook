@@ -530,6 +530,32 @@ func (s *PaymentModuleTestSuite) TestService_PayByID() {
 			after:          func(t *testing.T, svc service.Service, expected payment.Payment) {},
 		},
 		{
+			name: "支付失败_仅积分支付_支付ID非法",
+			before: func(t *testing.T, svc service.Service, pmt payment.Payment) int64 {
+				t.Helper()
+				return int64(1000000)
+			},
+			pmt: payment.Payment{
+				OrderID:          200015,
+				OrderSN:          "order-pay-200015",
+				PayerID:          200015,
+				OrderDescription: "月会员 * 1",
+				TotalAmount:      990,
+				Records: []domain.PaymentRecord{
+					{
+						Description: "月会员 * 1",
+						Channel:     domain.ChannelTypeCredit,
+					},
+				},
+			},
+			newSvcFunc: func(t *testing.T, ctrl *gomock.Controller) service.Service {
+				t.Helper()
+				return startup.InitService(nil, &credit.Module{}, nil)
+			},
+			errRequireFunc: require.Error,
+			after:          func(t *testing.T, svc service.Service, expected payment.Payment) {},
+		},
+		{
 			name: "预支付成功_仅微信支付",
 			before: func(t *testing.T, svc service.Service, pmt payment.Payment) int64 {
 				t.Helper()
@@ -630,6 +656,32 @@ func (s *PaymentModuleTestSuite) TestService_PayByID() {
 				OrderID:          200008,
 				OrderSN:          "order-pay-200008",
 				PayerID:          200008,
+				OrderDescription: "季会员 * 1",
+				TotalAmount:      10000,
+				Records: []domain.PaymentRecord{
+					{
+						Description: "季会员 * 1",
+						Channel:     domain.ChannelTypeWechat,
+					},
+				},
+			},
+			newSvcFunc: func(t *testing.T, ctrl *gomock.Controller) service.Service {
+				t.Helper()
+				return startup.InitService(nil, &credit.Module{}, nil)
+			},
+			errRequireFunc: require.Error,
+			after:          func(t *testing.T, svc service.Service, expected payment.Payment) {},
+		},
+		{
+			name: "预支付失败_仅微信支付_支付ID非法",
+			before: func(t *testing.T, svc service.Service, pmt payment.Payment) int64 {
+				t.Helper()
+				return int64(1000001)
+			},
+			pmt: payment.Payment{
+				OrderID:          200016,
+				OrderSN:          "order-pay-200016",
+				PayerID:          200016,
 				OrderDescription: "季会员 * 1",
 				TotalAmount:      10000,
 				Records: []domain.PaymentRecord{
