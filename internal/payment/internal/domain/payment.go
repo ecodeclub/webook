@@ -27,16 +27,17 @@ const (
 
 type PaymentStatus uint8
 
-func (s PaymentStatus) ToUnit8() uint8 {
+func (s PaymentStatus) ToUint8() uint8 {
 	return uint8(s)
 }
 
 const (
-	PaymentStatusUnpaid      PaymentStatus = 1
-	PaymentStatusProcessing  PaymentStatus = 2
-	PaymentStatusPaidSuccess PaymentStatus = 3
-	PaymentStatusPaidFailed  PaymentStatus = 4
-	PaymentStatusRefund      PaymentStatus = 5
+	PaymentStatusUnpaid        PaymentStatus = 1
+	PaymentStatusProcessing    PaymentStatus = 2
+	PaymentStatusPaidSuccess   PaymentStatus = 3
+	PaymentStatusPaidFailed    PaymentStatus = 4
+	PaymentStatusRefund        PaymentStatus = 5
+	PaymentStatusTimeoutClosed PaymentStatus = 6
 )
 
 type Amount struct {

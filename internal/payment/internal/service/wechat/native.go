@@ -107,10 +107,10 @@ func (n *NativePaymentService) Prepay(ctx context.Context, pmt domain.Payment) (
 	return *resp.CodeUrl, nil
 }
 
-func (n *NativePaymentService) ConvertTransactionToDomain(txn *payments.Transaction) (domain.Payment, error) {
-	status, ok := n.nativeCallBackTypeToPaymentStatus[*txn.TradeState]
-	if !ok {
-		return domain.Payment{}, fmt.Errorf("%w, %s", errUnknownTransactionState, *txn.TradeState)
+func (n *NativePaymentService) ConvertCallbackTransactionToDomain(txn *payments.Transaction) (domain.Payment, error) {
+	status, err := n.convertoPaymentStatus(*txn.TradeState)
+	if err != nil {
+		return domain.Payment{}, err
 	}
 
 	if status != domain.PaymentStatusPaidSuccess && status != domain.PaymentStatusPaidFailed {
@@ -118,9 +118,21 @@ func (n *NativePaymentService) ConvertTransactionToDomain(txn *payments.Transact
 			elog.String("TradeState", *txn.TradeState),
 			elog.Any("PaymentStatus", status),
 		)
-		return domain.Payment{}, fmt.Errorf("%w, %d", errIgnoredPaymentStatus, status.ToUnit8())
+		return domain.Payment{}, fmt.Errorf("%w, %d", errIgnoredPaymentStatus, status.ToUint8())
 	}
 
+	return n.convertToPaymentDomain(txn, status), nil
+}
+
+func (n *NativePaymentService) convertoPaymentStatus(tradeState string) (domain.PaymentStatus, error) {
+	status, ok := n.nativeCallBackTypeToPaymentStatus[tradeState]
+	if !ok {
+		return 0, fmt.Errorf("%w, %s", errUnknownTransactionState, tradeState)
+	}
+	return status, nil
+}
+
+func (n *NativePaymentService) convertToPaymentDomain(txn *payments.Transaction, status domain.PaymentStatus) domain.Payment {
 	// 更新支付主记录+微信渠道支付记录两条数据的状态
 	var paidAt int64
 	if status == domain.PaymentStatusPaidSuccess {
@@ -138,17 +150,27 @@ func (n *NativePaymentService) ConvertTransactionToDomain(txn *payments.Transact
 				Status:       status,
 			},
 		},
-	}, nil
+	}
 }
 
 // QueryOrderBySN 同步信息 定时任务调用此方法同步状态信息
-func (n *NativePaymentService) QueryOrderBySN(ctx context.Context, orderSN string) (*payments.Transaction, error) {
+func (n *NativePaymentService) QueryOrderBySN(ctx context.Context, orderSN string) (domain.Payment, error) {
 	txn, _, err := n.svc.QueryOrderByOutTradeNo(ctx, native.QueryOrderByOutTradeNoRequest{
 		OutTradeNo: core.String(orderSN),
 		Mchid:      core.String(n.mchID),
 	})
 	if err != nil {
-		return nil, err
+		return domain.Payment{}, err
 	}
-	return txn, nil
+
+	status, err := n.convertoPaymentStatus(*txn.TradeState)
+	if err != nil {
+		return domain.Payment{}, err
+	}
+
+	if status != domain.PaymentStatusPaidSuccess && status != domain.PaymentStatusPaidFailed {
+		// 主动同步时不再忽略,而是直接标记为超时
+		status = domain.PaymentStatusTimeoutClosed
+	}
+	return n.convertToPaymentDomain(txn, status), nil
 }

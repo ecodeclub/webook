@@ -29,6 +29,7 @@ import (
 	"github.com/ecodeclub/webook/internal/pkg/sequencenumber"
 	"github.com/gotomicro/ego/core/elog"
 	"github.com/wechatpay-apiv3/wechatpay-go/services/payments"
+	"golang.org/x/sync/errgroup"
 )
 
 //go:generate mockgen -source=service.go -package=paymentmocks -destination=../../mocks/payment.mock.go -typed Service
@@ -37,13 +38,14 @@ type Service interface {
 	GetPaymentChannels(ctx context.Context) []domain.PaymentChannel
 	FindPaymentByID(ctx context.Context, pmtID int64) (domain.Payment, error)
 	PayByID(ctx context.Context, pmtID int64) (domain.Payment, error)
-
 	// HandleWechatCallback 处理微信回调请求 web调用
 	HandleWechatCallback(ctx context.Context, txn *payments.Transaction) error
-	// FindExpiredPayment 查找过期支付记录 —— 支付主记录+微信支付记录, job调用
-	FindExpiredPayment(ctx context.Context, offset, limit int, t time.Time) ([]domain.Payment, error)
+	// FindTimeoutPayments 查找过期支付记录 —— 支付主记录+微信支付记录, job调用
+	FindTimeoutPayments(ctx context.Context, offset int, limit int, ctime int64) ([]domain.Payment, int64, error)
+	// CloseTimeoutPayment 通过支付ID关闭超时支付, job调用
+	CloseTimeoutPayment(ctx context.Context, pmt domain.Payment) error
 	// SyncWechatInfo 同步与微信对账 job调用
-	SyncWechatInfo(ctx context.Context, orderSN string) error
+	SyncWechatInfo(ctx context.Context, pmt domain.Payment) error
 }
 
 func NewService(wechatSvc *wechat.NativePaymentService,
@@ -157,7 +159,12 @@ func (s *service) payByCredit(ctx context.Context, pmt *domain.Payment) error {
 	}
 
 	// 更新字段
-	s.setPaymentSuccess(pmt, idx, strconv.FormatInt(tid, 10))
+	pmt.Status = domain.PaymentStatusPaidSuccess
+	pmt.PaidAt = time.Now().UnixMilli()
+	pmt.Records[idx].Status = pmt.Status
+	pmt.Records[idx].PaidAt = pmt.PaidAt
+	pmt.Records[idx].PaymentNO3rd = strconv.FormatInt(tid, 10)
+
 	err = s.repo.UpdatePayment(ctx, *pmt)
 	if err != nil {
 		// 这里有一个小问题，就是如果超时了的话，你都不知道更新成功了没
@@ -167,20 +174,12 @@ func (s *service) payByCredit(ctx context.Context, pmt *domain.Payment) error {
 	return s.sendPaymentEvent(ctx, pmt)
 }
 
-func (s *service) setPaymentSuccess(pmt *domain.Payment, idx int, paymentNO3rd string) {
-	pmt.Status = domain.PaymentStatusPaidSuccess
-	pmt.PaidAt = time.Now().UnixMilli()
-	pmt.Records[idx].Status = pmt.Status
-	pmt.Records[idx].PaidAt = pmt.PaidAt
-	pmt.Records[idx].PaymentNO3rd = paymentNO3rd
-}
-
 func (s *service) sendPaymentEvent(ctx context.Context, pmt *domain.Payment) error {
 	// 就是处于结束状态
 	evt := event.PaymentEvent{
 		OrderSN: pmt.OrderSN,
 		PayerID: pmt.PayerID,
-		Status:  uint8(pmt.Status),
+		Status:  pmt.Status.ToUint8(),
 	}
 	err := s.producer.Produce(ctx, evt)
 	if err != nil {
@@ -266,7 +265,7 @@ func (s *service) prepayByWechatAndCredit(ctx context.Context, pmt *domain.Payme
 }
 
 func (s *service) HandleWechatCallback(ctx context.Context, txn *payments.Transaction) error {
-	pmt, err := s.wechatSvc.ConvertTransactionToDomain(txn)
+	pmt, err := s.wechatSvc.ConvertCallbackTransactionToDomain(txn)
 	if err != nil {
 		return err
 	}
@@ -278,12 +277,12 @@ func (s *service) HandleWechatCallback(ctx context.Context, txn *payments.Transa
 	}
 
 	p, _ := s.repo.FindPaymentByOrderSN(context.Background(), pmt.OrderSN)
-	pmt.PayerID = p.PayerID
-	pmt.Records = p.Records
 
-	// 支付主记录和微信支付渠道支付成功后,就发送消息
+	// 支付主记录和微信支付渠道支付成功/支付失败后,就发送消息
+	pmt.PayerID = p.PayerID
 	_ = s.sendPaymentEvent(ctx, &pmt)
 
+	pmt.Records = p.Records
 	return s.handleCreditCallback(ctx, pmt)
 }
 
@@ -307,13 +306,7 @@ func (s *service) handleCreditCallback(ctx context.Context, pmt domain.Payment) 
 			)
 		}
 	} else {
-		err := s.creditSvc.CancelDeductCredits(ctx, uid, tid)
-		if err != nil {
-			s.l.Warn("确认扣减积分失败",
-				elog.Int64("uid", uid),
-				elog.Int64("tid", tid),
-			)
-		}
+		s.cancelDeductCredits(ctx, uid, tid)
 	}
 
 	pp := domain.Payment{
@@ -331,14 +324,80 @@ func (s *service) handleCreditCallback(ctx context.Context, pmt domain.Payment) 
 	return s.repo.UpdatePayment(ctx, pp)
 }
 
-func (s *service) FindExpiredPayment(ctx context.Context, offset, limit int, t time.Time) ([]domain.Payment, error) {
-	return s.repo.FindExpiredPayment(ctx, offset, limit, t)
+func (s *service) cancelDeductCredits(ctx context.Context, uid, tid int64) {
+	err := s.creditSvc.CancelDeductCredits(ctx, uid, tid)
+	if err != nil {
+		s.l.Warn("确认扣减积分失败",
+			elog.Int64("uid", uid),
+			elog.Int64("tid", tid),
+		)
+	}
 }
 
-func (s *service) SyncWechatInfo(ctx context.Context, orderSN string) error {
-	txn, err := s.wechatSvc.QueryOrderBySN(ctx, orderSN)
+func (s *service) FindTimeoutPayments(ctx context.Context, offset int, limit int, ctime int64) ([]domain.Payment, int64, error) {
+
+	var (
+		eg    errgroup.Group
+		ps    []domain.Payment
+		total int64
+	)
+	eg.Go(func() error {
+		var err error
+		ps, err = s.repo.FindTimeoutPayments(ctx, offset, limit, ctime)
+		return err
+	})
+
+	eg.Go(func() error {
+		var err error
+		total, err = s.repo.TotalTimeoutPayments(ctx, ctime)
+		return err
+	})
+
+	return ps, total, eg.Wait()
+}
+
+func (s *service) CloseTimeoutPayment(ctx context.Context, pmt domain.Payment) error {
+	// pmt.OrderSN不能为空
+	// pmt.Records不能为空
+	// pmt.Status <= domain.PaymentStatusProcessing
+	pmt.Status = domain.PaymentStatusTimeoutClosed
+	for i := 0; i < len(pmt.Records); i++ {
+		record := &pmt.Records[i]
+		if record.Status == domain.PaymentStatusProcessing &&
+			record.Channel == domain.ChannelTypeCredit {
+			uid := pmt.PayerID
+			tid, _ := strconv.ParseInt(record.PaymentNO3rd, 10, 64)
+			s.cancelDeductCredits(ctx, uid, tid)
+		}
+		record.Status = domain.PaymentStatusTimeoutClosed
+	}
+	return s.repo.UpdatePayment(ctx, pmt)
+}
+
+func (s *service) SyncWechatInfo(ctx context.Context, pmt domain.Payment) error {
+	p, err := s.wechatSvc.QueryOrderBySN(ctx, pmt.OrderSN)
 	if err != nil {
 		return err
 	}
-	return s.HandleWechatCallback(ctx, txn)
+
+	if p.Status == domain.PaymentStatusTimeoutClosed {
+		idx := slice.IndexFunc(pmt.Records, func(src domain.PaymentRecord) bool {
+			return src.Channel == domain.ChannelTypeWechat
+		})
+		pmt.Records[idx].PaymentNO3rd = p.Records[0].PaymentNO3rd
+		return s.CloseTimeoutPayment(ctx, pmt)
+	}
+
+	err = s.repo.UpdatePayment(ctx, p)
+	if err != nil {
+		// 这里有一个小问题，就是如果超时了的话，你都不知道更新成功了没
+		return err
+	}
+
+	// 支付主记录和微信支付渠道支付成功/支付失败后,就发送消息
+	p.PayerID = pmt.PayerID
+	_ = s.sendPaymentEvent(ctx, &p)
+
+	p.Records = pmt.Records
+	return s.handleCreditCallback(ctx, p)
 }

@@ -20,6 +20,7 @@ import (
 
 	"github.com/ecodeclub/webook/internal/credit"
 	"github.com/ecodeclub/webook/internal/order"
+	"github.com/ecodeclub/webook/internal/payment"
 	"github.com/gotomicro/ego/core/elog"
 	"github.com/gotomicro/ego/task/ecron"
 )
@@ -27,10 +28,12 @@ import (
 func initCronJobs(
 	oJob *order.CloseTimeoutOrdersJob,
 	cJob *credit.CloseTimeoutLockedCreditsJob,
+	pJob *payment.SyncWechatOrderJob,
 ) []*ecron.Component {
 	return []*ecron.Component{
 		ecron.Load("cron.close").Build(ecron.WithJob(funcJobWrapper(oJob))),
 		ecron.Load("cron.close").Build(ecron.WithJob(funcJobWrapper(cJob))),
+		ecron.Load("cron.syncWechat").Build(ecron.WithJob(funcJobWrapper(pJob))),
 	}
 }
 

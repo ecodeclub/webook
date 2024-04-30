@@ -11,7 +11,6 @@ package paymentmocks
 import (
 	context "context"
 	reflect "reflect"
-	time "time"
 
 	domain "github.com/ecodeclub/webook/internal/payment/internal/domain"
 	payments "github.com/wechatpay-apiv3/wechatpay-go/services/payments"
@@ -39,6 +38,44 @@ func NewMockService(ctrl *gomock.Controller) *MockService {
 // EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockService) EXPECT() *MockServiceMockRecorder {
 	return m.recorder
+}
+
+// CloseTimeoutPayment mocks base method.
+func (m *MockService) CloseTimeoutPayment(ctx context.Context, pmt domain.Payment) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CloseTimeoutPayment", ctx, pmt)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// CloseTimeoutPayment indicates an expected call of CloseTimeoutPayment.
+func (mr *MockServiceMockRecorder) CloseTimeoutPayment(ctx, pmt any) *ServiceCloseTimeoutPaymentCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CloseTimeoutPayment", reflect.TypeOf((*MockService)(nil).CloseTimeoutPayment), ctx, pmt)
+	return &ServiceCloseTimeoutPaymentCall{Call: call}
+}
+
+// ServiceCloseTimeoutPaymentCall wrap *gomock.Call
+type ServiceCloseTimeoutPaymentCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *ServiceCloseTimeoutPaymentCall) Return(arg0 error) *ServiceCloseTimeoutPaymentCall {
+	c.Call = c.Call.Return(arg0)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *ServiceCloseTimeoutPaymentCall) Do(f func(context.Context, domain.Payment) error) *ServiceCloseTimeoutPaymentCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *ServiceCloseTimeoutPaymentCall) DoAndReturn(f func(context.Context, domain.Payment) error) *ServiceCloseTimeoutPaymentCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
 }
 
 // CreatePayment mocks base method.
@@ -80,45 +117,6 @@ func (c *ServiceCreatePaymentCall) DoAndReturn(f func(context.Context, domain.Pa
 	return c
 }
 
-// FindExpiredPayment mocks base method.
-func (m *MockService) FindExpiredPayment(ctx context.Context, offset, limit int, t time.Time) ([]domain.Payment, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "FindExpiredPayment", ctx, offset, limit, t)
-	ret0, _ := ret[0].([]domain.Payment)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// FindExpiredPayment indicates an expected call of FindExpiredPayment.
-func (mr *MockServiceMockRecorder) FindExpiredPayment(ctx, offset, limit, t any) *ServiceFindExpiredPaymentCall {
-	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindExpiredPayment", reflect.TypeOf((*MockService)(nil).FindExpiredPayment), ctx, offset, limit, t)
-	return &ServiceFindExpiredPaymentCall{Call: call}
-}
-
-// ServiceFindExpiredPaymentCall wrap *gomock.Call
-type ServiceFindExpiredPaymentCall struct {
-	*gomock.Call
-}
-
-// Return rewrite *gomock.Call.Return
-func (c *ServiceFindExpiredPaymentCall) Return(arg0 []domain.Payment, arg1 error) *ServiceFindExpiredPaymentCall {
-	c.Call = c.Call.Return(arg0, arg1)
-	return c
-}
-
-// Do rewrite *gomock.Call.Do
-func (c *ServiceFindExpiredPaymentCall) Do(f func(context.Context, int, int, time.Time) ([]domain.Payment, error)) *ServiceFindExpiredPaymentCall {
-	c.Call = c.Call.Do(f)
-	return c
-}
-
-// DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *ServiceFindExpiredPaymentCall) DoAndReturn(f func(context.Context, int, int, time.Time) ([]domain.Payment, error)) *ServiceFindExpiredPaymentCall {
-	c.Call = c.Call.DoAndReturn(f)
-	return c
-}
-
 // FindPaymentByID mocks base method.
 func (m *MockService) FindPaymentByID(ctx context.Context, pmtID int64) (domain.Payment, error) {
 	m.ctrl.T.Helper()
@@ -154,6 +152,46 @@ func (c *ServiceFindPaymentByIDCall) Do(f func(context.Context, int64) (domain.P
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
 func (c *ServiceFindPaymentByIDCall) DoAndReturn(f func(context.Context, int64) (domain.Payment, error)) *ServiceFindPaymentByIDCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// FindTimeoutPayments mocks base method.
+func (m *MockService) FindTimeoutPayments(ctx context.Context, offset, limit int, ctime int64) ([]domain.Payment, int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FindTimeoutPayments", ctx, offset, limit, ctime)
+	ret0, _ := ret[0].([]domain.Payment)
+	ret1, _ := ret[1].(int64)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// FindTimeoutPayments indicates an expected call of FindTimeoutPayments.
+func (mr *MockServiceMockRecorder) FindTimeoutPayments(ctx, offset, limit, ctime any) *ServiceFindTimeoutPaymentsCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindTimeoutPayments", reflect.TypeOf((*MockService)(nil).FindTimeoutPayments), ctx, offset, limit, ctime)
+	return &ServiceFindTimeoutPaymentsCall{Call: call}
+}
+
+// ServiceFindTimeoutPaymentsCall wrap *gomock.Call
+type ServiceFindTimeoutPaymentsCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *ServiceFindTimeoutPaymentsCall) Return(arg0 []domain.Payment, arg1 int64, arg2 error) *ServiceFindTimeoutPaymentsCall {
+	c.Call = c.Call.Return(arg0, arg1, arg2)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *ServiceFindTimeoutPaymentsCall) Do(f func(context.Context, int, int, int64) ([]domain.Payment, int64, error)) *ServiceFindTimeoutPaymentsCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *ServiceFindTimeoutPaymentsCall) DoAndReturn(f func(context.Context, int, int, int64) ([]domain.Payment, int64, error)) *ServiceFindTimeoutPaymentsCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -274,17 +312,17 @@ func (c *ServicePayByIDCall) DoAndReturn(f func(context.Context, int64) (domain.
 }
 
 // SyncWechatInfo mocks base method.
-func (m *MockService) SyncWechatInfo(ctx context.Context, orderSN string) error {
+func (m *MockService) SyncWechatInfo(ctx context.Context, pmt domain.Payment) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SyncWechatInfo", ctx, orderSN)
+	ret := m.ctrl.Call(m, "SyncWechatInfo", ctx, pmt)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // SyncWechatInfo indicates an expected call of SyncWechatInfo.
-func (mr *MockServiceMockRecorder) SyncWechatInfo(ctx, orderSN any) *ServiceSyncWechatInfoCall {
+func (mr *MockServiceMockRecorder) SyncWechatInfo(ctx, pmt any) *ServiceSyncWechatInfoCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SyncWechatInfo", reflect.TypeOf((*MockService)(nil).SyncWechatInfo), ctx, orderSN)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SyncWechatInfo", reflect.TypeOf((*MockService)(nil).SyncWechatInfo), ctx, pmt)
 	return &ServiceSyncWechatInfoCall{Call: call}
 }
 
@@ -300,13 +338,13 @@ func (c *ServiceSyncWechatInfoCall) Return(arg0 error) *ServiceSyncWechatInfoCal
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *ServiceSyncWechatInfoCall) Do(f func(context.Context, string) error) *ServiceSyncWechatInfoCall {
+func (c *ServiceSyncWechatInfoCall) Do(f func(context.Context, domain.Payment) error) *ServiceSyncWechatInfoCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *ServiceSyncWechatInfoCall) DoAndReturn(f func(context.Context, string) error) *ServiceSyncWechatInfoCall {
+func (c *ServiceSyncWechatInfoCall) DoAndReturn(f func(context.Context, domain.Payment) error) *ServiceSyncWechatInfoCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

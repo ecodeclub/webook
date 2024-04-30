@@ -17,7 +17,6 @@ package repository
 import (
 	"context"
 	"database/sql"
-	"time"
 
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/ecodeclub/webook/internal/payment/internal/domain"
@@ -29,10 +28,8 @@ type PaymentRepository interface {
 	FindPaymentByID(ctx context.Context, pmtID int64) (domain.Payment, error)
 	UpdatePayment(ctx context.Context, pmt domain.Payment) error
 	FindPaymentByOrderSN(ctx context.Context, orderSN string) (domain.Payment, error)
-
-	// 下方为待重构
-
-	FindExpiredPayment(ctx context.Context, offset int, limit int, t time.Time) ([]domain.Payment, error)
+	FindTimeoutPayments(ctx context.Context, offset int, limit int, ctime int64) ([]domain.Payment, error)
+	TotalTimeoutPayments(ctx context.Context, ctime int64) (int64, error)
 }
 
 func NewPaymentRepository(d dao.PaymentDAO) PaymentRepository {
@@ -64,7 +61,7 @@ func (p *paymentRepository) toEntity(pmt domain.Payment) (dao.Payment, []dao.Pay
 		OrderDescription: pmt.OrderDescription,
 		TotalAmount:      pmt.TotalAmount,
 		PaidAt:           pmt.PaidAt,
-		Status:           pmt.Status.ToUnit8(),
+		Status:           pmt.Status.ToUint8(),
 	}
 	records := slice.Map(pmt.Records, func(idx int, src domain.PaymentRecord) dao.PaymentRecord {
 		return dao.PaymentRecord{
@@ -74,7 +71,7 @@ func (p *paymentRepository) toEntity(pmt domain.Payment) (dao.Payment, []dao.Pay
 			Channel:      src.Channel.ToUnit8(),
 			Amount:       src.Amount,
 			PaidAt:       src.PaidAt,
-			Status:       src.Status.ToUnit8(),
+			Status:       src.Status.ToUint8(),
 		}
 	})
 	return pp, records
@@ -123,23 +120,20 @@ func (p *paymentRepository) FindPaymentByOrderSN(ctx context.Context, orderSN st
 	return p.toDomain(pmt, records), err
 }
 
-func (p *paymentRepository) FindExpiredPayment(ctx context.Context, offset int, limit int, t time.Time) ([]domain.Payment, error) {
-	pmts, err := p.dao.FindExpiredPayment(ctx, offset, limit, t)
+func (p *paymentRepository) FindTimeoutPayments(ctx context.Context, offset int, limit int, ctime int64) ([]domain.Payment, error) {
+	pmts, err := p.dao.FindTimeoutPayments(ctx, offset, limit, ctime)
 	if err != nil {
 		return nil, err
 	}
-	res := make([]domain.Payment, 0, len(pmts))
+	// todo: 读扩散会对DB造成压力
+	pp := make([]domain.Payment, 0, len(pmts))
 	for _, pmt := range pmts {
-		res = append(res, p.toDomain2(pmt))
+		pmtDomain, _ := p.FindPaymentByID(ctx, pmt.Id)
+		pp = append(pp, pmtDomain)
 	}
-	return res, nil
+	return pp, nil
 }
 
-func (p *paymentRepository) toDomain2(pmt dao.Payment) domain.Payment {
-	return domain.Payment{
-		TotalAmount:      pmt.TotalAmount,
-		OrderSN:          pmt.OrderSn.String,
-		OrderDescription: pmt.OrderDescription,
-		Status:           domain.PaymentStatus(pmt.Status),
-	}
+func (p *paymentRepository) TotalTimeoutPayments(ctx context.Context, ctime int64) (int64, error) {
+	return p.dao.CountTimeoutPayments(ctx, ctime)
 }
