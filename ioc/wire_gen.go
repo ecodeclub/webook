@@ -87,7 +87,8 @@ func InitApp() (*App, error) {
 	adminServer := InitAdminServer(adminHandler)
 	closeTimeoutOrdersJob := orderModule.CloseTimeoutOrdersJob
 	closeTimeoutLockedCreditsJob := creditModule.CloseTimeoutLockedCreditsJob
-	v := initCronJobs(closeTimeoutOrdersJob, closeTimeoutLockedCreditsJob)
+	syncWechatOrderJob := paymentModule.SyncWechatOrderJob
+	v := initCronJobs(closeTimeoutOrdersJob, closeTimeoutLockedCreditsJob, syncWechatOrderJob)
 	app := &App{
 		Web:   component,
 		Admin: adminServer,

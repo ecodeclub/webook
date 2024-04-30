@@ -56,7 +56,7 @@ func InitApp() (*App, error) {
 		order.InitModule,
 		wire.FieldsOf(new(*order.Module), "Hdl", "CloseTimeoutOrdersJob"),
 		payment.InitModule,
-		wire.FieldsOf(new(*payment.Module), "Hdl"),
+		wire.FieldsOf(new(*payment.Module), "Hdl", "SyncWechatOrderJob"),
 		credit.InitModule,
 		wire.FieldsOf(new(*credit.Module), "Hdl", "CloseTimeoutLockedCreditsJob"),
 		project.InitModule,

@@ -24,6 +24,7 @@ import (
 	"github.com/ecodeclub/webook/internal/credit"
 	"github.com/ecodeclub/webook/internal/payment/internal/domain"
 	"github.com/ecodeclub/webook/internal/payment/internal/event"
+	"github.com/ecodeclub/webook/internal/payment/internal/job"
 	"github.com/ecodeclub/webook/internal/payment/internal/repository"
 	"github.com/ecodeclub/webook/internal/payment/internal/repository/dao"
 	"github.com/ecodeclub/webook/internal/payment/internal/service"
@@ -43,13 +44,13 @@ type Payment = domain.Payment
 type Record = domain.PaymentRecord
 type Channel = domain.PaymentChannel
 type ChannelType = domain.ChannelType
+type Service = service.Service
+type SyncWechatOrderJob = job.SyncWechatOrderJob
 
 const ChannelTypeCredit = domain.ChannelTypeCredit
 const ChannelTypeWechat = domain.ChannelTypeWechat
 const StatusPaidSuccess = domain.PaymentStatusPaidSuccess
 const StatusFailed = domain.PaymentStatusPaidFailed
-
-type Service = service.Service
 
 func InitModule(db *egorm.Component,
 	mq mq.MQ,
@@ -69,6 +70,7 @@ func InitModule(db *egorm.Component,
 		service.NewService,
 		repository.NewPaymentRepository,
 		sequencenumber.NewGenerator,
+		initSyncWechatOrderJob,
 		wire.FieldsOf(new(*credit.Module), "Svc"),
 		wire.Struct(new(Module), "*"),
 	)
@@ -102,4 +104,11 @@ func initDAO(db *gorm.DB) dao.PaymentDAO {
 		paymentDAO = dao.NewPaymentGORMDAO(db)
 	})
 	return paymentDAO
+}
+
+func initSyncWechatOrderJob(svc service.Service) *SyncWechatOrderJob {
+	minutes := int64(30)
+	seconds := int64(10)
+	limit := 100
+	return job.NewSyncWechatOrderJob(svc, minutes, seconds, limit)
 }

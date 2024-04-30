@@ -15,6 +15,7 @@
 package payment
 
 type Module struct {
-	Hdl *Handler
-	Svc Service
+	Hdl                *Handler
+	Svc                Service
+	SyncWechatOrderJob *SyncWechatOrderJob
 }

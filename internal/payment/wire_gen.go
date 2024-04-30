@@ -14,6 +14,7 @@ import (
 	"github.com/ecodeclub/webook/internal/credit"
 	"github.com/ecodeclub/webook/internal/payment/internal/domain"
 	"github.com/ecodeclub/webook/internal/payment/internal/event"
+	"github.com/ecodeclub/webook/internal/payment/internal/job"
 	"github.com/ecodeclub/webook/internal/payment/internal/repository"
 	"github.com/ecodeclub/webook/internal/payment/internal/repository/dao"
 	"github.com/ecodeclub/webook/internal/payment/internal/service"
@@ -46,9 +47,11 @@ func InitModule(db *gorm.DB, mq2 mq.MQ, c ecache.Cache, cm *credit.Module) (*Mod
 	}
 	service2 := service.NewService(nativePaymentService, serviceService, generator, paymentRepository, paymentEventProducer)
 	webHandler := web.NewHandler(notifyHandler, service2)
+	syncWechatOrderJob := initSyncWechatOrderJob(service2)
 	module := &Module{
-		Hdl: webHandler,
-		Svc: service2,
+		Hdl:                webHandler,
+		Svc:                service2,
+		SyncWechatOrderJob: syncWechatOrderJob,
 	}
 	return module, nil
 }
@@ -65,6 +68,10 @@ type Channel = domain.PaymentChannel
 
 type ChannelType = domain.ChannelType
 
+type Service = service.Service
+
+type SyncWechatOrderJob = job.SyncWechatOrderJob
+
 const ChannelTypeCredit = domain.ChannelTypeCredit
 
 const ChannelTypeWechat = domain.ChannelTypeWechat
@@ -72,8 +79,6 @@ const ChannelTypeWechat = domain.ChannelTypeWechat
 const StatusPaidSuccess = domain.PaymentStatusPaidSuccess
 
 const StatusFailed = domain.PaymentStatusPaidFailed
-
-type Service = service.Service
 
 func convertToNotifyHandler(h *notify.Handler) wechat.NotifyHandler {
 	return h
@@ -102,4 +107,11 @@ func initDAO(db *gorm.DB) dao.PaymentDAO {
 		paymentDAO = dao.NewPaymentGORMDAO(db)
 	})
 	return paymentDAO
+}
+
+func initSyncWechatOrderJob(svc service.Service) *SyncWechatOrderJob {
+	minutes := int64(30)
+	seconds := int64(10)
+	limit := 100
+	return job.NewSyncWechatOrderJob(svc, minutes, seconds, limit)
 }

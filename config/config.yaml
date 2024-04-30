@@ -33,3 +33,6 @@ cron:
   close:
     enableSeconds: true          # 是否使用秒作解析器，默认否
     spec: "0 0 0 * * *"           # 执行时间，每天 00:00:00 开始执行
+  syncWechat:
+    enableSeconds: true          # 是否使用秒作解析器，默认否
+    spec: "*/30 * * * *"           # 执行时间，每30分钟执行一次
