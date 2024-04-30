@@ -31,8 +31,10 @@ import (
 	"github.com/ecodeclub/webook/internal/payment/internal/event"
 	evtmocks "github.com/ecodeclub/webook/internal/payment/internal/event/mocks"
 	startup "github.com/ecodeclub/webook/internal/payment/internal/integration/setup"
+	"github.com/ecodeclub/webook/internal/payment/internal/job"
 	"github.com/ecodeclub/webook/internal/payment/internal/service"
 	wechatmocks "github.com/ecodeclub/webook/internal/payment/internal/service/wechat/mocks"
+	paymentmocks "github.com/ecodeclub/webook/internal/payment/mocks"
 	testioc "github.com/ecodeclub/webook/internal/test/ioc"
 	"github.com/ego-component/egorm"
 	"github.com/stretchr/testify/require"
@@ -2705,10 +2707,335 @@ func (s *PaymentModuleTestSuite) TestService_SyncWechatInfo() {
 
 func (s *PaymentModuleTestSuite) TestJob_SyncWechatOrder() {
 	t := s.T()
-	t.Skip()
 
-	// 创建超时数 < limit
-	// 创建超时数 s.limit >= total
-	// 创建超时数 s.limit < len(p) < total
-	// 关闭超时成功_积分支付_超时关闭
+	testCases := []struct {
+		name           string
+		before         func(t *testing.T) []domain.Payment
+		newSvcFunc     func(t *testing.T, ctrl *gomock.Controller, pmts []domain.Payment) service.Service
+		limit          int
+		errRequireFunc require.ErrorAssertionFunc
+		after          func(t *testing.T, svc service.Service, pmts []domain.Payment)
+	}{
+		{
+			name: "定时任务执行成功_limit小于total_混合支付_积分支付",
+			before: func(t *testing.T) []domain.Payment {
+				t.Helper()
+				return []domain.Payment{
+					{
+						ID:               600010,
+						SN:               "payment-job-600010",
+						PayerID:          600010,
+						OrderID:          600010,
+						OrderSN:          "order-job-600010",
+						OrderDescription: "季会员 * 1",
+						TotalAmount:      80000,
+						Status:           domain.PaymentStatusUnpaid,
+						Records: []domain.PaymentRecord{
+							{
+								Description: "年会员 * 1",
+								Channel:     domain.ChannelTypeCredit,
+								Amount:      80000,
+							},
+						},
+						Ctime: time.Now().Add(-10 * time.Second).UnixMilli(),
+					},
+					{
+						ID:               600011,
+						SN:               "payment-job-600011",
+						PayerID:          600011,
+						OrderID:          600011,
+						OrderSN:          "order-job-600011",
+						OrderDescription: "季会员 * 1",
+						TotalAmount:      80000,
+						Status:           domain.PaymentStatusProcessing,
+						Records: []domain.PaymentRecord{
+							{
+								Description: "年会员 * 1",
+								Channel:     domain.ChannelTypeWechat,
+								Amount:      40000,
+							},
+							{
+								Description: "年会员 * 1",
+								Channel:     domain.ChannelTypeCredit,
+								Amount:      40000,
+							},
+						},
+						Ctime: time.Now().Add(-10 * time.Second).UnixMilli(),
+					},
+					{
+						ID:               600012,
+						SN:               "payment-job-600012",
+						PayerID:          600012,
+						OrderID:          600012,
+						OrderSN:          "order-job-600012",
+						OrderDescription: "季会员 * 1",
+						TotalAmount:      80000,
+						Status:           domain.PaymentStatusProcessing,
+						Records: []domain.PaymentRecord{
+							{
+								Description: "年会员 * 1",
+								Channel:     domain.ChannelTypeCredit,
+								Amount:      80000,
+							},
+						},
+						Ctime: time.Now().Add(-10 * time.Second).UnixMilli(),
+					},
+					{
+						ID:               600013,
+						SN:               "payment-job-600013",
+						PayerID:          600013,
+						OrderID:          600013,
+						OrderSN:          "order-job-600013",
+						OrderDescription: "季会员 * 1",
+						TotalAmount:      80000,
+						Status:           domain.PaymentStatusProcessing,
+						Records: []domain.PaymentRecord{
+							{
+								Description: "年会员 * 1",
+								Channel:     domain.ChannelTypeWechat,
+								Amount:      40000,
+							},
+							{
+								Description: "年会员 * 1",
+								Channel:     domain.ChannelTypeCredit,
+								Amount:      40000,
+							},
+						},
+						Ctime: time.Now().Add(-10 * time.Second).UnixMilli(),
+					},
+				}
+			},
+			newSvcFunc: func(t *testing.T, ctrl *gomock.Controller, pmts []domain.Payment) service.Service {
+				t.Helper()
+
+				mockSvc := paymentmocks.NewMockService(ctrl)
+
+				limit := 3
+				if limit > len(pmts) {
+					limit = len(pmts)
+				}
+				res := pmts[:limit]
+				total := int64(len(pmts))
+				mockSvc.EXPECT().FindTimeoutPayments(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(res, total, nil)
+				res2 := pmts[limit:]
+				total2 := int64(len(res2))
+				mockSvc.EXPECT().FindTimeoutPayments(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(res2, total2, nil)
+				mockSvc.EXPECT().CloseTimeoutPayment(gomock.Any(), gomock.Any()).Return(nil).Times(2)
+				mockSvc.EXPECT().SyncWechatInfo(gomock.Any(), gomock.Any()).Return(nil).Times(2)
+				return mockSvc
+			},
+			limit:          3,
+			errRequireFunc: require.NoError,
+			after:          func(t *testing.T, svc service.Service, pmts []domain.Payment) {},
+		},
+		{
+			name: "定时任务执行成功_关闭超时支付成功_limit大于total_积分支付",
+			before: func(t *testing.T) []domain.Payment {
+				t.Helper()
+				return []domain.Payment{
+					{
+						ID:               600000,
+						SN:               "payment-job-600000",
+						PayerID:          600000,
+						OrderID:          600000,
+						OrderSN:          "order-job-600000",
+						OrderDescription: "季会员 * 1",
+						TotalAmount:      80000,
+						Status:           domain.PaymentStatusUnpaid,
+						Records: []domain.PaymentRecord{
+							{
+								Description: "年会员 * 1",
+								Channel:     domain.ChannelTypeCredit,
+								Amount:      80000,
+							},
+						},
+						Ctime: time.Now().Add(-10 * time.Second).UnixMilli(),
+					}}
+			},
+			newSvcFunc: func(t *testing.T, ctrl *gomock.Controller, pmts []domain.Payment) service.Service {
+				t.Helper()
+
+				mockSvc := paymentmocks.NewMockService(ctrl)
+
+				limit := 2
+				if limit > len(pmts) {
+					limit = len(pmts)
+				}
+				res := pmts[:limit]
+				total := int64(len(pmts))
+				mockSvc.EXPECT().FindTimeoutPayments(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(res, total, nil)
+				mockSvc.EXPECT().CloseTimeoutPayment(gomock.Any(), gomock.Any()).Return(nil).Times(len(pmts))
+				return mockSvc
+			},
+			limit:          2,
+			errRequireFunc: require.NoError,
+			after:          func(t *testing.T, svc service.Service, pmts []domain.Payment) {},
+		},
+		{
+			name: "定时任务执行成功_关闭超时支付失败_limit大于total_积分支付",
+			before: func(t *testing.T) []domain.Payment {
+				t.Helper()
+				return []domain.Payment{
+					{
+						ID:               600003,
+						SN:               "payment-job-600003",
+						PayerID:          600003,
+						OrderID:          600003,
+						OrderSN:          "order-job-600003",
+						OrderDescription: "季会员 * 1",
+						TotalAmount:      80000,
+						Status:           domain.PaymentStatusUnpaid,
+						Records: []domain.PaymentRecord{
+							{
+								Description: "年会员 * 1",
+								Channel:     domain.ChannelTypeCredit,
+								Amount:      80000,
+							},
+						},
+						Ctime: time.Now().Add(-10 * time.Second).UnixMilli(),
+					}}
+			},
+			newSvcFunc: func(t *testing.T, ctrl *gomock.Controller, pmts []domain.Payment) service.Service {
+				t.Helper()
+
+				mockSvc := paymentmocks.NewMockService(ctrl)
+
+				limit := 2
+				if limit > len(pmts) {
+					limit = len(pmts)
+				}
+				res := pmts[:limit]
+				total := int64(len(pmts))
+				mockSvc.EXPECT().FindTimeoutPayments(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(res, total, nil)
+				mockErr := errors.New("mock: 关闭超时支付失败")
+				mockSvc.EXPECT().CloseTimeoutPayment(gomock.Any(), gomock.Any()).Return(mockErr).Times(len(pmts))
+				return mockSvc
+			},
+			limit:          2,
+			errRequireFunc: require.NoError,
+			after:          func(t *testing.T, svc service.Service, pmts []domain.Payment) {},
+		},
+		{
+			name: "定时任务执行成功_limit等于total_微信支付",
+			before: func(t *testing.T) []domain.Payment {
+				t.Helper()
+				return []domain.Payment{
+					{
+						ID:               600001,
+						SN:               "payment-job-600001",
+						PayerID:          600001,
+						OrderID:          600001,
+						OrderSN:          "order-job-600001",
+						OrderDescription: "季会员 * 1",
+						TotalAmount:      80000,
+						Status:           domain.PaymentStatusProcessing,
+						Records: []domain.PaymentRecord{
+							{
+								Description: "年会员 * 1",
+								Channel:     domain.ChannelTypeWechat,
+								Amount:      80000,
+							},
+						},
+						Ctime: time.Now().Add(-10 * time.Second).UnixMilli(),
+					}}
+			},
+			newSvcFunc: func(t *testing.T, ctrl *gomock.Controller, pmts []domain.Payment) service.Service {
+				t.Helper()
+
+				mockSvc := paymentmocks.NewMockService(ctrl)
+
+				limit := 1
+				if limit > len(pmts) {
+					limit = len(pmts)
+				}
+				res := pmts[:limit]
+				total := int64(len(pmts))
+				mockSvc.EXPECT().FindTimeoutPayments(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(res, total, nil)
+				mockSvc.EXPECT().SyncWechatInfo(gomock.Any(), gomock.Any()).Return(nil).Times(len(pmts))
+				return mockSvc
+			},
+			limit:          1,
+			errRequireFunc: require.NoError,
+			after:          func(t *testing.T, svc service.Service, pmts []domain.Payment) {},
+		},
+		{
+			name: "定时任务执行成功_同步微信信息失败_混合支付",
+			before: func(t *testing.T) []domain.Payment {
+				t.Helper()
+				return []domain.Payment{
+					{
+						ID:               600002,
+						SN:               "payment-job-600002",
+						PayerID:          600002,
+						OrderID:          600002,
+						OrderSN:          "order-job-600002",
+						OrderDescription: "季会员 * 1",
+						TotalAmount:      80000,
+						Status:           domain.PaymentStatusProcessing,
+						Records: []domain.PaymentRecord{
+							{
+								Description: "年会员 * 1",
+								Channel:     domain.ChannelTypeWechat,
+								Amount:      40000,
+							},
+							{
+								Description: "年会员 * 1",
+								Channel:     domain.ChannelTypeCredit,
+								Amount:      40000,
+							},
+						},
+						Ctime: time.Now().Add(-10 * time.Second).UnixMilli(),
+					}}
+			},
+			newSvcFunc: func(t *testing.T, ctrl *gomock.Controller, pmts []domain.Payment) service.Service {
+				t.Helper()
+
+				mockSvc := paymentmocks.NewMockService(ctrl)
+
+				limit := 1
+				if limit > len(pmts) {
+					limit = len(pmts)
+				}
+				res := pmts[:limit]
+				total := int64(len(pmts))
+				mockSvc.EXPECT().FindTimeoutPayments(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(res, total, nil)
+				mockErr := errors.New("mock: 同步微信支付失败")
+				mockSvc.EXPECT().SyncWechatInfo(gomock.Any(), gomock.Any()).Return(mockErr).Times(len(pmts))
+				return mockSvc
+			},
+			limit:          1,
+			errRequireFunc: require.NoError,
+			after:          func(t *testing.T, svc service.Service, pmts []domain.Payment) {},
+		},
+		{
+			name: "定时任务执行失败_查找超时支付记录失败",
+			before: func(t *testing.T) []domain.Payment {
+				return nil
+			},
+			newSvcFunc: func(t *testing.T, ctrl *gomock.Controller, pmts []domain.Payment) service.Service {
+				t.Helper()
+				mockSvc := paymentmocks.NewMockService(ctrl)
+				mockErr := errors.New("mock: 查找超时支付记录失败")
+				mockSvc.EXPECT().FindTimeoutPayments(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, int64(0), mockErr)
+				return mockSvc
+			},
+			errRequireFunc: require.Error,
+			after:          func(t *testing.T, svc service.Service, pmts []domain.Payment) {},
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+			pmts := tc.before(t)
+			svc := tc.newSvcFunc(t, ctrl, pmts)
+			j := job.NewSyncWechatOrderJob(svc, 0, 0, tc.limit)
+			require.NotZero(t, j.Name())
+			tc.errRequireFunc(t, j.Run(context.Background()))
+			tc.after(t, svc, pmts)
+		})
+	}
+
 }
