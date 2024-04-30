@@ -43,7 +43,7 @@ type Service interface {
 	// FindTimeoutPayments 查找过期支付记录 —— 支付主记录+微信支付记录, job调用
 	FindTimeoutPayments(ctx context.Context, offset int, limit int, ctime int64) ([]domain.Payment, int64, error)
 	// CloseTimeoutPayment 通过支付ID关闭超时支付, job调用
-	CloseTimeoutPayment(ctx context.Context, pid int64) error
+	CloseTimeoutPayment(ctx context.Context, pmt domain.Payment) error
 	// SyncWechatInfo 同步与微信对账 job调用
 	SyncWechatInfo(ctx context.Context, pmt domain.Payment) error
 }
@@ -306,13 +306,7 @@ func (s *service) handleCreditCallback(ctx context.Context, pmt domain.Payment) 
 			)
 		}
 	} else {
-		err := s.creditSvc.CancelDeductCredits(ctx, uid, tid)
-		if err != nil {
-			s.l.Warn("确认扣减积分失败",
-				elog.Int64("uid", uid),
-				elog.Int64("tid", tid),
-			)
-		}
+		s.cancelDeductCredits(ctx, uid, tid)
 	}
 
 	pp := domain.Payment{
@@ -328,6 +322,16 @@ func (s *service) handleCreditCallback(ctx context.Context, pmt domain.Payment) 
 			},
 		}}
 	return s.repo.UpdatePayment(ctx, pp)
+}
+
+func (s *service) cancelDeductCredits(ctx context.Context, uid, tid int64) {
+	err := s.creditSvc.CancelDeductCredits(ctx, uid, tid)
+	if err != nil {
+		s.l.Warn("确认扣减积分失败",
+			elog.Int64("uid", uid),
+			elog.Int64("tid", tid),
+		)
+	}
 }
 
 func (s *service) FindTimeoutPayments(ctx context.Context, offset int, limit int, ctime int64) ([]domain.Payment, int64, error) {
@@ -352,8 +356,22 @@ func (s *service) FindTimeoutPayments(ctx context.Context, offset int, limit int
 	return ps, total, eg.Wait()
 }
 
-func (s *service) CloseTimeoutPayment(ctx context.Context, pid int64) error {
-	return s.repo.CloseTimeoutPayment(ctx, pid)
+func (s *service) CloseTimeoutPayment(ctx context.Context, pmt domain.Payment) error {
+	// pmt.OrderSN不能为空
+	// pmt.Records不能为空
+	// pmt.Status <= domain.PaymentStatusProcessing
+	pmt.Status = domain.PaymentStatusTimeoutClosed
+	for i := 0; i < len(pmt.Records); i++ {
+		record := &pmt.Records[i]
+		if record.Status == domain.PaymentStatusProcessing &&
+			record.Channel == domain.ChannelTypeCredit {
+			uid := pmt.PayerID
+			tid, _ := strconv.ParseInt(record.PaymentNO3rd, 10, 64)
+			s.cancelDeductCredits(ctx, uid, tid)
+		}
+		record.Status = domain.PaymentStatusTimeoutClosed
+	}
+	return s.repo.UpdatePayment(ctx, pmt)
 }
 
 func (s *service) SyncWechatInfo(ctx context.Context, pmt domain.Payment) error {
@@ -363,7 +381,11 @@ func (s *service) SyncWechatInfo(ctx context.Context, pmt domain.Payment) error 
 	}
 
 	if p.Status == domain.PaymentStatusTimeoutClosed {
-		return s.CloseTimeoutPayment(ctx, pmt.ID)
+		idx := slice.IndexFunc(pmt.Records, func(src domain.PaymentRecord) bool {
+			return src.Channel == domain.ChannelTypeWechat
+		})
+		pmt.Records[idx].PaymentNO3rd = p.Records[0].PaymentNO3rd
+		return s.CloseTimeoutPayment(ctx, pmt)
 	}
 
 	err = s.repo.UpdatePayment(ctx, p)

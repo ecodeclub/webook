@@ -66,10 +66,11 @@ func (s *SyncWechatOrderJob) Run(ctx context.Context) error {
 			})
 			if !ok {
 				// 非微信支付渠道支付,直接关闭
-				err = s.svc.CloseTimeoutPayment(ctx, pmt.ID)
+				err = s.svc.CloseTimeoutPayment(ctx, pmt)
 				if err != nil {
 					s.l.Error("关闭超时支付失败",
 						elog.FieldErr(err),
+						elog.String("order_sn", pmt.OrderSN),
 						elog.Int64("payment_id", pmt.ID),
 					)
 				}

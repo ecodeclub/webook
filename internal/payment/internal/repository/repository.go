@@ -30,7 +30,6 @@ type PaymentRepository interface {
 	FindPaymentByOrderSN(ctx context.Context, orderSN string) (domain.Payment, error)
 	FindTimeoutPayments(ctx context.Context, offset int, limit int, ctime int64) ([]domain.Payment, error)
 	TotalTimeoutPayments(ctx context.Context, ctime int64) (int64, error)
-	CloseTimeoutPayment(ctx context.Context, pid int64) error
 }
 
 func NewPaymentRepository(d dao.PaymentDAO) PaymentRepository {
@@ -137,8 +136,4 @@ func (p *paymentRepository) FindTimeoutPayments(ctx context.Context, offset int,
 
 func (p *paymentRepository) TotalTimeoutPayments(ctx context.Context, ctime int64) (int64, error) {
 	return p.dao.CountTimeoutPayments(ctx, ctime)
-}
-
-func (p *paymentRepository) CloseTimeoutPayment(ctx context.Context, pid int64) error {
-	return p.dao.SetPaymentTimeoutClosed(ctx, pid)
 }

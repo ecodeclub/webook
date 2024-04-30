@@ -33,7 +33,6 @@ type PaymentDAO interface {
 	FindPaymentByOrderSN(ctx context.Context, orderSN string) (Payment, []PaymentRecord, error)
 	FindTimeoutPayments(ctx context.Context, offset int, limit int, ctime int64) ([]Payment, error)
 	CountTimeoutPayments(ctx context.Context, ctime int64) (int64, error)
-	SetPaymentTimeoutClosed(ctx context.Context, pid int64) error
 }
 
 type PaymentGORMDAO struct {
@@ -130,26 +129,6 @@ func (g *PaymentGORMDAO) CountTimeoutPayments(ctx context.Context, ctime int64) 
 	err := g.db.WithContext(ctx).Model(Payment{}).Where("status <= ? AND ctime < ?", domain.PaymentStatusProcessing.ToUint8(), ctime).
 		Select("COUNT(id)").Count(&res).Error
 	return res, err
-}
-
-func (g *PaymentGORMDAO) SetPaymentTimeoutClosed(ctx context.Context, pid int64) error {
-	return g.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		values := map[string]any{
-			"status": domain.PaymentStatusTimeoutClosed.ToUint8(),
-			"utime":  time.Now().UnixMilli(),
-		}
-		if err := tx.Model(Payment{}).
-			Where("id = ? AND status <= ?", pid, domain.PaymentStatusProcessing.ToUint8()).
-			Updates(values).Error; err != nil {
-			return fmt.Errorf("更新支付主记录失败: %w", err)
-		}
-		if err := tx.Model(PaymentRecord{}).
-			Where("payment_id = ? AND status <= ?", pid, domain.PaymentStatusProcessing.ToUint8()).
-			Updates(values).Error; err != nil {
-			return fmt.Errorf("更新支付渠道记录失败: %w", err)
-		}
-		return nil
-	})
 }
 
 type Payment struct {

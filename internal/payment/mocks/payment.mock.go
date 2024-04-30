@@ -41,17 +41,17 @@ func (m *MockService) EXPECT() *MockServiceMockRecorder {
 }
 
 // CloseTimeoutPayment mocks base method.
-func (m *MockService) CloseTimeoutPayment(ctx context.Context, pid int64) error {
+func (m *MockService) CloseTimeoutPayment(ctx context.Context, pmt domain.Payment) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CloseTimeoutPayment", ctx, pid)
+	ret := m.ctrl.Call(m, "CloseTimeoutPayment", ctx, pmt)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // CloseTimeoutPayment indicates an expected call of CloseTimeoutPayment.
-func (mr *MockServiceMockRecorder) CloseTimeoutPayment(ctx, pid any) *ServiceCloseTimeoutPaymentCall {
+func (mr *MockServiceMockRecorder) CloseTimeoutPayment(ctx, pmt any) *ServiceCloseTimeoutPaymentCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CloseTimeoutPayment", reflect.TypeOf((*MockService)(nil).CloseTimeoutPayment), ctx, pid)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CloseTimeoutPayment", reflect.TypeOf((*MockService)(nil).CloseTimeoutPayment), ctx, pmt)
 	return &ServiceCloseTimeoutPaymentCall{Call: call}
 }
 
@@ -67,13 +67,13 @@ func (c *ServiceCloseTimeoutPaymentCall) Return(arg0 error) *ServiceCloseTimeout
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *ServiceCloseTimeoutPaymentCall) Do(f func(context.Context, int64) error) *ServiceCloseTimeoutPaymentCall {
+func (c *ServiceCloseTimeoutPaymentCall) Do(f func(context.Context, domain.Payment) error) *ServiceCloseTimeoutPaymentCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *ServiceCloseTimeoutPaymentCall) DoAndReturn(f func(context.Context, int64) error) *ServiceCloseTimeoutPaymentCall {
+func (c *ServiceCloseTimeoutPaymentCall) DoAndReturn(f func(context.Context, domain.Payment) error) *ServiceCloseTimeoutPaymentCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
