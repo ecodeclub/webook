@@ -18,25 +18,7 @@ func NewCaseRepo(caseDao dao.CaseDAO) CaseRepo {
 	}
 }
 
-func (c *caseRepository) InputCase(ctx context.Context, msg domain.Case) error {
-	return c.caseDao.InputCase(ctx, dao.Case{
-		Id:        msg.Id,
-		Uid:       msg.Uid,
-		Labels:    msg.Labels,
-		Title:     msg.Title,
-		Content:   msg.Content,
-		CodeRepo:  msg.CodeRepo,
-		Keywords:  msg.Keywords,
-		Shorthand: msg.Shorthand,
-		Highlight: msg.Highlight,
-		Guidance:  msg.Guidance,
-		Status:    msg.Status.ToUint8(),
-		Ctime:     msg.Ctime.UnixMilli(),
-		Utime:     msg.Utime.UnixMilli(),
-	})
-}
-
-func (c *caseRepository) SearchCase(ctx context.Context, keywords []string) ([]domain.Case, error) {
+func (c *caseRepository) SearchCase(ctx context.Context, keywords string) ([]domain.Case, error) {
 	cases, err := c.caseDao.SearchCase(ctx, keywords)
 	if err != nil {
 		return nil, err

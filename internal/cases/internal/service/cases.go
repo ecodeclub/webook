@@ -3,6 +3,9 @@ package service
 import (
 	"context"
 
+	"github.com/ecodeclub/webook/internal/cases/internal/event"
+	"github.com/gotomicro/ego/core/elog"
+
 	"github.com/ecodeclub/webook/internal/cases/internal/domain"
 	"github.com/ecodeclub/webook/internal/cases/internal/repository"
 	"golang.org/x/sync/errgroup"
@@ -22,7 +25,9 @@ type Service interface {
 }
 
 type service struct {
-	repo repository.CaseRepo
+	repo     repository.CaseRepo
+	producer event.SyncEventProducer
+	logger   *elog.Component
 }
 
 func (s *service) GetPubByIDs(ctx context.Context, ids []int64) ([]domain.Case, error) {
@@ -34,12 +39,39 @@ func (s *service) Save(ctx context.Context, ca *domain.Case) (int64, error) {
 	if ca.Id > 0 {
 		return ca.Id, s.repo.Update(ctx, ca)
 	}
-	return s.repo.Create(ctx, ca)
+	id, err := s.repo.Create(ctx, ca)
+	if err != nil {
+		return 0, err
+	}
+	evt := event.NewCaseEvent(ca)
+	err = s.producer.Produce(ctx, evt)
+	if err != nil {
+		s.logger.Error("发送案例同步搜索信息",
+			elog.FieldErr(err),
+			elog.Any("event", evt),
+		)
+	}
+	return id, nil
 }
 
 func (s *service) Publish(ctx context.Context, ca *domain.Case) (int64, error) {
 	ca.Status = domain.PublishedStatus
-	return s.repo.Sync(ctx, ca)
+	id, err := s.repo.Sync(ctx, ca)
+	if err != nil {
+		return 0, err
+	}
+	if err != nil {
+		return 0, err
+	}
+	evt := event.NewCaseEvent(ca)
+	err = s.producer.Produce(ctx, evt)
+	if err != nil {
+		s.logger.Error("发送案例同步搜索信息",
+			elog.FieldErr(err),
+			elog.Any("event", evt),
+		)
+	}
+	return id, nil
 }
 
 func (s *service) List(ctx context.Context, offset int, limit int) ([]domain.Case, int64, error) {
@@ -93,8 +125,10 @@ func (s *service) PubDetail(ctx context.Context, caseId int64) (domain.Case, err
 	return s.repo.GetPubByID(ctx, caseId)
 }
 
-func NewService(repo repository.CaseRepo) Service {
+func NewService(repo repository.CaseRepo, producer event.SyncEventProducer) Service {
 	return &service{
-		repo: repo,
+		repo:     repo,
+		producer: producer,
+		logger:   elog.DefaultLogger,
 	}
 }

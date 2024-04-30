@@ -3,6 +3,9 @@ package service
 import (
 	"context"
 
+	"github.com/ecodeclub/webook/internal/skill/internal/event"
+	"github.com/gotomicro/ego/core/elog"
+
 	"github.com/ecodeclub/webook/internal/skill/internal/domain"
 	"github.com/ecodeclub/webook/internal/skill/internal/repository"
 )
@@ -18,7 +21,9 @@ type SkillService interface {
 }
 
 type skillService struct {
-	repo repository.SkillRepo
+	repo     repository.SkillRepo
+	producer event.SyncEventProducer
+	logger   *elog.Component
 }
 
 func (s *skillService) RefsByLevelIDs(ctx context.Context, ids []int64) ([]domain.SkillLevel, error) {
@@ -26,11 +31,35 @@ func (s *skillService) RefsByLevelIDs(ctx context.Context, ids []int64) ([]domai
 }
 
 func (s *skillService) SaveRefs(ctx context.Context, skill domain.Skill) error {
-	return s.repo.SaveRefs(ctx, skill)
+	err := s.repo.SaveRefs(ctx, skill)
+	if err != nil {
+		return err
+	}
+	evt := event.NewSkillEvent(skill)
+	err = s.producer.Produce(ctx, evt)
+	if err != nil {
+		s.logger.Error("发送技能搜索信息",
+			elog.FieldErr(err),
+			elog.Any("event", evt),
+		)
+	}
+	return nil
 }
 
 func (s *skillService) Save(ctx context.Context, skill domain.Skill) (int64, error) {
-	return s.repo.Save(ctx, skill)
+	id, err := s.repo.Save(ctx, skill)
+	if err != nil {
+		return 0, err
+	}
+	evt := event.NewSkillEvent(skill)
+	err = s.producer.Produce(ctx, evt)
+	if err != nil {
+		s.logger.Error("发送技能搜索信息",
+			elog.FieldErr(err),
+			elog.Any("event", evt),
+		)
+	}
+	return id, nil
 }
 
 func (s *skillService) List(ctx context.Context, offset, limit int) ([]domain.Skill, int64, error) {
@@ -49,8 +78,9 @@ func (s *skillService) Info(ctx context.Context, id int64) (domain.Skill, error)
 	return s.repo.Info(ctx, id)
 }
 
-func NewSkillService(repo repository.SkillRepo) SkillService {
+func NewSkillService(repo repository.SkillRepo, p event.SyncEventProducer) SkillService {
 	return &skillService{
-		repo: repo,
+		repo:     repo,
+		producer: p,
 	}
 }

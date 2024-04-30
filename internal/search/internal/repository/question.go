@@ -2,7 +2,6 @@ package repository
 
 import (
 	"context"
-	"time"
 
 	"github.com/ecodeclub/webook/internal/search/internal/domain"
 	"github.com/ecodeclub/webook/internal/search/internal/repository/dao"
@@ -18,11 +17,7 @@ func NewQuestionRepo(questionDao dao.QuestionDAO) QuestionRepo {
 	}
 }
 
-func (q *questionRepository) InputQuestion(ctx context.Context, msg domain.Question) error {
-	return q.questionDao.InputQuestion(ctx, q.questionToEntity(msg))
-}
-
-func (q *questionRepository) SearchQuestion(ctx context.Context, keywords []string) ([]domain.Question, error) {
+func (q *questionRepository) SearchQuestion(ctx context.Context, keywords string) ([]domain.Question, error) {
 	ques, err := q.questionDao.SearchQuestion(ctx, keywords)
 	if err != nil {
 		return nil, err
@@ -59,7 +54,6 @@ func (*questionRepository) ansToEntity(q domain.AnswerElement) dao.AnswerElement
 		Shorthand: q.Shorthand,
 		Highlight: q.Highlight,
 		Guidance:  q.Guidance,
-		Utime:     q.Utime.UnixMilli(),
 	}
 }
 
@@ -88,6 +82,5 @@ func (*questionRepository) ansToDomain(ans dao.AnswerElement) domain.AnswerEleme
 		Shorthand: ans.Shorthand,
 		Highlight: ans.Highlight,
 		Guidance:  ans.Guidance,
-		Utime:     time.UnixMilli(ans.Utime),
 	}
 }

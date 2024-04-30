@@ -17,13 +17,8 @@ func NewQuestionSetRepo(questionSetDao dao.QuestionSetDAO) QuestionSetRepo {
 		qsDao: questionSetDao,
 	}
 }
-
-func (q *questionSetRepo) InputQuestionSet(ctx context.Context, msg domain.QuestionSet) error {
-	return q.qsDao.InputQuestionSet(ctx, q.toEntity(msg))
-}
-
-func (q *questionSetRepo) SearchQuestionSet(ctx context.Context, ids []int64, keywords []string) ([]domain.QuestionSet, error) {
-	sets, err := q.qsDao.SearchQuestionSet(ctx, ids, keywords)
+func (q *questionSetRepo) SearchQuestionSet(ctx context.Context, keywords string) ([]domain.QuestionSet, error) {
+	sets, err := q.qsDao.SearchQuestionSet(ctx, keywords)
 	if err != nil {
 		return nil, err
 	}

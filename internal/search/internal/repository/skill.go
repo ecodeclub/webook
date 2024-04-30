@@ -18,12 +18,8 @@ func NewSKillRepo(skillDao dao.SkillDAO) SkillRepo {
 	}
 }
 
-func (s *skillRepo) InputSKill(ctx context.Context, msg domain.Skill) error {
-	return s.skillDao.InputSkill(ctx, s.toSkillEntity(msg))
-}
-
-func (s *skillRepo) SearchSkill(ctx context.Context, qids, cids []int64, keywords []string) ([]domain.Skill, error) {
-	skillList, err := s.skillDao.SearchSkill(ctx, qids, cids, keywords)
+func (s *skillRepo) SearchSkill(ctx context.Context, keywords string) ([]domain.Skill, error) {
+	skillList, err := s.skillDao.SearchSkill(ctx, keywords)
 	if err != nil {
 		return nil, err
 	}

@@ -3,10 +3,7 @@ package dao
 import (
 	"context"
 	"encoding/json"
-	"strconv"
-	"strings"
 
-	"github.com/ecodeclub/ekit/slice"
 	"github.com/olivere/elastic/v7"
 )
 
@@ -48,30 +45,18 @@ func NewSkillElasticDAO(client *elastic.Client) SkillDAO {
 	}
 }
 
-func (s *skillElasticDAO) SearchSkill(ctx context.Context, qids, cids []int64, keywords []string) ([]Skill, error) {
-	queryString := strings.Join(keywords, " ")
-	qidList := slice.Map(qids, func(idx int, src int64) any {
-		return src
-	})
-	cidList := slice.Map(cids, func(idx int, src int64) any {
-		return src
-	})
+func (s *skillElasticDAO) SearchSkill(ctx context.Context, keywords string) ([]Skill, error) {
+
 	query :=
 		elastic.NewBoolQuery().Should(
-			elastic.NewMatchQuery("name", queryString).Boost(skillNameBoost),
-			elastic.NewTermsQueryFromStrings("labels", keywords...).Boost(skillLabelBoost),
-			elastic.NewMatchQuery("desc", queryString).Boost(skillDescBoost),
+			elastic.NewMatchQuery("name", keywords).Boost(skillNameBoost),
+			elastic.NewMatchQuery("labels", keywords).Boost(skillLabelBoost),
+			elastic.NewMatchQuery("desc", keywords).Boost(skillDescBoost),
 			elastic.NewBoolQuery().Should(
-				elastic.NewMatchQuery("basic.desc", queryString),
-				elastic.NewTermsQuery("basic.cases", cidList...),
-				elastic.NewTermsQuery("basic.questions", qidList...),
-				elastic.NewMatchQuery("intermediate.desc", queryString),
-				elastic.NewTermsQuery("intermediate.cases", cidList...),
-				elastic.NewTermsQuery("intermediate.questions", qidList...),
-				elastic.NewMatchQuery("advanced.desc", queryString),
-				elastic.NewTermsQuery("advanced.cases", cidList...),
-				elastic.NewTermsQuery("advanced.questions", qidList...)),
-		)
+				elastic.NewMatchQuery("basic.desc", keywords),
+				elastic.NewMatchQuery("intermediate.desc", keywords),
+				elastic.NewMatchQuery("advanced.desc", keywords),
+			))
 
 	resp, err := s.client.Search(SkillIndexName).Size(defaultSize).Query(query).Do(ctx)
 	if err != nil {
@@ -87,12 +72,4 @@ func (s *skillElasticDAO) SearchSkill(ctx context.Context, qids, cids []int64, k
 		res = append(res, ele)
 	}
 	return res, nil
-}
-
-func (s *skillElasticDAO) InputSkill(ctx context.Context, msg Skill) error {
-	_, err := s.client.Index().
-		Index(CaseIndexName).
-		Id(strconv.FormatInt(msg.ID, 10)).
-		BodyJson(msg).Do(ctx)
-	return err
 }

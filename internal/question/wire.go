@@ -19,6 +19,9 @@ package baguwen
 import (
 	"sync"
 
+	"github.com/ecodeclub/mq-api"
+	"github.com/ecodeclub/webook/internal/question/internal/event"
+
 	"github.com/ecodeclub/ecache"
 
 	"github.com/ecodeclub/webook/internal/question/internal/repository"
@@ -31,10 +34,11 @@ import (
 	"gorm.io/gorm"
 )
 
-func InitModule(db *egorm.Component, ec ecache.Cache) (*Module, error) {
+func InitModule(db *egorm.Component, ec ecache.Cache, q mq.MQ) (*Module, error) {
 	wire.Build(InitQuestionDAO,
 		cache.NewQuestionECache,
 		repository.NewCacheRepository,
+		initSyncEventProducer,
 		service.NewService,
 		web.NewHandler,
 
@@ -57,6 +61,13 @@ func InitTableOnce(db *gorm.DB) {
 			panic(err)
 		}
 	})
+}
+func initSyncEventProducer(q mq.MQ) event.SyncEventProducer {
+	producer, err := event.NewSyncEventProducer(q)
+	if err != nil {
+		panic(err)
+	}
+	return producer
 }
 
 func InitQuestionDAO(db *egorm.Component) dao.QuestionDAO {

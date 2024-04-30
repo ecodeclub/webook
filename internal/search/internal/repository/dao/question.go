@@ -3,8 +3,6 @@ package dao
 import (
 	"context"
 	"encoding/json"
-	"strconv"
-	"strings"
 
 	"github.com/olivere/elastic/v7"
 )
@@ -40,7 +38,6 @@ type AnswerElement struct {
 	Shorthand string `json:"shorthand"`
 	Highlight string `json:"highlight"`
 	Guidance  string `json:"guidance"`
-	Utime     int64  `json:"utime"`
 }
 
 type questionElasticDAO struct {
@@ -53,30 +50,29 @@ func NewQuestionDAO(client *elastic.Client) QuestionDAO {
 	}
 }
 
-func (q *questionElasticDAO) SearchQuestion(ctx context.Context, keywords []string) ([]Question, error) {
-	queryString := strings.Join(keywords, " ")
+func (q *questionElasticDAO) SearchQuestion(ctx context.Context, keywords string) ([]Question, error) {
 	query := elastic.NewBoolQuery().Must(
 		elastic.NewBoolQuery().Should(
 			// 给予更高权重
-			elastic.NewMatchQuery("title", queryString).Boost(questionTitleBoost),
-			elastic.NewTermsQueryFromStrings("labels", keywords...).Boost(questionLabelBoost),
-			elastic.NewMatchQuery("content", queryString).Boost(questionContentBoost),
-			elastic.NewMatchQuery("answer.analysis.keywords", queryString),
-			elastic.NewMatchQuery("answer.analysis.shorthand", queryString),
-			elastic.NewMatchQuery("answer.analysis.highlight", queryString),
-			elastic.NewMatchQuery("answer.analysis.guidance", queryString),
-			elastic.NewMatchQuery("answer.basic.keywords", queryString),
-			elastic.NewMatchQuery("answer.basic.shorthand", queryString),
-			elastic.NewMatchQuery("answer.basic.highlight", queryString),
-			elastic.NewMatchQuery("answer.basic.guidance", queryString),
-			elastic.NewMatchQuery("answer.intermediate.keywords", queryString),
-			elastic.NewMatchQuery("answer.intermediate.shorthand", queryString),
-			elastic.NewMatchQuery("answer.intermediate.highlight", queryString),
-			elastic.NewMatchQuery("answer.intermediate.guidance", queryString),
-			elastic.NewMatchQuery("answer.advanced.keywords", queryString),
-			elastic.NewMatchQuery("answer.advanced.shorthand", queryString),
-			elastic.NewMatchQuery("answer.advanced.highlight", queryString),
-			elastic.NewMatchQuery("answer.advanced.guidance", queryString)),
+			elastic.NewMatchQuery("title", keywords).Boost(questionTitleBoost),
+			elastic.NewMatchQuery("labels", keywords).Boost(questionLabelBoost),
+			elastic.NewMatchQuery("content", keywords).Boost(questionContentBoost),
+			elastic.NewMatchQuery("answer.analysis.keywords", keywords),
+			elastic.NewMatchQuery("answer.analysis.shorthand", keywords),
+			elastic.NewMatchQuery("answer.analysis.highlight", keywords),
+			elastic.NewMatchQuery("answer.analysis.guidance", keywords),
+			elastic.NewMatchQuery("answer.basic.keywords", keywords),
+			elastic.NewMatchQuery("answer.basic.shorthand", keywords),
+			elastic.NewMatchQuery("answer.basic.highlight", keywords),
+			elastic.NewMatchQuery("answer.basic.guidance", keywords),
+			elastic.NewMatchQuery("answer.intermediate.keywords", keywords),
+			elastic.NewMatchQuery("answer.intermediate.shorthand", keywords),
+			elastic.NewMatchQuery("answer.intermediate.highlight", keywords),
+			elastic.NewMatchQuery("answer.intermediate.guidance", keywords),
+			elastic.NewMatchQuery("answer.advanced.keywords", keywords),
+			elastic.NewMatchQuery("answer.advanced.shorthand", keywords),
+			elastic.NewMatchQuery("answer.advanced.highlight", keywords),
+			elastic.NewMatchQuery("answer.advanced.guidance", keywords)),
 		elastic.NewTermQuery("status", 2))
 	resp, err := q.client.Search(QuestionIndexName).Size(defaultSize).Query(query).Do(ctx)
 	if err != nil {
@@ -92,12 +88,4 @@ func (q *questionElasticDAO) SearchQuestion(ctx context.Context, keywords []stri
 		res = append(res, ele)
 	}
 	return res, nil
-}
-
-func (q *questionElasticDAO) InputQuestion(ctx context.Context, msg Question) error {
-	_, err := q.client.Index().
-		Index(CaseIndexName).
-		Id(strconv.FormatInt(msg.ID, 10)).
-		BodyJson(msg).Do(ctx)
-	return err
 }

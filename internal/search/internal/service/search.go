@@ -3,24 +3,68 @@ package service
 import (
 	"context"
 	"errors"
+	"strings"
 
-	"github.com/ecodeclub/ekit/slice"
 	"github.com/ecodeclub/webook/internal/search/internal/domain"
 	"github.com/ecodeclub/webook/internal/search/internal/repository"
 	"golang.org/x/sync/errgroup"
 )
 
-type SearchSvc interface {
-	Search(ctx context.Context, keywords []string) (domain.SearchResult, error)
-	SearchWithBiz(ctx context.Context, biz string, keywords []string) (domain.SearchResult, error)
+type SearchService interface {
+	// 出于长远考虑，这里你用 expr 来代表搜索的表达式，后期我们会考虑支持类似 github 那种复杂的搜索表达式
+	// 目前你可以认为，传递过来的就是 biz:all:xxxx
+	// 业务专属就是 biz:question:xxx 这种形态
+	// xxx 就是搜索的内容
+	Search(ctx context.Context, expr string) (domain.SearchResult, error)
 }
 
 type searchSvc struct {
-	questionRepo    repository.QuestionRepo
-	questionSetRepo repository.QuestionSetRepo
-	skillRepo       repository.SkillRepo
-	caseRepo        repository.CaseRepo
-	searchHandlers  map[string]SearchHandler
+	searchHandlers map[string]SearchHandler
+}
+
+func (s *searchSvc) Search(ctx context.Context, expr string) (domain.SearchResult, error) {
+	biz, keywords, err := s.parseExpr(expr)
+	if err != nil {
+		return domain.SearchResult{}, err
+	}
+	var eg errgroup.Group
+	res := &domain.SearchResult{}
+	if biz == "all" {
+		for _, handler := range s.searchHandlers {
+			bizHandler := handler
+			eg.Go(func() error {
+				return bizHandler.search(ctx, keywords, res)
+			})
+		}
+		if err = eg.Wait(); err != nil {
+			return domain.SearchResult{}, err
+		}
+	} else {
+		bizhandler, ok := s.searchHandlers[biz]
+		if !ok {
+			return domain.SearchResult{}, errors.New("无相关的业务处理方式")
+		}
+		err = bizhandler.search(ctx, keywords, res)
+		if err != nil {
+			return domain.SearchResult{}, err
+		}
+	}
+	return *res, nil
+
+}
+func (s *searchSvc) parseExpr(expr string) (string, string, error) {
+	searchParams := strings.Split(expr, ":")
+	if len(searchParams) == 3 {
+		typ := searchParams[0]
+		if typ != "biz" {
+			return "", "", errors.New("参数错误")
+		}
+		biz := searchParams[1]
+		keywords := searchParams[2]
+		return biz, keywords, nil
+	}
+	return "", "", errors.New("参数错误")
+
 }
 
 func NewSearchSvc(
@@ -28,74 +72,14 @@ func NewSearchSvc(
 	questionSetRepo repository.QuestionSetRepo,
 	skillRepo repository.SkillRepo,
 	caseRepo repository.CaseRepo,
-) SearchSvc {
+) SearchService {
 	searchHandlers := map[string]SearchHandler{
-		"skill":       NewSkillHandler(caseRepo, questionRepo, skillRepo),
+		"skill":       NewSkillHandler(skillRepo),
 		"case":        NewCaseHandler(caseRepo),
-		"questionSet": NewQuestionSetHandler(questionRepo, questionSetRepo),
+		"questionSet": NewQuestionSetHandler(questionSetRepo),
 		"question":    NewQuestionHandler(questionRepo),
 	}
 	return &searchSvc{
-		questionRepo:    questionRepo,
-		questionSetRepo: questionSetRepo,
-		skillRepo:       skillRepo,
-		caseRepo:        caseRepo,
-		searchHandlers:  searchHandlers,
+		searchHandlers: searchHandlers,
 	}
-}
-
-func (s *searchSvc) Search(ctx context.Context, keywords []string) (domain.SearchResult, error) {
-	var eg errgroup.Group
-	var cases []domain.Case
-	var ques []domain.Question
-	eg.Go(func() error {
-		var err error
-		cases, err = s.caseRepo.SearchCase(ctx, keywords)
-		return err
-	})
-	eg.Go(func() error {
-		var err error
-		ques, err = s.questionRepo.SearchQuestion(ctx, keywords)
-		return err
-	})
-	if err := eg.Wait(); err != nil {
-		return domain.SearchResult{}, err
-	}
-	caseIds := slice.Map(cases, func(idx int, src domain.Case) int64 {
-		return src.Id
-	})
-	questionIds := slice.Map(ques, func(idx int, src domain.Question) int64 {
-		return src.ID
-	})
-	var questionSets []domain.QuestionSet
-	var skills []domain.Skill
-	eg.Go(func() error {
-		var err error
-		questionSets, err = s.questionSetRepo.SearchQuestionSet(ctx, questionIds, keywords)
-		return err
-	})
-
-	eg.Go(func() error {
-		var err error
-		skills, err = s.skillRepo.SearchSkill(ctx, questionIds, caseIds, keywords)
-		return err
-	})
-	if err := eg.Wait(); err != nil {
-		return domain.SearchResult{}, err
-	}
-	return domain.SearchResult{
-		Cases:       cases,
-		Questions:   ques,
-		QuestionSet: questionSets,
-		Skills:      skills,
-	}, nil
-
-}
-
-func (s *searchSvc) SearchWithBiz(ctx context.Context, biz string, keywords []string) (domain.SearchResult, error) {
-	handler, ok := s.searchHandlers[biz]
-	if !ok {
-		return domain.SearchResult{}, errors.New("未找到相关业务的搜索方法")
-	}
-	return handler.search(ctx, keywords)
 }

@@ -4,7 +4,7 @@
       "id": { "type": "long" },
       "uid": { "type": "long" },
       "title": { "type": "text" },
-      "labels": { "type": "keyword" },
+      "labels": { "type": "text" },
       "content": { "type": "text" },
       "status": { "type": "keyword" },
       "answer": {
@@ -16,8 +16,7 @@
               "keywords": { "type": "text" },
               "shorthand": { "type": "text" },
               "highlight": { "type": "text" },
-              "guidance": { "type": "text" },
-              "utime": { "type": "long" }
+              "guidance": { "type": "text" }
             }
           },
           "basic": {
@@ -27,8 +26,7 @@
               "keywords": { "type": "text" },
               "shorthand": { "type": "text" },
               "highlight": { "type": "text" },
-              "guidance": { "type": "text" },
-              "utime": { "type": "long" }
+              "guidance": { "type": "text" }
             }
           },
           "intermediate": {
@@ -38,8 +36,7 @@
               "keywords": { "type": "text" },
               "shorthand": { "type": "text" },
               "highlight": { "type": "text" },
-              "guidance": { "type": "text" },
-              "utime": { "type": "long" }
+              "guidance": { "type": "text" }
             }
           },
           "advanced": {
@@ -49,8 +46,7 @@
               "keywords": { "type": "text" },
               "shorthand": { "type": "text" },
               "highlight": { "type": "text" },
-              "guidance": { "type": "text" },
-              "utime": { "type": "long" }
+              "guidance": { "type": "text" }
             }
           }
         }

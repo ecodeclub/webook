@@ -7,11 +7,7 @@ import (
 )
 
 type SearchReq struct {
-	KeyWords []string `json:"keyWords,omitempty"`
-}
-type SearchBizReq struct {
-	Biz      string   `json:"biz,omitempty"`
-	KeyWords []string `json:"keyWords,omitempty"`
+	KeyWords string `json:"keyWords,omitempty"`
 }
 
 type Case struct {
@@ -55,7 +51,6 @@ type AnswerElement struct {
 	Shorthand string `json:"shorthand,omitempty"`
 	Highlight string `json:"highlight,omitempty"`
 	Guidance  string `json:"guidance,omitempty"`
-	Utime     string `json:"utime,omitempty"`
 }
 
 type SkillLevel struct {
@@ -171,7 +166,6 @@ func NewAnsElement(ele domain.AnswerElement) AnswerElement {
 		Shorthand: ele.Shorthand,
 		Highlight: ele.Highlight,
 		Guidance:  ele.Guidance,
-		Utime:     ele.Utime.Format(time.DateTime),
 	}
 }
 func NewSkillLevel(l domain.SkillLevel) SkillLevel {

@@ -1,6 +1,9 @@
 package domain
 
-import "time"
+import (
+	"sync"
+	"time"
+)
 
 type Case struct {
 	Id int64
@@ -68,7 +71,6 @@ type AnswerElement struct {
 	Shorthand string
 	Highlight string
 	Guidance  string
-	Utime     time.Time
 }
 
 type SkillLevel struct {
@@ -106,8 +108,33 @@ type QuestionSet struct {
 }
 
 type SearchResult struct {
+	mu          sync.RWMutex
 	Cases       []Case
 	Questions   []Question
 	Skills      []Skill
 	QuestionSet []QuestionSet
+}
+
+func (s *SearchResult) SetCases(cases []Case) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.Cases = cases
+}
+
+func (s *SearchResult) SetSkills(skills []Skill) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.Skills = skills
+}
+
+func (s *SearchResult) SetQuestions(qs []Question) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.Questions = qs
+}
+
+func (s *SearchResult) SetQuestionSet(qs []QuestionSet) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.QuestionSet = qs
 }

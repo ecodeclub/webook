@@ -7,8 +7,11 @@
 package baguwen
 
 import (
+	"context"
 	"sync"
 
+	"github.com/ecodeclub/mq-api"
+	"github.com/ecodeclub/webook/internal/search/internal/event"
 	"github.com/ecodeclub/webook/internal/search/internal/repository"
 	"github.com/ecodeclub/webook/internal/search/internal/repository/dao"
 	"github.com/ecodeclub/webook/internal/search/internal/service"
@@ -18,13 +21,15 @@ import (
 
 // Injectors from wire.go:
 
-func InitModule(es *elastic.Client) (*Module, error) {
-	searchSvc := InitSearchSvc(es)
-	syncSvc := InitSyncSvc(es)
-	handler := web.NewHandler(searchSvc)
+func InitModule(es *elastic.Client, q mq.MQ) (*Module, error) {
+	searchService := InitSearchSvc(es)
+	syncService := InitSyncSvc(es)
+	syncConsumer := initSyncConsumer(syncService, q)
+	handler := web.NewHandler(searchService)
 	module := &Module{
-		SearchSvc: searchSvc,
-		SyncSvc:   syncSvc,
+		SearchSvc: searchService,
+		SyncSvc:   syncService,
+		c:         syncConsumer,
 		Hdl:       handler,
 	}
 	return module, nil
@@ -56,18 +61,34 @@ func InitRepo(es *elastic.Client) (repository.CaseRepo, repository.QuestionRepo,
 	return caseRepo, questionRepo, questionSetRepo, skillRepo
 }
 
-func InitSearchSvc(es *elastic.Client) service.SearchSvc {
+func InitAnyRepo(es *elastic.Client) repository.AnyRepo {
+	InitIndexOnce(es)
+	anyDAO := dao.NewAnyEsDAO(es)
+	anyRepo := repository.NewAnyRepo(anyDAO)
+	return anyRepo
+}
+
+func InitSearchSvc(es *elastic.Client) service.SearchService {
 	caseRepo, questionRepo, questionSetRepo, skillRepo := InitRepo(es)
 	return service.NewSearchSvc(questionRepo, questionSetRepo, skillRepo, caseRepo)
 }
 
-func InitSyncSvc(es *elastic.Client) service.SyncSvc {
-	caseRepo, questionRepo, questionSetRepo, skillRepo := InitRepo(es)
-	return service.NewSyncSvc(questionRepo, questionSetRepo, skillRepo, caseRepo)
+func InitSyncSvc(es *elastic.Client) service.SyncService {
+	anyRepo := InitAnyRepo(es)
+	return service.NewSyncSvc(anyRepo)
 }
 
-type SearchService = service.SearchSvc
+func initSyncConsumer(svc service.SyncService, q mq.MQ) *event.SyncConsumer {
+	c, err := event.NewSyncConsumer(svc, q)
+	if err != nil {
+		panic(err)
+	}
+	c.Start(context.Background())
+	return c
+}
 
-type SyncService = service.SyncSvc
+type SearchService = service.SearchService
+
+type SyncService = service.SyncService
 
 type Handler = web.Handler

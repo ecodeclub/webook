@@ -8,6 +8,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ecodeclub/mq-api"
+	"github.com/ecodeclub/webook/internal/search/internal/event"
+
 	"github.com/ecodeclub/ekit/iox"
 	"github.com/ecodeclub/ginx/session"
 	"github.com/ecodeclub/webook/internal/pkg/middleware"
@@ -29,8 +32,9 @@ const uid = 123
 
 type HandlerTestSuite struct {
 	suite.Suite
-	server *egin.Component
-	es     *elastic.Client
+	server   *egin.Component
+	es       *elastic.Client
+	producer mq.Producer
 }
 
 func (s *HandlerTestSuite) SetupSuite() {
@@ -50,6 +54,12 @@ func (s *HandlerTestSuite) SetupSuite() {
 	server.Use(middleware.NewCheckMembershipMiddlewareBuilder(nil).Build())
 	s.server = server
 	s.es = testioc.InitES()
+	testmq := testioc.InitMQ()
+	p, err := testmq.Producer(event.SyncTopic)
+	if err != nil {
+		panic(err)
+	}
+	s.producer = p
 }
 
 func (s *HandlerTestSuite) TearDownSuite() {
@@ -69,7 +79,7 @@ func (s *HandlerTestSuite) TestBizSearch() {
 		before  func(t *testing.T)
 		after   func(t *testing.T, wantRes web.SearchResult, actual web.SearchResult)
 		wantAns web.SearchResult
-		req     web.SearchBizReq
+		req     web.SearchReq
 	}{
 		{
 			name: "搜索cases",
@@ -167,16 +177,8 @@ func (s *HandlerTestSuite) TestBizSearch() {
 					},
 				},
 			},
-			req: web.SearchBizReq{
-				Biz: "case",
-				KeyWords: []string{
-					"test_content",
-					"test_keywords",
-					"test_shorthands",
-					"test_guidance",
-					"test_title",
-					"test_label",
-				},
+			req: web.SearchReq{
+				KeyWords: "biz:case:test_content test_keywords test_shorthands test_guidance test_title test_label",
 			},
 		},
 		{
@@ -188,12 +190,6 @@ func (s *HandlerTestSuite) TestBizSearch() {
 				for idx := range actual.Questions {
 					require.True(t, actual.Questions[idx].Utime != "")
 					actual.Questions[idx].Utime = ""
-					actual.Questions[idx].Answer = web.Answer{
-						Analysis:     handlerAns(t, actual.Questions[idx].Answer.Analysis),
-						Basic:        handlerAns(t, actual.Questions[idx].Answer.Basic),
-						Intermediate: handlerAns(t, actual.Questions[idx].Answer.Intermediate),
-						Advanced:     handlerAns(t, actual.Questions[idx].Answer.Advanced),
-					}
 					if idx < 3 {
 						assert.Equal(t, wantRes.Questions[idx], actual.Questions[idx])
 					}
@@ -517,29 +513,8 @@ func (s *HandlerTestSuite) TestBizSearch() {
 					},
 				},
 			},
-			req: web.SearchBizReq{
-				Biz: "question",
-				KeyWords: []string{
-					"test_content",
-					"test_title",
-					"test_label",
-					"test_analysis_keywords",
-					"test_analysis_shorthand",
-					"test_analysis_highlight",
-					"test_analysis_guidance",
-					"test_basic_keywords",
-					"test_basic_shorthand",
-					"test_basic_highlight",
-					"test_basic_guidance",
-					"test_intermediate_keywords",
-					"test_intermediate_shorthand",
-					"test_intermediate_highlight",
-					"test_intermediate_guidance",
-					"test_advanced_keywords",
-					"test_advanced_shorthand",
-					"test_advanced_highlight",
-					"test_advanced_guidance",
-				},
+			req: web.SearchReq{
+				KeyWords: "biz:question:test_content test_title test_label test_analysis_keywords test_analysis_shorthand test_analysis_highlight test_analysis_guidance test_basic_keywords test_basic_shorthand test_basic_highlight test_basic_guidance test_intermediate_keywords test_intermediate_shorthand test_intermediate_highlight test_intermediate_guidance test_advanced_keywords test_advanced_shorthand test_advanced_highlight test_advanced_guidance",
 			},
 		},
 		{
@@ -589,7 +564,7 @@ func (s *HandlerTestSuite) TestBizSearch() {
 						Desc:   "",
 						Basic: web.SkillLevel{
 							ID:        1,
-							Desc:      "dsadsads",
+							Desc:      "test_basic",
 							Questions: []int64{1},
 							Cases:     []int64{1},
 						},
@@ -601,7 +576,7 @@ func (s *HandlerTestSuite) TestBizSearch() {
 						Desc:   "",
 						Intermediate: web.SkillLevel{
 							ID:        2,
-							Desc:      "dsadsads",
+							Desc:      "test_intermediate",
 							Questions: []int64{1},
 							Cases:     []int64{1},
 						},
@@ -613,22 +588,15 @@ func (s *HandlerTestSuite) TestBizSearch() {
 						Desc:   "",
 						Advanced: web.SkillLevel{
 							ID:        2,
-							Desc:      "dsadsads",
+							Desc:      "test_advanced",
 							Questions: []int64{1},
 							Cases:     []int64{1},
 						},
 					},
 				},
 			},
-			req: web.SearchBizReq{
-				Biz: "skill",
-				KeyWords: []string{
-					"test_name",
-					"test_label",
-					"test_desc",
-					"test_case",
-					"test_question",
-				},
+			req: web.SearchReq{
+				KeyWords: "biz:skill:test_name test_label test_desc test_advanced test_basic test_intermediate",
 			},
 		},
 		{
@@ -656,22 +624,10 @@ func (s *HandlerTestSuite) TestBizSearch() {
 						Title:       "jjjkjk",
 						Description: "test_desc",
 					},
-					{
-						Id:          3,
-						Uid:         123,
-						Title:       "jjjkjk",
-						Description: "ionkkk",
-						Questions:   []int64{2},
-					},
 				},
 			},
-			req: web.SearchBizReq{
-				Biz: "questionSet",
-				KeyWords: []string{
-					"test_title",
-					"test_desc",
-					"test_question",
-				},
+			req: web.SearchReq{
+				KeyWords: "biz:questionSet:test_title test_desc",
 			},
 		},
 	}
@@ -680,7 +636,7 @@ func (s *HandlerTestSuite) TestBizSearch() {
 			tc.before(t)
 			time.Sleep(1 * time.Second)
 			req, err := http.NewRequest(http.MethodPost,
-				"/search/list/biz", iox.NewJSONReader(tc.req))
+				"/search/list", iox.NewJSONReader(tc.req))
 			req.Header.Set("content-type", "application/json")
 			require.NoError(t, err)
 			recorder := test.NewJSONResponseRecorder[web.SearchResult]()
@@ -707,9 +663,7 @@ func (s *HandlerTestSuite) TestSearch() {
 	time.Sleep(1 * time.Second)
 	req, err := http.NewRequest(http.MethodPost,
 		"/search/list", iox.NewJSONReader(web.SearchReq{
-			KeyWords: []string{
-				"test_title",
-			},
+			KeyWords: "biz:all:test_title",
 		}))
 	req.Header.Set("content-type", "application/json")
 	require.NoError(t, err)
@@ -766,12 +720,6 @@ func (s *HandlerTestSuite) TestSearch() {
 	}
 	for idx := range ans.Questions {
 		ans.Questions[idx].Utime = ""
-		ans.Questions[idx].Answer = web.Answer{
-			Analysis:     handlerAns(t, ans.Questions[idx].Answer.Analysis),
-			Basic:        handlerAns(t, ans.Questions[idx].Answer.Basic),
-			Intermediate: handlerAns(t, ans.Questions[idx].Answer.Intermediate),
-			Advanced:     handlerAns(t, ans.Questions[idx].Answer.Advanced),
-		}
 	}
 	for idx := range ans.QuestionSet {
 		ans.QuestionSet[idx].Utime = ""
@@ -793,6 +741,302 @@ func (s *HandlerTestSuite) TestSearch() {
 	require.NoError(s.T(), err)
 	_, err = s.es.DeleteByQuery(dao.QuestionSetIndexName).Query(query).Do(context.Background())
 	require.NoError(s.T(), err)
+}
+
+func (s *HandlerTestSuite) TestSync() {
+	testcases := []struct {
+		name   string
+		msg    event.SyncEvent
+		before func(t *testing.T)
+		after  func(t *testing.T)
+	}{
+		{
+			name: "同步case",
+			before: func(t *testing.T) {
+
+			},
+			msg: getCase(s.T()),
+			after: func(t *testing.T) {
+				res := s.getDataFromEs(t, dao.CaseIndexName, "1")
+				var ans dao.Case
+				err := json.Unmarshal(res.Source, &ans)
+				require.NoError(t, err)
+				assert.Equal(t, dao.Case{
+					Id:        1,
+					Uid:       1001,
+					Labels:    []string{"label1", "label2"},
+					Title:     "Test Case",
+					Content:   "Test Content",
+					CodeRepo:  "github.com/test",
+					Keywords:  "test keywords",
+					Shorthand: "test shorthand",
+					Highlight: "test highlight",
+					Guidance:  "test guidance",
+					Status:    1,
+					Ctime:     1619430000,
+					Utime:     1619430000,
+				}, ans)
+			},
+		},
+		{
+			name: "同步question",
+			before: func(t *testing.T) {
+
+			},
+			msg: getQuestion(s.T()),
+			after: func(t *testing.T) {
+				res := s.getDataFromEs(t, dao.QuestionIndexName, "1")
+				var ans dao.Question
+				err := json.Unmarshal(res.Source, &ans)
+				require.NoError(t, err)
+				q := dao.Question{
+					ID:      1,
+					UID:     1001,
+					Title:   "Example Question",
+					Labels:  []string{"label1", "label2"},
+					Content: "Example content",
+					Status:  1,
+					Answer: dao.Answer{
+						Analysis: dao.AnswerElement{
+							ID:        1,
+							Content:   "Analysis content",
+							Keywords:  "Analysis keywords",
+							Shorthand: "Analysis shorthand",
+							Highlight: "Analysis highlight",
+							Guidance:  "Analysis guidance",
+						},
+						Basic: dao.AnswerElement{
+							ID:        2,
+							Content:   "Basic content",
+							Keywords:  "Basic keywords",
+							Shorthand: "Basic shorthand",
+							Highlight: "Basic highlight",
+							Guidance:  "Basic guidance",
+						},
+						Intermediate: dao.AnswerElement{
+							ID:        3,
+							Content:   "Intermediate content",
+							Keywords:  "Intermediate keywords",
+							Shorthand: "Intermediate shorthand",
+							Highlight: "Intermediate highlight",
+							Guidance:  "Intermediate guidance",
+						},
+						Advanced: dao.AnswerElement{
+							ID:        4,
+							Content:   "Advanced content",
+							Keywords:  "Advanced keywords",
+							Shorthand: "Advanced shorthand",
+							Highlight: "Advanced highlight",
+							Guidance:  "Advanced guidance",
+						},
+					},
+					Utime: 1619430000,
+				}
+				assert.Equal(t, q, ans)
+			},
+		},
+		{
+			name: "如果文档存在就更新",
+			msg:  getSkill(s.T()),
+			before: func(t *testing.T) {
+				skill := dao.Skill{
+					ID:     1,
+					Labels: []string{"old_label1", "label2"},
+					Name:   "old Skill",
+					Desc:   "old skill description",
+					Ctime:  1619430000,
+					Utime:  1619430000,
+				}
+				s.insertSkills([]dao.Skill{skill})
+			},
+			after: func(t *testing.T) {
+				res := s.getDataFromEs(t, dao.QuestionIndexName, "1")
+				var ans dao.Skill
+				err := json.Unmarshal(res.Source, &ans)
+				require.NoError(t, err)
+				skill := dao.Skill{
+					ID:     1,
+					Labels: []string{"label1", "label2"},
+					Name:   "Example Skill",
+					Desc:   "Example skill description",
+					Basic: dao.SkillLevel{
+						ID:        1,
+						Desc:      "Basic",
+						Ctime:     1619430000,
+						Utime:     1619430000,
+						Questions: []int64{1, 2, 3},
+						Cases:     []int64{4, 5, 6},
+					},
+					Intermediate: dao.SkillLevel{
+						ID:        2,
+						Desc:      "Intermediate",
+						Ctime:     1619430000,
+						Utime:     1619430000,
+						Questions: []int64{4, 5, 6},
+						Cases:     []int64{7, 8, 9},
+					},
+					Advanced: dao.SkillLevel{
+						ID:        3,
+						Desc:      "Advanced",
+						Ctime:     1619430000,
+						Utime:     1619430000,
+						Questions: []int64{7, 8, 9},
+						Cases:     []int64{10, 11, 12},
+					},
+					Ctime: 1619430000,
+					Utime: 1619430000,
+				}
+				assert.Equal(t, skill, ans)
+			},
+		},
+	}
+	for _, tc := range testcases {
+		s.T().Run(tc.name, func(t *testing.T) {
+			tc.before(t)
+			val, err := json.Marshal(tc.msg)
+			require.NoError(t, err)
+			msg := &mq.Message{
+				Value: val,
+			}
+			_, err = s.producer.Produce(context.Background(), msg)
+			require.NoError(t, err)
+			time.Sleep(2 * time.Second)
+			tc.after(t)
+		})
+	}
+
+}
+
+func (s *HandlerTestSuite) getDataFromEs(t *testing.T, index, docID string) *elastic.GetResult {
+	doc, err := s.es.Get().
+		Index(index).
+		Id(docID).
+		Do(context.Background())
+	require.NoError(t, err)
+	return doc
+}
+
+func getCase(t *testing.T) event.SyncEvent {
+	event := event.SyncEvent{
+		Biz:   "case",
+		BizID: 1,
+	}
+	val := dao.Case{
+		Id:        1,
+		Uid:       1001,
+		Labels:    []string{"label1", "label2"},
+		Title:     "Test Case",
+		Content:   "Test Content",
+		CodeRepo:  "github.com/test",
+		Keywords:  "test keywords",
+		Shorthand: "test shorthand",
+		Highlight: "test highlight",
+		Guidance:  "test guidance",
+		Status:    1,
+		Ctime:     1619430000,
+		Utime:     1619430000,
+	}
+	caseByte, err := json.Marshal(val)
+	require.NoError(t, err)
+	event.Data = string(caseByte)
+	return event
+}
+
+func getQuestion(t *testing.T) event.SyncEvent {
+	event := event.SyncEvent{
+		Biz:   "question",
+		BizID: 1,
+	}
+	question := dao.Question{
+		ID:      1,
+		UID:     1001,
+		Title:   "Example Question",
+		Labels:  []string{"label1", "label2"},
+		Content: "Example content",
+		Status:  1,
+		Answer: dao.Answer{
+			Analysis: dao.AnswerElement{
+				ID:        1,
+				Content:   "Analysis content",
+				Keywords:  "Analysis keywords",
+				Shorthand: "Analysis shorthand",
+				Highlight: "Analysis highlight",
+				Guidance:  "Analysis guidance",
+			},
+			Basic: dao.AnswerElement{
+				ID:        2,
+				Content:   "Basic content",
+				Keywords:  "Basic keywords",
+				Shorthand: "Basic shorthand",
+				Highlight: "Basic highlight",
+				Guidance:  "Basic guidance",
+			},
+			Intermediate: dao.AnswerElement{
+				ID:        3,
+				Content:   "Intermediate content",
+				Keywords:  "Intermediate keywords",
+				Shorthand: "Intermediate shorthand",
+				Highlight: "Intermediate highlight",
+				Guidance:  "Intermediate guidance",
+			},
+			Advanced: dao.AnswerElement{
+				ID:        4,
+				Content:   "Advanced content",
+				Keywords:  "Advanced keywords",
+				Shorthand: "Advanced shorthand",
+				Highlight: "Advanced highlight",
+				Guidance:  "Advanced guidance",
+			},
+		},
+		Utime: 1619430000,
+	}
+	questionByte, err := json.Marshal(question)
+	require.NoError(t, err)
+	event.Data = string(questionByte)
+	return event
+}
+
+func getSkill(t *testing.T) event.SyncEvent {
+	event := event.SyncEvent{
+		Biz:   "skill",
+		BizID: 1,
+	}
+	skill := dao.Skill{
+		ID:     1,
+		Labels: []string{"label1", "label2"},
+		Name:   "Example Skill",
+		Desc:   "Example skill description",
+		Basic: dao.SkillLevel{
+			ID:        1,
+			Desc:      "Basic",
+			Ctime:     1619430000,
+			Utime:     1619430000,
+			Questions: []int64{1, 2, 3},
+			Cases:     []int64{4, 5, 6},
+		},
+		Intermediate: dao.SkillLevel{
+			ID:        2,
+			Desc:      "Intermediate",
+			Ctime:     1619430000,
+			Utime:     1619430000,
+			Questions: []int64{4, 5, 6},
+			Cases:     []int64{7, 8, 9},
+		},
+		Advanced: dao.SkillLevel{
+			ID:        3,
+			Desc:      "Advanced",
+			Ctime:     1619430000,
+			Utime:     1619430000,
+			Questions: []int64{7, 8, 9},
+			Cases:     []int64{10, 11, 12},
+		},
+		Ctime: 1619430000,
+		Utime: 1619430000,
+	}
+	questionByte, err := json.Marshal(skill)
+	require.NoError(t, err)
+	event.Data = string(questionByte)
+	return event
 }
 
 func (s *HandlerTestSuite) initCases() {
@@ -941,7 +1185,6 @@ func (s *HandlerTestSuite) initQuestions() {
 					Shorthand: "ES",
 					Highlight: "distributed search and analytics engine",
 					Guidance:  "Learn more about Elasticsearch documentation.",
-					Utime:     1619708855,
 				},
 			},
 			Utime: 1619708855,
@@ -970,7 +1213,6 @@ func (s *HandlerTestSuite) initQuestions() {
 					Shorthand: "test_analysis_shorthand",
 					Highlight: "distributed search and analytics engine",
 					Guidance:  "Learn more about Elasticsearch documentation.",
-					Utime:     1619708855,
 				},
 			},
 			Utime: 1619708855,
@@ -990,7 +1232,6 @@ func (s *HandlerTestSuite) initQuestions() {
 					Shorthand: "",
 					Highlight: "test_analysis_highlight",
 					Guidance:  "Learn more about Elasticsearch documentation.",
-					Utime:     1619708855,
 				},
 			},
 			Utime: 1619708855,
@@ -1010,7 +1251,6 @@ func (s *HandlerTestSuite) initQuestions() {
 					Shorthand: "",
 					Highlight: "",
 					Guidance:  "test_analysis_guidance",
-					Utime:     1619708855,
 				},
 			},
 			Utime: 1619708855,
@@ -1030,7 +1270,6 @@ func (s *HandlerTestSuite) initQuestions() {
 					Shorthand: "",
 					Highlight: "distributed search and analytics engine",
 					Guidance:  "Learn more about Elasticsearch documentation.",
-					Utime:     1619708855,
 				},
 			},
 			Utime: 1619708855,
@@ -1050,7 +1289,6 @@ func (s *HandlerTestSuite) initQuestions() {
 					Shorthand: "test_basic_shorthand",
 					Highlight: "",
 					Guidance:  "Learn more about Elasticsearch documentation.",
-					Utime:     1619708855,
 				},
 			},
 			Utime: 1619708855,
@@ -1070,7 +1308,6 @@ func (s *HandlerTestSuite) initQuestions() {
 					Shorthand: "",
 					Highlight: "test_basic_highlight",
 					Guidance:  "",
-					Utime:     1619708855,
 				},
 			},
 			Utime: 1619708855,
@@ -1090,7 +1327,6 @@ func (s *HandlerTestSuite) initQuestions() {
 					Shorthand: "",
 					Highlight: "",
 					Guidance:  "test_basic_guidance",
-					Utime:     1619708855,
 				},
 			},
 			Utime: 1619708855,
@@ -1110,7 +1346,6 @@ func (s *HandlerTestSuite) initQuestions() {
 					Shorthand: "",
 					Highlight: "distributed search and analytics engine",
 					Guidance:  "Learn more about Elasticsearch documentation.",
-					Utime:     1619708855,
 				},
 			},
 			Utime: 1619708855,
@@ -1130,7 +1365,6 @@ func (s *HandlerTestSuite) initQuestions() {
 					Shorthand: "test_intermediate_shorthand",
 					Highlight: "",
 					Guidance:  "Learn more about Elasticsearch documentation.",
-					Utime:     1619708855,
 				},
 			},
 			Utime: 1619708855,
@@ -1150,7 +1384,6 @@ func (s *HandlerTestSuite) initQuestions() {
 					Shorthand: "",
 					Highlight: "test_intermediate_highlight",
 					Guidance:  "",
-					Utime:     1619708855,
 				},
 			},
 			Utime: 1619708855,
@@ -1170,7 +1403,6 @@ func (s *HandlerTestSuite) initQuestions() {
 					Shorthand: "",
 					Highlight: "",
 					Guidance:  "test_intermediate_guidance",
-					Utime:     1619708855,
 				},
 			},
 			Utime: 1619708855,
@@ -1190,7 +1422,6 @@ func (s *HandlerTestSuite) initQuestions() {
 					Shorthand: "",
 					Highlight: "distributed search and analytics engine",
 					Guidance:  "Learn more about Elasticsearch documentation.",
-					Utime:     1619708855,
 				},
 			},
 			Utime: 1619708855,
@@ -1210,7 +1441,6 @@ func (s *HandlerTestSuite) initQuestions() {
 					Shorthand: "test_advanced_shorthand",
 					Highlight: "",
 					Guidance:  "Learn more about Elasticsearch documentation.",
-					Utime:     1619708855,
 				},
 			},
 			Utime: 1619708855,
@@ -1230,7 +1460,6 @@ func (s *HandlerTestSuite) initQuestions() {
 					Shorthand: "",
 					Highlight: "test_advanced_highlight",
 					Guidance:  "",
-					Utime:     1619708855,
 				},
 			},
 			Utime: 1619708855,
@@ -1250,7 +1479,6 @@ func (s *HandlerTestSuite) initQuestions() {
 					Shorthand: "",
 					Highlight: "",
 					Guidance:  "test_advanced_guidance",
-					Utime:     1619708855,
 				},
 			},
 			Utime: 1619708855,
@@ -1260,36 +1488,6 @@ func (s *HandlerTestSuite) initQuestions() {
 }
 
 func (s *HandlerTestSuite) initSkills() {
-	questions := []dao.Question{
-		{
-			ID:      2,
-			UID:     101,
-			Title:   "test_question",
-			Labels:  []string{"elasticsearch", "search"},
-			Content: "I want to know how to use Elasticsearch for searching.",
-			Status:  2,
-			Utime:   1619708855,
-		},
-	}
-	cases := []dao.Case{
-		{
-			Id:        1,
-			Uid:       1,
-			Labels:    []string{"label1", "label2"},
-			Title:     "test_case",
-			Content:   "test_content",
-			CodeRepo:  "Elasticsearch代码库",
-			Keywords:  "Elasticsearch关键词",
-			Shorthand: "Elasticsearch速记",
-			Highlight: "Elasticsearch亮点",
-			Guidance:  "Elasticsearch引导",
-			Status:    2,
-			Ctime:     1619708855,
-			Utime:     1619708855,
-		},
-	}
-	s.insertCase(cases)
-	s.insertQuestion(questions)
 	skills := []dao.Skill{
 		{
 			ID:     1,
@@ -1316,7 +1514,7 @@ func (s *HandlerTestSuite) initSkills() {
 			Desc:   "",
 			Basic: dao.SkillLevel{
 				ID:        1,
-				Desc:      "dsadsads",
+				Desc:      "test_basic",
 				Utime:     1619708855,
 				Questions: []int64{1},
 				Cases:     []int64{1},
@@ -1329,7 +1527,7 @@ func (s *HandlerTestSuite) initSkills() {
 			Desc:   "",
 			Intermediate: dao.SkillLevel{
 				ID:        2,
-				Desc:      "dsadsads",
+				Desc:      "test_intermediate",
 				Utime:     1619708855,
 				Questions: []int64{1},
 				Cases:     []int64{1},
@@ -1342,7 +1540,7 @@ func (s *HandlerTestSuite) initSkills() {
 			Desc:   "",
 			Advanced: dao.SkillLevel{
 				ID:        2,
-				Desc:      "dsadsads",
+				Desc:      "test_advanced",
 				Utime:     1619708855,
 				Questions: []int64{1},
 				Cases:     []int64{1},
@@ -1361,18 +1559,6 @@ func (s *HandlerTestSuite) initSkills() {
 }
 
 func (s *HandlerTestSuite) initQuestionSets() {
-	questions := []dao.Question{
-		{
-			ID:      2,
-			UID:     101,
-			Title:   "test_question",
-			Labels:  []string{"elasticsearch", "search"},
-			Content: "I want to know how to use Elasticsearch for searching.",
-			Status:  2,
-			Utime:   1619708855,
-		},
-	}
-	s.insertQuestion(questions)
 	questionSets := []dao.QuestionSet{
 		{
 			Id:          2,
@@ -1387,14 +1573,6 @@ func (s *HandlerTestSuite) initQuestionSets() {
 			Title:       "jjjkjk",
 			Description: "test_desc",
 			Utime:       1713856231,
-		},
-		{
-			Id:          3,
-			Uid:         123,
-			Title:       "jjjkjk",
-			Description: "ionkkk",
-			Utime:       1713856231,
-			Questions:   []int64{2},
 		},
 	}
 	s.insertQuestionSet(questionSets)
@@ -1498,12 +1676,6 @@ func (s *HandlerTestSuite) initSearchData() {
 		},
 	}
 	s.insertQuestionSet(qs)
-}
-
-func handlerAns(t *testing.T, ans web.AnswerElement) web.AnswerElement {
-	assert.True(t, ans.Utime != "")
-	ans.Utime = ""
-	return ans
 }
 
 func handlerSkillLevel(t *testing.T, sk web.SkillLevel) web.SkillLevel {

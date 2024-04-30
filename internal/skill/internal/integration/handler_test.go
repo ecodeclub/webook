@@ -4,11 +4,16 @@ package integration
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
 	"testing"
 	"time"
+
+	"github.com/ecodeclub/mq-api"
+	"github.com/ecodeclub/webook/internal/skill/internal/event"
+	"github.com/ecodeclub/webook/ioc"
 
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/ecodeclub/webook/internal/cases"
@@ -38,9 +43,10 @@ const uid = 2061
 
 type HandlerTestSuite struct {
 	suite.Suite
-	server *egin.Component
-	db     *egorm.Component
-	dao    dao.SkillDAO
+	server   *egin.Component
+	db       *egorm.Component
+	dao      dao.SkillDAO
+	consumer mq.Consumer
 }
 
 func (s *HandlerTestSuite) TearDownTest() {
@@ -95,6 +101,10 @@ func (s *HandlerTestSuite) SetupSuite() {
 	err = dao.InitTables(s.db)
 	require.NoError(s.T(), err)
 	s.dao = dao.NewSkillDAO(s.db)
+	q := ioc.InitMQ()
+	c, err := q.Consumer(event.SyncTopic, "case_sync")
+	require.NoError(s.T(), err)
+	s.consumer = c
 }
 
 func (s *HandlerTestSuite) TestSave() {
@@ -955,6 +965,20 @@ func (s *HandlerTestSuite) assertSkill(wantSKill dao.Skill, actualSkill dao.Skil
 	actualSkill.Utime = 0
 	actualSkill.Ctime = 0
 	assert.Equal(t, wantSKill, actualSkill)
+}
+func (s *HandlerTestSuite) getMsgFromMq() (event.Skill, error) {
+	msg, err := s.consumer.Consume(context.Background())
+	if err != nil {
+		return event.Skill{}, err
+	}
+	var res event.SkillEvent
+	err = json.Unmarshal(msg.Value, &res)
+	if err != nil {
+		return event.Skill{}, err
+	}
+	var ans event.Skill
+	err = json.Unmarshal([]byte(res.Data), &res)
+	return ans, err
 }
 
 func TestHandler(t *testing.T) {

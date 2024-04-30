@@ -18,7 +18,9 @@ import (
 	"context"
 
 	"github.com/ecodeclub/webook/internal/question/internal/domain"
+	"github.com/ecodeclub/webook/internal/question/internal/event"
 	"github.com/ecodeclub/webook/internal/question/internal/repository"
+	"github.com/gotomicro/ego/core/elog"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -30,22 +32,52 @@ type QuestionSetService interface {
 }
 
 type questionSetService struct {
-	repo repository.QuestionSetRepository
+	repo     repository.QuestionSetRepository
+	producer event.SyncEventProducer
+	logger   *elog.Component
 }
 
-func NewQuestionSetService(repo repository.QuestionSetRepository) QuestionSetService {
-	return &questionSetService{repo: repo}
+func NewQuestionSetService(repo repository.QuestionSetRepository, producer event.SyncEventProducer) QuestionSetService {
+	return &questionSetService{
+		repo:     repo,
+		producer: producer,
+		logger:   elog.DefaultLogger,
+	}
 }
 
 func (q *questionSetService) Save(ctx context.Context, set domain.QuestionSet) (int64, error) {
 	if set.Id > 0 {
 		return set.Id, q.repo.UpdateNonZero(ctx, set)
 	}
-	return q.repo.Create(ctx, set)
+	id, err := q.repo.Create(ctx, set)
+	if err != nil {
+		return 0, err
+	}
+	evt := event.NewQuestionSetEvent(set)
+	err = q.producer.Produce(ctx, evt)
+	if err != nil {
+		q.logger.Error("发送题集同步搜索信息",
+			elog.FieldErr(err),
+			elog.Any("event", evt),
+		)
+	}
+	return id, nil
 }
 
 func (q *questionSetService) UpdateQuestions(ctx context.Context, set domain.QuestionSet) error {
-	return q.repo.UpdateQuestions(ctx, set)
+	err := q.repo.UpdateQuestions(ctx, set)
+	if err != nil {
+		return err
+	}
+	evt := event.NewQuestionSetEvent(set)
+	err = q.producer.Produce(ctx, evt)
+	if err != nil {
+		q.logger.Error("发送题集同步搜索信息",
+			elog.FieldErr(err),
+			elog.Any("event", evt),
+		)
+	}
+	return nil
 }
 
 func (q *questionSetService) Detail(ctx context.Context, id int64) (domain.QuestionSet, error) {

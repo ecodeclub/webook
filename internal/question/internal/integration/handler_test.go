@@ -18,11 +18,15 @@ package integration
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
 	"testing"
 	"time"
+
+	"github.com/ecodeclub/mq-api"
+	"github.com/ecodeclub/webook/internal/question/internal/event"
 
 	"github.com/ecodeclub/webook/internal/question/internal/domain"
 
@@ -55,6 +59,7 @@ type HandlerTestSuite struct {
 	rdb            ecache.Cache
 	dao            dao.QuestionDAO
 	questionSetDAO dao.QuestionSetDAO
+	consumer       mq.Consumer
 }
 
 func (s *HandlerTestSuite) TearDownSuite() {
@@ -1678,4 +1683,43 @@ func (s *HandlerTestSuite) TestQuestionSet_ListAllQuestionSets() {
 
 func TestHandler(t *testing.T) {
 	suite.Run(t, new(HandlerTestSuite))
+}
+
+func (s *HandlerTestSuite) getMsgFromMq() (event.QuestionEvent, error) {
+	msg, err := s.consumer.Consume(context.Background())
+	if err != nil {
+		return event.QuestionEvent{}, err
+	}
+	var res event.QuestionEvent
+	err = json.Unmarshal(msg.Value, &res)
+	if err != nil {
+		return event.QuestionEvent{}, err
+	}
+	return event.QuestionEvent{}, nil
+}
+
+func (s *HandlerTestSuite) getQuestionFromMq() (event.Question, error) {
+	msg, err := s.getMsgFromMq()
+	if err != nil {
+		return event.Question{}, err
+	}
+	var res event.Question
+	err = json.Unmarshal([]byte(msg.Data), &res)
+	if err != nil {
+		return event.Question{}, err
+	}
+	return res, nil
+}
+
+func (s *HandlerTestSuite) getQuestionSetFromMq() (event.QuestionSet, error) {
+	msg, err := s.getMsgFromMq()
+	if err != nil {
+		return event.QuestionSet{}, err
+	}
+	var res event.QuestionSet
+	err = json.Unmarshal([]byte(msg.Data), &res)
+	if err != nil {
+		return event.QuestionSet{}, err
+	}
+	return res, nil
 }

@@ -18,11 +18,16 @@ package integration
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
 	"testing"
 	"time"
+
+	"github.com/ecodeclub/mq-api"
+	"github.com/ecodeclub/webook/internal/cases/internal/event"
+	"github.com/ecodeclub/webook/ioc"
 
 	"github.com/ecodeclub/webook/internal/cases/internal/domain"
 
@@ -49,10 +54,11 @@ const uid = 2051
 
 type HandlerTestSuite struct {
 	suite.Suite
-	server *egin.Component
-	db     *egorm.Component
-	rdb    ecache.Cache
-	dao    dao.CaseDAO
+	server   *egin.Component
+	db       *egorm.Component
+	rdb      ecache.Cache
+	dao      dao.CaseDAO
+	consumer mq.Consumer
 }
 
 func (s *HandlerTestSuite) TearDownSuite() {
@@ -95,6 +101,10 @@ func (s *HandlerTestSuite) SetupSuite() {
 	require.NoError(s.T(), err)
 	s.dao = dao.NewCaseDao(s.db)
 	s.rdb = testioc.InitCache()
+	q := ioc.InitMQ()
+	c, err := q.Consumer(event.SyncTopic, "case_sync")
+	require.NoError(s.T(), err)
+	s.consumer = c
 }
 
 func (s *HandlerTestSuite) TestSave() {
@@ -233,6 +243,21 @@ func (s *HandlerTestSuite) TestSave() {
 			require.NoError(t, err)
 		})
 	}
+}
+
+func (s *HandlerTestSuite) getMsgFromMq() (event.Case, error) {
+	msg, err := s.consumer.Consume(context.Background())
+	if err != nil {
+		return event.Case{}, err
+	}
+	var res event.CaseEvent
+	err = json.Unmarshal(msg.Value, &res)
+	if err != nil {
+		return event.Case{}, err
+	}
+	var ans event.Case
+	err = json.Unmarshal([]byte(res.Data), &ans)
+	return ans, err
 }
 
 func (s *HandlerTestSuite) TestList() {

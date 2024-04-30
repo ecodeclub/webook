@@ -3,10 +3,7 @@ package dao
 import (
 	"context"
 	"encoding/json"
-	"strconv"
-	"strings"
 
-	"github.com/ecodeclub/ekit/slice"
 	"github.com/olivere/elastic/v7"
 )
 
@@ -38,16 +35,11 @@ func NewQuestionSetDAO(client *elastic.Client) QuestionSetDAO {
 	}
 }
 
-func (q *questionSetElasticDAO) SearchQuestionSet(ctx context.Context, qids []int64, keywords []string) ([]QuestionSet, error) {
-	queryString := strings.Join(keywords, " ")
-	qidList := slice.Map(qids, func(idx int, src int64) any {
-		return src
-	})
+func (q *questionSetElasticDAO) SearchQuestionSet(ctx context.Context, keywords string) ([]QuestionSet, error) {
 	query := elastic.NewBoolQuery().Should(
 		// 给予更高权重
-		elastic.NewMatchQuery("title", queryString).Boost(questionSetTitleBoost),
-		elastic.NewMatchQuery("description", queryString).Boost(questionSetDescription),
-		elastic.NewTermsQuery("questions", qidList...),
+		elastic.NewMatchQuery("title", keywords).Boost(questionSetTitleBoost),
+		elastic.NewMatchQuery("description", keywords).Boost(questionSetDescription),
 	)
 	resp, err := q.client.Search(QuestionSetIndexName).Size(defaultSize).Query(query).Do(ctx)
 	if err != nil {
@@ -64,12 +56,4 @@ func (q *questionSetElasticDAO) SearchQuestionSet(ctx context.Context, qids []in
 	}
 	return res, nil
 
-}
-
-func (q *questionSetElasticDAO) InputQuestionSet(ctx context.Context, msg QuestionSet) error {
-	_, err := q.client.Index().
-		Index(CaseIndexName).
-		Id(strconv.FormatInt(msg.Id, 10)).
-		BodyJson(msg).Do(ctx)
-	return err
 }

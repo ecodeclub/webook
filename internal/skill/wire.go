@@ -19,6 +19,9 @@ package skill
 import (
 	"sync"
 
+	"github.com/ecodeclub/mq-api"
+	"github.com/ecodeclub/webook/internal/skill/internal/event"
+
 	"github.com/ecodeclub/webook/internal/cases"
 	baguwen "github.com/ecodeclub/webook/internal/question"
 
@@ -39,13 +42,15 @@ func InitHandler(
 	db *egorm.Component,
 	ec ecache.Cache,
 	queModule *baguwen.Module,
-	caseModule *cases.Module) (*Handler, error) {
+	caseModule *cases.Module,
+	q mq.MQ) (*Handler, error) {
 	wire.Build(
 		InitSkillDAO,
 		wire.FieldsOf(new(*baguwen.Module), "Svc"),
 		wire.FieldsOf(new(*cases.Module), "Svc"),
 		cache.NewSkillCache,
 		repository.NewSkillRepo,
+		initSyncEventProducer,
 		service.NewSkillService,
 		web.NewHandler,
 	)
@@ -66,6 +71,13 @@ func InitTableOnce(db *gorm.DB) {
 func InitSkillDAO(db *egorm.Component) dao2.SkillDAO {
 	InitTableOnce(db)
 	return dao2.NewSkillDAO(db)
+}
+func initSyncEventProducer(q mq.MQ) event.SyncEventProducer {
+	producer, err := event.NewSyncEventProducer(q)
+	if err != nil {
+		panic(err)
+	}
+	return producer
 }
 
 type Handler = web.Handler
