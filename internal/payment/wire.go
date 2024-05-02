@@ -91,7 +91,7 @@ var (
 )
 
 func initPaymentEventProducer(mq mq.MQ) (event.PaymentEventProducer, error) {
-	p, err := mq.Producer("payment_events")
+	p, err := mq.Producer(event.PaymentEventName)
 	if err != nil {
 		return nil, err
 	}

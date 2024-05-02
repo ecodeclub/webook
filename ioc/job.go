@@ -31,9 +31,9 @@ func initCronJobs(
 	pJob *payment.SyncWechatOrderJob,
 ) []*ecron.Component {
 	return []*ecron.Component{
-		ecron.Load("cron.close").Build(ecron.WithJob(funcJobWrapper(oJob))),
-		ecron.Load("cron.close").Build(ecron.WithJob(funcJobWrapper(cJob))),
-		ecron.Load("cron.syncWechat").Build(ecron.WithJob(funcJobWrapper(pJob))),
+		ecron.Load("cron.closeTimeoutOrder").Build(ecron.WithJob(funcJobWrapper(oJob))),
+		ecron.Load("cron.unlockTimeoutCredit").Build(ecron.WithJob(funcJobWrapper(cJob))),
+		ecron.Load("cron.syncWechatOrder").Build(ecron.WithJob(funcJobWrapper(pJob))),
 	}
 }
 

@@ -30,7 +30,6 @@ func (s *paymentEventProducer) Produce(ctx context.Context, evt PaymentEvent) er
 	}
 	_, err = s.producer.Produce(ctx, &mq.Message{
 		Key:   []byte(evt.OrderSN),
-		Topic: paymentEvents,
 		Value: data,
 	})
 	return err

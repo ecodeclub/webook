@@ -30,6 +30,8 @@ type QuestionDAO interface {
 	GetByID(ctx context.Context, id int64) (Question, []AnswerElement, error)
 	List(ctx context.Context, offset int, limit int) ([]Question, error)
 	Count(ctx context.Context) (int64, error)
+	// Delete 会直接删除制作库和线上库的数据
+	Delete(ctx context.Context, qid int64) error
 
 	Sync(ctx context.Context, que Question, eles []AnswerElement) (int64, error)
 
@@ -62,6 +64,32 @@ func (g *GORMQuestionDAO) GetPubByID(ctx context.Context, qid int64) (PublishQue
 	// 总体上，只有四条数据，所以排序不会有什么性能问题
 	err = db.Where("qid = ?", qid).Order("type ASC").Find(&eles).Error
 	return q, eles, err
+}
+
+// Delete 会直接删除制作库和线上库的数据
+func (g *GORMQuestionDAO) Delete(ctx context.Context, qid int64) error {
+	return g.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		err := tx.Where("id = ?", qid).Delete(&Question{}).Error
+		if err != nil {
+			return err
+		}
+
+		err = tx.Where("id =?", qid).Delete(&PublishQuestion{}).Error
+		if err != nil {
+			return err
+		}
+
+		err = tx.Where("qid = ?", qid).Delete(&AnswerElement{}).Error
+		if err != nil {
+			return err
+		}
+
+		err = tx.Where("qid = ?", qid).Delete(&PublishAnswerElement{}).Error
+		if err != nil {
+			return err
+		}
+		return tx.Where("qid = ?", qid).Delete(&QuestionSetQuestion{}).Error
+	})
 }
 
 func (g *GORMQuestionDAO) Update(ctx context.Context, q Question, eles []AnswerElement) error {

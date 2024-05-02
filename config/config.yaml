@@ -19,20 +19,17 @@ kafka:
   network: tcp
   addresses:
     - kafka:9092
-  topics:
-    - name: payment_successful_events
-      partitions: 2
-    - name: user_registration_events
-      partitions: 2
-    - name: credit_increase_events
-      partitions: 2
-    - name: member_update_events
-      partitions: 2
 
 cron:
-  close:
+#  超时关闭订单
+  closeTimeoutOrder:
     enableSeconds: true          # 是否使用秒作解析器，默认否
-    spec: "0 0 0 * * *"           # 执行时间，每天 00:00:00 开始执行
-  syncWechat:
+    spec: "* * * * *"           # 每分钟执行一次
+# 超时释放积分
+  unlockTimeoutCredit:
     enableSeconds: true          # 是否使用秒作解析器，默认否
-    spec: "*/30 * * * *"           # 执行时间，每30分钟执行一次
+    spec: "* * * * *"           # 每分钟执行一次
+#    微信订单对账
+  syncWechatOrder:
+    enableSeconds: true          # 是否使用秒作解析器，默认否
+    spec: "* * * * *"           # 每分钟执行一次
