@@ -15,7 +15,7 @@
 package event
 
 const (
-	paymentEvents = "payment_successful_events"
+	paymentEvents = "payment_events"
 )
 
 type PaymentEvent struct {

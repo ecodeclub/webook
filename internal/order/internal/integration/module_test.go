@@ -377,7 +377,7 @@ func (s *OrderModuleTestSuite) TestHandler_PreviewOrder() {
 						},
 					},
 					Credits: 1000,
-					Policy:  "请注意: 虚拟商品、一旦支持成功不退、不换,请谨慎操作",
+					Policy:  "请注意: 虚拟商品、一旦支付成功不退、不换,请谨慎操作",
 				},
 			},
 		},
@@ -848,7 +848,7 @@ func (s *OrderModuleTestSuite) TestHandler_RepayFailed() {
 					PaymentSn:        sqlx.NewNullString("paymentSN-1000"),
 					OriginalTotalAmt: 9900,
 					RealTotalAmt:     9900,
-					Status:           domain.StatusUnpaid.ToUint8(),
+					Status:           domain.StatusInit.ToUint8(),
 				}, []dao.OrderItem{
 					{
 						SPUId:            1,
@@ -1319,7 +1319,7 @@ func (s *OrderModuleTestSuite) TestHandler_RetrieveOrderStatusFailed() {
 					PaymentSn:        sqlx.NewNullString("paymentSN-994"),
 					OriginalTotalAmt: 9900,
 					RealTotalAmt:     9900,
-					Status:           domain.StatusUnpaid.ToUint8(),
+					Status:           domain.StatusInit.ToUint8(),
 				}, []dao.OrderItem{
 					{
 						SPUId:            1,
@@ -1393,7 +1393,7 @@ func (s *OrderModuleTestSuite) TestHandler_ListOrders() {
 	for idx := 0; idx < total; idx++ {
 		id := int64(100 + idx)
 		status := domain.OrderStatus(uint8(id)%6 + 1).ToUint8()
-		if status == domain.StatusUnpaid.ToUint8() {
+		if status == domain.StatusInit.ToUint8() {
 			unpaidStatus = append(unpaidStatus, status)
 		}
 		orderEntity := dao.Order{
@@ -1632,7 +1632,7 @@ func (s *OrderModuleTestSuite) TestHandler_RetrieveOrderDetailFailed() {
 					PaymentSn:        sqlx.NewNullString("paymentSN-44"),
 					OriginalTotalAmt: 9900,
 					RealTotalAmt:     9900,
-					Status:           domain.StatusUnpaid.ToUint8(),
+					Status:           domain.StatusInit.ToUint8(),
 				}, []dao.OrderItem{
 					{
 						SPUId:            1,
@@ -1783,7 +1783,7 @@ func (s *OrderModuleTestSuite) TestHandler_CancelOrderFailed() {
 					PaymentSn:        sqlx.NewNullString("paymentSN-2000"),
 					OriginalTotalAmt: 9900,
 					RealTotalAmt:     9900,
-					Status:           domain.StatusUnpaid.ToUint8(),
+					Status:           domain.StatusInit.ToUint8(),
 				}, []dao.OrderItem{
 					{
 						SPUId:            1,

@@ -21,7 +21,8 @@ func (s OrderStatus) ToUint8() uint8 {
 }
 
 const (
-	StatusUnpaid        OrderStatus = 1
+	// StatusInit 初始化状态，对用户是不可见的
+	StatusInit          OrderStatus = 1
 	StatusProcessing    OrderStatus = 2
 	StatusSuccess       OrderStatus = 3
 	StatusFailed        OrderStatus = 4
