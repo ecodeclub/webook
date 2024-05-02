@@ -34,9 +34,9 @@ type Service interface {
 	// CancelOrder 取消订单 web 调用
 	CancelOrder(ctx context.Context, uid, oid int64) error
 	// SucceedOrder 订单支付失败 event调用
-	SucceedOrder(ctx context.Context, uid, oid int64) error
+	SucceedOrder(ctx context.Context, uid int64, orderSN string) error
 	// FailOrder 订单支付失败 event调用
-	FailOrder(ctx context.Context, uid, oid int64) error
+	FailOrder(ctx context.Context, uid int64, orderSN string) error
 	// FindTimeoutOrders 查询过期订单 job调用
 	FindTimeoutOrders(ctx context.Context, offset, limit int, ctime int64) ([]domain.Order, int64, error)
 	// CloseTimeoutOrders 关闭过期订单 job调用
@@ -87,12 +87,12 @@ func (s *service) CancelOrder(ctx context.Context, uid, oid int64) error {
 	return s.repo.CancelOrder(ctx, uid, oid)
 }
 
-func (s *service) SucceedOrder(ctx context.Context, uid, oid int64) error {
+func (s *service) SucceedOrder(ctx context.Context, uid int64, orderSN string) error {
 	// 已收到用户付款,不管订单状态为什么一律标记为“已完成”
-	return s.repo.SucceedOrder(ctx, uid, oid)
+	return s.repo.SucceedOrder(ctx, uid, orderSN)
 }
-func (s *service) FailOrder(ctx context.Context, uid, oid int64) error {
-	return s.repo.FailOrder(ctx, uid, oid)
+func (s *service) FailOrder(ctx context.Context, uid int64, orderSN string) error {
+	return s.repo.FailOrder(ctx, uid, orderSN)
 }
 
 func (s *service) FindTimeoutOrders(ctx context.Context, offset, limit int, ctime int64) ([]domain.Order, int64, error) {

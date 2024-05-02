@@ -2054,7 +2054,7 @@ func (s *OrderModuleTestSuite) TestPaymentConsumer_Consume() {
 			errRequireFunc: require.NoError,
 		},
 		{
-			name: "设置支付成功失败_订单序列号为空",
+			name: "设置支付成功_忽略订单序列号为空",
 			before: func(t *testing.T, producer mq.Producer, message *mq.Message) {
 				_, err := producer.Produce(context.Background(), message)
 				require.NoError(t, err)
@@ -2067,11 +2067,15 @@ func (s *OrderModuleTestSuite) TestPaymentConsumer_Consume() {
 				PayerID: testUID,
 				Status:  uint8(payment.StatusPaidSuccess),
 			},
-			after:          func(t *testing.T, orderSN string) {},
-			errRequireFunc: require.Error,
+			after: func(t *testing.T, orderSN string) {
+				t.Helper()
+				_, err := s.dao.FindOrderByUIDAndSNAndStatus(context.Background(), testUID, orderSN, domain.StatusSuccess.ToUint8())
+				assert.Error(t, err)
+			},
+			errRequireFunc: require.NoError,
 		},
 		{
-			name: "设置支付成功失败_订单序列号非法",
+			name: "设置支付成功_忽略订单序列号非法",
 			before: func(t *testing.T, producer mq.Producer, message *mq.Message) {
 				_, err := producer.Produce(context.Background(), message)
 				require.NoError(t, err)
@@ -2084,8 +2088,12 @@ func (s *OrderModuleTestSuite) TestPaymentConsumer_Consume() {
 				PayerID: testUID,
 				Status:  uint8(payment.StatusPaidSuccess),
 			},
-			after:          func(t *testing.T, orderSN string) {},
-			errRequireFunc: require.Error,
+			after: func(t *testing.T, orderSN string) {
+				t.Helper()
+				_, err := s.dao.FindOrderByUIDAndSNAndStatus(context.Background(), testUID, orderSN, domain.StatusSuccess.ToUint8())
+				assert.Error(t, err)
+			},
+			errRequireFunc: require.NoError,
 		},
 		{
 			name: "设置支付成功失败_买家ID非法",
@@ -2101,8 +2109,12 @@ func (s *OrderModuleTestSuite) TestPaymentConsumer_Consume() {
 				PayerID: 0,
 				Status:  uint8(payment.StatusPaidSuccess),
 			},
-			after:          func(t *testing.T, orderSN string) {},
-			errRequireFunc: require.Error,
+			after: func(t *testing.T, orderSN string) {
+				t.Helper()
+				_, err := s.dao.FindOrderByUIDAndSNAndStatus(context.Background(), 0, orderSN, domain.StatusSuccess.ToUint8())
+				assert.Error(t, err)
+			},
+			errRequireFunc: require.NoError,
 		},
 		{
 			name: "设置支付失败成功",
@@ -2146,57 +2158,6 @@ func (s *OrderModuleTestSuite) TestPaymentConsumer_Consume() {
 				assert.Equal(t, domain.StatusFailed.ToUint8(), orderEntity.Status)
 			},
 			errRequireFunc: require.NoError,
-		},
-		{
-			name: "设置支付失败失败_订单序列号为空",
-			before: func(t *testing.T, producer mq.Producer, message *mq.Message) {
-				_, err := producer.Produce(context.Background(), message)
-				require.NoError(t, err)
-				// 模拟重试
-				_, err = producer.Produce(context.Background(), message)
-				require.NoError(t, err)
-			},
-			evt: event.PaymentEvent{
-				OrderSN: "",
-				PayerID: testUID,
-				Status:  uint8(payment.StatusPaidFailed),
-			},
-			after:          func(t *testing.T, orderSN string) {},
-			errRequireFunc: require.Error,
-		},
-		{
-			name: "设置支付失败失败_订单序列号非法",
-			before: func(t *testing.T, producer mq.Producer, message *mq.Message) {
-				_, err := producer.Produce(context.Background(), message)
-				require.NoError(t, err)
-				// 模拟重试
-				_, err = producer.Produce(context.Background(), message)
-				require.NoError(t, err)
-			},
-			evt: event.PaymentEvent{
-				OrderSN: "InvalidOrderSN",
-				PayerID: testUID,
-				Status:  uint8(payment.StatusPaidFailed),
-			},
-			after:          func(t *testing.T, orderSN string) {},
-			errRequireFunc: require.Error,
-		},
-		{
-			name: "设置支付失败失败_买家ID非法",
-			before: func(t *testing.T, producer mq.Producer, message *mq.Message) {
-				_, err := producer.Produce(context.Background(), message)
-				require.NoError(t, err)
-				// 模拟重试
-				_, err = producer.Produce(context.Background(), message)
-				require.NoError(t, err)
-			},
-			evt: event.PaymentEvent{
-				OrderSN: "OrderSN-3",
-				PayerID: 0,
-				Status:  uint8(payment.StatusPaidFailed),
-			},
-			after:          func(t *testing.T, orderSN string) {},
-			errRequireFunc: require.Error,
 		},
 		{
 			name: "设置支付失败或成功失败_支付状态非法",
