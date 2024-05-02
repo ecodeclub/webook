@@ -58,27 +58,25 @@ func InitModule(db *gorm.DB, mq2 mq.MQ, c ecache.Cache, cm *credit.Module) (*Mod
 
 // wire.go:
 
-type Handler = web.Handler
+type (
+	Handler            = web.Handler
+	Payment            = domain.Payment
+	Record             = domain.PaymentRecord
+	Channel            = domain.PaymentChannel
+	ChannelType        = domain.ChannelType
+	Service            = service.Service
+	SyncWechatOrderJob = job.SyncWechatOrderJob
+)
 
-type Payment = domain.Payment
+const (
+	ChannelTypeCredit = domain.ChannelTypeCredit
+	ChannelTypeWechat = domain.ChannelTypeWechat
 
-type Record = domain.PaymentRecord
-
-type Channel = domain.PaymentChannel
-
-type ChannelType = domain.ChannelType
-
-type Service = service.Service
-
-type SyncWechatOrderJob = job.SyncWechatOrderJob
-
-const ChannelTypeCredit = domain.ChannelTypeCredit
-
-const ChannelTypeWechat = domain.ChannelTypeWechat
-
-const StatusPaidSuccess = domain.PaymentStatusPaidSuccess
-
-const StatusFailed = domain.PaymentStatusPaidFailed
+	StatusUnpaid      = domain.PaymentStatusUnpaid
+	StatusProcessing  = domain.PaymentStatusProcessing
+	StatusPaidSuccess = domain.PaymentStatusPaidSuccess
+	StatusPaidFailed  = domain.PaymentStatusPaidFailed
+)
 
 func convertToNotifyHandler(h *notify.Handler) wechat.NotifyHandler {
 	return h

@@ -23,6 +23,7 @@ import (
 	"github.com/ecodeclub/ecache"
 	"github.com/ecodeclub/mq-api"
 	"github.com/ecodeclub/webook/internal/credit"
+	"github.com/ecodeclub/webook/internal/order/internal/domain"
 	"github.com/ecodeclub/webook/internal/order/internal/event"
 	"github.com/ecodeclub/webook/internal/order/internal/job"
 	"github.com/ecodeclub/webook/internal/order/internal/repository"
@@ -37,9 +38,18 @@ import (
 	"gorm.io/gorm"
 )
 
-type Handler = web.Handler
-type Service = service.Service
-type CloseTimeoutOrdersJob = job.CloseTimeoutOrdersJob
+type (
+	Handler               = web.Handler
+	Service               = service.Service
+	CloseTimeoutOrdersJob = job.CloseTimeoutOrdersJob
+	Order                 = domain.Order
+	OrderStatus           = domain.OrderStatus
+)
+
+const (
+	StatusSuccess = domain.StatusSuccess
+	StatusFailed  = domain.StatusFailed
+)
 
 var HandlerSet = wire.NewSet(
 	sequencenumber.NewGenerator,

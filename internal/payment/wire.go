@@ -39,18 +39,25 @@ import (
 	"gorm.io/gorm"
 )
 
-type Handler = web.Handler
-type Payment = domain.Payment
-type Record = domain.PaymentRecord
-type Channel = domain.PaymentChannel
-type ChannelType = domain.ChannelType
-type Service = service.Service
-type SyncWechatOrderJob = job.SyncWechatOrderJob
+type (
+	Handler            = web.Handler
+	Payment            = domain.Payment
+	Record             = domain.PaymentRecord
+	Channel            = domain.PaymentChannel
+	ChannelType        = domain.ChannelType
+	Service            = service.Service
+	SyncWechatOrderJob = job.SyncWechatOrderJob
+)
 
-const ChannelTypeCredit = domain.ChannelTypeCredit
-const ChannelTypeWechat = domain.ChannelTypeWechat
-const StatusPaidSuccess = domain.PaymentStatusPaidSuccess
-const StatusFailed = domain.PaymentStatusPaidFailed
+const (
+	ChannelTypeCredit = domain.ChannelTypeCredit
+	ChannelTypeWechat = domain.ChannelTypeWechat
+
+	StatusUnpaid      = domain.PaymentStatusUnpaid
+	StatusProcessing  = domain.PaymentStatusProcessing
+	StatusPaidSuccess = domain.PaymentStatusPaidSuccess
+	StatusPaidFailed  = domain.PaymentStatusPaidFailed
+)
 
 func InitModule(db *egorm.Component,
 	mq mq.MQ,

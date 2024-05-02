@@ -13,6 +13,7 @@ import (
 	"github.com/ecodeclub/ecache"
 	"github.com/ecodeclub/mq-api"
 	"github.com/ecodeclub/webook/internal/credit"
+	"github.com/ecodeclub/webook/internal/order/internal/domain"
 	"github.com/ecodeclub/webook/internal/order/internal/event"
 	"github.com/ecodeclub/webook/internal/order/internal/job"
 	"github.com/ecodeclub/webook/internal/order/internal/repository"
@@ -53,11 +54,18 @@ func InitHandler(cache ecache.Cache, svc2 service.Service, pm *payment.Module, p
 
 // wire.go:
 
-type Handler = web.Handler
+type (
+	Handler               = web.Handler
+	Service               = service.Service
+	CloseTimeoutOrdersJob = job.CloseTimeoutOrdersJob
+	Order                 = domain.Order
+	OrderStatus           = domain.OrderStatus
+)
 
-type Service = service.Service
-
-type CloseTimeoutOrdersJob = job.CloseTimeoutOrdersJob
+const (
+	StatusSuccess = domain.StatusSuccess
+	StatusFailed  = domain.StatusFailed
+)
 
 var HandlerSet = wire.NewSet(sequencenumber.NewGenerator, web.NewHandler)
 
