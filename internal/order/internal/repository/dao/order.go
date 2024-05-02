@@ -33,7 +33,7 @@ type OrderDAO interface {
 	CountOrdersByUID(ctx context.Context, uid int64, status uint8) (int64, error)
 	FindOrdersByUID(ctx context.Context, offset, limit int, uid int64, status uint8) ([]Order, error)
 	SetOrderCanceled(ctx context.Context, uid, oid int64) error
-	SetOrderStatus(ctx context.Context, uid, oid int64, status uint8) error
+	SetOrderStatus(ctx context.Context, uid int64, orderSN string, status uint8) error
 	FindTimeoutOrders(ctx context.Context, offset, limit int, ctime int64) ([]Order, error)
 	CountTimeoutOrders(ctx context.Context, ctime int64) (int64, error)
 	SetOrdersTimeoutClosed(ctx context.Context, orderIDs []int64, ctime int64) error
@@ -118,9 +118,9 @@ func (g *gormOrderDAO) SetOrderCanceled(ctx context.Context, uid, oid int64) err
 	return g.db.WithContext(ctx).Where("buyer_id = ? AND id = ? AND status = ?", uid, oid, domain.StatusProcessing.ToUint8()).Updates(order).Error
 }
 
-func (g *gormOrderDAO) SetOrderStatus(ctx context.Context, uid, oid int64, status uint8) error {
+func (g *gormOrderDAO) SetOrderStatus(ctx context.Context, uid int64, orderSN string, status uint8) error {
 	order := Order{Status: status, Utime: time.Now().UnixMilli()}
-	return g.db.WithContext(ctx).Where("buyer_id = ? AND id = ?", uid, oid).Updates(order).Error
+	return g.db.WithContext(ctx).Where("buyer_id = ? AND sn = ?", uid, orderSN).Updates(order).Error
 }
 
 func (g *gormOrderDAO) FindTimeoutOrders(ctx context.Context, offset, limit int, ctime int64) ([]Order, error) {
