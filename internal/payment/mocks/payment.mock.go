@@ -349,46 +349,8 @@ func (c *ServicePayByIDCall) DoAndReturn(f func(context.Context, int64) (domain.
 	return c
 }
 
-// SendPaymentEvent mocks base method.
-func (m *MockService) SendPaymentEvent(ctx context.Context, pmt *domain.Payment) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SendPaymentEvent", ctx, pmt)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// SendPaymentEvent indicates an expected call of SendPaymentEvent.
-func (mr *MockServiceMockRecorder) SendPaymentEvent(ctx, pmt any) *ServiceSendPaymentEventCall {
-	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendPaymentEvent", reflect.TypeOf((*MockService)(nil).SendPaymentEvent), ctx, pmt)
-	return &ServiceSendPaymentEventCall{Call: call}
-}
-
-// ServiceSendPaymentEventCall wrap *gomock.Call
-type ServiceSendPaymentEventCall struct {
-	*gomock.Call
-}
-
-// Return rewrite *gomock.Call.Return
-func (c *ServiceSendPaymentEventCall) Return(arg0 error) *ServiceSendPaymentEventCall {
-	c.Call = c.Call.Return(arg0)
-	return c
-}
-
-// Do rewrite *gomock.Call.Do
-func (c *ServiceSendPaymentEventCall) Do(f func(context.Context, *domain.Payment) error) *ServiceSendPaymentEventCall {
-	c.Call = c.Call.Do(f)
-	return c
-}
-
-// DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *ServiceSendPaymentEventCall) DoAndReturn(f func(context.Context, *domain.Payment) error) *ServiceSendPaymentEventCall {
-	c.Call = c.Call.DoAndReturn(f)
-	return c
-}
-
 // SetPaymentStatusPaidFailed mocks base method.
-func (m *MockService) SetPaymentStatusPaidFailed(ctx context.Context, pmt domain.Payment) error {
+func (m *MockService) SetPaymentStatusPaidFailed(ctx context.Context, pmt *domain.Payment) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SetPaymentStatusPaidFailed", ctx, pmt)
 	ret0, _ := ret[0].(error)
@@ -414,13 +376,13 @@ func (c *ServiceSetPaymentStatusPaidFailedCall) Return(arg0 error) *ServiceSetPa
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *ServiceSetPaymentStatusPaidFailedCall) Do(f func(context.Context, domain.Payment) error) *ServiceSetPaymentStatusPaidFailedCall {
+func (c *ServiceSetPaymentStatusPaidFailedCall) Do(f func(context.Context, *domain.Payment) error) *ServiceSetPaymentStatusPaidFailedCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *ServiceSetPaymentStatusPaidFailedCall) DoAndReturn(f func(context.Context, domain.Payment) error) *ServiceSetPaymentStatusPaidFailedCall {
+func (c *ServiceSetPaymentStatusPaidFailedCall) DoAndReturn(f func(context.Context, *domain.Payment) error) *ServiceSetPaymentStatusPaidFailedCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

@@ -71,18 +71,16 @@ func (s *service) Reconcile(ctx context.Context, offset, limit int, ctime int64)
 			switch pmt.Status {
 			case payment.StatusUnpaid:
 			case payment.StatusProcessing:
-				err3 := s.setPaymentPaidFailed(ctx, o, pmt)
+				err3 := s.handleUnpaidAndProcessingStatus(ctx, o, pmt)
 				if err3 != nil {
 					s.l.Warn("设置支付失败",
 						elog.FieldErr(err3),
 						elog.Any("payment", pmt),
 					)
 				}
-				// todo: 处理
-				return s.handlePaidSuccessAndFailed(ctx, o, pmt)
 			case payment.StatusPaidSuccess:
 			case payment.StatusPaidFailed:
-				err4 := s.handlePaidSuccessAndFailed(ctx, o, pmt)
+				err4 := s.handlePaidSuccessAndPaidFailedStatus(ctx, o, pmt)
 				if err4 != nil {
 					s.l.Warn("处理支付失败",
 						elog.FieldErr(err4),
@@ -90,7 +88,6 @@ func (s *service) Reconcile(ctx context.Context, offset, limit int, ctime int64)
 					)
 				}
 			}
-
 		}
 
 		if len(orders) < limit {
@@ -98,66 +95,6 @@ func (s *service) Reconcile(ctx context.Context, offset, limit int, ctime int64)
 		}
 
 		if int64(limit) >= total {
-			return nil
-		}
-	}
-}
-
-func (s *service) setPaymentPaidFailed(ctx context.Context, o order.Order, pmt payment.Payment) error {
-
-	return nil
-}
-
-func (s *service) handlePaidSuccessAndFailed(ctx context.Context, o order.Order, pmt payment.Payment) error {
-
-	strategy, er := retry.NewExponentialBackoffRetryStrategy(s.initialInterval, s.maxInterval, s.maxRetries)
-	if er != nil {
-		return er
-	}
-
-	for {
-
-		d, ok := strategy.Next()
-		if !ok {
-			s.l.Warn("处理支付成功及支付失败超过最大重试次数",
-				elog.Any("order", o),
-				elog.Any("payment", pmt),
-			)
-			return fmt.Errorf("超过最大重试次数")
-		}
-
-		// 在混合支付的时候需要对积分支付进行额外处理
-		// 支付成功 —— 确认扣减积分+状态更新
-		// 支付失败 —— 取消扣见积分+状态更新
-		err := s.paymentSvc.HandleCreditCallback(ctx, pmt)
-		if err != nil {
-			time.Sleep(d)
-			continue
-		}
-
-		err = s.paymentSvc.SendPaymentEvent(ctx, &pmt)
-		if err != nil {
-			s.l.Warn("发送支付事件失败",
-				elog.FieldErr(err),
-				elog.Any("payment", pmt),
-			)
-			time.Sleep(d)
-			continue
-		}
-
-		time.Sleep(d)
-
-		oo, err := s.orderSvc.FindUserVisibleOrderByUIDAndSN(ctx, o.BuyerID, o.SN)
-		if err != nil {
-			s.l.Warn("轮训订单状态失败",
-				elog.FieldErr(err),
-				elog.Any("order", oo),
-			)
-			continue
-		}
-
-		if (oo.Status == order.StatusSuccess && pmt.Status == payment.StatusPaidSuccess) ||
-			(oo.Status == order.StatusFailed && pmt.Status == payment.StatusPaidFailed) {
 			return nil
 		}
 	}
@@ -177,3 +114,70 @@ func (s *service) handlePaidSuccessAndFailed(ctx context.Context, o order.Order,
 如果 pmt 处于 INIT，paying 状态, 订单状态直接将 支付置为失败，订单失败，释放积分。
 
 */
+
+func (s *service) handleUnpaidAndProcessingStatus(ctx context.Context, o order.Order, pmt payment.Payment) error {
+	err := s.paymentSvc.SetPaymentStatusPaidFailed(ctx, &pmt)
+	if err != nil {
+		return err
+	}
+	return s.handlePaidSuccessAndPaidFailedStatus(ctx, o, pmt)
+}
+
+func (s *service) handlePaidSuccessAndPaidFailedStatus(ctx context.Context, o order.Order, pmt payment.Payment) error {
+
+	strategy, er := retry.NewExponentialBackoffRetryStrategy(s.initialInterval, s.maxInterval, s.maxRetries)
+	if er != nil {
+		return er
+	}
+
+	var err error
+	for {
+
+		d, ok := strategy.Next()
+		if !ok {
+			s.l.Warn("处理支付成功及支付失败超过最大重试次数",
+				elog.Any("order", o),
+				elog.Any("payment", pmt),
+			)
+			return fmt.Errorf("超过最大重试次数")
+		}
+
+		// 在混合支付的时候需要对积分支付进行额外处理
+		// 支付成功 —— 确认扣减积分+状态更新
+		// 支付失败 —— 取消扣见积分+状态更新
+		err = s.paymentSvc.HandleCreditCallback(ctx, pmt)
+		if err != nil {
+			time.Sleep(d)
+			continue
+		}
+
+		if pmt.Status == payment.StatusPaidSuccess {
+			err = s.orderSvc.SucceedOrder(ctx, o.BuyerID, o.SN)
+		} else {
+			err = s.orderSvc.FailOrder(ctx, o.BuyerID, o.SN)
+		}
+		if err != nil {
+			s.l.Warn("根据支付状态更新订单状态失败",
+				elog.FieldErr(err),
+				elog.Any("order", o),
+				elog.Any("payment", pmt),
+			)
+			time.Sleep(d)
+			continue
+		}
+
+		oo, err := s.orderSvc.FindUserVisibleOrderByUIDAndSN(ctx, o.BuyerID, o.SN)
+		if err != nil {
+			s.l.Warn("轮训订单状态失败",
+				elog.FieldErr(err),
+				elog.Any("order", oo),
+			)
+			continue
+		}
+
+		if (oo.Status == order.StatusSuccess && pmt.Status == payment.StatusPaidSuccess) ||
+			(oo.Status == order.StatusFailed && pmt.Status == payment.StatusPaidFailed) {
+			return nil
+		}
+	}
+}

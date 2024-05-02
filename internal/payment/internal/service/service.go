@@ -47,12 +47,10 @@ type Service interface {
 	// SyncWechatInfo 同步与微信对账 job调用
 	SyncWechatInfo(ctx context.Context, pmt domain.Payment) error
 
-	// SendPaymentEvent 根据支付情况发送支付事件 recon模块使用
-	SendPaymentEvent(ctx context.Context, pmt *domain.Payment) error
 	// HandleCreditCallback 处理积分支付的回调 recon模块使用
 	HandleCreditCallback(ctx context.Context, pmt domain.Payment) error
 	// SetPaymentStatusPaidFailed 将支付标记为失败并发送相应事件 recon模块使用
-	SetPaymentStatusPaidFailed(ctx context.Context, pmt domain.Payment) error
+	SetPaymentStatusPaidFailed(ctx context.Context, pmt *domain.Payment) error
 }
 
 func NewService(wechatSvc *wechat.NativePaymentService,
@@ -178,10 +176,10 @@ func (s *service) payByCredit(ctx context.Context, pmt *domain.Payment) error {
 		_ = s.creditSvc.CancelDeductCredits(ctx, pmt.PayerID, tid)
 		return err
 	}
-	return s.SendPaymentEvent(ctx, pmt)
+	return s.sendPaymentEvent(ctx, pmt)
 }
 
-func (s *service) SendPaymentEvent(ctx context.Context, pmt *domain.Payment) error {
+func (s *service) sendPaymentEvent(ctx context.Context, pmt *domain.Payment) error {
 	// 就是处于结束状态
 	evt := event.PaymentEvent{
 		OrderSN: pmt.OrderSN,
@@ -287,7 +285,7 @@ func (s *service) HandleWechatCallback(ctx context.Context, txn *payments.Transa
 
 	// 支付主记录和微信支付渠道支付成功/支付失败后,就发送消息
 	pmt.PayerID = p.PayerID
-	_ = s.SendPaymentEvent(ctx, &pmt)
+	_ = s.sendPaymentEvent(ctx, &pmt)
 
 	pmt.Records = p.Records
 	return s.HandleCreditCallback(ctx, pmt)
@@ -410,13 +408,13 @@ func (s *service) SyncWechatInfo(ctx context.Context, pmt domain.Payment) error 
 
 	// 支付主记录和微信支付渠道支付成功/支付失败后,就发送消息
 	p.PayerID = pmt.PayerID
-	_ = s.SendPaymentEvent(ctx, &p)
+	_ = s.sendPaymentEvent(ctx, &p)
 
 	p.Records = pmt.Records
 	return s.HandleCreditCallback(ctx, p)
 }
 
-func (s *service) SetPaymentStatusPaidFailed(ctx context.Context, pmt domain.Payment) error {
+func (s *service) SetPaymentStatusPaidFailed(ctx context.Context, pmt *domain.Payment) error {
 	pmt.Status = domain.PaymentStatusPaidFailed
 	for i := 0; i < len(pmt.Records); i++ {
 		record := &pmt.Records[i]
@@ -428,5 +426,5 @@ func (s *service) SetPaymentStatusPaidFailed(ctx context.Context, pmt domain.Pay
 		}
 		record.Status = pmt.Status
 	}
-	return s.repo.UpdatePayment(ctx, pmt)
+	return s.repo.UpdatePayment(ctx, *pmt)
 }
