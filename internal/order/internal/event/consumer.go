@@ -66,33 +66,23 @@ func (c *PaymentConsumer) Consume(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("解析消息失败: %w", err)
 	}
-	// 收到该消息表示用户支付成功,所以不管订单当前的状态是什么都要设置为“已支付完成”
-	order, err := c.svc.FindUserVisibleOrderByUIDAndSN(ctx, evt.PayerID, evt.OrderSN)
-	if err != nil {
-		c.logger.Error("订单未找到",
-			elog.FieldErr(err),
-			elog.String("order_sn", evt.OrderSN),
-			elog.Int64("buyer_id", evt.PayerID),
-		)
-		return fmt.Errorf("订单未找到: %w", err)
-	}
 
 	var warnMessage string
 	if evt.Status == uint8(payment.StatusPaidSuccess) {
-		err = c.svc.SucceedOrder(ctx, order.BuyerID, order.ID)
+		err = c.svc.SucceedOrder(ctx, evt.PayerID, evt.OrderSN)
 		warnMessage = "设置订单'支付成功'状态失败"
 	} else if evt.Status == uint8(payment.StatusFailed) {
-		err = c.svc.FailOrder(ctx, order.BuyerID, order.ID)
+		err = c.svc.FailOrder(ctx, evt.PayerID, evt.OrderSN)
 		warnMessage = "设置订单'支付失败'状态失败"
 	} else {
-		return fmt.Errorf("未支付状态: %d", evt.Status)
+		return fmt.Errorf("未知支付状态: %d", evt.Status)
 	}
 
 	if err != nil {
 		c.logger.Warn(warnMessage,
 			elog.FieldErr(err),
-			elog.Int64("order_id", order.ID),
-			elog.Int64("buyer_id", order.BuyerID))
+			elog.Any("event", evt),
+		)
 	}
 	return err
 
