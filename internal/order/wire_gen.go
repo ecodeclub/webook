@@ -60,11 +60,14 @@ type (
 	CloseTimeoutOrdersJob = job.CloseTimeoutOrdersJob
 	Order                 = domain.Order
 	OrderStatus           = domain.OrderStatus
+	Payment               = domain.Payment
 )
 
 const (
-	StatusSuccess = domain.StatusSuccess
-	StatusFailed  = domain.StatusFailed
+	StatusInit       = domain.StatusInit
+	StatusProcessing = domain.StatusProcessing
+	StatusSuccess    = domain.StatusSuccess
+	StatusFailed     = domain.StatusFailed
 )
 
 var HandlerSet = wire.NewSet(sequencenumber.NewGenerator, web.NewHandler)

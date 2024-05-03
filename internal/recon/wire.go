@@ -22,15 +22,20 @@ import (
 	"github.com/ecodeclub/webook/internal/credit"
 	"github.com/ecodeclub/webook/internal/order"
 	"github.com/ecodeclub/webook/internal/payment"
+	"github.com/ecodeclub/webook/internal/recon/internal/job"
 	"github.com/ecodeclub/webook/internal/recon/internal/service"
 	"github.com/google/wire"
 )
 
-type Service = service.Service
+type (
+	Service                = service.Service
+	SyncPaymentAndOrderJob = job.SyncPaymentAndOrderJob
+)
 
 func InitModule(o *order.Module, p *payment.Module, c *credit.Module) (*Module, error) {
 	wire.Build(
 		initService,
+		initSyncPaymentAndOrderJob,
 		wire.FieldsOf(new(*order.Module), "Svc"),
 		wire.FieldsOf(new(*payment.Module), "Svc"),
 		wire.FieldsOf(new(*credit.Module), "Svc"),
@@ -46,4 +51,11 @@ func initService(orderSvc order.Service,
 	maxInterval := 1 * time.Second
 	maxRetries := int32(6)
 	return service.NewService(orderSvc, paymentSvc, creditSvc, initialInterval, maxInterval, maxRetries)
+}
+
+func initSyncPaymentAndOrderJob(svc service.Service) *SyncPaymentAndOrderJob {
+	minutes := int64(30)
+	seconds := int64(10)
+	limit := 100
+	return job.NewSyncPaymentAndOrderJob(svc, minutes, seconds, limit)
 }

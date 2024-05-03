@@ -15,5 +15,6 @@
 package recon
 
 type Module struct {
-	Svc Service
+	Svc                    Service
+	SyncPaymentAndOrderJob *SyncPaymentAndOrderJob
 }

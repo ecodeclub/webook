@@ -69,20 +69,18 @@ func (s *service) Reconcile(ctx context.Context, offset, limit int, ctime int64)
 			}
 
 			switch pmt.Status {
-			case payment.StatusUnpaid:
-			case payment.StatusProcessing:
+			case payment.StatusUnpaid, payment.StatusProcessing:
 				err3 := s.handleUnpaidAndProcessingStatus(ctx, o, pmt)
 				if err3 != nil {
-					s.l.Warn("设置支付失败",
+					s.l.Warn("设置支付状态失败",
 						elog.FieldErr(err3),
 						elog.Any("payment", pmt),
 					)
 				}
-			case payment.StatusPaidSuccess:
-			case payment.StatusPaidFailed:
-				err4 := s.handlePaidSuccessAndPaidFailedStatus(ctx, o, pmt)
+			case payment.StatusPaidSuccess, payment.StatusPaidFailed:
+				err4 := s.handlePaidSuccessAndFailedStatus(ctx, o, pmt)
 				if err4 != nil {
-					s.l.Warn("处理支付失败",
+					s.l.Warn("设置支付状态失败",
 						elog.FieldErr(err4),
 						elog.Any("payment", pmt),
 					)
@@ -101,7 +99,7 @@ func (s *service) Reconcile(ctx context.Context, offset, limit int, ctime int64)
 }
 
 /*
-扫描数据库中 30 分钟之前处于 PAYING 状态的订单，通过订单找到 pmt
+扫描数据库中 30 分钟之前处于“支付中”状态的订单，通过订单找到 pmt
 1. 如果pmt = “支付成功”, 确认扣减积分并同步调用订单模块方法修改订单状态为“支付成功”
 2. 如果pmt = “支付失败”, 取消扣减积分并同步调用订单模块方法修改订单状态为“支付失败”
 3. 如果pmt = “未支付”, 同步调用支付模块及订单模块方法修改状态为“支付失败”, 此时无需释放积分.
@@ -114,10 +112,10 @@ func (s *service) handleUnpaidAndProcessingStatus(ctx context.Context, o order.O
 	if err != nil {
 		return err
 	}
-	return s.handlePaidSuccessAndPaidFailedStatus(ctx, o, pmt)
+	return s.handlePaidSuccessAndFailedStatus(ctx, o, pmt)
 }
 
-func (s *service) handlePaidSuccessAndPaidFailedStatus(ctx context.Context, o order.Order, pmt payment.Payment) error {
+func (s *service) handlePaidSuccessAndFailedStatus(ctx context.Context, o order.Order, pmt payment.Payment) error {
 
 	strategy, er := retry.NewExponentialBackoffRetryStrategy(s.initialInterval, s.maxInterval, s.maxRetries)
 	if er != nil {
