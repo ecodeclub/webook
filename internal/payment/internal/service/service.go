@@ -46,6 +46,11 @@ type Service interface {
 	CloseTimeoutPayment(ctx context.Context, pmt domain.Payment) error
 	// SyncWechatInfo 同步与微信对账 job调用
 	SyncWechatInfo(ctx context.Context, pmt domain.Payment) error
+
+	// HandleCreditCallback 处理积分支付的回调 recon模块使用
+	HandleCreditCallback(ctx context.Context, pmt domain.Payment) error
+	// SetPaymentStatusPaidFailed 将支付标记为失败并发送相应事件 recon模块使用
+	SetPaymentStatusPaidFailed(ctx context.Context, pmt *domain.Payment) error
 }
 
 func NewService(wechatSvc *wechat.NativePaymentService,
@@ -283,10 +288,10 @@ func (s *service) HandleWechatCallback(ctx context.Context, txn *payments.Transa
 	_ = s.sendPaymentEvent(ctx, &pmt)
 
 	pmt.Records = p.Records
-	return s.handleCreditCallback(ctx, pmt)
+	return s.HandleCreditCallback(ctx, pmt)
 }
 
-func (s *service) handleCreditCallback(ctx context.Context, pmt domain.Payment) error {
+func (s *service) HandleCreditCallback(ctx context.Context, pmt domain.Payment) error {
 	r, ok := slice.Find(pmt.Records, func(src domain.PaymentRecord) bool {
 		return src.Channel == domain.ChannelTypeCredit
 	})
@@ -295,18 +300,25 @@ func (s *service) handleCreditCallback(ctx context.Context, pmt domain.Payment) 
 		return nil
 	}
 
-	uid := pmt.PayerID
-	tid, _ := strconv.ParseInt(r.PaymentNO3rd, 10, 64)
-	if pmt.Status == domain.PaymentStatusPaidSuccess {
-		err := s.creditSvc.ConfirmDeductCredits(ctx, uid, tid)
-		if err != nil {
-			s.l.Warn("确认扣减积分失败",
-				elog.Int64("uid", uid),
-				elog.Int64("tid", tid),
-			)
+	if r.Status == pmt.Status &&
+		r.PaidAt == pmt.PaidAt {
+		return nil
+	}
+
+	if r.PaymentNO3rd != "" {
+		uid := pmt.PayerID
+		tid, _ := strconv.ParseInt(r.PaymentNO3rd, 10, 64)
+		if pmt.Status == domain.PaymentStatusPaidSuccess {
+			err := s.creditSvc.ConfirmDeductCredits(ctx, uid, tid)
+			if err != nil {
+				s.l.Warn("确认扣减积分失败",
+					elog.Int64("uid", uid),
+					elog.Int64("tid", tid),
+				)
+			}
+		} else {
+			s.cancelDeductCredits(ctx, uid, tid)
 		}
-	} else {
-		s.cancelDeductCredits(ctx, uid, tid)
 	}
 
 	pp := domain.Payment{
@@ -369,7 +381,7 @@ func (s *service) CloseTimeoutPayment(ctx context.Context, pmt domain.Payment) e
 			tid, _ := strconv.ParseInt(record.PaymentNO3rd, 10, 64)
 			s.cancelDeductCredits(ctx, uid, tid)
 		}
-		record.Status = domain.PaymentStatusTimeoutClosed
+		record.Status = pmt.Status
 	}
 	return s.repo.UpdatePayment(ctx, pmt)
 }
@@ -399,5 +411,20 @@ func (s *service) SyncWechatInfo(ctx context.Context, pmt domain.Payment) error 
 	_ = s.sendPaymentEvent(ctx, &p)
 
 	p.Records = pmt.Records
-	return s.handleCreditCallback(ctx, p)
+	return s.HandleCreditCallback(ctx, p)
+}
+
+func (s *service) SetPaymentStatusPaidFailed(ctx context.Context, pmt *domain.Payment) error {
+	pmt.Status = domain.PaymentStatusPaidFailed
+	for i := 0; i < len(pmt.Records); i++ {
+		record := &pmt.Records[i]
+		if record.Status == domain.PaymentStatusProcessing &&
+			record.Channel == domain.ChannelTypeCredit {
+			uid := pmt.PayerID
+			tid, _ := strconv.ParseInt(record.PaymentNO3rd, 10, 64)
+			s.cancelDeductCredits(ctx, uid, tid)
+		}
+		record.Status = pmt.Status
+	}
+	return s.repo.UpdatePayment(ctx, *pmt)
 }

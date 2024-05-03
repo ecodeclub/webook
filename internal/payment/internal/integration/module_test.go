@@ -3039,3 +3039,171 @@ func (s *PaymentModuleTestSuite) TestJob_SyncWechatOrder() {
 	}
 
 }
+
+func (s *PaymentModuleTestSuite) TestService_SetPaymentStatusPaidFailed() {
+	t := s.T()
+
+	testCases := []struct {
+		name           string
+		before         func(t *testing.T, svc service.Service) []domain.Payment
+		newSvcFunc     func(t *testing.T, ctrl *gomock.Controller) service.Service
+		errRequireFunc require.ErrorAssertionFunc
+		after          func(t *testing.T, svc service.Service, pmtID int64)
+	}{
+		{
+			name: "设置支付失败成功_未支付状态",
+			before: func(t *testing.T, svc service.Service) []domain.Payment {
+				t.Helper()
+				// 创建多个
+				n := 3
+				pmts := make([]domain.Payment, 0, n)
+				for i := 0; i < n; i++ {
+
+					payerID := int64(700010 + i)
+
+					pmt, err := svc.CreatePayment(context.Background(), domain.Payment{
+						OrderID:          payerID,
+						OrderSN:          fmt.Sprintf("order-close-timeout-%d", payerID),
+						PayerID:          payerID,
+						OrderDescription: "季会员 * 1",
+						TotalAmount:      30000,
+						Records: []domain.PaymentRecord{
+							{
+								Description: "季会员 * 1",
+								Channel:     domain.ChannelTypeCredit,
+								Amount:      30000,
+							},
+						},
+					})
+					pmts = append(pmts, pmt)
+					require.NoError(t, err)
+				}
+				return pmts
+			},
+			newSvcFunc: func(t *testing.T, ctrl *gomock.Controller) service.Service {
+				t.Helper()
+				return startup.InitService(nil, &credit.Module{}, nil)
+			},
+			errRequireFunc: require.NoError,
+			after: func(t *testing.T, svc service.Service, pmtID int64) {
+				t.Helper()
+				p, err := svc.FindPaymentByID(context.Background(), pmtID)
+				require.NoError(t, err)
+				require.Equal(t, domain.PaymentStatusPaidFailed, p.Status)
+				r, ok := slice.Find(p.Records, func(src domain.PaymentRecord) bool {
+					return src.Channel == domain.ChannelTypeCredit
+				})
+				require.True(t, ok)
+				require.Equal(t, domain.PaymentStatusPaidFailed, r.Status)
+			},
+		},
+		{
+			name: "设置支付失败成功_支付中状态",
+			before: func(t *testing.T, svc service.Service) []domain.Payment {
+				t.Helper()
+				// 创建多个
+				n := 6
+				pmts := make([]domain.Payment, 0, n)
+				for i := 0; i < n; i++ {
+
+					payerID := int64(700020 + i)
+
+					p, err := svc.CreatePayment(context.Background(), domain.Payment{
+						OrderID:          payerID,
+						OrderSN:          fmt.Sprintf("order-close-timeout-%d", payerID),
+						PayerID:          payerID,
+						OrderDescription: "季会员 * 1",
+						TotalAmount:      30000,
+						Records: []domain.PaymentRecord{
+							{
+								Description: "季会员 * 1",
+								Channel:     domain.ChannelTypeWechat,
+								Amount:      17000,
+							},
+							{
+								Description: "季会员 * 1",
+								Channel:     domain.ChannelTypeCredit,
+								Amount:      13000,
+							},
+						},
+					})
+					require.NoError(t, err)
+
+					pmt, err := svc.PayByID(context.Background(), p.ID)
+					pmts = append(pmts, pmt)
+
+					require.NoError(t, err)
+				}
+				return pmts
+			},
+			newSvcFunc: func(t *testing.T, ctrl *gomock.Controller) service.Service {
+				t.Helper()
+
+				mockCreditSvc := creditmocks.NewMockService(ctrl)
+				mockCreditSvc.EXPECT().TryDeductCredits(gomock.Any(), gomock.Any()).Return(int64(70), nil)
+				mockCreditSvc.EXPECT().TryDeductCredits(gomock.Any(), gomock.Any()).Return(int64(71), nil)
+				mockCreditSvc.EXPECT().TryDeductCredits(gomock.Any(), gomock.Any()).Return(int64(72), nil)
+				mockCreditSvc.EXPECT().TryDeductCredits(gomock.Any(), gomock.Any()).Return(int64(73), nil)
+				mockCreditSvc.EXPECT().TryDeductCredits(gomock.Any(), gomock.Any()).Return(int64(74), nil)
+				mockCreditSvc.EXPECT().TryDeductCredits(gomock.Any(), gomock.Any()).Return(int64(75), nil)
+				mockCreditSvc.EXPECT().CancelDeductCredits(gomock.Any(), int64(700020), int64(70)).Return(nil)
+				mockCreditSvc.EXPECT().CancelDeductCredits(gomock.Any(), int64(700021), int64(71)).Return(nil)
+				mockCreditSvc.EXPECT().CancelDeductCredits(gomock.Any(), int64(700022), int64(72)).Return(nil)
+				mockCreditSvc.EXPECT().CancelDeductCredits(gomock.Any(), int64(700023), int64(73)).Return(nil)
+				mockCreditSvc.EXPECT().CancelDeductCredits(gomock.Any(), int64(700024), int64(74)).Return(nil)
+				mockCreditSvc.EXPECT().CancelDeductCredits(gomock.Any(), int64(700025), int64(75)).Return(nil)
+
+				mockNativeAPIService := wechatmocks.NewMockNativeAPIService(ctrl)
+				resp := &native.PrepayResponse{CodeUrl: core.String("wechat_code_url_70020xx")}
+				result := &core.APIResult{}
+				mockNativeAPIService.EXPECT().Prepay(gomock.Any(), gomock.Any()).Return(resp, result, nil).Times(6)
+
+				return startup.InitService(nil, &credit.Module{Svc: mockCreditSvc}, mockNativeAPIService)
+			},
+			errRequireFunc: require.NoError,
+			after: func(t *testing.T, svc service.Service, pmtID int64) {
+				t.Helper()
+				p, err := svc.FindPaymentByID(context.Background(), pmtID)
+				require.NoError(t, err)
+
+				require.Equal(t, domain.PaymentStatusPaidFailed, p.Status)
+				c, ok := slice.Find(p.Records, func(src domain.PaymentRecord) bool {
+					return src.Channel == domain.ChannelTypeCredit
+				})
+				require.True(t, ok)
+				require.Equal(t, domain.PaymentStatusPaidFailed, c.Status)
+				require.Zero(t, c.PaidAt)
+
+				w, ok := slice.Find(p.Records, func(src domain.PaymentRecord) bool {
+					return src.Channel == domain.ChannelTypeWechat
+				})
+				require.True(t, ok)
+				require.Equal(t, domain.PaymentStatusPaidFailed, w.Status)
+				require.Zero(t, c.PaidAt)
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			svc := tc.newSvcFunc(t, ctrl)
+			pmts := tc.before(t, svc)
+			for _, pmt := range pmts {
+				err := svc.SetPaymentStatusPaidFailed(context.Background(), &pmt)
+				tc.errRequireFunc(t, err)
+				if err == nil {
+					require.Equal(t, domain.PaymentStatusPaidFailed, pmt.Status)
+					for _, r := range pmt.Records {
+						require.Equal(t, domain.PaymentStatusPaidFailed, r.Status)
+					}
+					tc.after(t, svc, pmt.ID)
+				}
+			}
+		})
+		s.TearDownTest()
+	}
+}

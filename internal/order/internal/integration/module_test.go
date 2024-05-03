@@ -1864,7 +1864,7 @@ func (s *OrderModuleTestSuite) TestPaymentConsumer_Consume() {
 			evt: event.PaymentEvent{
 				OrderSN: "orderSN-23",
 				PayerID: testUID,
-				Status:  uint8(payment.StatusFailed),
+				Status:  uint8(payment.StatusPaidFailed),
 			},
 			after: func(t *testing.T, orderSN string) {
 				t.Helper()

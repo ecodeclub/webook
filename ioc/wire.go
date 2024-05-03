@@ -29,6 +29,7 @@ import (
 	"github.com/ecodeclub/webook/internal/product"
 	"github.com/ecodeclub/webook/internal/project"
 	baguwen "github.com/ecodeclub/webook/internal/question"
+	"github.com/ecodeclub/webook/internal/recon"
 	"github.com/ecodeclub/webook/internal/skill"
 	"github.com/google/wire"
 )
@@ -61,6 +62,8 @@ func InitApp() (*App, error) {
 		wire.FieldsOf(new(*credit.Module), "Hdl", "CloseTimeoutLockedCreditsJob"),
 		project.InitModule,
 		wire.FieldsOf(new(*project.Module), "AdminHdl", "Hdl"),
+		recon.InitModule,
+		wire.FieldsOf(new(*recon.Module), "SyncPaymentAndOrderJob"),
 		initCronJobs,
 		// 这两个顺序不要换
 		initGinxServer,

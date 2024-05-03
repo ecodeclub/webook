@@ -19,6 +19,7 @@ import (
 	"github.com/ecodeclub/webook/internal/product"
 	"github.com/ecodeclub/webook/internal/project"
 	baguwen "github.com/ecodeclub/webook/internal/question"
+	"github.com/ecodeclub/webook/internal/recon"
 	"github.com/ecodeclub/webook/internal/skill"
 	"github.com/google/wire"
 )
@@ -88,7 +89,12 @@ func InitApp() (*App, error) {
 	closeTimeoutOrdersJob := orderModule.CloseTimeoutOrdersJob
 	closeTimeoutLockedCreditsJob := creditModule.CloseTimeoutLockedCreditsJob
 	syncWechatOrderJob := paymentModule.SyncWechatOrderJob
-	v := initCronJobs(closeTimeoutOrdersJob, closeTimeoutLockedCreditsJob, syncWechatOrderJob)
+	reconModule, err := recon.InitModule(orderModule, paymentModule, creditModule)
+	if err != nil {
+		return nil, err
+	}
+	syncPaymentAndOrderJob := reconModule.SyncPaymentAndOrderJob
+	v := initCronJobs(closeTimeoutOrdersJob, closeTimeoutLockedCreditsJob, syncWechatOrderJob, syncPaymentAndOrderJob)
 	app := &App{
 		Web:   component,
 		Admin: adminServer,
