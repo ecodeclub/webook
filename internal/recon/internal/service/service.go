@@ -101,18 +101,12 @@ func (s *service) Reconcile(ctx context.Context, offset, limit int, ctime int64)
 }
 
 /*
-扫描数据库中 30 分钟之前处于 PAYING 状态的订单，找到 pmt。（这个从 pmt 这边发起任务会比较容易）
-1. 如果pmt = “支付成功”, 发送“支付成功”消息,订单模块消费者会将订单状态更新为“支付成功”
-2. 如果pmt = “支付失败”, 发送“支付失败”消息,订单模块消费者会将订单状态更新为“支付失败”
-3. 如果pmt= “未支付” INT, 直接调用PaymentSvc和OrderSvc修改状态为“支付失败”, 此时无需释放积分.
-4. 如果pmt =支付中, 调用PaymentSvc和OrderSvc修改状态为“支付失败”, 此时需要释放积分.
-(这里可能与下方“支付模块”的定时任务冲突,
-需要确定时间间隔,来保证pmt=INT/Paying是支付模块定时任务处理过后,剩下来的,
-这样也就可以省去支付模块的定时任务1)
-
-如果 pmt 已经是终结状态（支付成功/支付失败），更新对应的 order 状态，扣减/释放积分。
-如果 pmt 处于 INIT，paying 状态, 订单状态直接将 支付置为失败，订单失败，释放积分。
-
+扫描数据库中 30 分钟之前处于 PAYING 状态的订单，通过订单找到 pmt
+1. 如果pmt = “支付成功”, 确认扣减积分并同步调用订单模块方法修改订单状态为“支付成功”
+2. 如果pmt = “支付失败”, 取消扣减积分并同步调用订单模块方法修改订单状态为“支付失败”
+3. 如果pmt = “未支付”, 同步调用支付模块及订单模块方法修改状态为“支付失败”, 此时无需释放积分.
+4. 如果pmt = “支付中”, 同步调用支付模块及订单模块方法修改状态为“支付失败”, 此时需要释放积分.
+   注意: 当处于“支付中”状态时，用户可能正在扫码支付，也可能微信那边回调尚未过来。即pmt事实上可能支付了,也可能没有支付。
 */
 
 func (s *service) handleUnpaidAndProcessingStatus(ctx context.Context, o order.Order, pmt payment.Payment) error {
@@ -165,19 +159,6 @@ func (s *service) handlePaidSuccessAndPaidFailedStatus(ctx context.Context, o or
 			time.Sleep(d)
 			continue
 		}
-
-		oo, err := s.orderSvc.FindUserVisibleOrderByUIDAndSN(ctx, o.BuyerID, o.SN)
-		if err != nil {
-			s.l.Warn("轮训订单状态失败",
-				elog.FieldErr(err),
-				elog.Any("order", oo),
-			)
-			continue
-		}
-
-		if (oo.Status == order.StatusSuccess && pmt.Status == payment.StatusPaidSuccess) ||
-			(oo.Status == order.StatusFailed && pmt.Status == payment.StatusPaidFailed) {
-			return nil
-		}
+		return nil
 	}
 }
