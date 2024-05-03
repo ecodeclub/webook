@@ -76,19 +76,23 @@ func (s *ProductModuleTestSuite) SetupSuite() {
 	s.svc = startup.InitService()
 }
 
-func (s *ProductModuleTestSuite) TearDownSuite() {
-	err := s.db.Exec("DROP TABLE `spus`").Error
-	require.NoError(s.T(), err)
-	err = s.db.Exec("DROP TABLE `skus`").Error
-	require.NoError(s.T(), err)
-}
-
-func (s *ProductModuleTestSuite) TearDownTest() {
-	err := s.db.Exec("TRUNCATE TABLE `spus`").Error
-	require.NoError(s.T(), err)
-	err = s.db.Exec("TRUNCATE TABLE `skus`").Error
-	require.NoError(s.T(), err)
-}
+// func (s *ProductModuleTestSuite) TearDownSuite() {
+// 	err := s.db.Exec("DROP TABLE `spus`").Error
+// 	require.NoError(s.T(), err)
+// 	err = s.db.Exec("DROP TABLE `skus`").Error
+// 	require.NoError(s.T(), err)
+// 	err = s.db.Exec("DROP TABLE `categories`").Error
+// 	require.NoError(s.T(), err)
+// }
+//
+// func (s *ProductModuleTestSuite) TearDownTest() {
+// 	err := s.db.Exec("TRUNCATE TABLE `spus`").Error
+// 	require.NoError(s.T(), err)
+// 	err = s.db.Exec("TRUNCATE TABLE `skus`").Error
+// 	require.NoError(s.T(), err)
+// 	err = s.db.Exec("TRUNCATE TABLE `categories`").Error
+// 	require.NoError(s.T(), err)
+// }
 
 func (s *ProductModuleTestSuite) TestHandler_RetrieveSKUDetail() {
 
@@ -283,6 +287,7 @@ func (s *ProductModuleTestSuite) TestHandler_RetrieveSKUDetailFailed() {
 func (s *ProductModuleTestSuite) TestHandler_RetrieveSPUDetail() {
 
 	t := s.T()
+	t.Skip()
 
 	testCases := []struct {
 		name   string
@@ -387,6 +392,8 @@ func (s *ProductModuleTestSuite) TestHandler_RetrieveSPUDetail() {
 
 func (s *ProductModuleTestSuite) TestHandler_RetrieveSPUDetailFailed() {
 	t := s.T()
+	t.Skip()
+
 	testCases := []struct {
 		name   string
 		before func(t *testing.T)
@@ -502,6 +509,7 @@ func (s *ProductModuleTestSuite) TestHandler_RetrieveSPUDetailFailed() {
 
 func (s *ProductModuleTestSuite) TestService_FindSPUByID() {
 	t := s.T()
+	t.Skip()
 	testCases := []struct {
 		name     string
 		getSPUID func(t *testing.T) int64

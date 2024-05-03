@@ -38,12 +38,13 @@ const (
 )
 
 type SPU struct {
-	ID     int64
-	SN     string
-	Name   string
-	Desc   string
-	SKUs   []SKU
-	Status Status
+	ID       int64
+	SN       string
+	Name     string
+	Desc     string
+	Category Category
+	SKUs     []SKU
+	Status   Status
 }
 
 type SKU struct {
@@ -63,4 +64,9 @@ type SKU struct {
 	Attrs  string
 	Image  string
 	Status Status
+}
+
+type Category struct {
+	Name string
+	Desc string
 }
