@@ -51,7 +51,6 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g.POST("/preview", ginx.BS[PreviewOrderReq](h.PreviewOrder))
 	g.POST("/create", ginx.BS[CreateOrderReq](h.CreateOrder))
 	g.POST("/repay", ginx.BS[OrderSNReq](h.RepayOrder))
-	g.POST("", ginx.BS[OrderSNReq](h.RetrieveOrderStatus))
 	g.POST("/list", ginx.BS[ListOrdersReq](h.ListOrders))
 	g.POST("/detail", ginx.BS[OrderSNReq](h.RetrieveOrderDetail))
 	g.POST("/cancel", ginx.BS[OrderSNReq](h.CancelOrder))
@@ -93,7 +92,7 @@ func (h *Handler) PreviewOrder(ctx *ginx.Context, req PreviewOrderReq, sess sess
 				}),
 			},
 			Credits: c.TotalAmount,
-			Policy:  "请注意: 虚拟商品、一旦支持成功不退、不换,请谨慎操作",
+			Policy:  "请注意: 虚拟商品、一旦支付成功不退、不换,请谨慎操作",
 		},
 	}, nil
 }
@@ -288,19 +287,6 @@ func (h *Handler) RepayOrder(ctx *ginx.Context, req OrderSNReq, sess session.Ses
 	return ginx.Result{
 		Data: RepayOrderResp{
 			WechatCodeURL: wechatCodeURL,
-		},
-	}, nil
-}
-
-// RetrieveOrderStatus 获取订单状态
-func (h *Handler) RetrieveOrderStatus(ctx *ginx.Context, req OrderSNReq, sess session.Session) (ginx.Result, error) {
-	order, err := h.svc.FindUserVisibleOrderByUIDAndSN(ctx.Request.Context(), sess.Claims().Uid, req.SN)
-	if err != nil {
-		return systemErrorResult, fmt.Errorf("订单未找到: %w", err)
-	}
-	return ginx.Result{
-		Data: RetrieveOrderStatusResp{
-			Status: order.Status.ToUint8(),
 		},
 	}, nil
 }

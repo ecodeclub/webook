@@ -69,7 +69,7 @@ func (g *gormOrderDAO) CreateOrder(ctx context.Context, order Order, items []Ord
 func (g *gormOrderDAO) UpdateUnpaidOrderPaymentInfo(ctx context.Context, uid, oid, pid int64, psn string) error {
 	order := Order{PaymentId: sqlx.NewNullInt64(pid), PaymentSn: sqlx.NewNullString(psn), Status: domain.StatusProcessing.ToUint8(), Utime: time.Now().UnixMilli()}
 	return g.db.WithContext(ctx).
-		Where("buyer_id = ? AND id = ? AND status = ?", uid, oid, domain.StatusUnpaid.ToUint8()).
+		Where("buyer_id = ? AND id = ? AND status = ?", uid, oid, domain.StatusInit.ToUint8()).
 		Updates(order).Error
 }
 

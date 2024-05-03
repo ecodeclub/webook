@@ -377,7 +377,7 @@ func (s *OrderModuleTestSuite) TestHandler_PreviewOrder() {
 						},
 					},
 					Credits: 1000,
-					Policy:  "请注意: 虚拟商品、一旦支持成功不退、不换,请谨慎操作",
+					Policy:  "请注意: 虚拟商品、一旦支付成功不退、不换,请谨慎操作",
 				},
 			},
 		},
@@ -848,7 +848,7 @@ func (s *OrderModuleTestSuite) TestHandler_RepayFailed() {
 					PaymentSn:        sqlx.NewNullString("paymentSN-1000"),
 					OriginalTotalAmt: 9900,
 					RealTotalAmt:     9900,
-					Status:           domain.StatusUnpaid.ToUint8(),
+					Status:           domain.StatusInit.ToUint8(),
 				}, []dao.OrderItem{
 					{
 						SPUId:            1,
@@ -1098,291 +1098,6 @@ func (s *OrderModuleTestSuite) TestHandler_RepayFailed() {
 	}
 }
 
-func (s *OrderModuleTestSuite) TestHandler_RetrieveOrderStatus() {
-	t := s.T()
-	var testCases = []struct {
-		name string
-
-		before         func(t *testing.T)
-		req            web.OrderSNReq
-		wantCode       int
-		assertRespFunc func(t *testing.T, result test.Result[web.RetrieveOrderStatusResp])
-	}{
-		{
-			name: "获取订单状态成功_订单处理中",
-			before: func(t *testing.T) {
-				t.Helper()
-				_, err := s.dao.CreateOrder(context.Background(), dao.Order{
-					SN:        "orderSN-1",
-					BuyerId:   testUID,
-					PaymentId: sqlx.NewNullInt64(12),
-					PaymentSn: sqlx.NewNullString("paymentSN-12"),
-					Status:    domain.StatusProcessing.ToUint8(),
-				}, []dao.OrderItem{
-					{
-						Id:               0,
-						OrderId:          0,
-						SPUId:            1,
-						SKUId:            1,
-						SKUName:          "商品SKU",
-						SKUDescription:   "商品SKU描述",
-						SKUOriginalPrice: 9900,
-						SKURealPrice:     9900,
-						Quantity:         1,
-					},
-				})
-				require.NoError(t, err)
-			},
-
-			req: web.OrderSNReq{
-				SN: "orderSN-1",
-			},
-			wantCode: 200,
-			assertRespFunc: func(t *testing.T, result test.Result[web.RetrieveOrderStatusResp]) {
-				t.Helper()
-				assert.Equal(t, domain.StatusProcessing.ToUint8(), result.Data.Status)
-			},
-		},
-		{
-			name: "获取订单状态成功_订单支付成功",
-			before: func(t *testing.T) {
-				t.Helper()
-				_, err := s.dao.CreateOrder(context.Background(), dao.Order{
-					SN:        "orderSN-2",
-					BuyerId:   testUID,
-					PaymentId: sqlx.NewNullInt64(13),
-					PaymentSn: sqlx.NewNullString("paymentSN-13"),
-					Status:    domain.StatusSuccess.ToUint8(),
-				}, []dao.OrderItem{
-					{
-						Id:               0,
-						OrderId:          0,
-						SPUId:            1,
-						SKUId:            1,
-						SKUName:          "商品SKU",
-						SKUDescription:   "商品SKU描述",
-						SKUOriginalPrice: 9900,
-						SKURealPrice:     9900,
-						Quantity:         1,
-					},
-				})
-				require.NoError(t, err)
-			},
-
-			req: web.OrderSNReq{
-				SN: "orderSN-2",
-			},
-			wantCode: 200,
-			assertRespFunc: func(t *testing.T, result test.Result[web.RetrieveOrderStatusResp]) {
-				t.Helper()
-				assert.Equal(t, domain.StatusSuccess.ToUint8(), result.Data.Status)
-			},
-		},
-		{
-			name: "获取订单状态成功_订单支付失败",
-			before: func(t *testing.T) {
-				t.Helper()
-				_, err := s.dao.CreateOrder(context.Background(), dao.Order{
-					SN:        "orderSN-3",
-					BuyerId:   testUID,
-					PaymentId: sqlx.NewNullInt64(14),
-					PaymentSn: sqlx.NewNullString("paymentSN-14"),
-					Status:    domain.StatusFailed.ToUint8(),
-				}, []dao.OrderItem{
-					{
-						Id:               0,
-						OrderId:          0,
-						SPUId:            1,
-						SKUId:            1,
-						SKUName:          "商品SKU",
-						SKUDescription:   "商品SKU描述",
-						SKUOriginalPrice: 9900,
-						SKURealPrice:     9900,
-						Quantity:         1,
-					},
-				})
-				require.NoError(t, err)
-			},
-
-			req: web.OrderSNReq{
-				SN: "orderSN-3",
-			},
-			wantCode: 200,
-			assertRespFunc: func(t *testing.T, result test.Result[web.RetrieveOrderStatusResp]) {
-				t.Helper()
-				assert.Equal(t, domain.StatusFailed.ToUint8(), result.Data.Status)
-			},
-		},
-		{
-			name: "获取订单状态成功_订单已取消",
-			before: func(t *testing.T) {
-				t.Helper()
-				_, err := s.dao.CreateOrder(context.Background(), dao.Order{
-					SN:        "orderSN-4",
-					BuyerId:   testUID,
-					PaymentId: sqlx.NewNullInt64(15),
-					PaymentSn: sqlx.NewNullString("paymentSN-15"),
-					Status:    domain.StatusCanceled.ToUint8(),
-				}, []dao.OrderItem{
-					{
-						Id:               0,
-						OrderId:          0,
-						SPUId:            1,
-						SKUId:            1,
-						SKUName:          "商品SKU",
-						SKUDescription:   "商品SKU描述",
-						SKUOriginalPrice: 9900,
-						SKURealPrice:     9900,
-						Quantity:         1,
-					},
-				})
-				require.NoError(t, err)
-			},
-
-			req: web.OrderSNReq{
-				SN: "orderSN-4",
-			},
-			wantCode: 200,
-			assertRespFunc: func(t *testing.T, result test.Result[web.RetrieveOrderStatusResp]) {
-				t.Helper()
-				assert.Equal(t, domain.StatusCanceled.ToUint8(), result.Data.Status)
-			},
-		},
-		{
-			name: "获取订单状态成功_订单超时关闭",
-			before: func(t *testing.T) {
-				t.Helper()
-				_, err := s.dao.CreateOrder(context.Background(), dao.Order{
-					SN:        "orderSN-5",
-					BuyerId:   testUID,
-					PaymentId: sqlx.NewNullInt64(115),
-					PaymentSn: sqlx.NewNullString("paymentSN-115"),
-					Status:    domain.StatusTimeoutClosed.ToUint8(),
-				}, []dao.OrderItem{
-					{
-						Id:               0,
-						OrderId:          0,
-						SPUId:            1,
-						SKUId:            1,
-						SKUName:          "商品SKU",
-						SKUDescription:   "商品SKU描述",
-						SKUOriginalPrice: 9900,
-						SKURealPrice:     9900,
-						Quantity:         1,
-					},
-				})
-				require.NoError(t, err)
-			},
-
-			req: web.OrderSNReq{
-				SN: "orderSN-5",
-			},
-			wantCode: 200,
-			assertRespFunc: func(t *testing.T, result test.Result[web.RetrieveOrderStatusResp]) {
-				t.Helper()
-				assert.Equal(t, domain.StatusTimeoutClosed.ToUint8(), result.Data.Status)
-			},
-		},
-	}
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			tc.before(t)
-			req, err := http.NewRequest(http.MethodPost,
-				"/order", iox.NewJSONReader(tc.req))
-			req.Header.Set("content-type", "application/json")
-			require.NoError(t, err)
-			recorder := test.NewJSONResponseRecorder[web.RetrieveOrderStatusResp]()
-			s.server.ServeHTTP(recorder, req)
-			require.Equal(t, tc.wantCode, recorder.Code)
-			tc.assertRespFunc(t, recorder.MustScan())
-		})
-	}
-}
-
-func (s *OrderModuleTestSuite) TestHandler_RetrieveOrderStatusFailed() {
-	t := s.T()
-	testCases := []struct {
-		name     string
-		before   func(t *testing.T)
-		req      web.OrderSNReq
-		wantCode int
-		wantResp test.Result[any]
-	}{
-		{
-			name: "订单状态非法_用户不可见状态",
-			before: func(t *testing.T) {
-				t.Helper()
-				_, err := s.dao.CreateOrder(context.Background(), dao.Order{
-					SN:               "orderSN-994",
-					BuyerId:          testUID,
-					PaymentId:        sqlx.NewNullInt64(994),
-					PaymentSn:        sqlx.NewNullString("paymentSN-994"),
-					OriginalTotalAmt: 9900,
-					RealTotalAmt:     9900,
-					Status:           domain.StatusUnpaid.ToUint8(),
-				}, []dao.OrderItem{
-					{
-						SPUId:            1,
-						SKUId:            1,
-						SKUSN:            fmt.Sprintf("SKUSN-%d", 1),
-						SKUImage:         fmt.Sprintf("SKUImage-%d", 1),
-						SKUName:          "商品SKU",
-						SKUDescription:   "商品SKU描述",
-						SKUOriginalPrice: 9900,
-						SKURealPrice:     9900,
-						Quantity:         1,
-					},
-				})
-				require.NoError(t, err)
-			},
-			req: web.OrderSNReq{
-				SN: "orderSN-994",
-			},
-			wantCode: 500,
-			wantResp: test.Result[any]{
-				Code: errs.SystemError.Code,
-				Msg:  errs.SystemError.Msg,
-			},
-		},
-		{
-			name:   "订单序列号为空",
-			before: func(t *testing.T) {},
-			req: web.OrderSNReq{
-				SN: "",
-			},
-			wantCode: 500,
-			wantResp: test.Result[any]{
-				Code: errs.SystemError.Code,
-				Msg:  errs.SystemError.Msg,
-			},
-		},
-		{
-			name:   "订单序列号非法",
-			before: func(t *testing.T) {},
-			req: web.OrderSNReq{
-				SN: "InvalidOrderSN",
-			},
-			wantCode: 500,
-			wantResp: test.Result[any]{
-				Code: errs.SystemError.Code,
-				Msg:  errs.SystemError.Msg,
-			},
-		},
-	}
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			req, err := http.NewRequest(http.MethodPost,
-				"/order", iox.NewJSONReader(tc.req))
-			req.Header.Set("content-type", "application/json")
-			require.NoError(t, err)
-			recorder := test.NewJSONResponseRecorder[any]()
-			s.server.ServeHTTP(recorder, req)
-			require.Equal(t, tc.wantCode, recorder.Code)
-			assert.Equal(t, tc.wantResp, recorder.MustScan())
-		})
-	}
-}
-
 func (s *OrderModuleTestSuite) TestHandler_ListOrders() {
 	t := s.T()
 
@@ -1393,7 +1108,7 @@ func (s *OrderModuleTestSuite) TestHandler_ListOrders() {
 	for idx := 0; idx < total; idx++ {
 		id := int64(100 + idx)
 		status := domain.OrderStatus(uint8(id)%6 + 1).ToUint8()
-		if status == domain.StatusUnpaid.ToUint8() {
+		if status == domain.StatusInit.ToUint8() {
 			unpaidStatus = append(unpaidStatus, status)
 		}
 		orderEntity := dao.Order{
@@ -1632,7 +1347,7 @@ func (s *OrderModuleTestSuite) TestHandler_RetrieveOrderDetailFailed() {
 					PaymentSn:        sqlx.NewNullString("paymentSN-44"),
 					OriginalTotalAmt: 9900,
 					RealTotalAmt:     9900,
-					Status:           domain.StatusUnpaid.ToUint8(),
+					Status:           domain.StatusInit.ToUint8(),
 				}, []dao.OrderItem{
 					{
 						SPUId:            1,
@@ -1783,7 +1498,7 @@ func (s *OrderModuleTestSuite) TestHandler_CancelOrderFailed() {
 					PaymentSn:        sqlx.NewNullString("paymentSN-2000"),
 					OriginalTotalAmt: 9900,
 					RealTotalAmt:     9900,
-					Status:           domain.StatusUnpaid.ToUint8(),
+					Status:           domain.StatusInit.ToUint8(),
 				}, []dao.OrderItem{
 					{
 						SPUId:            1,
@@ -1999,7 +1714,7 @@ func (s *OrderModuleTestSuite) TestHandler_CancelOrderFailed() {
 func (s *OrderModuleTestSuite) TestPaymentConsumer_Consume() {
 	t := s.T()
 
-	producer, er := s.mq.Producer("payment_successful_events")
+	producer, er := s.mq.Producer("payment_events")
 	require.NoError(t, er)
 
 	testCases := []struct {
