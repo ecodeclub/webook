@@ -111,8 +111,8 @@ func (s *ProductModuleTestSuite) TestHandler_RetrieveSKUDetail() {
 			before: func(t *testing.T) {
 
 				c := dao.Category{
-					Name:        "会员",
-					Description: "周期性商品",
+					Name:        "会员1",
+					Description: "周期性商品1",
 				}
 				cid, err := s.dao.CreateCategory(context.Background(), c)
 				require.NoError(t, err)
@@ -308,8 +308,8 @@ func (s *ProductModuleTestSuite) TestHandler_RetrieveSPUDetail() {
 			name: "查找成功",
 			before: func(t *testing.T) {
 				c := dao.Category{
-					Name:        "会员",
-					Description: "周期性商品",
+					Name:        "会员2",
+					Description: "周期性商品2",
 				}
 				cid, err := s.dao.CreateCategory(context.Background(), c)
 				require.NoError(t, err)
@@ -363,8 +363,8 @@ func (s *ProductModuleTestSuite) TestHandler_RetrieveSPUDetail() {
 					Name: "会员服务-2",
 					Desc: "提供不同期限的会员服务-2",
 					Category: web.Category{
-						Name: "会员",
-						Desc: "周期性商品",
+						Name: "会员2",
+						Desc: "周期性商品2",
 					},
 					SKUs: []web.SKU{
 						{
@@ -435,8 +435,8 @@ func (s *ProductModuleTestSuite) TestHandler_RetrieveSPUDetailFailed() {
 			before: func(t *testing.T) {
 				t.Helper()
 				c := dao.Category{
-					Name:        "会员",
-					Description: "周期性商品",
+					Name:        "会员3",
+					Description: "周期性商品3",
 				}
 				cid, err := s.dao.CreateCategory(context.Background(), c)
 				require.NoError(t, err)
@@ -481,8 +481,8 @@ func (s *ProductModuleTestSuite) TestHandler_RetrieveSPUDetailFailed() {
 			before: func(t *testing.T) {
 				t.Helper()
 				c := dao.Category{
-					Name:        "会员2",
-					Description: "周期性商品2",
+					Name:        "会员4",
+					Description: "周期性商品4",
 				}
 				cid, err := s.dao.CreateCategory(context.Background(), c)
 				require.NoError(t, err)
@@ -553,8 +553,8 @@ func (s *ProductModuleTestSuite) TestService_FindSPUByID() {
 			name: "查找成功",
 			getSPUID: func(t *testing.T) int64 {
 				c := dao.Category{
-					Name:        "会员3",
-					Description: "周期性商品3",
+					Name:        "会员5",
+					Description: "周期性商品5",
 				}
 				cid, err := s.dao.CreateCategory(context.Background(), c)
 				require.NoError(t, err)
@@ -606,8 +606,8 @@ func (s *ProductModuleTestSuite) TestService_FindSPUByID() {
 				Desc:   "提供不同期限的会员服务-2",
 				Status: domain.StatusOnShelf,
 				Category: domain.Category{
-					Name: "会员3",
-					Desc: "周期性商品3",
+					Name: "会员5",
+					Desc: "周期性商品5",
 				},
 				SKUs: []domain.SKU{
 					{
