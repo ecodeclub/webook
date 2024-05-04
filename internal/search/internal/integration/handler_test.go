@@ -1,3 +1,5 @@
+//go:build e2e
+
 package integration
 
 import (
@@ -850,7 +852,7 @@ func (s *HandlerTestSuite) TestSync() {
 				s.insertSkills([]dao.Skill{skill})
 			},
 			after: func(t *testing.T) {
-				res := s.getDataFromEs(t, dao.QuestionIndexName, "1")
+				res := s.getDataFromEs(t, dao.SkillIndexName, "1")
 				var ans dao.Skill
 				err := json.Unmarshal(res.Source, &ans)
 				require.NoError(t, err)
@@ -900,8 +902,17 @@ func (s *HandlerTestSuite) TestSync() {
 			}
 			_, err = s.producer.Produce(context.Background(), msg)
 			require.NoError(t, err)
-			time.Sleep(2 * time.Second)
+			time.Sleep(10 * time.Second)
 			tc.after(t)
+			query := elastic.NewMatchAllQuery()
+			_, err = s.es.DeleteByQuery(dao.CaseIndexName).Query(query).Do(context.Background())
+			require.NoError(s.T(), err)
+			_, err = s.es.DeleteByQuery(dao.SkillIndexName).Query(query).Do(context.Background())
+			require.NoError(s.T(), err)
+			_, err = s.es.DeleteByQuery(dao.QuestionIndexName).Query(query).Do(context.Background())
+			require.NoError(s.T(), err)
+			_, err = s.es.DeleteByQuery(dao.QuestionSetIndexName).Query(query).Do(context.Background())
+			require.NoError(s.T(), err)
 		})
 	}
 
@@ -1684,7 +1695,6 @@ func handlerSkillLevel(t *testing.T, sk web.SkillLevel) web.SkillLevel {
 	sk.Utime = ""
 	sk.Ctime = ""
 	return sk
-
 }
 
 func TestHandler(t *testing.T) {

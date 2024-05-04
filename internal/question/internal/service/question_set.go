@@ -16,6 +16,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/ecodeclub/webook/internal/question/internal/domain"
 	"github.com/ecodeclub/webook/internal/question/internal/event"
@@ -46,21 +47,17 @@ func NewQuestionSetService(repo repository.QuestionSetRepository, producer event
 }
 
 func (q *questionSetService) Save(ctx context.Context, set domain.QuestionSet) (int64, error) {
+	var id = set.Id
+	var err error
 	if set.Id > 0 {
-		return set.Id, q.repo.UpdateNonZero(ctx, set)
+		err = q.repo.UpdateNonZero(ctx, set)
+	} else {
+		id, err = q.repo.Create(ctx, set)
 	}
-	id, err := q.repo.Create(ctx, set)
 	if err != nil {
 		return 0, err
 	}
-	evt := event.NewQuestionSetEvent(set)
-	err = q.producer.Produce(ctx, evt)
-	if err != nil {
-		q.logger.Error("发送题集同步搜索信息",
-			elog.FieldErr(err),
-			elog.Any("event", evt),
-		)
-	}
+	go q.syncQuestionSet(id)
 	return id, nil
 }
 
@@ -69,14 +66,7 @@ func (q *questionSetService) UpdateQuestions(ctx context.Context, set domain.Que
 	if err != nil {
 		return err
 	}
-	evt := event.NewQuestionSetEvent(set)
-	err = q.producer.Produce(ctx, evt)
-	if err != nil {
-		q.logger.Error("发送题集同步搜索信息",
-			elog.FieldErr(err),
-			elog.Any("event", evt),
-		)
-	}
+	go q.syncQuestionSet(set.Id)
 	return nil
 }
 
@@ -102,4 +92,26 @@ func (q *questionSetService) List(ctx context.Context, offset, limit int) ([]dom
 		return err
 	})
 	return qs, total, eg.Wait()
+}
+
+func (q *questionSetService) syncQuestionSet(id int64) {
+	ctx, cancel := context.WithTimeout(context.Background(), defaultSyncTimeout)
+	defer cancel()
+	qSet, err := q.repo.GetByID(ctx, id)
+	fmt.Printf("开始发送 %d\n", id)
+	if err != nil {
+		q.logger.Error("发送同步搜索信息",
+			elog.FieldErr(err),
+		)
+		return
+	}
+	evt := event.NewQuestionSetEvent(qSet)
+	err = q.producer.Produce(ctx, evt)
+	fmt.Println("发送成功")
+	if err != nil {
+		q.logger.Error("发送同步搜索信息",
+			elog.FieldErr(err),
+			elog.Any("event", evt),
+		)
+	}
 }

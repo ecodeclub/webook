@@ -20,6 +20,11 @@ import (
 	"github.com/ecodeclub/webook/internal/question/internal/domain"
 )
 
+const (
+	QuestionBiz    = "question"
+	QuestionSetBiz = "questionSet"
+)
+
 type QuestionEvent struct {
 	Biz   string `json:"biz"`
 	BizID int    `json:"bizID"`
@@ -66,7 +71,7 @@ func NewQuestionEvent(q *domain.Question) QuestionEvent {
 	que := newQuestion(q)
 	qByte, _ := json.Marshal(que)
 	return QuestionEvent{
-		Biz:   "question",
+		Biz:   QuestionBiz,
 		BizID: int(q.Id),
 		Data:  string(qByte),
 	}
@@ -76,7 +81,7 @@ func NewQuestionSetEvent(q domain.QuestionSet) QuestionEvent {
 	que := newQuestionSet(q)
 	qByte, _ := json.Marshal(que)
 	return QuestionEvent{
-		Biz:   "questionSet",
+		Biz:   QuestionSetBiz,
 		BizID: int(q.Id),
 		Data:  string(qByte),
 	}

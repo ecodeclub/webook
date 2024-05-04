@@ -57,7 +57,7 @@ func newSkill(s domain.Skill) Skill {
 	}
 }
 func NewSkillEvent(s domain.Skill) SkillEvent {
-	qByte, _ := json.Marshal(s)
+	qByte, _ := json.Marshal(newSkill(s))
 	return SkillEvent{
 		Biz:   "skill",
 		BizID: int(s.ID),

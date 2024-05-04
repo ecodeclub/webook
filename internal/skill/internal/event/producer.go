@@ -34,7 +34,9 @@ func (s *syncEventProducerProducer) Produce(ctx context.Context, evt SkillEvent)
 	if err != nil {
 		return fmt.Errorf("序列化失败: %w", err)
 	}
-	_, err = s.producer.Produce(ctx, &mq.Message{Value: data})
+	_, err = s.producer.Produce(ctx, &mq.Message{
+		Value: data,
+	})
 	if err != nil {
 		return fmt.Errorf("发送同步搜索消息失败: %w", err)
 	}

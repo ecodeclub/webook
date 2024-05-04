@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"sync"
 	"testing"
 	"time"
 
@@ -741,6 +742,194 @@ func (s *HandlerTestSuite) TestDetailRef() {
 	}, resp)
 }
 
+func (s *HandlerTestSuite) TestEvent() {
+	t := s.T()
+	ans := make([]event.Skill, 0, 16)
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		ch, err := s.consumer.ConsumeChan(context.Background())
+		require.NoError(s.T(), err)
+		for msg := range ch {
+			evt := event.SkillEvent{}
+			err = json.Unmarshal(msg.Value, &evt)
+			fmt.Println(evt)
+			if evt.Biz != "skill" {
+				continue
+			}
+			require.NoError(s.T(), err)
+			data := event.Skill{}
+			err = json.Unmarshal([]byte(evt.Data), &data)
+			require.NoError(s.T(), err)
+			ans = append(ans, data)
+			if len(ans) >= 2 {
+				return
+			}
+		}
+	}()
+	// 保存
+	saveReq := web.SaveReq{
+		Skill: web.Skill{
+			Labels: []string{"mysql"},
+			Name:   "mysql",
+			Desc:   "mysql_desc",
+			Basic: web.SkillLevel{
+				Desc: "mysql_desc",
+			},
+			Intermediate: web.SkillLevel{
+				Desc: "mysql_desc",
+			},
+			Advanced: web.SkillLevel{
+				Desc: "mysql_desc",
+			},
+		},
+	}
+	req, err := http.NewRequest(http.MethodPost,
+		"/skill/save", iox.NewJSONReader(saveReq))
+	req.Header.Set("content-type", "application/json")
+	require.NoError(t, err)
+	recorder := test.NewJSONResponseRecorder[int64]()
+	s.server.ServeHTTP(recorder, req)
+	require.Equal(t, 200, recorder.Code)
+
+	s.dao.Create(context.Background(), dao.Skill{
+		Id:   2,
+		Name: "test_name",
+		Desc: "test_desc",
+	}, []dao.SkillLevel{
+		{
+			Id:    4,
+			Sid:   2,
+			Level: "basic",
+			Desc:  "basic_desc",
+		},
+		{
+			Id:    5,
+			Sid:   2,
+			Level: "intermediate",
+			Desc:  "intermediate_desc",
+		},
+		{
+			Id:    6,
+			Sid:   2,
+			Level: "advanced",
+			Desc:  "advanced_desc",
+		},
+	})
+	// 保存ref
+	saveRefReq := web.SaveReq{
+		Skill: web.Skill{
+			ID: 2,
+			Basic: web.SkillLevel{
+				Id: 4,
+				Questions: []web.Question{
+					{Id: 12},
+					{Id: 23},
+				},
+			},
+			Intermediate: web.SkillLevel{
+				Id: 5,
+				Questions: []web.Question{
+					{Id: 34},
+				},
+				Cases: []web.Case{
+					{Id: 45},
+				},
+			},
+			Advanced: web.SkillLevel{
+				Id: 6,
+				Cases: []web.Case{
+					{Id: 67},
+				},
+			},
+		},
+	}
+	req2, err := http.NewRequest(http.MethodPost,
+		"/skill/save-refs", iox.NewJSONReader(saveRefReq))
+	req2.Header.Set("content-type", "application/json")
+	require.NoError(t, err)
+	recorder = test.NewJSONResponseRecorder[int64]()
+	s.server.ServeHTTP(recorder, req2)
+	require.Equal(t, 200, recorder.Code)
+	wg.Wait()
+	wantAns := []event.Skill{
+		{
+			Labels: []string{"mysql"},
+			Name:   "mysql",
+			Desc:   "mysql_desc",
+			Basic: event.SkillLevel{
+				Desc:      "mysql_desc",
+				Questions: []int64{},
+				Cases:     []int64{},
+			},
+			Intermediate: event.SkillLevel{
+				Desc:      "mysql_desc",
+				Questions: []int64{},
+				Cases:     []int64{},
+			},
+			Advanced: event.SkillLevel{
+				Desc:      "mysql_desc",
+				Questions: []int64{},
+				Cases:     []int64{},
+			},
+		},
+		{
+			Name: "test_name",
+			Desc: "test_desc",
+			Basic: event.SkillLevel{
+				Desc: "basic_desc",
+				Questions: []int64{
+					12,
+					23,
+				},
+				Cases: []int64{},
+			},
+			Intermediate: event.SkillLevel{
+				Desc: "intermediate_desc",
+				Questions: []int64{
+					34,
+				},
+				Cases: []int64{
+					45,
+				},
+			},
+			Advanced: event.SkillLevel{
+				Desc:      "advanced_desc",
+				Cases:     []int64{67},
+				Questions: []int64{},
+			},
+		},
+	}
+	for idx := range ans {
+		ans[idx] = s.formatSkill(ans[idx])
+	}
+	assert.Equal(t, wantAns, ans)
+}
+
+func (s *HandlerTestSuite) formatSkill(sk event.Skill) event.Skill {
+	require.True(s.T(), sk.ID != 0)
+	require.True(s.T(), sk.Utime != 0)
+	require.True(s.T(), sk.Ctime != 0)
+	sk.ID = 0
+	sk.Utime = 0
+	sk.Ctime = 0
+	sk.Advanced = s.formatSkillLevel(sk.Advanced)
+	sk.Basic = s.formatSkillLevel(sk.Basic)
+	sk.Intermediate = s.formatSkillLevel(sk.Intermediate)
+	return sk
+}
+
+func (s *HandlerTestSuite) formatSkillLevel(sk event.SkillLevel) event.SkillLevel {
+	require.True(s.T(), sk.ID != 0)
+	require.True(s.T(), sk.Utime != 0)
+	require.True(s.T(), sk.Ctime != 0)
+	sk.ID = 0
+	sk.Utime = 0
+	sk.Ctime = 0
+	return sk
+}
+
 func (s *HandlerTestSuite) TestList() {
 	skills := make([]*dao.Skill, 0, 100)
 	for i := 1; i <= 100; i++ {
@@ -966,6 +1155,7 @@ func (s *HandlerTestSuite) assertSkill(wantSKill dao.Skill, actualSkill dao.Skil
 	actualSkill.Ctime = 0
 	assert.Equal(t, wantSKill, actualSkill)
 }
+
 func (s *HandlerTestSuite) getMsgFromMq() (event.Skill, error) {
 	msg, err := s.consumer.Consume(context.Background())
 	if err != nil {

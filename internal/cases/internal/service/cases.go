@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"time"
 
 	"github.com/ecodeclub/webook/internal/cases/internal/event"
 	"github.com/gotomicro/ego/core/elog"
@@ -24,6 +25,8 @@ type Service interface {
 	PubDetail(ctx context.Context, caseId int64) (domain.Case, error)
 }
 
+const defaultSyncTimeout = 10 * time.Second
+
 type service struct {
 	repo     repository.CaseRepo
 	producer event.SyncEventProducer
@@ -36,21 +39,17 @@ func (s *service) GetPubByIDs(ctx context.Context, ids []int64) ([]domain.Case, 
 
 func (s *service) Save(ctx context.Context, ca *domain.Case) (int64, error) {
 	ca.Status = domain.UnPublishedStatus
+	var id int64 = ca.Id
+	var err error
 	if ca.Id > 0 {
-		return ca.Id, s.repo.Update(ctx, ca)
+		err = s.repo.Update(ctx, ca)
+	} else {
+		id, err = s.repo.Create(ctx, ca)
 	}
-	id, err := s.repo.Create(ctx, ca)
 	if err != nil {
 		return 0, err
 	}
-	evt := event.NewCaseEvent(ca)
-	err = s.producer.Produce(ctx, evt)
-	if err != nil {
-		s.logger.Error("发送案例同步搜索信息",
-			elog.FieldErr(err),
-			elog.Any("event", evt),
-		)
-	}
+	go s.syncCase(id)
 	return id, nil
 }
 
@@ -60,17 +59,7 @@ func (s *service) Publish(ctx context.Context, ca *domain.Case) (int64, error) {
 	if err != nil {
 		return 0, err
 	}
-	if err != nil {
-		return 0, err
-	}
-	evt := event.NewCaseEvent(ca)
-	err = s.producer.Produce(ctx, evt)
-	if err != nil {
-		s.logger.Error("发送案例同步搜索信息",
-			elog.FieldErr(err),
-			elog.Any("event", evt),
-		)
-	}
+	go s.syncCase(id)
 	return id, nil
 }
 
@@ -130,5 +119,25 @@ func NewService(repo repository.CaseRepo, producer event.SyncEventProducer) Serv
 		repo:     repo,
 		producer: producer,
 		logger:   elog.DefaultLogger,
+	}
+}
+
+func (s *service) syncCase(id int64) {
+	ctx, cancel := context.WithTimeout(context.Background(), defaultSyncTimeout)
+	defer cancel()
+	ca, err := s.repo.GetById(ctx, id)
+	if err != nil {
+		s.logger.Error("发送同步搜索信息",
+			elog.FieldErr(err),
+		)
+		return
+	}
+	evt := event.NewCaseEvent(&ca)
+	err = s.producer.Produce(ctx, evt)
+	if err != nil {
+		s.logger.Error("发送同步搜索信息",
+			elog.FieldErr(err),
+			elog.Any("event", evt),
+		)
 	}
 }

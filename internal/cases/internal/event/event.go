@@ -28,7 +28,7 @@ type Case struct {
 }
 
 func NewCaseEvent(ca *domain.Case) CaseEvent {
-	qByte, _ := json.Marshal(ca)
+	qByte, _ := json.Marshal(newCase(ca))
 	return CaseEvent{
 		Biz:   "case",
 		BizID: int(ca.Id),
@@ -36,7 +36,7 @@ func NewCaseEvent(ca *domain.Case) CaseEvent {
 	}
 }
 
-func newCase(ca domain.Case) Case {
+func newCase(ca *domain.Case) Case {
 	return Case{
 		Id:        ca.Id,
 		Uid:       ca.Uid,

@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"sync"
 	"testing"
 	"time"
 
@@ -131,6 +132,9 @@ func (s *HandlerTestSuite) SetupSuite() {
 	s.dao = dao.NewGORMQuestionDAO(s.db)
 	s.questionSetDAO = dao.NewGORMQuestionSetDAO(s.db)
 	s.rdb = testioc.InitCache()
+	testmq := testioc.InitMQ()
+	s.consumer, err = testmq.Consumer(event.SyncTopic, "question")
+	require.NoError(s.T(), err)
 }
 
 func (s *HandlerTestSuite) TestSave() {
@@ -557,6 +561,204 @@ func (s *HandlerTestSuite) TestSync() {
 	}
 }
 
+func (s *HandlerTestSuite) TestQuestionEvent() {
+	t := s.T()
+	ans := make([]event.Question, 0, 16)
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		ch, err := s.consumer.ConsumeChan(context.Background())
+		require.NoError(s.T(), err)
+		for msg := range ch {
+			evt := event.QuestionEvent{}
+			err = json.Unmarshal(msg.Value, &evt)
+			fmt.Println(evt)
+			if evt.Biz != event.QuestionBiz {
+				continue
+			}
+			require.NoError(s.T(), err)
+			data := event.Question{}
+			err = json.Unmarshal([]byte(evt.Data), &data)
+			require.NoError(s.T(), err)
+			ans = append(ans, data)
+			if len(ans) >= 2 {
+				return
+			}
+		}
+	}()
+	time.Sleep(10 * time.Second)
+
+	// 保存
+	saveReq := web.SaveReq{
+		Question: web.Question{
+			Title:        "面试题1",
+			Content:      "新的内容",
+			Analysis:     s.buildAnswerEle(1),
+			Basic:        s.buildAnswerEle(2),
+			Intermediate: s.buildAnswerEle(3),
+			Advanced:     s.buildAnswerEle(4),
+		},
+	}
+	req, err := http.NewRequest(http.MethodPost,
+		"/question/save", iox.NewJSONReader(saveReq))
+	req.Header.Set("content-type", "application/json")
+	require.NoError(t, err)
+	recorder := test.NewJSONResponseRecorder[int64]()
+	s.server.ServeHTTP(recorder, req)
+
+	require.Equal(t, 200, recorder.Code)
+	// 发布
+	syncReq := &web.SaveReq{
+		Question: web.Question{
+			Title:        "面试题2",
+			Content:      "面试题内容",
+			Analysis:     s.buildAnswerEle(0),
+			Basic:        s.buildAnswerEle(1),
+			Intermediate: s.buildAnswerEle(2),
+			Advanced:     s.buildAnswerEle(3),
+		},
+	}
+	req2, err := http.NewRequest(http.MethodPost,
+		"/question/publish", iox.NewJSONReader(syncReq))
+	req2.Header.Set("content-type", "application/json")
+	require.NoError(t, err)
+	recorder = test.NewJSONResponseRecorder[int64]()
+	s.server.ServeHTTP(recorder, req2)
+	require.Equal(t, 200, recorder.Code)
+	wg.Wait()
+	for idx := range ans {
+		ans[idx].ID = 0
+		ans[idx].Utime = 0
+		ans[idx].Answer = event.Answer{
+			Analysis:     s.removeId(ans[idx].Answer.Analysis),
+			Basic:        s.removeId(ans[idx].Answer.Basic),
+			Intermediate: s.removeId(ans[idx].Answer.Intermediate),
+			Advanced:     s.removeId(ans[idx].Answer.Advanced),
+		}
+	}
+	assert.Equal(t, []event.Question{
+		{
+			Title:   "面试题1",
+			Content: "新的内容",
+			UID:     uid,
+			Status:  1,
+			Answer: event.Answer{
+				Analysis:     s.buildEventEle(1),
+				Basic:        s.buildEventEle(2),
+				Intermediate: s.buildEventEle(3),
+				Advanced:     s.buildEventEle(4),
+			},
+		},
+		{
+			Title:   "面试题2",
+			UID:     uid,
+			Content: "面试题内容",
+			Status:  2,
+			Answer: event.Answer{
+				Analysis:     s.buildEventEle(0),
+				Basic:        s.buildEventEle(1),
+				Intermediate: s.buildEventEle(2),
+				Advanced:     s.buildEventEle(3),
+			},
+		},
+	}, ans)
+}
+
+func (s *HandlerTestSuite) TestQuestionSetEvent() {
+	t := s.T()
+	ans := make([]event.QuestionSet, 0, 16)
+	var wg sync.WaitGroup
+	wg.Add(1)
+	// 开启goroutine消费数据
+	go func() {
+		defer wg.Done()
+		ch, err := s.consumer.ConsumeChan(context.Background())
+		require.NoError(s.T(), err)
+		for msg := range ch {
+			evt := event.QuestionEvent{}
+			err = json.Unmarshal(msg.Value, &evt)
+			if evt.Biz != event.QuestionSetBiz {
+				continue
+			}
+			require.NoError(s.T(), err)
+			data := event.QuestionSet{}
+			err = json.Unmarshal([]byte(evt.Data), &data)
+			require.NoError(s.T(), err)
+			ans = append(ans, data)
+			if len(ans) >= 2 {
+				return
+			}
+		}
+	}()
+
+	_, err := s.dao.Create(context.Background(), dao.Question{
+		Id: 1,
+	}, []dao.AnswerElement{
+		{
+			Content: "ele",
+		},
+	})
+	require.NoError(t, err)
+	_, err = s.dao.Create(context.Background(), dao.Question{
+		Id: 2,
+	}, []dao.AnswerElement{
+		{
+			Content: "ele",
+		},
+	})
+	require.NoError(t, err)
+	// 保存
+	saveReq := web.SaveQuestionSetReq{
+		Title:       "questionSet1",
+		Description: "question_description1",
+	}
+	req, err := http.NewRequest(http.MethodPost,
+		"/question-sets/save", iox.NewJSONReader(saveReq))
+	req.Header.Set("content-type", "application/json")
+	require.NoError(t, err)
+	recorder := test.NewJSONResponseRecorder[int64]()
+	s.server.ServeHTTP(recorder, req)
+	require.Equal(t, 200, recorder.Code)
+	// 更新
+	syncReq := &web.UpdateQuestionsOfQuestionSetReq{
+		QSID: 1,
+		QIDs: []int64{1, 2},
+	}
+	req2, err := http.NewRequest(http.MethodPost,
+		"/question-sets/questions/save", iox.NewJSONReader(syncReq))
+	req2.Header.Set("content-type", "application/json")
+	require.NoError(t, err)
+	recorder = test.NewJSONResponseRecorder[int64]()
+	s.server.ServeHTTP(recorder, req2)
+	require.Equal(t, 200, recorder.Code)
+	wg.Wait()
+	for idx := range ans {
+		ans[idx].Id = 0
+		ans[idx].Utime = 0
+	}
+	assert.Equal(t, []event.QuestionSet{
+		{
+			Uid:         uid,
+			Title:       "questionSet1",
+			Description: "question_description1",
+			Questions:   []int64{},
+		},
+		{
+			Uid:         uid,
+			Title:       "questionSet1",
+			Description: "question_description1",
+			Questions:   []int64{1, 2},
+		},
+	}, ans)
+}
+
+func (s *HandlerTestSuite) removeId(ele event.AnswerElement) event.AnswerElement {
+	require.True(s.T(), ele.ID != 0)
+	ele.ID = 0
+	return ele
+}
+
 func (s *HandlerTestSuite) TestPubDetail() {
 	// 插入一百条
 	data := make([]dao.PublishQuestion, 0, 2)
@@ -626,6 +828,15 @@ func (s *HandlerTestSuite) buildDAOAnswerEle(
 
 func (s *HandlerTestSuite) buildAnswerEle(idx int64) web.AnswerElement {
 	return web.AnswerElement{
+		Content:   fmt.Sprintf("这是解析 %d", idx),
+		Keywords:  fmt.Sprintf("关键字 %d", idx),
+		Shorthand: fmt.Sprintf("快速记忆法 %d", idx),
+		Highlight: fmt.Sprintf("亮点 %d", idx),
+		Guidance:  fmt.Sprintf("引导点 %d", idx),
+	}
+}
+func (s *HandlerTestSuite) buildEventEle(idx int64) event.AnswerElement {
+	return event.AnswerElement{
 		Content:   fmt.Sprintf("这是解析 %d", idx),
 		Keywords:  fmt.Sprintf("关键字 %d", idx),
 		Shorthand: fmt.Sprintf("快速记忆法 %d", idx),

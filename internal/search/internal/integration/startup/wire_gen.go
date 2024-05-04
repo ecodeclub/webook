@@ -16,7 +16,8 @@ import (
 
 func InitHandler() (*web.Handler, error) {
 	client := testioc.InitES()
-	module, err := baguwen.InitModule(client)
+	mq := testioc.InitMQ()
+	module, err := baguwen.InitModule(client, mq)
 	if err != nil {
 		return nil, err
 	}

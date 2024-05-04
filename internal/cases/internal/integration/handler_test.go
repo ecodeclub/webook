@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"sync"
 	"testing"
 	"time"
 
@@ -245,19 +246,109 @@ func (s *HandlerTestSuite) TestSave() {
 	}
 }
 
-func (s *HandlerTestSuite) getMsgFromMq() (event.Case, error) {
-	msg, err := s.consumer.Consume(context.Background())
-	if err != nil {
-		return event.Case{}, err
+func (s *HandlerTestSuite) TestEvent() {
+	t := s.T()
+	ans := make([]event.Case, 0, 16)
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		ch, err := s.consumer.ConsumeChan(context.Background())
+		require.NoError(s.T(), err)
+		for msg := range ch {
+			evt := event.CaseEvent{}
+			err = json.Unmarshal(msg.Value, &evt)
+			if evt.Biz != "case" {
+				continue
+			}
+			require.NoError(s.T(), err)
+			data := event.Case{}
+			err = json.Unmarshal([]byte(evt.Data), &data)
+			require.NoError(s.T(), err)
+			ans = append(ans, data)
+			if len(ans) >= 2 {
+				return
+			}
+		}
+	}()
+	time.Sleep(5 * time.Second)
+
+	// 保存
+	saveReq := web.SaveReq{
+		Case: web.Case{
+			Title:     "案例1",
+			Content:   "案例1内容",
+			Labels:    []string{"MySQL"},
+			CodeRepo:  "www.github.com",
+			Keywords:  "mysql_keywords",
+			Shorthand: "mysql_shorthand",
+			Highlight: "mysql_highlight",
+			Guidance:  "mysql_guidance",
+		},
 	}
-	var res event.CaseEvent
-	err = json.Unmarshal(msg.Value, &res)
-	if err != nil {
-		return event.Case{}, err
+	req, err := http.NewRequest(http.MethodPost,
+		"/case/save", iox.NewJSONReader(saveReq))
+	req.Header.Set("content-type", "application/json")
+	require.NoError(t, err)
+	recorder := test.NewJSONResponseRecorder[int64]()
+	s.server.ServeHTTP(recorder, req)
+	require.Equal(t, 200, recorder.Code)
+	// 发布
+	publishReq := web.SaveReq{
+		Case: web.Case{
+			Title:     "案例2",
+			Content:   "案例2内容",
+			Labels:    []string{"MySQL"},
+			CodeRepo:  "www.github.com",
+			Keywords:  "mysql_keywords",
+			Shorthand: "mysql_shorthand",
+			Highlight: "mysql_highlight",
+			Guidance:  "mysql_guidance",
+		},
 	}
-	var ans event.Case
-	err = json.Unmarshal([]byte(res.Data), &ans)
-	return ans, err
+	req2, err := http.NewRequest(http.MethodPost,
+		"/case/publish", iox.NewJSONReader(publishReq))
+	req2.Header.Set("content-type", "application/json")
+	require.NoError(t, err)
+	recorder = test.NewJSONResponseRecorder[int64]()
+	s.server.ServeHTTP(recorder, req2)
+	require.Equal(t, 200, recorder.Code)
+	wg.Wait()
+	for idx := range ans {
+		assert.True(t, ans[idx].Id != 0)
+		assert.True(t, ans[idx].Utime != 0)
+		assert.True(t, ans[idx].Ctime != 0)
+		ans[idx].Id = 0
+		ans[idx].Utime = 0
+		ans[idx].Ctime = 0
+	}
+	assert.Equal(t, []event.Case{
+		{
+			Title:     "案例1",
+			Uid:       uid,
+			Content:   "案例1内容",
+			Labels:    []string{"MySQL"},
+			CodeRepo:  "www.github.com",
+			Keywords:  "mysql_keywords",
+			Shorthand: "mysql_shorthand",
+			Highlight: "mysql_highlight",
+			Guidance:  "mysql_guidance",
+			Status:    1,
+		},
+		{
+
+			Title:     "案例2",
+			Uid:       uid,
+			Content:   "案例2内容",
+			Labels:    []string{"MySQL"},
+			CodeRepo:  "www.github.com",
+			Keywords:  "mysql_keywords",
+			Shorthand: "mysql_shorthand",
+			Highlight: "mysql_highlight",
+			Guidance:  "mysql_guidance",
+			Status:    2,
+		},
+	}, ans)
 }
 
 func (s *HandlerTestSuite) TestList() {

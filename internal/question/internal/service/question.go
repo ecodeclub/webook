@@ -16,6 +16,7 @@ package service
 
 import (
 	"context"
+	"time"
 
 	"github.com/ecodeclub/webook/internal/question/internal/event"
 	"github.com/gotomicro/ego/core/elog"
@@ -45,6 +46,8 @@ type service struct {
 	producer event.SyncEventProducer
 	logger   *elog.Component
 }
+
+const defaultSyncTimeout = 10 * time.Second
 
 func (s *service) GetPubByIDs(ctx context.Context, ids []int64) ([]domain.Question, error) {
 	return s.repo.GetPubByIDs(ctx, ids)
@@ -100,21 +103,17 @@ func (s *service) PubList(ctx context.Context, offset int, limit int) ([]domain.
 
 func (s *service) Save(ctx context.Context, question *domain.Question) (int64, error) {
 	question.Status = domain.UnPublishedStatus
+	var id = question.Id
+	var err error
 	if question.Id > 0 {
-		return question.Id, s.repo.Update(ctx, question)
+		err = s.repo.Update(ctx, question)
+	} else {
+		id, err = s.repo.Create(ctx, question)
 	}
-	id, err := s.repo.Create(ctx, question)
 	if err != nil {
 		return 0, err
 	}
-	evt := event.NewQuestionEvent(question)
-	err = s.producer.Produce(ctx, evt)
-	if err != nil {
-		s.logger.Error("发送同步搜索信息",
-			elog.FieldErr(err),
-			elog.Any("event", evt),
-		)
-	}
+	go s.syncQuestion(id)
 	return id, nil
 }
 
@@ -124,14 +123,7 @@ func (s *service) Publish(ctx context.Context, question *domain.Question) (int64
 	if err != nil {
 		return 0, err
 	}
-	evt := event.NewQuestionEvent(question)
-	err = s.producer.Produce(ctx, evt)
-	if err != nil {
-		s.logger.Error("发送题目同步搜索信息失败",
-			elog.FieldErr(err),
-			elog.Any("event", evt),
-		)
-	}
+	go s.syncQuestion(id)
 	return id, nil
 }
 
@@ -140,5 +132,25 @@ func NewService(repo repository.Repository, producer event.SyncEventProducer) Se
 		repo:     repo,
 		producer: producer,
 		logger:   elog.DefaultLogger,
+	}
+}
+
+func (s *service) syncQuestion(id int64) {
+	ctx, cancel := context.WithTimeout(context.Background(), defaultSyncTimeout)
+	defer cancel()
+	que, err := s.repo.GetById(ctx, id)
+	if err != nil {
+		s.logger.Error("发送同步搜索信息",
+			elog.FieldErr(err),
+		)
+		return
+	}
+	evt := event.NewQuestionEvent(&que)
+	err = s.producer.Produce(ctx, evt)
+	if err != nil {
+		s.logger.Error("发送同步搜索信息",
+			elog.FieldErr(err),
+			elog.Any("event", evt),
+		)
 	}
 }

@@ -2,6 +2,8 @@ package service
 
 import (
 	"context"
+	"fmt"
+	"time"
 
 	"github.com/ecodeclub/webook/internal/skill/internal/event"
 	"github.com/gotomicro/ego/core/elog"
@@ -26,6 +28,8 @@ type skillService struct {
 	logger   *elog.Component
 }
 
+const defaultSyncTimeout = 10 * time.Second
+
 func (s *skillService) RefsByLevelIDs(ctx context.Context, ids []int64) ([]domain.SkillLevel, error) {
 	return s.repo.RefsByLevelIDs(ctx, ids)
 }
@@ -35,14 +39,7 @@ func (s *skillService) SaveRefs(ctx context.Context, skill domain.Skill) error {
 	if err != nil {
 		return err
 	}
-	evt := event.NewSkillEvent(skill)
-	err = s.producer.Produce(ctx, evt)
-	if err != nil {
-		s.logger.Error("发送技能搜索信息",
-			elog.FieldErr(err),
-			elog.Any("event", evt),
-		)
-	}
+	go s.syncSkill(skill.ID)
 	return nil
 }
 
@@ -51,14 +48,7 @@ func (s *skillService) Save(ctx context.Context, skill domain.Skill) (int64, err
 	if err != nil {
 		return 0, err
 	}
-	evt := event.NewSkillEvent(skill)
-	err = s.producer.Produce(ctx, evt)
-	if err != nil {
-		s.logger.Error("发送技能搜索信息",
-			elog.FieldErr(err),
-			elog.Any("event", evt),
-		)
-	}
+	go s.syncSkill(id)
 	return id, nil
 }
 
@@ -82,5 +72,28 @@ func NewSkillService(repo repository.SkillRepo, p event.SyncEventProducer) Skill
 	return &skillService{
 		repo:     repo,
 		producer: p,
+		logger:   elog.DefaultLogger,
+	}
+}
+
+func (s *skillService) syncSkill(id int64) {
+	ctx, cancel := context.WithTimeout(context.Background(), defaultSyncTimeout)
+	defer cancel()
+	sk, err := s.repo.Info(ctx, id)
+	fmt.Printf("开始发送 %d\n", id)
+	if err != nil {
+		s.logger.Error("发送同步搜索信息",
+			elog.FieldErr(err),
+		)
+		return
+	}
+	evt := event.NewSkillEvent(sk)
+	err = s.producer.Produce(ctx, evt)
+	fmt.Println("发送成功")
+	if err != nil {
+		s.logger.Error("发送同步搜索信息",
+			elog.FieldErr(err),
+			elog.Any("event", evt),
+		)
 	}
 }
