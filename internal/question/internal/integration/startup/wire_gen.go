@@ -7,18 +7,23 @@
 package startup
 
 import (
-	baguwen "github.com/ecodeclub/webook/internal/question"
+	"github.com/ecodeclub/ecache"
+	"github.com/ecodeclub/webook/internal/question"
+	"github.com/ecodeclub/webook/internal/question/internal/event"
+	"github.com/ecodeclub/webook/internal/question/internal/repository"
+	"github.com/ecodeclub/webook/internal/question/internal/repository/cache"
+	"github.com/ecodeclub/webook/internal/question/internal/service"
 	"github.com/ecodeclub/webook/internal/question/internal/web"
-	testioc "github.com/ecodeclub/webook/internal/test/ioc"
+	"github.com/ecodeclub/webook/internal/test/ioc"
+	"gorm.io/gorm"
 )
 
 // Injectors from wire.go:
 
-func InitHandler() (*web.Handler, error) {
+func InitHandler(p event.SyncEventProducer) (*web.Handler, error) {
 	db := testioc.InitDB()
 	cache := testioc.InitCache()
-	mq := testioc.InitMQ()
-	module, err := baguwen.InitModule(db, cache, mq)
+	module, err := initModule(db, cache, p)
 	if err != nil {
 		return nil, err
 	}
@@ -26,11 +31,31 @@ func InitHandler() (*web.Handler, error) {
 	return handler, nil
 }
 
-func InitQuestionSetHandler() (*web.QuestionSetHandler, error) {
+func initModule(db *gorm.DB, ec ecache.Cache, p event.SyncEventProducer) (*baguwen.Module, error) {
+	questionDAO := baguwen.InitQuestionDAO(db)
+	questionCache := cache.NewQuestionECache(ec)
+	repositoryRepository := repository.NewCacheRepository(questionDAO, questionCache)
+	serviceService := service.NewService(repositoryRepository, p)
+	handler := web.NewHandler(serviceService)
+	questionSetDAO := baguwen.InitQuestionSetDAO(db)
+	questionSetRepository := repository.NewQuestionSetRepository(questionSetDAO)
+	questionSetService := service.NewQuestionSetService(questionSetRepository, p)
+	questionSetHandler, err := web.NewQuestionSetHandler(questionSetService)
+	if err != nil {
+		return nil, err
+	}
+	module := &baguwen.Module{
+		Svc:   serviceService,
+		Hdl:   handler,
+		QsHdl: questionSetHandler,
+	}
+	return module, nil
+}
+
+func InitQuestionSetHandler(p event.SyncEventProducer) (*web.QuestionSetHandler, error) {
 	db := testioc.InitDB()
-	cache := testioc.InitCache()
-	mq := testioc.InitMQ()
-	module, err := baguwen.InitModule(db, cache, mq)
+	ecacheCache := testioc.InitCache()
+	module, err := initModule(db, ecacheCache, p)
 	if err != nil {
 		return nil, err
 	}

@@ -6,21 +6,19 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	eveMocks "github.com/ecodeclub/webook/internal/skill/internal/event/mocks"
 	"net/http"
 	"strconv"
 	"sync"
 	"testing"
 	"time"
 
-	"github.com/ecodeclub/mq-api"
-	"github.com/ecodeclub/webook/internal/skill/internal/event"
-	"github.com/ecodeclub/webook/ioc"
-
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/ecodeclub/webook/internal/cases"
 	casemocks "github.com/ecodeclub/webook/internal/cases/mocks"
 	baguwen "github.com/ecodeclub/webook/internal/question"
 	quemocks "github.com/ecodeclub/webook/internal/question/mocks"
+	"github.com/ecodeclub/webook/internal/skill/internal/event"
 	"go.uber.org/mock/gomock"
 
 	"github.com/ecodeclub/ekit/iox"
@@ -47,7 +45,8 @@ type HandlerTestSuite struct {
 	server   *egin.Component
 	db       *egorm.Component
 	dao      dao.SkillDAO
-	consumer mq.Consumer
+	ctrl     *gomock.Controller
+	producer *eveMocks.MockSyncEventProducer
 }
 
 func (s *HandlerTestSuite) TearDownTest() {
@@ -82,10 +81,12 @@ func (s *HandlerTestSuite) SetupSuite() {
 				}
 			}), nil
 		}).AnyTimes()
-
+	s.ctrl = gomock.NewController(s.T())
+	s.producer = eveMocks.NewMockSyncEventProducer(s.ctrl)
 	handler, err := startup.InitHandler(
 		&baguwen.Module{Svc: queSvc},
 		&cases.Module{Svc: caseSvc},
+		s.producer,
 	)
 	require.NoError(s.T(), err)
 	econf.Set("server", map[string]any{"contextTimeout": "1s"})
@@ -102,10 +103,6 @@ func (s *HandlerTestSuite) SetupSuite() {
 	err = dao.InitTables(s.db)
 	require.NoError(s.T(), err)
 	s.dao = dao.NewSkillDAO(s.db)
-	q := ioc.InitMQ()
-	c, err := q.Consumer(event.SyncTopic, "case_sync")
-	require.NoError(s.T(), err)
-	s.consumer = c
 }
 
 func (s *HandlerTestSuite) TestSave() {
@@ -120,7 +117,7 @@ func (s *HandlerTestSuite) TestSave() {
 		{
 			name: "新增",
 			before: func(t *testing.T) {
-
+				s.producer.EXPECT().Produce(gomock.Any(), gomock.Any()).Return(nil)
 			},
 			after: func(t *testing.T) {
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
@@ -190,6 +187,7 @@ func (s *HandlerTestSuite) TestSave() {
 		{
 			name: "更新",
 			before: func(t *testing.T) {
+				s.producer.EXPECT().Produce(gomock.Any(), gomock.Any()).Return(nil)
 				err := s.db.Create(&dao.Skill{
 					Id: 2,
 					Labels: sqlx.JsonColumn[[]string]{
@@ -313,6 +311,7 @@ func (s *HandlerTestSuite) TestSave() {
 }
 
 func (s *HandlerTestSuite) TestSaveRefs() {
+
 	testCases := []struct {
 		name     string
 		before   func(t *testing.T)
@@ -323,6 +322,7 @@ func (s *HandlerTestSuite) TestSaveRefs() {
 		{
 			name: "新建",
 			before: func(t *testing.T) {
+				s.producer.EXPECT().Produce(gomock.Any(), gomock.Any()).Return(nil)
 				err := s.db.Create(&dao.Skill{
 					Id: 1,
 				}).Error
@@ -744,30 +744,19 @@ func (s *HandlerTestSuite) TestDetailRef() {
 
 func (s *HandlerTestSuite) TestEvent() {
 	t := s.T()
+	mu := &sync.RWMutex{}
 	ans := make([]event.Skill, 0, 16)
-	wg := sync.WaitGroup{}
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		ch, err := s.consumer.ConsumeChan(context.Background())
-		require.NoError(s.T(), err)
-		for msg := range ch {
-			evt := event.SkillEvent{}
-			err = json.Unmarshal(msg.Value, &evt)
-			fmt.Println(evt)
-			if evt.Biz != "skill" {
-				continue
-			}
-			require.NoError(s.T(), err)
-			data := event.Skill{}
-			err = json.Unmarshal([]byte(evt.Data), &data)
-			require.NoError(s.T(), err)
-			ans = append(ans, data)
-			if len(ans) >= 2 {
-				return
-			}
+	s.producer.EXPECT().Produce(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, skillEvent event.SkillEvent) error {
+		var eve event.Skill
+		err := json.Unmarshal([]byte(skillEvent.Data), &eve)
+		if err != nil {
+			return err
 		}
-	}()
+		mu.Lock()
+		ans = append(ans, eve)
+		mu.Unlock()
+		return nil
+	}).Times(2)
 	// 保存
 	saveReq := web.SaveReq{
 		Skill: web.Skill{
@@ -852,7 +841,7 @@ func (s *HandlerTestSuite) TestEvent() {
 	recorder = test.NewJSONResponseRecorder[int64]()
 	s.server.ServeHTTP(recorder, req2)
 	require.Equal(t, 200, recorder.Code)
-	wg.Wait()
+	time.Sleep(1 * time.Second)
 	wantAns := []event.Skill{
 		{
 			Labels: []string{"mysql"},
@@ -1154,21 +1143,6 @@ func (s *HandlerTestSuite) assertSkill(wantSKill dao.Skill, actualSkill dao.Skil
 	actualSkill.Utime = 0
 	actualSkill.Ctime = 0
 	assert.Equal(t, wantSKill, actualSkill)
-}
-
-func (s *HandlerTestSuite) getMsgFromMq() (event.Skill, error) {
-	msg, err := s.consumer.Consume(context.Background())
-	if err != nil {
-		return event.Skill{}, err
-	}
-	var res event.SkillEvent
-	err = json.Unmarshal(msg.Value, &res)
-	if err != nil {
-		return event.Skill{}, err
-	}
-	var ans event.Skill
-	err = json.Unmarshal([]byte(res.Data), &res)
-	return ans, err
 }
 
 func TestHandler(t *testing.T) {

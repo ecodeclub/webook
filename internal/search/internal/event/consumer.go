@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"strconv"
 
 	"github.com/ecodeclub/mq-api"
@@ -55,6 +56,7 @@ func (s *SyncConsumer) Consume(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("解析消息失败: %w", err)
 	}
+	log.Println("xxxxxxxx", evt)
 	indexName := getIndexName(evt.Biz)
 	docId := strconv.Itoa(evt.BizID)
 	err = s.svc.Input(ctx, indexName, docId, evt.Data)

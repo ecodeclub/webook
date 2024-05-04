@@ -7,21 +7,40 @@
 package startup
 
 import (
+	"github.com/ecodeclub/ecache"
 	"github.com/ecodeclub/webook/internal/cases"
+	"github.com/ecodeclub/webook/internal/cases/internal/event"
+	"github.com/ecodeclub/webook/internal/cases/internal/repository"
+	"github.com/ecodeclub/webook/internal/cases/internal/repository/cache"
 	"github.com/ecodeclub/webook/internal/cases/internal/web"
-	testioc "github.com/ecodeclub/webook/internal/test/ioc"
+	"github.com/ecodeclub/webook/internal/test/ioc"
+	"gorm.io/gorm"
 )
 
 // Injectors from wire.go:
 
-func InitHandler() (*web.Handler, error) {
+func InitHandler(p event.SyncEventProducer) (*web.Handler, error) {
 	db := testioc.InitDB()
 	cache := testioc.InitCache()
-	mq := testioc.InitMQ()
-	module, err := cases.InitModule(db, cache, mq)
+	module, err := initModule(db, cache, p)
 	if err != nil {
 		return nil, err
 	}
 	handler := module.Hdl
 	return handler, nil
+}
+
+// wire.go:
+
+func initModule(db *gorm.DB, ec ecache.Cache, p event.SyncEventProducer) (*cases.Module, error) {
+	caseDAO := cases.InitCaseDAO(db)
+	caseCache := cache.NewCaseCache(ec)
+	caseRepo := repository.NewCaseRepo(caseDAO, caseCache)
+	service := cases.NewService(caseRepo, p)
+	handler := web.NewHandler(service)
+	module := &cases.Module{
+		Svc: service,
+		Hdl: handler,
+	}
+	return module, nil
 }

@@ -74,6 +74,18 @@ func (s *HandlerTestSuite) TearDownSuite() {
 	_, err = s.es.DeleteIndex(dao.QuestionSetIndexName).Do(context.Background())
 	require.NoError(s.T(), err)
 }
+func (s *HandlerTestSuite) TearDownTest() {
+	var err error
+	query := elastic.NewMatchAllQuery()
+	_, err = s.es.DeleteByQuery(dao.CaseIndexName).Query(query).Do(context.Background())
+	require.NoError(s.T(), err)
+	_, err = s.es.DeleteByQuery(dao.SkillIndexName).Query(query).Do(context.Background())
+	require.NoError(s.T(), err)
+	_, err = s.es.DeleteByQuery(dao.QuestionIndexName).Query(query).Do(context.Background())
+	require.NoError(s.T(), err)
+	_, err = s.es.DeleteByQuery(dao.QuestionSetIndexName).Query(query).Do(context.Background())
+	require.NoError(s.T(), err)
+}
 
 func (s *HandlerTestSuite) TestBizSearch() {
 	testCases := []struct {
@@ -645,15 +657,6 @@ func (s *HandlerTestSuite) TestBizSearch() {
 			s.server.ServeHTTP(recorder, req)
 			require.Equal(t, 200, recorder.Code)
 			tc.after(t, tc.wantAns, recorder.MustScan().Data)
-			query := elastic.NewMatchAllQuery()
-			_, err = s.es.DeleteByQuery(dao.CaseIndexName).Query(query).Do(context.Background())
-			require.NoError(s.T(), err)
-			_, err = s.es.DeleteByQuery(dao.SkillIndexName).Query(query).Do(context.Background())
-			require.NoError(s.T(), err)
-			_, err = s.es.DeleteByQuery(dao.QuestionIndexName).Query(query).Do(context.Background())
-			require.NoError(s.T(), err)
-			_, err = s.es.DeleteByQuery(dao.QuestionSetIndexName).Query(query).Do(context.Background())
-			require.NoError(s.T(), err)
 		})
 	}
 
@@ -734,15 +737,6 @@ func (s *HandlerTestSuite) TestSearch() {
 		ans.Skills[idx].Advanced = handlerSkillLevel(t, ans.Skills[idx].Advanced)
 	}
 	assert.Equal(t, want, ans)
-	query := elastic.NewMatchAllQuery()
-	_, err = s.es.DeleteByQuery(dao.CaseIndexName).Query(query).Do(context.Background())
-	require.NoError(s.T(), err)
-	_, err = s.es.DeleteByQuery(dao.SkillIndexName).Query(query).Do(context.Background())
-	require.NoError(s.T(), err)
-	_, err = s.es.DeleteByQuery(dao.QuestionIndexName).Query(query).Do(context.Background())
-	require.NoError(s.T(), err)
-	_, err = s.es.DeleteByQuery(dao.QuestionSetIndexName).Query(query).Do(context.Background())
-	require.NoError(s.T(), err)
 }
 
 func (s *HandlerTestSuite) TestSync() {
@@ -783,7 +777,6 @@ func (s *HandlerTestSuite) TestSync() {
 		{
 			name: "同步question",
 			before: func(t *testing.T) {
-
 			},
 			msg: getQuestion(s.T()),
 			after: func(t *testing.T) {
@@ -842,7 +835,7 @@ func (s *HandlerTestSuite) TestSync() {
 			msg:  getSkill(s.T()),
 			before: func(t *testing.T) {
 				skill := dao.Skill{
-					ID:     1,
+					ID:     99,
 					Labels: []string{"old_label1", "label2"},
 					Name:   "old Skill",
 					Desc:   "old skill description",
@@ -852,12 +845,12 @@ func (s *HandlerTestSuite) TestSync() {
 				s.insertSkills([]dao.Skill{skill})
 			},
 			after: func(t *testing.T) {
-				res := s.getDataFromEs(t, dao.SkillIndexName, "1")
+				res := s.getDataFromEs(t, dao.SkillIndexName, "99")
 				var ans dao.Skill
 				err := json.Unmarshal(res.Source, &ans)
 				require.NoError(t, err)
 				skill := dao.Skill{
-					ID:     1,
+					ID:     99,
 					Labels: []string{"label1", "label2"},
 					Name:   "Example Skill",
 					Desc:   "Example skill description",
@@ -904,15 +897,6 @@ func (s *HandlerTestSuite) TestSync() {
 			require.NoError(t, err)
 			time.Sleep(10 * time.Second)
 			tc.after(t)
-			query := elastic.NewMatchAllQuery()
-			_, err = s.es.DeleteByQuery(dao.CaseIndexName).Query(query).Do(context.Background())
-			require.NoError(s.T(), err)
-			_, err = s.es.DeleteByQuery(dao.SkillIndexName).Query(query).Do(context.Background())
-			require.NoError(s.T(), err)
-			_, err = s.es.DeleteByQuery(dao.QuestionIndexName).Query(query).Do(context.Background())
-			require.NoError(s.T(), err)
-			_, err = s.es.DeleteByQuery(dao.QuestionSetIndexName).Query(query).Do(context.Background())
-			require.NoError(s.T(), err)
 		})
 	}
 
@@ -954,7 +938,7 @@ func getCase(t *testing.T) event.SyncEvent {
 }
 
 func getQuestion(t *testing.T) event.SyncEvent {
-	event := event.SyncEvent{
+	eve := event.SyncEvent{
 		Biz:   "question",
 		BizID: 1,
 	}
@@ -1003,17 +987,17 @@ func getQuestion(t *testing.T) event.SyncEvent {
 	}
 	questionByte, err := json.Marshal(question)
 	require.NoError(t, err)
-	event.Data = string(questionByte)
-	return event
+	eve.Data = string(questionByte)
+	return eve
 }
 
 func getSkill(t *testing.T) event.SyncEvent {
-	event := event.SyncEvent{
+	eve := event.SyncEvent{
 		Biz:   "skill",
-		BizID: 1,
+		BizID: 99,
 	}
 	skill := dao.Skill{
-		ID:     1,
+		ID:     99,
 		Labels: []string{"label1", "label2"},
 		Name:   "Example Skill",
 		Desc:   "Example skill description",
@@ -1046,8 +1030,8 @@ func getSkill(t *testing.T) event.SyncEvent {
 	}
 	questionByte, err := json.Marshal(skill)
 	require.NoError(t, err)
-	event.Data = string(questionByte)
-	return event
+	eve.Data = string(questionByte)
+	return eve
 }
 
 func (s *HandlerTestSuite) initCases() {

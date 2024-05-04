@@ -119,7 +119,7 @@ func (s *service) Save(ctx context.Context, question *domain.Question) (int64, e
 	if err != nil {
 		return 0, err
 	}
-	go s.syncQuestion(id)
+	s.syncQuestion(id)
 	return id, nil
 }
 
@@ -129,7 +129,7 @@ func (s *service) Publish(ctx context.Context, question *domain.Question) (int64
 	if err != nil {
 		return 0, err
 	}
-	go s.syncQuestion(id)
+	s.syncQuestion(id)
 	return id, nil
 }
 

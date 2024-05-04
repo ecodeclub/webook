@@ -49,7 +49,7 @@ func (s *service) Save(ctx context.Context, ca *domain.Case) (int64, error) {
 	if err != nil {
 		return 0, err
 	}
-	go s.syncCase(id)
+	s.syncCase(id)
 	return id, nil
 }
 
@@ -59,7 +59,7 @@ func (s *service) Publish(ctx context.Context, ca *domain.Case) (int64, error) {
 	if err != nil {
 		return 0, err
 	}
-	go s.syncCase(id)
+	s.syncCase(id)
 	return id, nil
 }
 

@@ -20,20 +20,21 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/ecodeclub/ekit/sqlx"
+	"github.com/ecodeclub/mq-api"
+	"github.com/ecodeclub/webook/internal/question/internal/event"
+	eveMocks "github.com/ecodeclub/webook/internal/question/internal/event/mocks"
+	"go.uber.org/mock/gomock"
 	"net/http"
 	"strconv"
 	"sync"
 	"testing"
 	"time"
 
-	"github.com/ecodeclub/mq-api"
-	"github.com/ecodeclub/webook/internal/question/internal/event"
-
 	"github.com/ecodeclub/webook/internal/question/internal/domain"
 
 	"gorm.io/gorm"
 
-	"github.com/ecodeclub/ekit/sqlx"
 	"github.com/ecodeclub/webook/internal/pkg/middleware"
 
 	"github.com/ecodeclub/ecache"
@@ -63,6 +64,8 @@ type HandlerTestSuite struct {
 	dao            dao.QuestionDAO
 	questionSetDAO dao.QuestionSetDAO
 	consumer       mq.Consumer
+	ctrl           *gomock.Controller
+	producer       *eveMocks.MockSyncEventProducer
 }
 
 func (s *HandlerTestSuite) TearDownSuite() {
@@ -102,9 +105,11 @@ func (s *HandlerTestSuite) TearDownTest() {
 }
 
 func (s *HandlerTestSuite) SetupSuite() {
-	handler, err := startup.InitHandler()
+	s.ctrl = gomock.NewController(s.T())
+	s.producer = eveMocks.NewMockSyncEventProducer(s.ctrl)
+	handler, err := startup.InitHandler(s.producer)
 	require.NoError(s.T(), err)
-	questionSetHandler, err := startup.InitQuestionSetHandler()
+	questionSetHandler, err := startup.InitQuestionSetHandler(s.producer)
 	require.NoError(s.T(), err)
 
 	econf.Set("server", map[string]any{"contextTimeout": "1s"})
@@ -153,7 +158,7 @@ func (s *HandlerTestSuite) TestSave() {
 			//
 			name: "全部新建",
 			before: func(t *testing.T) {
-
+				s.producer.EXPECT().Produce(gomock.Any(), gomock.Any()).Return(nil)
 			},
 			after: func(t *testing.T) {
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
@@ -208,6 +213,7 @@ func (s *HandlerTestSuite) TestSave() {
 			//
 			name: "部分更新",
 			before: func(t *testing.T) {
+				s.producer.EXPECT().Produce(gomock.Any(), gomock.Any()).Return(nil)
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 				defer cancel()
 				err := s.db.WithContext(ctx).Create(&dao.Question{
@@ -411,7 +417,7 @@ func (s *HandlerTestSuite) TestSync() {
 			//
 			name: "全部新建",
 			before: func(t *testing.T) {
-
+				s.producer.EXPECT().Produce(gomock.Any(), gomock.Any()).Return(nil)
 			},
 			after: func(t *testing.T) {
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
@@ -445,6 +451,7 @@ func (s *HandlerTestSuite) TestSync() {
 			//
 			name: "部分更新",
 			before: func(t *testing.T) {
+				s.producer.EXPECT().Produce(gomock.Any(), gomock.Any()).Return(nil)
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 				defer cancel()
 				err := s.db.WithContext(ctx).Create(&dao.Question{
@@ -566,31 +573,18 @@ func (s *HandlerTestSuite) TestSync() {
 func (s *HandlerTestSuite) TestQuestionEvent() {
 	t := s.T()
 	ans := make([]event.Question, 0, 16)
-	wg := sync.WaitGroup{}
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		ch, err := s.consumer.ConsumeChan(context.Background())
-		require.NoError(s.T(), err)
-		for msg := range ch {
-			evt := event.QuestionEvent{}
-			err = json.Unmarshal(msg.Value, &evt)
-			fmt.Println(evt)
-			if evt.Biz != event.QuestionBiz {
-				continue
-			}
-			require.NoError(s.T(), err)
-			data := event.Question{}
-			err = json.Unmarshal([]byte(evt.Data), &data)
-			require.NoError(s.T(), err)
-			ans = append(ans, data)
-			if len(ans) >= 2 {
-				return
-			}
+	mu := sync.RWMutex{}
+	s.producer.EXPECT().Produce(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, questionEvent event.QuestionEvent) error {
+		var eve event.Question
+		err := json.Unmarshal([]byte(questionEvent.Data), &eve)
+		if err != nil {
+			return err
 		}
-	}()
-	time.Sleep(10 * time.Second)
-
+		mu.Lock()
+		ans = append(ans, eve)
+		mu.Unlock()
+		return nil
+	}).Times(2)
 	// 保存
 	saveReq := web.SaveReq{
 		Question: web.Question{
@@ -610,6 +604,7 @@ func (s *HandlerTestSuite) TestQuestionEvent() {
 	s.server.ServeHTTP(recorder, req)
 
 	require.Equal(t, 200, recorder.Code)
+
 	// 发布
 	syncReq := &web.SaveReq{
 		Question: web.Question{
@@ -628,7 +623,7 @@ func (s *HandlerTestSuite) TestQuestionEvent() {
 	recorder = test.NewJSONResponseRecorder[int64]()
 	s.server.ServeHTTP(recorder, req2)
 	require.Equal(t, 200, recorder.Code)
-	wg.Wait()
+	time.Sleep(1 * time.Second)
 	for idx := range ans {
 		ans[idx].ID = 0
 		ans[idx].Utime = 0
@@ -670,29 +665,18 @@ func (s *HandlerTestSuite) TestQuestionEvent() {
 func (s *HandlerTestSuite) TestQuestionSetEvent() {
 	t := s.T()
 	ans := make([]event.QuestionSet, 0, 16)
-	var wg sync.WaitGroup
-	wg.Add(1)
-	// 开启goroutine消费数据
-	go func() {
-		defer wg.Done()
-		ch, err := s.consumer.ConsumeChan(context.Background())
-		require.NoError(s.T(), err)
-		for msg := range ch {
-			evt := event.QuestionEvent{}
-			err = json.Unmarshal(msg.Value, &evt)
-			if evt.Biz != event.QuestionSetBiz {
-				continue
-			}
-			require.NoError(s.T(), err)
-			data := event.QuestionSet{}
-			err = json.Unmarshal([]byte(evt.Data), &data)
-			require.NoError(s.T(), err)
-			ans = append(ans, data)
-			if len(ans) >= 2 {
-				return
-			}
+	mu := &sync.RWMutex{}
+	s.producer.EXPECT().Produce(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, questionEvent event.QuestionEvent) error {
+		var eve event.QuestionSet
+		err := json.Unmarshal([]byte(questionEvent.Data), &eve)
+		if err != nil {
+			return err
 		}
-	}()
+		mu.Lock()
+		ans = append(ans, eve)
+		mu.Unlock()
+		return nil
+	}).Times(2)
 
 	_, err := s.dao.Create(context.Background(), dao.Question{
 		Id: 1,
@@ -734,7 +718,7 @@ func (s *HandlerTestSuite) TestQuestionSetEvent() {
 	recorder = test.NewJSONResponseRecorder[int64]()
 	s.server.ServeHTTP(recorder, req2)
 	require.Equal(t, 200, recorder.Code)
-	wg.Wait()
+	time.Sleep(1 * time.Second)
 	for idx := range ans {
 		ans[idx].Id = 0
 		ans[idx].Utime = 0
@@ -958,8 +942,10 @@ func (s *HandlerTestSuite) TestQuestionSet_Save() {
 		wantResp test.Result[int64]
 	}{
 		{
-			name:   "创建成功1",
-			before: func(t *testing.T) {},
+			name: "创建成功1",
+			before: func(t *testing.T) {
+				s.producer.EXPECT().Produce(gomock.Any(), gomock.Any()).Return(nil)
+			},
 			after: func(t *testing.T) {
 				t.Helper()
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
@@ -985,6 +971,7 @@ func (s *HandlerTestSuite) TestQuestionSet_Save() {
 		{
 			name: "创建成功2",
 			before: func(t *testing.T) {
+				s.producer.EXPECT().Produce(gomock.Any(), gomock.Any()).Return(nil)
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 				defer cancel()
 				err := s.db.WithContext(ctx).Create(dao.QuestionSet{
@@ -1062,6 +1049,7 @@ func (s *HandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 		{
 			name: "空题集_添加多个问题",
 			before: func(t *testing.T) {
+				s.producer.EXPECT().Produce(gomock.Any(), gomock.Any()).Return(nil)
 				t.Helper()
 
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
@@ -1147,6 +1135,7 @@ func (s *HandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 		{
 			name: "非空题集_添加多个问题",
 			before: func(t *testing.T) {
+				s.producer.EXPECT().Produce(gomock.Any(), gomock.Any()).Return(nil)
 				t.Helper()
 
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
@@ -1249,6 +1238,7 @@ func (s *HandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 		{
 			name: "非空题集_删除全部问题",
 			before: func(t *testing.T) {
+				s.producer.EXPECT().Produce(gomock.Any(), gomock.Any()).Return(nil)
 				t.Helper()
 
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
@@ -1321,6 +1311,7 @@ func (s *HandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 		{
 			name: "非空题集_删除部分问题",
 			before: func(t *testing.T) {
+				s.producer.EXPECT().Produce(gomock.Any(), gomock.Any()).Return(nil)
 				t.Helper()
 
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
@@ -1402,6 +1393,7 @@ func (s *HandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 		{
 			name: "同时添加/删除部分问题",
 			before: func(t *testing.T) {
+				s.producer.EXPECT().Produce(gomock.Any(), gomock.Any()).Return(nil)
 				t.Helper()
 
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)

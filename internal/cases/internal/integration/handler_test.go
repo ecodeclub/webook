@@ -20,15 +20,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/ecodeclub/webook/internal/cases/internal/event"
+	eveMocks "github.com/ecodeclub/webook/internal/cases/internal/event/mocks"
+	"go.uber.org/mock/gomock"
 	"net/http"
 	"strconv"
 	"sync"
 	"testing"
 	"time"
-
-	"github.com/ecodeclub/mq-api"
-	"github.com/ecodeclub/webook/internal/cases/internal/event"
-	"github.com/ecodeclub/webook/ioc"
 
 	"github.com/ecodeclub/webook/internal/cases/internal/domain"
 
@@ -59,7 +58,8 @@ type HandlerTestSuite struct {
 	db       *egorm.Component
 	rdb      ecache.Cache
 	dao      dao.CaseDAO
-	consumer mq.Consumer
+	ctrl     *gomock.Controller
+	producer *eveMocks.MockSyncEventProducer
 }
 
 func (s *HandlerTestSuite) TearDownSuite() {
@@ -77,11 +77,12 @@ func (s *HandlerTestSuite) TearDownTest() {
 }
 
 func (s *HandlerTestSuite) SetupSuite() {
-	handler, err := startup.InitHandler()
+	s.ctrl = gomock.NewController(s.T())
+	s.producer = eveMocks.NewMockSyncEventProducer(s.ctrl)
+	handler, err := startup.InitHandler(s.producer)
 	require.NoError(s.T(), err)
 	econf.Set("server", map[string]any{"contextTimeout": "1s"})
 	server := egin.Load("server").Build()
-
 	handler.PublicRoutes(server.Engine)
 	server.Use(func(ctx *gin.Context) {
 		ctx.Set("_session", session.NewMemorySession(session.Claims{
@@ -102,10 +103,6 @@ func (s *HandlerTestSuite) SetupSuite() {
 	require.NoError(s.T(), err)
 	s.dao = dao.NewCaseDao(s.db)
 	s.rdb = testioc.InitCache()
-	q := ioc.InitMQ()
-	c, err := q.Consumer(event.SyncTopic, "case_sync")
-	require.NoError(s.T(), err)
-	s.consumer = c
 }
 
 func (s *HandlerTestSuite) TestSave() {
@@ -120,7 +117,7 @@ func (s *HandlerTestSuite) TestSave() {
 		{
 			name: "新建",
 			before: func(t *testing.T) {
-
+				s.producer.EXPECT().Produce(gomock.Any(), gomock.Any()).Return(nil)
 			},
 			after: func(t *testing.T) {
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
@@ -163,6 +160,7 @@ func (s *HandlerTestSuite) TestSave() {
 		{
 			name: "部分更新",
 			before: func(t *testing.T) {
+				s.producer.EXPECT().Produce(gomock.Any(), gomock.Any()).Return(nil)
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 				defer cancel()
 				err := s.db.WithContext(ctx).Create(&dao.Case{
@@ -248,31 +246,19 @@ func (s *HandlerTestSuite) TestSave() {
 
 func (s *HandlerTestSuite) TestEvent() {
 	t := s.T()
+	mu := &sync.RWMutex{}
 	ans := make([]event.Case, 0, 16)
-	wg := sync.WaitGroup{}
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		ch, err := s.consumer.ConsumeChan(context.Background())
-		require.NoError(s.T(), err)
-		for msg := range ch {
-			evt := event.CaseEvent{}
-			err = json.Unmarshal(msg.Value, &evt)
-			if evt.Biz != "case" {
-				continue
-			}
-			require.NoError(s.T(), err)
-			data := event.Case{}
-			err = json.Unmarshal([]byte(evt.Data), &data)
-			require.NoError(s.T(), err)
-			ans = append(ans, data)
-			if len(ans) >= 2 {
-				return
-			}
+	s.producer.EXPECT().Produce(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, caseEvent event.CaseEvent) error {
+		var eve event.Case
+		err := json.Unmarshal([]byte(caseEvent.Data), &eve)
+		if err != nil {
+			return err
 		}
-	}()
-	time.Sleep(5 * time.Second)
-
+		mu.Lock()
+		ans = append(ans, eve)
+		mu.Unlock()
+		return nil
+	}).Times(2)
 	// 保存
 	saveReq := web.SaveReq{
 		Case: web.Case{
@@ -313,7 +299,7 @@ func (s *HandlerTestSuite) TestEvent() {
 	recorder = test.NewJSONResponseRecorder[int64]()
 	s.server.ServeHTTP(recorder, req2)
 	require.Equal(t, 200, recorder.Code)
-	wg.Wait()
+	time.Sleep(1 * time.Second)
 	for idx := range ans {
 		assert.True(t, ans[idx].Id != 0)
 		assert.True(t, ans[idx].Utime != 0)
@@ -519,7 +505,7 @@ func (s *HandlerTestSuite) TestPublish() {
 		{
 			name: "新建并发布",
 			before: func(t *testing.T) {
-
+				s.producer.EXPECT().Produce(gomock.Any(), gomock.Any()).Return(nil)
 			},
 			after: func(t *testing.T) {
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
@@ -567,6 +553,7 @@ func (s *HandlerTestSuite) TestPublish() {
 			name: "更新并发布",
 			// publish_case表的ctime不更新
 			before: func(t *testing.T) {
+				s.producer.EXPECT().Produce(gomock.Any(), gomock.Any()).Return(nil)
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 				defer cancel()
 				err := s.db.WithContext(ctx).Create(&dao.Case{
@@ -636,6 +623,7 @@ func (s *HandlerTestSuite) TestPublish() {
 			name: "publish表有值发布",
 			// publish_case表的ctime不更新
 			before: func(t *testing.T) {
+				s.producer.EXPECT().Produce(gomock.Any(), gomock.Any()).Return(nil)
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 				defer cancel()
 				err := s.db.WithContext(ctx).Create(&dao.Case{

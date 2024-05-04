@@ -39,7 +39,7 @@ func (s *skillService) SaveRefs(ctx context.Context, skill domain.Skill) error {
 	if err != nil {
 		return err
 	}
-	go s.syncSkill(skill.ID)
+	s.syncSkill(skill.ID)
 	return nil
 }
 
@@ -48,7 +48,7 @@ func (s *skillService) Save(ctx context.Context, skill domain.Skill) (int64, err
 	if err != nil {
 		return 0, err
 	}
-	go s.syncSkill(id)
+	s.syncSkill(id)
 	return id, nil
 }
 

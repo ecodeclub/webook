@@ -16,8 +16,6 @@ package service
 
 import (
 	"context"
-	"fmt"
-
 	"github.com/ecodeclub/webook/internal/question/internal/domain"
 	"github.com/ecodeclub/webook/internal/question/internal/event"
 	"github.com/ecodeclub/webook/internal/question/internal/repository"
@@ -57,7 +55,7 @@ func (q *questionSetService) Save(ctx context.Context, set domain.QuestionSet) (
 	if err != nil {
 		return 0, err
 	}
-	go q.syncQuestionSet(id)
+	q.syncQuestionSet(id)
 	return id, nil
 }
 
@@ -66,7 +64,7 @@ func (q *questionSetService) UpdateQuestions(ctx context.Context, set domain.Que
 	if err != nil {
 		return err
 	}
-	go q.syncQuestionSet(set.Id)
+	q.syncQuestionSet(set.Id)
 	return nil
 }
 
@@ -98,7 +96,6 @@ func (q *questionSetService) syncQuestionSet(id int64) {
 	ctx, cancel := context.WithTimeout(context.Background(), defaultSyncTimeout)
 	defer cancel()
 	qSet, err := q.repo.GetByID(ctx, id)
-	fmt.Printf("开始发送 %d\n", id)
 	if err != nil {
 		q.logger.Error("发送同步搜索信息",
 			elog.FieldErr(err),
@@ -107,7 +104,6 @@ func (q *questionSetService) syncQuestionSet(id int64) {
 	}
 	evt := event.NewQuestionSetEvent(qSet)
 	err = q.producer.Produce(ctx, evt)
-	fmt.Println("发送成功")
 	if err != nil {
 		q.logger.Error("发送同步搜索信息",
 			elog.FieldErr(err),
