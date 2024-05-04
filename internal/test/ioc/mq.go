@@ -68,7 +68,7 @@ func initMQ() (mq.MQ, error) {
 	econf.Set("kafka.addresses", []string{"localhost:9092"})
 	econf.Set("kafka.topics", []Topic{
 		{
-			Name:       "payment_successful_events",
+			Name:       "payment_events",
 			Partitions: 1,
 		},
 		{

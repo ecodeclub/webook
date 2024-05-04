@@ -22,15 +22,16 @@ import (
 
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/ecodeclub/webook/internal/payment/internal/domain"
-	"github.com/ecodeclub/webook/internal/payment/internal/event"
-	"github.com/ecodeclub/webook/internal/payment/internal/repository"
 	"github.com/gotomicro/ego/core/elog"
 	"github.com/wechatpay-apiv3/wechatpay-go/core"
 	"github.com/wechatpay-apiv3/wechatpay-go/services/payments"
 	"github.com/wechatpay-apiv3/wechatpay-go/services/payments/native"
 )
 
-var errUnknownTransactionState = errors.New("未知的微信事务状态")
+var (
+	errUnknownTransactionState = errors.New("未知的微信事务状态")
+	errIgnoredPaymentStatus    = errors.New("忽略的支付状态")
+)
 
 //go:generate mockgen -source=./native.go -package=wechatmocks -destination=./mocks/native.mock.go -typed NativeAPIService
 type NativeAPIService interface {
@@ -39,11 +40,8 @@ type NativeAPIService interface {
 }
 
 type NativePaymentService struct {
-	svc            NativeAPIService
-	repo           repository.PaymentRepository
-	producer       event.PaymentEventProducer
-	paymentDDLFunc func() int64
-	l              *elog.Component
+	svc NativeAPIService
+	l   *elog.Component
 
 	appID     string
 	mchID     string
@@ -59,40 +57,33 @@ type NativePaymentService struct {
 	nativeCallBackTypeToPaymentStatus map[string]domain.PaymentStatus
 }
 
-func NewNativePaymentService(svc NativeAPIService,
-	repo repository.PaymentRepository,
-	producer event.PaymentEventProducer,
-	paymentDDLFunc func() int64,
-	l *elog.Component,
-	appid, mchid string) *NativePaymentService {
+func NewNativePaymentService(svc NativeAPIService, appid, mchid string) *NativePaymentService {
 	return &NativePaymentService{
-		svc:            svc,
-		repo:           repo,
-		producer:       producer,
-		paymentDDLFunc: paymentDDLFunc,
-		l:              l,
-		appID:          appid,
-		mchID:          mchid,
+		svc:   svc,
+		l:     elog.DefaultLogger,
+		appID: appid,
+		mchID: mchid,
 		// todo: 配置回调URL
-		notifyURL: "http://wechat.meoying.com/pay/callback",
+		notifyURL: "https://wechat.meoying.com/pay/callback",
 		nativeCallBackTypeToPaymentStatus: map[string]domain.PaymentStatus{
-			"SUCCESS":  domain.PaymentStatusPaid,
-			"PAYERROR": domain.PaymentStatusFailed,
-			"NOTPAY":   domain.PaymentStatusUnpaid,
-			"CLOSED":   domain.PaymentStatusFailed,
-			"REVOKED":  domain.PaymentStatusFailed,
-			"REFUND":   domain.PaymentStatusRefund,
+			"SUCCESS":    domain.PaymentStatusPaidSuccess, // 支付成功
+			"PAYERROR":   domain.PaymentStatusPaidFailed,  // 支付失败(其他原因，如银行返回失败)
+			"CLOSED":     domain.PaymentStatusPaidFailed,  // 已关闭
+			"REVOKED":    domain.PaymentStatusPaidFailed,  // 已撤销（付款码支付）
+			"NOTPAY":     domain.PaymentStatusUnpaid,      // 未支付
+			"USERPAYING": domain.PaymentStatusProcessing,  // 用户支付中（付款码支付）
+			"REFUND":     domain.PaymentStatusRefund,      // 转入退款
 		},
 	}
 }
 
-func (n *NativePaymentService) Prepay(ctx context.Context, pmt domain.Payment) (domain.Payment, error) {
+func (n *NativePaymentService) Prepay(ctx context.Context, pmt domain.Payment) (string, error) {
 
 	r, ok := slice.Find(pmt.Records, func(src domain.PaymentRecord) bool {
 		return src.Channel == domain.ChannelTypeWechat
 	})
 	if !ok || r.Amount == 0 {
-		return domain.Payment{}, fmt.Errorf("缺少微信支付金额信息")
+		return "", fmt.Errorf("缺少微信支付金额信息")
 	}
 
 	resp, _, err := n.svc.Prepay(ctx,
@@ -110,65 +101,47 @@ func (n *NativePaymentService) Prepay(ctx context.Context, pmt domain.Payment) (
 		},
 	)
 	if err != nil {
-		return domain.Payment{}, fmt.Errorf("微信预支付失败: %w", err)
+		return "", fmt.Errorf("微信预支付失败: %w", err)
 	}
 
-	pmt.Status = domain.PaymentStatusUnpaid
-
-	pmt.Records = []domain.PaymentRecord{
-		{
-			Description: pmt.OrderDescription,
-			Channel:     domain.ChannelTypeWechat,
-			Amount:      r.Amount,
-			Status:      domain.PaymentStatusUnpaid,
-		},
-	}
-
-	pp, err2 := n.repo.CreatePayment(ctx, pmt)
-	if err2 != nil {
-		return domain.Payment{}, fmt.Errorf("微信预支付失败: 创建支付主记录及微信渠道支付记录失败: %w", err2)
-	}
-
-	pp.Records = slice.Map(pp.Records, func(idx int, src domain.PaymentRecord) domain.PaymentRecord {
-		if src.Channel == domain.ChannelTypeWechat {
-			src.WechatCodeURL = *resp.CodeUrl
-		}
-		return src
-	})
-	return pp, nil
+	return *resp.CodeUrl, nil
 }
 
-// SyncWechatInfo 同步信息 定时任务调用此方法同步状态信息
-func (n *NativePaymentService) SyncWechatInfo(ctx context.Context, orderSN string) error {
-	txn, _, err := n.svc.QueryOrderByOutTradeNo(ctx, native.QueryOrderByOutTradeNoRequest{
-		OutTradeNo: core.String(orderSN),
-		Mchid:      core.String(n.mchID),
-	})
+func (n *NativePaymentService) ConvertCallbackTransactionToDomain(txn *payments.Transaction) (domain.Payment, error) {
+	status, err := n.convertoPaymentStatus(*txn.TradeState)
 	if err != nil {
-		return err
+		return domain.Payment{}, err
 	}
-	return n.updateByTxn(ctx, txn)
+
+	if status != domain.PaymentStatusPaidSuccess && status != domain.PaymentStatusPaidFailed {
+		n.l.Warn("忽略的微信支付通知状态",
+			elog.String("TradeState", *txn.TradeState),
+			elog.Any("PaymentStatus", status),
+		)
+		return domain.Payment{}, fmt.Errorf("%w, %d", errIgnoredPaymentStatus, status.ToUint8())
+	}
+
+	return n.convertToPaymentDomain(txn, status), nil
 }
 
-// FindExpiredPayment 查找过期支付记录 —— 支付主记录+微信支付记录, 定时任务会调用该方法
-func (n *NativePaymentService) FindExpiredPayment(ctx context.Context, offset, limit int, t time.Time) ([]domain.Payment, error) {
-	return n.repo.FindExpiredPayment(ctx, offset, limit, t)
-}
-
-// HandleCallback 处理微信回调  微信回调支付模块后会d
-func (n *NativePaymentService) HandleCallback(ctx context.Context, txn *payments.Transaction) error {
-	return n.updateByTxn(ctx, txn)
-}
-
-func (n *NativePaymentService) updateByTxn(ctx context.Context, txn *payments.Transaction) error {
-	status, ok := n.nativeCallBackTypeToPaymentStatus[*txn.TradeState]
+func (n *NativePaymentService) convertoPaymentStatus(tradeState string) (domain.PaymentStatus, error) {
+	status, ok := n.nativeCallBackTypeToPaymentStatus[tradeState]
 	if !ok {
-		return fmt.Errorf("%w, %s", errUnknownTransactionState, *txn.TradeState)
+		return 0, fmt.Errorf("%w, %s", errUnknownTransactionState, tradeState)
 	}
-	// 跟新支付主记录+微信渠道支付记录两条数据的状态
-	paidAt := time.Now().UnixMilli()
-	pmt := domain.Payment{
+	return status, nil
+}
+
+func (n *NativePaymentService) convertToPaymentDomain(txn *payments.Transaction, status domain.PaymentStatus) domain.Payment {
+	// 更新支付主记录+微信渠道支付记录两条数据的状态
+	var paidAt int64
+	if status == domain.PaymentStatusPaidSuccess {
+		paidAt = time.Now().UnixMilli()
+	}
+	return domain.Payment{
 		OrderSN: *txn.OutTradeNo,
+		PaidAt:  paidAt,
+		Status:  status,
 		Records: []domain.PaymentRecord{
 			{
 				PaymentNO3rd: *txn.TransactionId,
@@ -177,26 +150,27 @@ func (n *NativePaymentService) updateByTxn(ctx context.Context, txn *payments.Tr
 				Status:       status,
 			},
 		},
-		Status: status,
 	}
+}
 
-	err := n.repo.UpdatePayment(ctx, pmt)
-	if err != nil {
-		// 这里有一个小问题，就是如果超时了的话，你都不知道更新成功了没
-		return err
-	}
-
-	// 就是处于结束状态
-	err1 := n.producer.Produce(ctx, event.PaymentEvent{
-		OrderSN: pmt.OrderSN,
-		PayerID: pmt.PayerID,
-		Status:  uint8(pmt.Status),
+// QueryOrderBySN 同步信息 定时任务调用此方法同步状态信息
+func (n *NativePaymentService) QueryOrderBySN(ctx context.Context, orderSN string) (domain.Payment, error) {
+	txn, _, err := n.svc.QueryOrderByOutTradeNo(ctx, native.QueryOrderByOutTradeNoRequest{
+		OutTradeNo: core.String(orderSN),
+		Mchid:      core.String(n.mchID),
 	})
-	if err1 != nil {
-		// 要做好监控和告警
-		n.l.Error("发送支付事件失败", elog.FieldErr(err1),
-			elog.String("order_sn", pmt.OrderSN))
+	if err != nil {
+		return domain.Payment{}, err
 	}
-	// 虽然发送事件失败，但是数据库记录了，所以可以返回 Nil
-	return nil
+
+	status, err := n.convertoPaymentStatus(*txn.TradeState)
+	if err != nil {
+		return domain.Payment{}, err
+	}
+
+	if status != domain.PaymentStatusPaidSuccess && status != domain.PaymentStatusPaidFailed {
+		// 主动同步时不再忽略,而是直接标记为超时
+		status = domain.PaymentStatusTimeoutClosed
+	}
+	return n.convertToPaymentDomain(txn, status), nil
 }

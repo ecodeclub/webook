@@ -18,48 +18,52 @@ package payment
 
 import (
 	"sync"
-	"time"
 
 	"github.com/ecodeclub/ecache"
 	"github.com/ecodeclub/mq-api"
 	"github.com/ecodeclub/webook/internal/credit"
 	"github.com/ecodeclub/webook/internal/payment/internal/domain"
 	"github.com/ecodeclub/webook/internal/payment/internal/event"
+	"github.com/ecodeclub/webook/internal/payment/internal/job"
 	"github.com/ecodeclub/webook/internal/payment/internal/repository"
 	"github.com/ecodeclub/webook/internal/payment/internal/repository/dao"
 	"github.com/ecodeclub/webook/internal/payment/internal/service"
-	credit2 "github.com/ecodeclub/webook/internal/payment/internal/service/credit"
 	"github.com/ecodeclub/webook/internal/payment/internal/service/wechat"
 	"github.com/ecodeclub/webook/internal/payment/internal/web"
 	"github.com/ecodeclub/webook/internal/payment/ioc"
 	"github.com/ecodeclub/webook/internal/pkg/sequencenumber"
 	"github.com/ego-component/egorm"
 	"github.com/google/wire"
-	"github.com/gotomicro/ego/core/elog"
 	"github.com/wechatpay-apiv3/wechatpay-go/core/notify"
 	"github.com/wechatpay-apiv3/wechatpay-go/services/payments/native"
 	"gorm.io/gorm"
 )
 
-type Handler = web.Handler
-type Payment = domain.Payment
-type Record = domain.PaymentRecord
-type Channel = domain.PaymentChannel
-type ChannelType = domain.ChannelType
+type (
+	Handler            = web.Handler
+	Payment            = domain.Payment
+	Record             = domain.PaymentRecord
+	Channel            = domain.PaymentChannel
+	ChannelType        = domain.ChannelType
+	Service            = service.Service
+	SyncWechatOrderJob = job.SyncWechatOrderJob
+)
 
-const ChannelTypeCredit = domain.ChannelTypeCredit
-const ChannelTypeWechat = domain.ChannelTypeWechat
-const PaymentStatusPaid = domain.PaymentStatusPaid
-const PaymentStatusFailed = domain.PaymentStatusFailed
+const (
+	ChannelTypeCredit = domain.ChannelTypeCredit
+	ChannelTypeWechat = domain.ChannelTypeWechat
 
-type Service = service.Service
+	StatusUnpaid      = domain.PaymentStatusUnpaid
+	StatusProcessing  = domain.PaymentStatusProcessing
+	StatusPaidSuccess = domain.PaymentStatusPaidSuccess
+	StatusPaidFailed  = domain.PaymentStatusPaidFailed
+)
 
 func InitModule(db *egorm.Component,
 	mq mq.MQ,
 	c ecache.Cache,
 	cm *credit.Module) (*Module, error) {
 	wire.Build(
-		initLogger,
 		ioc.InitWechatNativeService,
 		ioc.InitWechatConfig,
 		ioc.InitWechatNotifyHandler,
@@ -71,10 +75,9 @@ func InitModule(db *egorm.Component,
 		initPaymentEventProducer,
 		web.NewHandler,
 		service.NewService,
-		credit2.NewCreditPaymentService,
 		repository.NewPaymentRepository,
-		paymentDDLFunc,
 		sequencenumber.NewGenerator,
+		initSyncWechatOrderJob,
 		wire.FieldsOf(new(*credit.Module), "Svc"),
 		wire.Struct(new(Module), "*"),
 	)
@@ -95,17 +98,11 @@ var (
 )
 
 func initPaymentEventProducer(mq mq.MQ) (event.PaymentEventProducer, error) {
-	p, err := mq.Producer("payment_events")
+	p, err := mq.Producer(event.PaymentEventName)
 	if err != nil {
 		return nil, err
 	}
 	return event.NewPaymentEventProducer(p)
-}
-
-func paymentDDLFunc() func() int64 {
-	return func() int64 {
-		return time.Now().Add(time.Minute * 30).UnixMilli()
-	}
 }
 
 func initDAO(db *gorm.DB) dao.PaymentDAO {
@@ -116,6 +113,9 @@ func initDAO(db *gorm.DB) dao.PaymentDAO {
 	return paymentDAO
 }
 
-func initLogger() *elog.Component {
-	return elog.DefaultLogger
+func initSyncWechatOrderJob(svc service.Service) *SyncWechatOrderJob {
+	minutes := int64(30)
+	seconds := int64(10)
+	limit := 100
+	return job.NewSyncWechatOrderJob(svc, minutes, seconds, limit)
 }

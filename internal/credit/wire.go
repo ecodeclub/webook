@@ -33,11 +33,13 @@ import (
 	"github.com/google/wire"
 )
 
-type Credit = domain.Credit
-type CreditLog = domain.CreditLog
-type Service = service.Service
-type Handler = web.Handler
-type CloseTimeoutLockedCreditsJob = job.CloseTimeoutLockedCreditsJob
+type (
+	Credit                       = domain.Credit
+	CreditLog                    = domain.CreditLog
+	Service                      = service.Service
+	Handler                      = web.Handler
+	CloseTimeoutLockedCreditsJob = job.CloseTimeoutLockedCreditsJob
+)
 
 func InitModule(db *egorm.Component, q mq.MQ, e ecache.Cache) (*Module, error) {
 	wire.Build(wire.Struct(

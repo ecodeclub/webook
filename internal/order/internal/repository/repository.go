@@ -31,8 +31,8 @@ type OrderRepository interface {
 	TotalUserVisibleOrders(ctx context.Context, uid int64) (int64, error)
 	FindUserVisibleOrdersByUID(ctx context.Context, uid int64, offset, limit int) ([]domain.Order, error)
 	CancelOrder(ctx context.Context, uid, oid int64) error
-	SucceedOrder(ctx context.Context, uid, oid int64) error
-	FailOrder(ctx context.Context, uid int64, oid int64) error
+	SucceedOrder(ctx context.Context, uid int64, orderSN string) error
+	FailOrder(ctx context.Context, uid int64, orderSN string) error
 	FindTimeoutOrders(ctx context.Context, offset, limit int, ctime int64) ([]domain.Order, error)
 	TotalTimeoutOrders(ctx context.Context, ctime int64) (int64, error)
 	CloseTimeoutOrders(ctx context.Context, orderIDs []int64, ctime int64) error
@@ -170,18 +170,18 @@ func (o *orderRepository) CancelOrder(ctx context.Context, uid, oid int64) error
 	return err
 }
 
-func (o *orderRepository) SucceedOrder(ctx context.Context, uid, oid int64) error {
-	err := o.dao.SetOrderStatus(ctx, uid, oid, domain.StatusSuccess.ToUint8())
+func (o *orderRepository) SucceedOrder(ctx context.Context, uid int64, orderSN string) error {
+	err := o.dao.SetOrderStatus(ctx, uid, orderSN, domain.StatusSuccess.ToUint8())
 	if err != nil {
-		return fmt.Errorf("更新订单状态为'支付成功'失败: %w, uid: %d, oid: %d", err, uid, oid)
+		return fmt.Errorf("更新订单状态为'支付成功'失败: %w, uid: %d, osn: %s", err, uid, orderSN)
 	}
 	return err
 }
 
-func (o *orderRepository) FailOrder(ctx context.Context, uid, oid int64) error {
-	err := o.dao.SetOrderStatus(ctx, uid, oid, domain.StatusFailed.ToUint8())
+func (o *orderRepository) FailOrder(ctx context.Context, uid int64, orderSN string) error {
+	err := o.dao.SetOrderStatus(ctx, uid, orderSN, domain.StatusFailed.ToUint8())
 	if err != nil {
-		return fmt.Errorf("更新订单状态为'支付失败'失败: %w, uid: %d, oid: %d", err, uid, oid)
+		return fmt.Errorf("更新订单状态为'支付失败'失败: %w, uid: %d, osn: %s", err, uid, orderSN)
 	}
 	return err
 }

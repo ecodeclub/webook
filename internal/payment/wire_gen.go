@@ -8,22 +8,20 @@ package payment
 
 import (
 	"sync"
-	"time"
 
 	"github.com/ecodeclub/ecache"
 	"github.com/ecodeclub/mq-api"
 	"github.com/ecodeclub/webook/internal/credit"
 	"github.com/ecodeclub/webook/internal/payment/internal/domain"
 	"github.com/ecodeclub/webook/internal/payment/internal/event"
+	"github.com/ecodeclub/webook/internal/payment/internal/job"
 	"github.com/ecodeclub/webook/internal/payment/internal/repository"
 	"github.com/ecodeclub/webook/internal/payment/internal/repository/dao"
 	"github.com/ecodeclub/webook/internal/payment/internal/service"
-	credit2 "github.com/ecodeclub/webook/internal/payment/internal/service/credit"
 	"github.com/ecodeclub/webook/internal/payment/internal/service/wechat"
 	"github.com/ecodeclub/webook/internal/payment/internal/web"
 	"github.com/ecodeclub/webook/internal/payment/ioc"
 	"github.com/ecodeclub/webook/internal/pkg/sequencenumber"
-	"github.com/gotomicro/ego/core/elog"
 	"github.com/wechatpay-apiv3/wechatpay-go/core/notify"
 	"github.com/wechatpay-apiv3/wechatpay-go/services/payments/native"
 	"gorm.io/gorm"
@@ -38,48 +36,47 @@ func InitModule(db *gorm.DB, mq2 mq.MQ, c ecache.Cache, cm *credit.Module) (*Mod
 	client := ioc.InitWechatClient(wechatConfig)
 	nativeApiService := ioc.InitNativeApiService(client)
 	nativeAPIService := convertToNativeAPIService(nativeApiService)
+	nativePaymentService := ioc.InitWechatNativeService(nativeAPIService, wechatConfig)
+	serviceService := cm.Svc
+	generator := sequencenumber.NewGenerator()
 	daoPaymentDAO := initDAO(db)
 	paymentRepository := repository.NewPaymentRepository(daoPaymentDAO)
 	paymentEventProducer, err := initPaymentEventProducer(mq2)
 	if err != nil {
 		return nil, err
 	}
-	v := paymentDDLFunc()
-	component := initLogger()
-	nativePaymentService := ioc.InitWechatNativeService(nativeAPIService, paymentRepository, paymentEventProducer, v, component, wechatConfig)
-	webHandler := web.NewHandler(notifyHandler, nativePaymentService)
-	serviceService := cm.Svc
-	generator := sequencenumber.NewGenerator()
-	paymentService := credit2.NewCreditPaymentService(serviceService, paymentRepository, paymentEventProducer, v, generator, component)
-	service2 := service.NewService(nativePaymentService, paymentService, generator, paymentRepository)
+	service2 := service.NewService(nativePaymentService, serviceService, generator, paymentRepository, paymentEventProducer)
+	webHandler := web.NewHandler(notifyHandler, service2)
+	syncWechatOrderJob := initSyncWechatOrderJob(service2)
 	module := &Module{
-		Hdl: webHandler,
-		Svc: service2,
+		Hdl:                webHandler,
+		Svc:                service2,
+		SyncWechatOrderJob: syncWechatOrderJob,
 	}
 	return module, nil
 }
 
 // wire.go:
 
-type Handler = web.Handler
+type (
+	Handler            = web.Handler
+	Payment            = domain.Payment
+	Record             = domain.PaymentRecord
+	Channel            = domain.PaymentChannel
+	ChannelType        = domain.ChannelType
+	Service            = service.Service
+	SyncWechatOrderJob = job.SyncWechatOrderJob
+)
 
-type Payment = domain.Payment
+const (
+	ChannelTypeCredit = domain.ChannelTypeCredit
+	ChannelTypeWechat = domain.ChannelTypeWechat
 
-type Record = domain.PaymentRecord
-
-type Channel = domain.PaymentChannel
-
-type ChannelType = domain.ChannelType
-
-const ChannelTypeCredit = domain.ChannelTypeCredit
-
-const ChannelTypeWechat = domain.ChannelTypeWechat
-
-const PaymentStatusPaid = domain.PaymentStatusPaid
-
-const PaymentStatusFailed = domain.PaymentStatusFailed
-
-type Service = service.Service
+	StatusUnpaid      = domain.PaymentStatusUnpaid
+	StatusProcessing  = domain.PaymentStatusProcessing
+	StatusPaidSuccess = domain.PaymentStatusPaidSuccess
+	StatusPaidFailed  = domain.PaymentStatusPaidFailed
+)
 
 func convertToNotifyHandler(h *notify.Handler) wechat.NotifyHandler {
 	return h
@@ -95,17 +92,11 @@ var (
 )
 
 func initPaymentEventProducer(mq2 mq.MQ) (event.PaymentEventProducer, error) {
-	p, err := mq2.Producer("payment_events")
+	p, err := mq2.Producer(event.PaymentEventName)
 	if err != nil {
 		return nil, err
 	}
 	return event.NewPaymentEventProducer(p)
-}
-
-func paymentDDLFunc() func() int64 {
-	return func() int64 {
-		return time.Now().Add(time.Minute * 30).UnixMilli()
-	}
 }
 
 func initDAO(db *gorm.DB) dao.PaymentDAO {
@@ -116,6 +107,9 @@ func initDAO(db *gorm.DB) dao.PaymentDAO {
 	return paymentDAO
 }
 
-func initLogger() *elog.Component {
-	return elog.DefaultLogger
+func initSyncWechatOrderJob(svc service.Service) *SyncWechatOrderJob {
+	minutes := int64(30)
+	seconds := int64(10)
+	limit := 100
+	return job.NewSyncWechatOrderJob(svc, minutes, seconds, limit)
 }

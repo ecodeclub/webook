@@ -31,6 +31,8 @@ import (
 
 	"github.com/ecodeclub/webook/internal/question/internal/domain"
 
+	"gorm.io/gorm"
+
 	"github.com/ecodeclub/ekit/sqlx"
 	"github.com/ecodeclub/webook/internal/pkg/middleware"
 
@@ -757,6 +759,81 @@ func (s *HandlerTestSuite) removeId(ele event.AnswerElement) event.AnswerElement
 	require.True(s.T(), ele.ID != 0)
 	ele.ID = 0
 	return ele
+}
+
+func (s *HandlerTestSuite) TestDelete() {
+	testCases := []struct {
+		name string
+
+		qid    int64
+		before func(t *testing.T)
+		after  func(t *testing.T)
+
+		wantCode int
+		wantResp test.Result[any]
+	}{
+		{
+			name: "删除成功",
+			qid:  123,
+			before: func(t *testing.T) {
+				ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+				defer cancel()
+				var qid int64 = 123
+				// prepare data
+				_, err := s.dao.Sync(ctx, dao.Question{
+					Id: qid,
+				}, []dao.AnswerElement{
+					{
+						Qid: qid,
+					},
+				})
+				require.NoError(t, err)
+				err = s.db.Create(&dao.QuestionSetQuestion{
+					QID: qid,
+				}).Error
+				require.NoError(t, err)
+			},
+			after: func(t *testing.T) {
+				ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+				defer cancel()
+				var qid int64 = 123
+				_, _, err := s.dao.GetPubByID(ctx, qid)
+				assert.Equal(t, err, gorm.ErrRecordNotFound)
+				_, _, err = s.dao.GetByID(ctx, qid)
+				assert.Equal(t, err, gorm.ErrRecordNotFound)
+				var res []dao.QuestionSetQuestion
+				err = s.db.Where("qid = ?").Find(&res).Error
+				assert.NoError(t, err)
+				assert.Equal(t, 0, len(res))
+			},
+			wantCode: 200,
+			wantResp: test.Result[any]{},
+		},
+		{
+			name: "删除不存在的 Question",
+			qid:  124,
+			before: func(t *testing.T) {
+			},
+			after: func(t *testing.T) {
+			},
+			wantCode: 200,
+			wantResp: test.Result[any]{},
+		},
+	}
+
+	for _, tc := range testCases {
+		s.T().Run(tc.name, func(t *testing.T) {
+			req, err := http.NewRequest(http.MethodPost,
+				"/question/delete", iox.NewJSONReader(web.Qid{Qid: tc.qid}))
+			req.Header.Set("content-type", "application/json")
+			require.NoError(t, err)
+			recorder := test.NewJSONResponseRecorder[any]()
+			s.server.ServeHTTP(recorder, req)
+			require.Equal(t, tc.wantCode, recorder.Code)
+			assert.Equal(t, tc.wantResp, recorder.MustScan())
+		})
+	}
+
 }
 
 func (s *HandlerTestSuite) TestPubDetail() {
@@ -1894,43 +1971,4 @@ func (s *HandlerTestSuite) TestQuestionSet_ListAllQuestionSets() {
 
 func TestHandler(t *testing.T) {
 	suite.Run(t, new(HandlerTestSuite))
-}
-
-func (s *HandlerTestSuite) getMsgFromMq() (event.QuestionEvent, error) {
-	msg, err := s.consumer.Consume(context.Background())
-	if err != nil {
-		return event.QuestionEvent{}, err
-	}
-	var res event.QuestionEvent
-	err = json.Unmarshal(msg.Value, &res)
-	if err != nil {
-		return event.QuestionEvent{}, err
-	}
-	return event.QuestionEvent{}, nil
-}
-
-func (s *HandlerTestSuite) getQuestionFromMq() (event.Question, error) {
-	msg, err := s.getMsgFromMq()
-	if err != nil {
-		return event.Question{}, err
-	}
-	var res event.Question
-	err = json.Unmarshal([]byte(msg.Data), &res)
-	if err != nil {
-		return event.Question{}, err
-	}
-	return res, nil
-}
-
-func (s *HandlerTestSuite) getQuestionSetFromMq() (event.QuestionSet, error) {
-	msg, err := s.getMsgFromMq()
-	if err != nil {
-		return event.QuestionSet{}, err
-	}
-	var res event.QuestionSet
-	err = json.Unmarshal([]byte(msg.Data), &res)
-	if err != nil {
-		return event.QuestionSet{}, err
-	}
-	return res, nil
 }

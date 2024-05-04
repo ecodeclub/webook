@@ -41,15 +41,13 @@ func InitModule(db *gorm.DB, q mq.MQ, e ecache.Cache) (*Module, error) {
 
 // wire.go:
 
-type Credit = domain.Credit
-
-type CreditLog = domain.CreditLog
-
-type Service = service.Service
-
-type Handler = web.Handler
-
-type CloseTimeoutLockedCreditsJob = job.CloseTimeoutLockedCreditsJob
+type (
+	Credit                       = domain.Credit
+	CreditLog                    = domain.CreditLog
+	Service                      = service.Service
+	Handler                      = web.Handler
+	CloseTimeoutLockedCreditsJob = job.CloseTimeoutLockedCreditsJob
+)
 
 var (
 	once = &sync.Once{}

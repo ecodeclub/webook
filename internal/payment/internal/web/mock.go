@@ -22,6 +22,6 @@ import (
 )
 
 func (h *Handler) MockWechatCallback(ctx *ginx.Context, req payments.Transaction) (ginx.Result, error) {
-	err := h.nativeSvc.HandleCallback(ctx, &req)
+	err := h.svc.HandleWechatCallback(ctx, &req)
 	return ginx.Result{}, err
 }
