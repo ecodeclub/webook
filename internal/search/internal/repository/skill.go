@@ -30,31 +30,6 @@ func (s *skillRepo) SearchSkill(ctx context.Context, keywords string) ([]domain.
 	return ans, nil
 }
 
-func (sk *skillRepo) toSkillEntity(s domain.Skill) dao.Skill {
-	return dao.Skill{
-		ID:           s.ID,
-		Labels:       s.Labels,
-		Name:         s.Name,
-		Desc:         s.Desc,
-		Basic:        sk.toSkillLevelEntity(s.Basic),
-		Intermediate: sk.toSkillLevelEntity(s.Intermediate),
-		Advanced:     sk.toSkillLevelEntity(s.Advanced),
-		Ctime:        s.Ctime.UnixMilli(),
-		Utime:        s.Utime.UnixMilli(),
-	}
-}
-
-func (s *skillRepo) toSkillLevelEntity(sk domain.SkillLevel) dao.SkillLevel {
-	return dao.SkillLevel{
-		ID:        sk.ID,
-		Desc:      sk.Desc,
-		Ctime:     sk.Ctime.UnixMilli(),
-		Utime:     sk.Utime.UnixMilli(),
-		Questions: sk.Questions,
-		Cases:     sk.Cases,
-	}
-}
-
 func (sk *skillRepo) toSkillDomain(s dao.Skill) domain.Skill {
 	return domain.Skill{
 		ID:           s.ID,

@@ -90,7 +90,7 @@ type SearchResult struct {
 	QuestionSet []QuestionSet `json:"question_set,omitempty"`
 }
 
-func NewSearchResult(res domain.SearchResult) SearchResult {
+func NewSearchResult(res *domain.SearchResult) SearchResult {
 	var newResult SearchResult
 	for _, oldCase := range res.Cases {
 		newCase := Case{

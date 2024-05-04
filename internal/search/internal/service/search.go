@@ -15,17 +15,17 @@ type SearchService interface {
 	// 目前你可以认为，传递过来的就是 biz:all:xxxx
 	// 业务专属就是 biz:question:xxx 这种形态
 	// xxx 就是搜索的内容
-	Search(ctx context.Context, expr string) (domain.SearchResult, error)
+	Search(ctx context.Context, expr string) (*domain.SearchResult, error)
 }
 
 type searchSvc struct {
 	searchHandlers map[string]SearchHandler
 }
 
-func (s *searchSvc) Search(ctx context.Context, expr string) (domain.SearchResult, error) {
+func (s *searchSvc) Search(ctx context.Context, expr string) (*domain.SearchResult, error) {
 	biz, keywords, err := s.parseExpr(expr)
 	if err != nil {
-		return domain.SearchResult{}, err
+		return nil, err
 	}
 	var eg errgroup.Group
 	res := &domain.SearchResult{}
@@ -37,19 +37,19 @@ func (s *searchSvc) Search(ctx context.Context, expr string) (domain.SearchResul
 			})
 		}
 		if err = eg.Wait(); err != nil {
-			return domain.SearchResult{}, err
+			return nil, err
 		}
 	} else {
 		bizhandler, ok := s.searchHandlers[biz]
 		if !ok {
-			return domain.SearchResult{}, errors.New("无相关的业务处理方式")
+			return nil, errors.New("无相关的业务处理方式")
 		}
 		err = bizhandler.search(ctx, keywords, res)
 		if err != nil {
-			return domain.SearchResult{}, err
+			return nil, err
 		}
 	}
-	return *res, nil
+	return res, nil
 
 }
 func (s *searchSvc) parseExpr(expr string) (string, string, error) {

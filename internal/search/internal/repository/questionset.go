@@ -30,17 +30,6 @@ func (q *questionSetRepo) SearchQuestionSet(ctx context.Context, keywords string
 	return ans, nil
 }
 
-func (*questionSetRepo) toEntity(qs domain.QuestionSet) dao.QuestionSet {
-	return dao.QuestionSet{
-		Id:          qs.Id,
-		Uid:         qs.Uid,
-		Title:       qs.Title,
-		Description: qs.Description,
-		Questions:   qs.Questions,
-		Utime:       qs.Utime.UnixMilli(),
-	}
-}
-
 func (*questionSetRepo) toDomain(qs dao.QuestionSet) domain.QuestionSet {
 	return domain.QuestionSet{
 		Id:          qs.Id,

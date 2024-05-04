@@ -29,34 +29,6 @@ func (q *questionRepository) SearchQuestion(ctx context.Context, keywords string
 	return ans, nil
 }
 
-func (que *questionRepository) questionToEntity(q domain.Question) dao.Question {
-	return dao.Question{
-		ID:      q.ID,
-		UID:     q.UID,
-		Title:   q.Title,
-		Labels:  q.Labels,
-		Content: q.Content,
-		Status:  q.Status,
-		Answer: dao.Answer{
-			Analysis:     que.ansToEntity(q.Answer.Analysis),
-			Basic:        que.ansToEntity(q.Answer.Basic),
-			Intermediate: que.ansToEntity(q.Answer.Intermediate),
-			Advanced:     que.ansToEntity(q.Answer.Advanced),
-		},
-	}
-}
-
-func (*questionRepository) ansToEntity(q domain.AnswerElement) dao.AnswerElement {
-	return dao.AnswerElement{
-		ID:        q.ID,
-		Content:   q.Content,
-		Keywords:  q.Keywords,
-		Shorthand: q.Shorthand,
-		Highlight: q.Highlight,
-		Guidance:  q.Guidance,
-	}
-}
-
 func (q *questionRepository) questionToDomain(que dao.Question) domain.Question {
 	return domain.Question{
 		ID:      que.ID,
