@@ -28,6 +28,8 @@ type ProductDAO interface {
 	FindSPUBySN(ctx context.Context, sn string) (SPU, error)
 	FindSKUBySN(ctx context.Context, sn string) (SKU, error)
 	FindSKUsBySPUID(ctx context.Context, spuId int64) ([]SKU, error)
+	FindCategoryByID(ctx context.Context, id int64) (Category, error)
+	CreateCategory(ctx context.Context, c Category) (int64, error)
 	CreateSPU(ctx context.Context, spu SPU) (int64, error)
 	CreateSKU(ctx context.Context, sku SKU) (int64, error)
 }
@@ -64,6 +66,18 @@ func (d *ProductGORMDAO) FindSKUsBySPUID(ctx context.Context, spuId int64) ([]SK
 		Order("ctime DESC").
 		Find(&res).Error
 	return res, err
+}
+
+func (d *ProductGORMDAO) FindCategoryByID(ctx context.Context, id int64) (Category, error) {
+	var c Category
+	err := d.db.WithContext(ctx).Where("id = ?", id).First(&c).Error
+	return c, err
+}
+
+func (d *ProductGORMDAO) CreateCategory(ctx context.Context, c Category) (int64, error) {
+	now := time.Now()
+	c.Ctime, c.Utime = now.UnixMilli(), now.UnixMilli()
+	return c.Id, d.db.WithContext(ctx).Create(&c).Error
 }
 
 func (d *ProductGORMDAO) CreateSPU(ctx context.Context, spu SPU) (int64, error) {
