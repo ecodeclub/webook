@@ -3,6 +3,8 @@
 package startup
 
 import (
+	"sync"
+
 	"github.com/ecodeclub/ecache"
 	"github.com/ecodeclub/webook/internal/cases"
 	baguwen "github.com/ecodeclub/webook/internal/question"
@@ -16,7 +18,6 @@ import (
 	"github.com/ego-component/egorm"
 	"github.com/google/wire"
 	"gorm.io/gorm"
-	"sync"
 )
 
 func InitHandler(bm *baguwen.Module, cm *cases.Module, p event.SyncEventProducer) (*web.Handler, error) {

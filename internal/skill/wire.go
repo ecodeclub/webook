@@ -17,9 +17,10 @@
 package skill
 
 import (
+	"sync"
+
 	"github.com/ecodeclub/mq-api"
 	"github.com/ecodeclub/webook/internal/skill/internal/event"
-	"sync"
 
 	"github.com/ecodeclub/webook/internal/cases"
 	baguwen "github.com/ecodeclub/webook/internal/question"

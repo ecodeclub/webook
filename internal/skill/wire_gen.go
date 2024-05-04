@@ -7,10 +7,12 @@
 package skill
 
 import (
+	"sync"
+
 	"github.com/ecodeclub/ecache"
 	"github.com/ecodeclub/mq-api"
 	"github.com/ecodeclub/webook/internal/cases"
-	"github.com/ecodeclub/webook/internal/question"
+	baguwen "github.com/ecodeclub/webook/internal/question"
 	"github.com/ecodeclub/webook/internal/skill/internal/event"
 	"github.com/ecodeclub/webook/internal/skill/internal/repository"
 	"github.com/ecodeclub/webook/internal/skill/internal/repository/cache"
@@ -19,7 +21,6 @@ import (
 	"github.com/ecodeclub/webook/internal/skill/internal/web"
 	"github.com/ego-component/egorm"
 	"gorm.io/gorm"
-	"sync"
 )
 
 // Injectors from wire.go:

@@ -20,14 +20,15 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/ecodeclub/webook/internal/question/internal/event"
-	eveMocks "github.com/ecodeclub/webook/internal/question/internal/event/mocks"
-	"go.uber.org/mock/gomock"
 	"net/http"
 	"strconv"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/ecodeclub/webook/internal/question/internal/event"
+	eveMocks "github.com/ecodeclub/webook/internal/question/internal/event/mocks"
+	"go.uber.org/mock/gomock"
 
 	"github.com/ecodeclub/webook/internal/question/internal/domain"
 

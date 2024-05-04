@@ -17,9 +17,10 @@
 package baguwen
 
 import (
+	"sync"
+
 	"github.com/ecodeclub/mq-api"
 	"github.com/ecodeclub/webook/internal/question/internal/event"
-	"sync"
 
 	"github.com/ecodeclub/ecache"
 

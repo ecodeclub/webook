@@ -7,19 +7,20 @@
 package startup
 
 import (
+	"sync"
+
 	"github.com/ecodeclub/ecache"
 	"github.com/ecodeclub/webook/internal/cases"
-	"github.com/ecodeclub/webook/internal/question"
+	baguwen "github.com/ecodeclub/webook/internal/question"
 	"github.com/ecodeclub/webook/internal/skill/internal/event"
 	"github.com/ecodeclub/webook/internal/skill/internal/repository"
 	"github.com/ecodeclub/webook/internal/skill/internal/repository/cache"
 	"github.com/ecodeclub/webook/internal/skill/internal/repository/dao"
 	"github.com/ecodeclub/webook/internal/skill/internal/service"
 	"github.com/ecodeclub/webook/internal/skill/internal/web"
-	"github.com/ecodeclub/webook/internal/test/ioc"
+	testioc "github.com/ecodeclub/webook/internal/test/ioc"
 	"github.com/ego-component/egorm"
 	"gorm.io/gorm"
-	"sync"
 )
 
 // Injectors from wire.go:
