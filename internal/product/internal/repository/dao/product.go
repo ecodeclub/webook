@@ -28,6 +28,8 @@ type ProductDAO interface {
 	FindSPUBySN(ctx context.Context, sn string) (SPU, error)
 	FindSKUBySN(ctx context.Context, sn string) (SKU, error)
 	FindSKUsBySPUID(ctx context.Context, spuId int64) ([]SKU, error)
+	FindCategoryByID(ctx context.Context, id int64) (Category, error)
+	CreateCategory(ctx context.Context, c Category) (int64, error)
 	CreateSPU(ctx context.Context, spu SPU) (int64, error)
 	CreateSKU(ctx context.Context, sku SKU) (int64, error)
 }
@@ -66,6 +68,18 @@ func (d *ProductGORMDAO) FindSKUsBySPUID(ctx context.Context, spuId int64) ([]SK
 	return res, err
 }
 
+func (d *ProductGORMDAO) FindCategoryByID(ctx context.Context, id int64) (Category, error) {
+	var c Category
+	err := d.db.WithContext(ctx).Where("id = ?", id).First(&c).Error
+	return c, err
+}
+
+func (d *ProductGORMDAO) CreateCategory(ctx context.Context, c Category) (int64, error) {
+	now := time.Now()
+	c.Ctime, c.Utime = now.UnixMilli(), now.UnixMilli()
+	return c.Id, d.db.WithContext(ctx).Create(&c).Error
+}
+
 func (d *ProductGORMDAO) CreateSPU(ctx context.Context, spu SPU) (int64, error) {
 	now := time.Now()
 	spu.Utime, spu.Ctime = now.UnixMilli(), now.UnixMilli()
@@ -78,8 +92,17 @@ func (d *ProductGORMDAO) CreateSKU(ctx context.Context, sku SKU) (int64, error) 
 	return sku.Id, d.db.WithContext(ctx).Create(&sku).Error
 }
 
+type Category struct {
+	Id          int64  `gorm:"primaryKey;autoIncrement;comment:商品类别自增ID"`
+	Name        string `gorm:"type:varchar(255);not null;comment:商品类别名称"`
+	Description string `gorm:"not null;comment:商品类别描述"`
+	Ctime       int64
+	Utime       int64
+}
+
 type SPU struct {
 	Id          int64  `gorm:"primaryKey;autoIncrement;comment:商品SPU自增ID"`
+	CategoryId  int64  `gorm:"not null;index:idx_category_id;comment:商品类别自增ID"`
 	SN          string `gorm:"type:varchar(255);not null;uniqueIndex:uniq_product_spu_sn;comment:商品SPU序列号"`
 	Name        string `gorm:"type:varchar(255);not null;comment:商品名称"`
 	Description string `gorm:"not null; comment:商品描述"`

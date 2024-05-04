@@ -47,6 +47,10 @@ func (h *Handler) RetrieveSPUDetail(ctx *ginx.Context, req SNReq, _ session.Sess
 			SN:   spu.SN,
 			Name: spu.Name,
 			Desc: spu.Desc,
+			Category: Category{
+				Name: spu.Category.Name,
+				Desc: spu.Category.Desc,
+			},
 			SKUs: slice.Map(spu.SKUs, func(idx int, src domain.SKU) SKU {
 				return h.toSKU(src)
 			}),

@@ -45,19 +45,27 @@ func (p *productRepository) FindSPUBySN(ctx context.Context, sn string) (domain.
 	if err != nil {
 		return domain.SPU{}, err
 	}
+	c, err := p.dao.FindCategoryByID(ctx, spu.CategoryId)
+	if err != nil {
+		return domain.SPU{}, err
+	}
 	skus, err := p.dao.FindSKUsBySPUID(ctx, spu.Id)
 	if err != nil {
 		return domain.SPU{}, err
 	}
-	return p.toDomainSPU(spu, skus), err
+	return p.toDomainSPU(c, spu, skus), err
 }
 
-func (p *productRepository) toDomainSPU(spu dao.SPU, skus []dao.SKU) domain.SPU {
+func (p *productRepository) toDomainSPU(c dao.Category, spu dao.SPU, skus []dao.SKU) domain.SPU {
 	return domain.SPU{
-		ID:     spu.Id,
-		SN:     spu.SN,
-		Name:   spu.Name,
-		Desc:   spu.Description,
+		ID:   spu.Id,
+		SN:   spu.SN,
+		Name: spu.Name,
+		Desc: spu.Description,
+		Category: domain.Category{
+			Name: c.Name,
+			Desc: c.Description,
+		},
 		Status: domain.Status(spu.Status),
 		SKUs: slice.Map(skus, func(idx int, src dao.SKU) domain.SKU {
 			return p.toDomainSKU(src)
@@ -87,11 +95,15 @@ func (p *productRepository) FindSPUByID(ctx context.Context, id int64) (domain.S
 	if err != nil {
 		return domain.SPU{}, err
 	}
+	c, err := p.dao.FindCategoryByID(ctx, spu.CategoryId)
+	if err != nil {
+		return domain.SPU{}, err
+	}
 	skus, err := p.dao.FindSKUsBySPUID(ctx, spu.Id)
 	if err != nil {
 		return domain.SPU{}, err
 	}
-	return p.toDomainSPU(spu, skus), err
+	return p.toDomainSPU(c, spu, skus), err
 }
 
 func (p *productRepository) FindSKUBySN(ctx context.Context, sn string) (domain.SKU, error) {
