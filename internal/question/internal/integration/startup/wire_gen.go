@@ -8,13 +8,13 @@ package startup
 
 import (
 	"github.com/ecodeclub/ecache"
-	"github.com/ecodeclub/webook/internal/question"
+	baguwen "github.com/ecodeclub/webook/internal/question"
 	"github.com/ecodeclub/webook/internal/question/internal/event"
 	"github.com/ecodeclub/webook/internal/question/internal/repository"
 	"github.com/ecodeclub/webook/internal/question/internal/repository/cache"
 	"github.com/ecodeclub/webook/internal/question/internal/service"
 	"github.com/ecodeclub/webook/internal/question/internal/web"
-	"github.com/ecodeclub/webook/internal/test/ioc"
+	testioc "github.com/ecodeclub/webook/internal/test/ioc"
 	"gorm.io/gorm"
 )
 
