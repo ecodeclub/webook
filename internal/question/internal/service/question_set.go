@@ -16,6 +16,8 @@ package service
 
 import (
 	"context"
+	"github.com/ecodeclub/webook/internal/question/internal/event"
+	"github.com/gotomicro/ego/core/elog"
 
 	"github.com/ecodeclub/webook/internal/question/internal/domain"
 	"github.com/ecodeclub/webook/internal/question/internal/repository"
@@ -30,22 +32,41 @@ type QuestionSetService interface {
 }
 
 type questionSetService struct {
-	repo repository.QuestionSetRepository
+	repo     repository.QuestionSetRepository
+	producer event.SyncEventProducer
+	logger   *elog.Component
 }
 
-func NewQuestionSetService(repo repository.QuestionSetRepository) QuestionSetService {
-	return &questionSetService{repo: repo}
+func NewQuestionSetService(repo repository.QuestionSetRepository, producer event.SyncEventProducer) QuestionSetService {
+	return &questionSetService{
+		repo:     repo,
+		producer: producer,
+		logger:   elog.DefaultLogger,
+	}
 }
 
 func (q *questionSetService) Save(ctx context.Context, set domain.QuestionSet) (int64, error) {
+	var id = set.Id
+	var err error
 	if set.Id > 0 {
-		return set.Id, q.repo.UpdateNonZero(ctx, set)
+		err = q.repo.UpdateNonZero(ctx, set)
+	} else {
+		id, err = q.repo.Create(ctx, set)
 	}
-	return q.repo.Create(ctx, set)
+	if err != nil {
+		return 0, err
+	}
+	q.syncQuestionSet(id)
+	return id, nil
 }
 
 func (q *questionSetService) UpdateQuestions(ctx context.Context, set domain.QuestionSet) error {
-	return q.repo.UpdateQuestions(ctx, set)
+	err := q.repo.UpdateQuestions(ctx, set)
+	if err != nil {
+		return err
+	}
+	q.syncQuestionSet(set.Id)
+	return nil
 }
 
 func (q *questionSetService) Detail(ctx context.Context, id int64) (domain.QuestionSet, error) {
@@ -70,4 +91,24 @@ func (q *questionSetService) List(ctx context.Context, offset, limit int) ([]dom
 		return err
 	})
 	return qs, total, eg.Wait()
+}
+
+func (q *questionSetService) syncQuestionSet(id int64) {
+	ctx, cancel := context.WithTimeout(context.Background(), defaultSyncTimeout)
+	defer cancel()
+	qSet, err := q.repo.GetByID(ctx, id)
+	if err != nil {
+		q.logger.Error("发送同步搜索信息",
+			elog.FieldErr(err),
+		)
+		return
+	}
+	evt := event.NewQuestionSetEvent(qSet)
+	err = q.producer.Produce(ctx, evt)
+	if err != nil {
+		q.logger.Error("发送同步搜索信息",
+			elog.FieldErr(err),
+			elog.Any("event", evt),
+		)
+	}
 }

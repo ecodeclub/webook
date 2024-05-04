@@ -5,6 +5,9 @@ package cases
 import (
 	"sync"
 
+	"github.com/ecodeclub/mq-api"
+	"github.com/ecodeclub/webook/internal/cases/internal/event"
+
 	"github.com/ecodeclub/webook/internal/cases/internal/domain"
 
 	"github.com/ecodeclub/ecache"
@@ -18,10 +21,11 @@ import (
 	"gorm.io/gorm"
 )
 
-func InitModule(db *egorm.Component, ec ecache.Cache) (*Module, error) {
+func InitModule(db *egorm.Component, ec ecache.Cache, q mq.MQ) (*Module, error) {
 	wire.Build(InitCaseDAO,
 		cache.NewCaseCache,
 		repository.NewCaseRepo,
+		initSyncEventProducer,
 		NewService,
 		web.NewHandler,
 		wire.Struct(new(Module), "*"),
@@ -40,13 +44,20 @@ func InitTableOnce(db *gorm.DB) {
 	})
 }
 
-func NewService(repo repository.CaseRepo) Service {
-	return service.NewService(repo)
+func NewService(repo repository.CaseRepo, producer event.SyncEventProducer) Service {
+	return service.NewService(repo, producer)
 }
 
 func InitCaseDAO(db *egorm.Component) dao.CaseDAO {
 	InitTableOnce(db)
 	return dao.NewCaseDao(db)
+}
+func initSyncEventProducer(q mq.MQ) event.SyncEventProducer {
+	producer, err := event.NewSyncEventProducer(q)
+	if err != nil {
+		panic(err)
+	}
+	return producer
 }
 
 type Handler = web.Handler

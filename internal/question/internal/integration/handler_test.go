@@ -18,9 +18,14 @@ package integration
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"github.com/ecodeclub/webook/internal/question/internal/event"
+	eveMocks "github.com/ecodeclub/webook/internal/question/internal/event/mocks"
+	"go.uber.org/mock/gomock"
 	"net/http"
 	"strconv"
+	"sync"
 	"testing"
 	"time"
 
@@ -57,6 +62,8 @@ type HandlerTestSuite struct {
 	rdb            ecache.Cache
 	dao            dao.QuestionDAO
 	questionSetDAO dao.QuestionSetDAO
+	ctrl           *gomock.Controller
+	producer       *eveMocks.MockSyncEventProducer
 }
 
 func (s *HandlerTestSuite) TearDownSuite() {
@@ -96,11 +103,12 @@ func (s *HandlerTestSuite) TearDownTest() {
 }
 
 func (s *HandlerTestSuite) SetupSuite() {
-	handler, err := startup.InitHandler()
+	s.ctrl = gomock.NewController(s.T())
+	s.producer = eveMocks.NewMockSyncEventProducer(s.ctrl)
+	handler, err := startup.InitHandler(s.producer)
 	require.NoError(s.T(), err)
-	questionSetHandler, err := startup.InitQuestionSetHandler()
+	questionSetHandler, err := startup.InitQuestionSetHandler(s.producer)
 	require.NoError(s.T(), err)
-
 	econf.Set("server", map[string]any{"contextTimeout": "1s"})
 	server := egin.Load("server").Build()
 
@@ -144,7 +152,7 @@ func (s *HandlerTestSuite) TestSave() {
 			//
 			name: "全部新建",
 			before: func(t *testing.T) {
-
+				s.producer.EXPECT().Produce(gomock.Any(), gomock.Any()).Return(nil)
 			},
 			after: func(t *testing.T) {
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
@@ -199,6 +207,7 @@ func (s *HandlerTestSuite) TestSave() {
 			//
 			name: "部分更新",
 			before: func(t *testing.T) {
+				s.producer.EXPECT().Produce(gomock.Any(), gomock.Any()).Return(nil)
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 				defer cancel()
 				err := s.db.WithContext(ctx).Create(&dao.Question{
@@ -402,7 +411,7 @@ func (s *HandlerTestSuite) TestSync() {
 			//
 			name: "全部新建",
 			before: func(t *testing.T) {
-
+				s.producer.EXPECT().Produce(gomock.Any(), gomock.Any()).Return(nil)
 			},
 			after: func(t *testing.T) {
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
@@ -436,6 +445,7 @@ func (s *HandlerTestSuite) TestSync() {
 			//
 			name: "部分更新",
 			before: func(t *testing.T) {
+				s.producer.EXPECT().Produce(gomock.Any(), gomock.Any()).Return(nil)
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 				defer cancel()
 				err := s.db.WithContext(ctx).Create(&dao.Question{
@@ -742,8 +752,10 @@ func (s *HandlerTestSuite) TestQuestionSet_Save() {
 		wantResp test.Result[int64]
 	}{
 		{
-			name:   "创建成功1",
-			before: func(t *testing.T) {},
+			name: "创建成功1",
+			before: func(t *testing.T) {
+				s.producer.EXPECT().Produce(gomock.Any(), gomock.Any()).Return(nil)
+			},
 			after: func(t *testing.T) {
 				t.Helper()
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
@@ -769,6 +781,7 @@ func (s *HandlerTestSuite) TestQuestionSet_Save() {
 		{
 			name: "创建成功2",
 			before: func(t *testing.T) {
+				s.producer.EXPECT().Produce(gomock.Any(), gomock.Any()).Return(nil)
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 				defer cancel()
 				err := s.db.WithContext(ctx).Create(dao.QuestionSet{
@@ -847,6 +860,7 @@ func (s *HandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 			name: "空题集_添加多个问题",
 			before: func(t *testing.T) {
 				t.Helper()
+				s.producer.EXPECT().Produce(gomock.Any(), gomock.Any()).Return(nil)
 
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 				defer cancel()
@@ -932,6 +946,7 @@ func (s *HandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 			name: "非空题集_添加多个问题",
 			before: func(t *testing.T) {
 				t.Helper()
+				s.producer.EXPECT().Produce(gomock.Any(), gomock.Any()).Return(nil)
 
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 				defer cancel()
@@ -1034,6 +1049,7 @@ func (s *HandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 			name: "非空题集_删除全部问题",
 			before: func(t *testing.T) {
 				t.Helper()
+				s.producer.EXPECT().Produce(gomock.Any(), gomock.Any()).Return(nil)
 
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 				defer cancel()
@@ -1106,6 +1122,7 @@ func (s *HandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 			name: "非空题集_删除部分问题",
 			before: func(t *testing.T) {
 				t.Helper()
+				s.producer.EXPECT().Produce(gomock.Any(), gomock.Any()).Return(nil)
 
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 				defer cancel()
@@ -1187,6 +1204,7 @@ func (s *HandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 			name: "同时添加/删除部分问题",
 			before: func(t *testing.T) {
 				t.Helper()
+				s.producer.EXPECT().Produce(gomock.Any(), gomock.Any()).Return(nil)
 
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 				defer cancel()
@@ -1750,6 +1768,191 @@ func (s *HandlerTestSuite) TestQuestionSet_ListAllQuestionSets() {
 			require.Equal(t, tc.wantCode, recorder.Code)
 			assert.Equal(t, tc.wantResp, recorder.MustScan())
 		})
+	}
+}
+
+func (s *HandlerTestSuite) TestQuestionEvent() {
+	t := s.T()
+	ans := make([]event.Question, 0, 16)
+	mu := sync.RWMutex{}
+	s.producer.EXPECT().Produce(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, questionEvent event.QuestionEvent) error {
+		var eve event.Question
+		err := json.Unmarshal([]byte(questionEvent.Data), &eve)
+		if err != nil {
+			return err
+		}
+		mu.Lock()
+		ans = append(ans, eve)
+		mu.Unlock()
+		return nil
+	}).Times(2)
+	// 保存
+	saveReq := web.SaveReq{
+		Question: web.Question{
+			Title:        "面试题1",
+			Content:      "新的内容",
+			Analysis:     s.buildAnswerEle(1),
+			Basic:        s.buildAnswerEle(2),
+			Intermediate: s.buildAnswerEle(3),
+			Advanced:     s.buildAnswerEle(4),
+		},
+	}
+	req, err := http.NewRequest(http.MethodPost,
+		"/question/save", iox.NewJSONReader(saveReq))
+	req.Header.Set("content-type", "application/json")
+	require.NoError(t, err)
+	recorder := test.NewJSONResponseRecorder[int64]()
+	s.server.ServeHTTP(recorder, req)
+
+	require.Equal(t, 200, recorder.Code)
+
+	// 发布
+	syncReq := &web.SaveReq{
+		Question: web.Question{
+			Title:        "面试题2",
+			Content:      "面试题内容",
+			Analysis:     s.buildAnswerEle(0),
+			Basic:        s.buildAnswerEle(1),
+			Intermediate: s.buildAnswerEle(2),
+			Advanced:     s.buildAnswerEle(3),
+		},
+	}
+	req2, err := http.NewRequest(http.MethodPost,
+		"/question/publish", iox.NewJSONReader(syncReq))
+	req2.Header.Set("content-type", "application/json")
+	require.NoError(t, err)
+	recorder = test.NewJSONResponseRecorder[int64]()
+	s.server.ServeHTTP(recorder, req2)
+	require.Equal(t, 200, recorder.Code)
+	time.Sleep(1 * time.Second)
+	for idx := range ans {
+		ans[idx].ID = 0
+		ans[idx].Utime = 0
+		ans[idx].Answer = event.Answer{
+			Analysis:     s.removeId(ans[idx].Answer.Analysis),
+			Basic:        s.removeId(ans[idx].Answer.Basic),
+			Intermediate: s.removeId(ans[idx].Answer.Intermediate),
+			Advanced:     s.removeId(ans[idx].Answer.Advanced),
+		}
+	}
+	assert.Equal(t, []event.Question{
+		{
+			Title:   "面试题1",
+			Content: "新的内容",
+			UID:     uid,
+			Status:  1,
+			Answer: event.Answer{
+				Analysis:     s.buildEventEle(1),
+				Basic:        s.buildEventEle(2),
+				Intermediate: s.buildEventEle(3),
+				Advanced:     s.buildEventEle(4),
+			},
+		},
+		{
+			Title:   "面试题2",
+			UID:     uid,
+			Content: "面试题内容",
+			Status:  2,
+			Answer: event.Answer{
+				Analysis:     s.buildEventEle(0),
+				Basic:        s.buildEventEle(1),
+				Intermediate: s.buildEventEle(2),
+				Advanced:     s.buildEventEle(3),
+			},
+		},
+	}, ans)
+}
+
+func (s *HandlerTestSuite) TestQuestionSetEvent() {
+	t := s.T()
+	ans := make([]event.QuestionSet, 0, 16)
+	mu := &sync.RWMutex{}
+	s.producer.EXPECT().Produce(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, questionEvent event.QuestionEvent) error {
+		var eve event.QuestionSet
+		err := json.Unmarshal([]byte(questionEvent.Data), &eve)
+		if err != nil {
+			return err
+		}
+		mu.Lock()
+		ans = append(ans, eve)
+		mu.Unlock()
+		return nil
+	}).Times(2)
+
+	_, err := s.dao.Create(context.Background(), dao.Question{
+		Id: 1,
+	}, []dao.AnswerElement{
+		{
+			Content: "ele",
+		},
+	})
+	require.NoError(t, err)
+	_, err = s.dao.Create(context.Background(), dao.Question{
+		Id: 2,
+	}, []dao.AnswerElement{
+		{
+			Content: "ele",
+		},
+	})
+	require.NoError(t, err)
+	// 保存
+	saveReq := web.SaveQuestionSetReq{
+		Title:       "questionSet1",
+		Description: "question_description1",
+	}
+	req, err := http.NewRequest(http.MethodPost,
+		"/question-sets/save", iox.NewJSONReader(saveReq))
+	req.Header.Set("content-type", "application/json")
+	require.NoError(t, err)
+	recorder := test.NewJSONResponseRecorder[int64]()
+	s.server.ServeHTTP(recorder, req)
+	require.Equal(t, 200, recorder.Code)
+	// 更新
+	syncReq := &web.UpdateQuestionsOfQuestionSetReq{
+		QSID: 1,
+		QIDs: []int64{1, 2},
+	}
+	req2, err := http.NewRequest(http.MethodPost,
+		"/question-sets/questions/save", iox.NewJSONReader(syncReq))
+	req2.Header.Set("content-type", "application/json")
+	require.NoError(t, err)
+	recorder = test.NewJSONResponseRecorder[int64]()
+	s.server.ServeHTTP(recorder, req2)
+	require.Equal(t, 200, recorder.Code)
+	time.Sleep(1 * time.Second)
+	for idx := range ans {
+		ans[idx].Id = 0
+		ans[idx].Utime = 0
+	}
+	assert.Equal(t, []event.QuestionSet{
+		{
+			Uid:         uid,
+			Title:       "questionSet1",
+			Description: "question_description1",
+			Questions:   []int64{},
+		},
+		{
+			Uid:         uid,
+			Title:       "questionSet1",
+			Description: "question_description1",
+			Questions:   []int64{1, 2},
+		},
+	}, ans)
+}
+
+func (s *HandlerTestSuite) removeId(ele event.AnswerElement) event.AnswerElement {
+	require.True(s.T(), ele.ID != 0)
+	ele.ID = 0
+	return ele
+}
+
+func (s *HandlerTestSuite) buildEventEle(idx int64) event.AnswerElement {
+	return event.AnswerElement{
+		Content:   fmt.Sprintf("这是解析 %d", idx),
+		Keywords:  fmt.Sprintf("关键字 %d", idx),
+		Shorthand: fmt.Sprintf("快速记忆法 %d", idx),
+		Highlight: fmt.Sprintf("亮点 %d", idx),
+		Guidance:  fmt.Sprintf("引导点 %d", idx),
 	}
 }
 

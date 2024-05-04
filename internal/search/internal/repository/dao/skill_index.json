@@ -1,0 +1,42 @@
+{
+  "mappings": {
+    "properties": {
+      "id": { "type": "long" },
+      "labels": { "type": "text" },
+      "name": { "type": "text" },
+      "desc": { "type": "text" },
+      "basic": {
+        "properties": {
+          "id": { "type": "long" },
+          "desc": { "type": "text" },
+          "ctime": { "type": "long" },
+          "utime": { "type": "long" },
+          "questions": { "type": "long" },
+          "cases": { "type": "long" }
+        }
+      },
+      "intermediate": {
+        "properties": {
+          "id": { "type": "long" },
+          "desc": { "type": "text" },
+          "ctime": { "type": "long" },
+          "utime": { "type": "long" },
+          "questions": { "type": "long" },
+          "cases": { "type": "long" }
+        }
+      },
+      "advanced": {
+        "properties": {
+          "id": { "type": "long" },
+          "desc": { "type": "text" },
+          "ctime": { "type": "long" },
+          "utime": { "type": "long" },
+          "questions": { "type": "long" },
+          "cases": { "type": "long" }
+        }
+      },
+      "ctime": { "type": "long" },
+      "utime": { "type": "long" }
+    }
+  }
+}
