@@ -274,7 +274,18 @@ func (s *OrderModuleTestSuite) getProductMockService() *productmocks.MockService
 			Name: "商品SPU100",
 			Desc: "商品SKU100",
 			SKUs: []product.SKU{
-				skus["SKU100"],
+				{
+					ID:       100,
+					SPUID:    100,
+					SN:       "SKU100",
+					Image:    "SKUImage100",
+					Name:     "商品SKU100",
+					Desc:     "商品SKU100",
+					Price:    990,
+					Stock:    10,
+					SaleType: product.SaleTypeUnlimited, // 无限制
+					Status:   product.StatusOnShelf,
+				},
 			},
 			Status: product.StatusOnShelf,
 		},
@@ -284,7 +295,18 @@ func (s *OrderModuleTestSuite) getProductMockService() *productmocks.MockService
 			Name: "商品SPU101",
 			Desc: "商品SKU101",
 			SKUs: []product.SKU{
-				skus["SKU101"],
+				{
+					ID:       101,
+					SPUID:    101,
+					SN:       "SKU101",
+					Image:    "SKUImage101",
+					Name:     "商品SKU101",
+					Desc:     "商品SKU101",
+					Price:    9900,
+					Stock:    1,
+					SaleType: product.SaleTypeUnlimited, // 无限制
+					Status:   product.StatusOnShelf,
+				},
 			},
 			Status: product.StatusOnShelf,
 		},
@@ -333,6 +355,8 @@ func (s *OrderModuleTestSuite) TearDownTest() {
 
 func (s *OrderModuleTestSuite) TestHandler_PreviewOrder() {
 	t := s.T()
+	t.Skip()
+
 	testCases := []struct {
 		name string
 
@@ -398,6 +422,8 @@ func (s *OrderModuleTestSuite) TestHandler_PreviewOrder() {
 
 func (s *OrderModuleTestSuite) TestHandler_PreviewOrderFailed() {
 	t := s.T()
+	t.Skip()
+
 	testCases := []struct {
 		name string
 
@@ -469,8 +495,328 @@ func (s *OrderModuleTestSuite) TestHandler_PreviewOrderFailed() {
 	}
 }
 
+func (s *OrderModuleTestSuite) TestHandler_PreviewOrderV1() {
+	t := s.T()
+
+	testCases := []struct {
+		name       string
+		newGinFunc func(t *testing.T, ctrl *gomock.Controller) *egin.Component
+		req        web.PreviewOrderReq
+		wantCode   int
+		wantResp   test.Result[web.PreviewOrderResp]
+	}{
+		{
+			name: "获取成功",
+			newGinFunc: func(t *testing.T, ctrl *gomock.Controller) *egin.Component {
+				t.Helper()
+				return s.newGinServer(s.previewOrderHandler(t, ctrl))
+			},
+			req: web.PreviewOrderReq{
+				SKUs: []web.SKU{
+					{
+						SN:       "SKU100",
+						Quantity: 1,
+					},
+				},
+			},
+			wantCode: 200,
+			wantResp: test.Result[web.PreviewOrderResp]{
+				Data: web.PreviewOrderResp{
+					Order: web.Order{
+						Payment: web.Payment{
+							Items: []web.PaymentItem{
+								{Type: int64(payment.ChannelTypeCredit)},
+								{Type: int64(payment.ChannelTypeWechat)},
+							},
+						},
+						OriginalTotalAmt: 990,
+						RealTotalAmt:     990,
+						Items: []web.OrderItem{
+							{
+								SKU: web.SKU{
+									SN:            "SKU100",
+									Image:         "SKUImage100",
+									Name:          "商品SKU100",
+									Desc:          "商品SKU100",
+									OriginalPrice: 990,
+									RealPrice:     990,
+									Quantity:      1,
+								},
+							},
+						},
+					},
+					Credits: 1000,
+					Policy:  "请注意: 虚拟商品、一旦支付成功不退、不换,请谨慎操作",
+				},
+			},
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+			req, err := http.NewRequest(http.MethodPost,
+				"/order/preview", iox.NewJSONReader(tc.req))
+			req.Header.Set("content-type", "application/json")
+			require.NoError(t, err)
+			recorder := test.NewJSONResponseRecorder[web.PreviewOrderResp]()
+			server := tc.newGinFunc(t, ctrl)
+			server.ServeHTTP(recorder, req)
+			require.Equal(t, tc.wantCode, recorder.Code)
+			assert.Equal(t, tc.wantResp, recorder.MustScan())
+		})
+	}
+}
+
+func (s *OrderModuleTestSuite) previewOrderHandler(t *testing.T, ctrl *gomock.Controller) *web.Handler {
+	mockPaymentSvc := paymentmocks.NewMockService(ctrl)
+	mockPaymentSvc.EXPECT().GetPaymentChannels(gomock.Any()).Return([]payment.Channel{
+		{Type: 1, Desc: "积分"},
+		{Type: 2, Desc: "微信"},
+	})
+
+	pm := &payment.Module{Svc: mockPaymentSvc}
+
+	mockProductSvc := productmocks.NewMockService(ctrl)
+	mockProductSvc.EXPECT().FindSKUBySN(gomock.Any(), gomock.Any()).Return(product.SKU{
+		ID:       100,
+		SPUID:    100,
+		SN:       "SKU100",
+		Image:    "SKUImage100",
+		Name:     "商品SKU100",
+		Desc:     "商品SKU100",
+		Price:    990,
+		Stock:    10,
+		SaleType: product.SaleTypeUnlimited, // 无限制
+		Status:   product.StatusOnShelf,
+	}, nil)
+	ppm := &product.Module{Svc: mockProductSvc}
+
+	mockCreditSvc := creditmocks.NewMockService(ctrl)
+	mockCreditSvc.EXPECT().GetCreditsByUID(gomock.Any(), testUID).AnyTimes().Return(credit.Credit{
+		TotalAmount: 1000,
+	}, nil)
+	cm := &credit.Module{Svc: mockCreditSvc}
+
+	handler, err := startup.InitHandler(pm, ppm, cm)
+	require.NoError(t, err)
+	return handler
+}
+
+func (s *OrderModuleTestSuite) newGinServer(handler *web.Handler) *egin.Component {
+	econf.Set("server", map[string]any{"contextTimeout": "1s"})
+	server := egin.Load("server").Build()
+	server.Use(func(ctx *gin.Context) {
+		ctx.Set("_session", session.NewMemorySession(session.Claims{
+			Uid: testUID,
+		}))
+	})
+
+	handler.PrivateRoutes(server.Engine)
+	return server
+}
+
+func (s *OrderModuleTestSuite) TestHandler_PreviewOrderFailedV1() {
+	t := s.T()
+
+	testCases := []struct {
+		name       string
+		newGinFunc func(t *testing.T, ctrl *gomock.Controller) *egin.Component
+		req        web.PreviewOrderReq
+		wantCode   int
+		wantResp   test.Result[any]
+	}{
+		{
+			name: "商品SKUSN不存在",
+			newGinFunc: func(t *testing.T, ctrl *gomock.Controller) *egin.Component {
+				t.Helper()
+
+				pm := &payment.Module{Svc: paymentmocks.NewMockService(ctrl)}
+
+				mockProductSvc := productmocks.NewMockService(ctrl)
+				mockErr := fmt.Errorf("mock: SKU SN非法")
+				mockProductSvc.EXPECT().FindSKUBySN(gomock.Any(), gomock.Any()).Return(product.SKU{}, mockErr)
+				ppm := &product.Module{Svc: mockProductSvc}
+
+				cm := &credit.Module{Svc: creditmocks.NewMockService(ctrl)}
+
+				handler, err := startup.InitHandler(pm, ppm, cm)
+				require.NoError(t, err)
+				return s.newGinServer(handler)
+			},
+			req: web.PreviewOrderReq{
+				SKUs: []web.SKU{
+					{
+						SN:       "InvalidSKUSN",
+						Quantity: 1,
+					},
+				},
+			},
+			wantCode: 500,
+			wantResp: test.Result[any]{
+				Code: errs.SystemError.Code,
+				Msg:  errs.SystemError.Msg,
+			},
+		},
+		{
+			name: "要购买的商品数量非法",
+			newGinFunc: func(t *testing.T, ctrl *gomock.Controller) *egin.Component {
+				t.Helper()
+
+				mockPaymentSvc := paymentmocks.NewMockService(ctrl)
+				pm := &payment.Module{Svc: mockPaymentSvc}
+
+				mockProductSvc := productmocks.NewMockService(ctrl)
+				mockProductSvc.EXPECT().FindSKUBySN(gomock.Any(), gomock.Any()).Return(product.SKU{
+					ID:       100,
+					SPUID:    100,
+					SN:       "SKU100",
+					Image:    "SKUImage100",
+					Name:     "商品SKU100",
+					Desc:     "商品SKU100",
+					Price:    990,
+					Stock:    10,
+					SaleType: product.SaleTypeUnlimited, // 无限制
+					Status:   product.StatusOnShelf,
+				}, nil)
+				ppm := &product.Module{Svc: mockProductSvc}
+
+				mockCreditSvc := creditmocks.NewMockService(ctrl)
+				cm := &credit.Module{Svc: mockCreditSvc}
+
+				handler, err := startup.InitHandler(pm, ppm, cm)
+				require.NoError(t, err)
+
+				return s.newGinServer(handler)
+			},
+			req: web.PreviewOrderReq{
+				SKUs: []web.SKU{
+					{
+						SN:       "SKU100",
+						Quantity: 0,
+					},
+				},
+			},
+			wantCode: 500,
+			wantResp: test.Result[any]{
+				Code: errs.SystemError.Code,
+				Msg:  errs.SystemError.Msg,
+			},
+		},
+		{
+			name: "商品库存不足",
+			newGinFunc: func(t *testing.T, ctrl *gomock.Controller) *egin.Component {
+				t.Helper()
+
+				mockPaymentSvc := paymentmocks.NewMockService(ctrl)
+				pm := &payment.Module{Svc: mockPaymentSvc}
+
+				mockProductSvc := productmocks.NewMockService(ctrl)
+				mockProductSvc.EXPECT().FindSKUBySN(gomock.Any(), gomock.Any()).Return(product.SKU{
+					ID:       100,
+					SPUID:    100,
+					SN:       "SKU100",
+					Image:    "SKUImage100",
+					Name:     "商品SKU100",
+					Desc:     "商品SKU100",
+					Price:    990,
+					Stock:    10,
+					SaleType: product.SaleTypeUnlimited, // 无限制
+					Status:   product.StatusOnShelf,
+				}, nil)
+				ppm := &product.Module{Svc: mockProductSvc}
+
+				mockCreditSvc := creditmocks.NewMockService(ctrl)
+				cm := &credit.Module{Svc: mockCreditSvc}
+
+				handler, err := startup.InitHandler(pm, ppm, cm)
+				require.NoError(t, err)
+				return s.newGinServer(handler)
+			},
+			req: web.PreviewOrderReq{
+				SKUs: []web.SKU{
+					{
+						SN:       "SKU100",
+						Quantity: 11,
+					},
+				},
+			},
+			wantCode: 500,
+			wantResp: test.Result[any]{
+				Code: errs.SystemError.Code,
+				Msg:  errs.SystemError.Msg,
+			},
+		},
+		{
+			name: "获取用户积分数失败",
+			newGinFunc: func(t *testing.T, ctrl *gomock.Controller) *egin.Component {
+				t.Helper()
+
+				mockPaymentSvc := paymentmocks.NewMockService(ctrl)
+				pm := &payment.Module{Svc: mockPaymentSvc}
+
+				mockProductSvc := productmocks.NewMockService(ctrl)
+				mockProductSvc.EXPECT().FindSKUBySN(gomock.Any(), gomock.Any()).Return(product.SKU{
+					ID:       100,
+					SPUID:    100,
+					SN:       "SKU100",
+					Image:    "SKUImage100",
+					Name:     "商品SKU100",
+					Desc:     "商品SKU100",
+					Price:    990,
+					Stock:    10,
+					SaleType: product.SaleTypeUnlimited, // 无限制
+					Status:   product.StatusOnShelf,
+				}, nil)
+				ppm := &product.Module{Svc: mockProductSvc}
+
+				mockCreditSvc := creditmocks.NewMockService(ctrl)
+				mockErr := fmt.Errorf("mock: 获取积分失败")
+				mockCreditSvc.EXPECT().GetCreditsByUID(gomock.Any(), testUID).AnyTimes().Return(credit.Credit{}, mockErr)
+				cm := &credit.Module{Svc: mockCreditSvc}
+
+				handler, err := startup.InitHandler(pm, ppm, cm)
+				require.NoError(t, err)
+
+				return s.newGinServer(handler)
+			},
+			req: web.PreviewOrderReq{
+				SKUs: []web.SKU{
+					{
+						SN:       "SKU100",
+						Quantity: 10,
+					},
+				},
+			},
+			wantCode: 500,
+			wantResp: test.Result[any]{
+				Code: errs.SystemError.Code,
+				Msg:  errs.SystemError.Msg,
+			},
+		},
+		// todo: 要购买商品超过库存限制(stockLimit)但是库存充足
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+			req, err := http.NewRequest(http.MethodPost,
+				"/order/preview", iox.NewJSONReader(tc.req))
+			req.Header.Set("content-type", "application/json")
+			require.NoError(t, err)
+			recorder := test.NewJSONResponseRecorder[any]()
+			server := tc.newGinFunc(t, ctrl)
+			server.ServeHTTP(recorder, req)
+			require.Equal(t, tc.wantCode, recorder.Code)
+			assert.Equal(t, tc.wantResp, recorder.MustScan())
+		})
+	}
+}
+
 func (s *OrderModuleTestSuite) TestHandler_CreateOrder() {
 	t := s.T()
+	t.Skip()
+
 	var testCases = []struct {
 		name           string
 		req            web.CreateOrderReq
@@ -554,8 +900,235 @@ func (s *OrderModuleTestSuite) TestHandler_CreateOrder() {
 	}
 }
 
+func (s *OrderModuleTestSuite) TestHandler_CreateOrderV1() {
+	t := s.T()
+	var testCases = []struct {
+		name           string
+		newGinFunc     func(t *testing.T, ctrl *gomock.Controller) *egin.Component
+		req            web.CreateOrderReq
+		wantCode       int
+		after          func(t *testing.T)
+		assertRespFunc func(t *testing.T, resp test.Result[web.CreateOrderResp])
+	}{
+		{
+			name: "创建成功_仅积分支付",
+			newGinFunc: func(t *testing.T, ctrl *gomock.Controller) *egin.Component {
+				t.Helper()
+
+				mockPaymentSvc := paymentmocks.NewMockService(ctrl)
+				id := int64(1)
+				var pmt *payment.Payment
+				mockPaymentSvc.EXPECT().CreatePayment(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, p payment.Payment) (payment.Payment, error) {
+					pmt = &payment.Payment{
+						ID:               id,
+						SN:               fmt.Sprintf("PaymentSN-create-order-%d", id),
+						OrderID:          p.OrderID,
+						OrderSN:          p.OrderSN,
+						PayerID:          p.PayerID,
+						OrderDescription: p.OrderDescription,
+						TotalAmount:      p.TotalAmount,
+						Records: []payment.Record{
+							{
+								PaymentNO3rd: "credit-1",
+								Channel:      payment.ChannelTypeCredit,
+								Amount:       990,
+							},
+						},
+					}
+					return *pmt, nil
+				})
+
+				mockPaymentSvc.EXPECT().PayByID(gomock.Any(), id).DoAndReturn(func(ctx context.Context, i int64) (payment.Payment, error) {
+					pmt.Records[0].Status = payment.StatusPaidSuccess
+					return *pmt, nil
+				})
+
+				pm := &payment.Module{Svc: mockPaymentSvc}
+
+				mockProductSvc := productmocks.NewMockService(ctrl)
+				mockProductSvc.EXPECT().FindSKUBySN(gomock.Any(), gomock.Any()).Return(product.SKU{
+					ID:       100,
+					SPUID:    100,
+					SN:       "SKU100",
+					Image:    "SKUImage100",
+					Name:     "商品SKU100",
+					Desc:     "商品SKU100",
+					Price:    990,
+					Stock:    10,
+					SaleType: product.SaleTypeUnlimited, // 无限制
+					Status:   product.StatusOnShelf,
+				}, nil)
+				ppm := &product.Module{Svc: mockProductSvc}
+
+				mockCreditSvc := creditmocks.NewMockService(ctrl)
+				mockCreditSvc.EXPECT().GetCreditsByUID(gomock.Any(), testUID).AnyTimes().Return(credit.Credit{
+					TotalAmount: 1000,
+				}, nil)
+				cm := &credit.Module{Svc: mockCreditSvc}
+
+				handler, err := startup.InitHandler(pm, ppm, cm)
+				require.NoError(t, err)
+
+				econf.Set("server", map[string]any{"contextTimeout": "1s"})
+				server := egin.Load("server").Build()
+				server.Use(func(ctx *gin.Context) {
+					ctx.Set("_session", session.NewMemorySession(session.Claims{
+						Uid: testUID,
+					}))
+				})
+
+				handler.PrivateRoutes(server.Engine)
+				return server
+			},
+			req: web.CreateOrderReq{
+				RequestID: "requestID01",
+				SKUs: []web.SKU{
+					{
+						SN:       "SKU100",
+						Quantity: 1,
+					},
+				},
+				PaymentItems: []web.PaymentItem{
+					{Type: int64(payment.ChannelTypeCredit), Amount: 990},
+				},
+			},
+			wantCode: 200,
+			assertRespFunc: func(t *testing.T, result test.Result[web.CreateOrderResp]) {
+				t.Helper()
+				assert.NotZero(t, result.Data.SN)
+				assert.Zero(t, result.Data.WechatCodeURL)
+			},
+			after: func(t *testing.T) {
+				t.Helper()
+				orders, _, err := s.svc.FindUserVisibleOrdersByUID(context.Background(), testUID, 0, 1)
+				require.NoError(t, err)
+				require.Equal(t, domain.StatusProcessing, orders[0].Status)
+			},
+		},
+		{
+			name: "创建成功_积分和微信组合支付",
+			newGinFunc: func(t *testing.T, ctrl *gomock.Controller) *egin.Component {
+				t.Helper()
+				return s.newGinServer(s.createOrderHandler(t, ctrl))
+			},
+			req: web.CreateOrderReq{
+				RequestID: "requestID02",
+				SKUs: []web.SKU{
+					{
+						SN:       "SKU101",
+						Quantity: 1,
+					},
+				},
+				PaymentItems: []web.PaymentItem{
+					{Type: int64(payment.ChannelTypeCredit), Amount: 5000},
+					{Type: int64(payment.ChannelTypeWechat), Amount: 4900},
+				},
+			},
+			wantCode: 200,
+			assertRespFunc: func(t *testing.T, result test.Result[web.CreateOrderResp]) {
+				t.Helper()
+				assert.NotZero(t, result.Data.SN)
+				assert.NotZero(t, result.Data.WechatCodeURL)
+			},
+			after: func(t *testing.T) {
+				t.Helper()
+				orders, _, err := s.svc.FindUserVisibleOrdersByUID(context.Background(), testUID, 1, 1)
+				require.NoError(t, err)
+				require.Equal(t, domain.StatusProcessing, orders[0].Status)
+			},
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Cleanup(func() {
+				_, err := s.cache.Delete(context.Background(), fmt.Sprintf("order:create:%s", tc.req.RequestID))
+				require.NoError(t, err)
+			})
+
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			req, err := http.NewRequest(http.MethodPost,
+				"/order/create", iox.NewJSONReader(tc.req))
+			req.Header.Set("content-type", "application/json")
+			require.NoError(t, err)
+			recorder := test.NewJSONResponseRecorder[web.CreateOrderResp]()
+			server := tc.newGinFunc(t, ctrl)
+			server.ServeHTTP(recorder, req)
+			require.Equal(t, tc.wantCode, recorder.Code)
+			tc.assertRespFunc(t, recorder.MustScan())
+			tc.after(t)
+		})
+	}
+}
+
+func (s *OrderModuleTestSuite) createOrderHandler(t *testing.T, ctrl *gomock.Controller) *web.Handler {
+	mockPaymentSvc := paymentmocks.NewMockService(ctrl)
+	id := int64(2)
+	var pmt *payment.Payment
+	mockPaymentSvc.EXPECT().CreatePayment(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, p payment.Payment) (payment.Payment, error) {
+		pmt = &payment.Payment{
+			ID:               id,
+			SN:               fmt.Sprintf("PaymentSN-create-order-%d", id),
+			OrderID:          p.OrderID,
+			OrderSN:          p.OrderSN,
+			PayerID:          p.PayerID,
+			OrderDescription: p.OrderDescription,
+			TotalAmount:      p.TotalAmount,
+			Records: []payment.Record{
+				{
+					PaymentNO3rd: "credit-1",
+					Channel:      payment.ChannelTypeCredit,
+					Amount:       1000,
+				},
+				{
+					PaymentNO3rd: "wechat-2",
+					Channel:      payment.ChannelTypeWechat,
+					Amount:       8990,
+				},
+			},
+		}
+		return *pmt, nil
+	})
+
+	mockPaymentSvc.EXPECT().PayByID(gomock.Any(), id).DoAndReturn(func(ctx context.Context, i int64) (payment.Payment, error) {
+		pmt.Records[0].Status = payment.StatusProcessing
+		pmt.Records[1].Status = payment.StatusProcessing
+		pmt.Records[1].WechatCodeURL = "webchat_code"
+		return *pmt, nil
+	})
+	pm := &payment.Module{Svc: mockPaymentSvc}
+
+	mockProductSvc := productmocks.NewMockService(ctrl)
+	mockProductSvc.EXPECT().FindSKUBySN(gomock.Any(), gomock.Any()).Return(product.SKU{
+		ID:       101,
+		SPUID:    101,
+		SN:       "SKU101",
+		Image:    "SKUImage101",
+		Name:     "商品SKU101",
+		Desc:     "商品SKU101",
+		Price:    9900,
+		Stock:    1,
+		SaleType: product.SaleTypeUnlimited, // 无限制
+		Status:   product.StatusOnShelf,
+	}, nil)
+	ppm := &product.Module{Svc: mockProductSvc}
+
+	mockCreditSvc := creditmocks.NewMockService(ctrl)
+	mockCreditSvc.EXPECT().GetCreditsByUID(gomock.Any(), testUID).AnyTimes().Return(credit.Credit{
+		TotalAmount: 10000,
+	}, nil)
+	cm := &credit.Module{Svc: mockCreditSvc}
+
+	handler, err := startup.InitHandler(pm, ppm, cm)
+	require.NoError(t, err)
+	return handler
+}
+
 func (s *OrderModuleTestSuite) TestHandler_CreateOrderFailed() {
 	t := s.T()
+	t.Skip()
+
 	testCases := []struct {
 		name string
 
@@ -722,6 +1295,332 @@ func (s *OrderModuleTestSuite) TestHandler_CreateOrderFailed() {
 			require.Equal(t, tc.wantResp, recorder.MustScan())
 		})
 	}
+}
+
+func (s *OrderModuleTestSuite) TestHandler_CreateOrderFailedV1() {
+	t := s.T()
+	testCases := []struct {
+		name       string
+		newGinFunc func(t *testing.T, ctrl *gomock.Controller) *egin.Component
+		req        web.CreateOrderReq
+		wantCode   int
+		wantResp   test.Result[any]
+	}{
+		{
+			name: "请求ID为空",
+			newGinFunc: func(t *testing.T, ctrl *gomock.Controller) *egin.Component {
+				t.Helper()
+
+				pm := &payment.Module{Svc: paymentmocks.NewMockService(ctrl)}
+				ppm := &product.Module{Svc: productmocks.NewMockService(ctrl)}
+				cm := &credit.Module{Svc: creditmocks.NewMockService(ctrl)}
+
+				handler, err := startup.InitHandler(pm, ppm, cm)
+				require.NoError(t, err)
+
+				econf.Set("server", map[string]any{"contextTimeout": "1s"})
+				server := egin.Load("server").Build()
+				server.Use(func(ctx *gin.Context) {
+					ctx.Set("_session", session.NewMemorySession(session.Claims{
+						Uid: testUID,
+					}))
+				})
+
+				handler.PrivateRoutes(server.Engine)
+				return server
+			},
+			req: web.CreateOrderReq{
+				RequestID: "",
+			},
+			wantCode: 500,
+			wantResp: test.Result[any]{
+				Code: errs.SystemError.Code,
+				Msg:  errs.SystemError.Msg,
+			},
+		},
+		{
+			name: "商品信息非法",
+			newGinFunc: func(t *testing.T, ctrl *gomock.Controller) *egin.Component {
+				t.Helper()
+
+				pm := &payment.Module{Svc: paymentmocks.NewMockService(ctrl)}
+				ppm := &product.Module{Svc: productmocks.NewMockService(ctrl)}
+				cm := &credit.Module{Svc: creditmocks.NewMockService(ctrl)}
+
+				handler, err := startup.InitHandler(pm, ppm, cm)
+				require.NoError(t, err)
+				return s.newGinServer(handler)
+			},
+			req: web.CreateOrderReq{
+				RequestID: "requestID01",
+				SKUs:      []web.SKU{},
+			},
+			wantCode: 500,
+			wantResp: test.Result[any]{
+				Code: errs.SystemError.Code,
+				Msg:  errs.SystemError.Msg,
+			},
+		},
+		// todo: SPU信息不存在
+		{
+			name: "商品SKUSN不存在",
+			newGinFunc: func(t *testing.T, ctrl *gomock.Controller) *egin.Component {
+				t.Helper()
+
+				pm := &payment.Module{Svc: paymentmocks.NewMockService(ctrl)}
+
+				mockProductSvc := productmocks.NewMockService(ctrl)
+				mockErr := fmt.Errorf("mock: SKU SN非法")
+				mockProductSvc.EXPECT().FindSKUBySN(gomock.Any(), gomock.Any()).Return(product.SKU{}, mockErr)
+				ppm := &product.Module{Svc: mockProductSvc}
+
+				cm := &credit.Module{Svc: creditmocks.NewMockService(ctrl)}
+
+				handler, err := startup.InitHandler(pm, ppm, cm)
+				require.NoError(t, err)
+				return s.newGinServer(handler)
+			},
+			req: web.CreateOrderReq{
+				RequestID: "requestID02",
+				SKUs: []web.SKU{
+					{
+						SN: "InvalidSKUSN",
+					},
+				},
+			},
+			wantCode: 500,
+			wantResp: test.Result[any]{
+				Code: errs.SystemError.Code,
+				Msg:  errs.SystemError.Msg,
+			},
+		},
+		{
+			name: "要购买的商品数量非法",
+			newGinFunc: func(t *testing.T, ctrl *gomock.Controller) *egin.Component {
+				t.Helper()
+				return s.newGinServer(s.createOrderFailedHandler(t, ctrl))
+			},
+			req: web.CreateOrderReq{
+				RequestID: "requestID03",
+				SKUs: []web.SKU{
+					{
+						SN:       "SKU100",
+						Quantity: 0,
+					},
+				},
+			},
+			wantCode: 500,
+			wantResp: test.Result[any]{
+				Code: errs.SystemError.Code,
+				Msg:  errs.SystemError.Msg,
+			},
+		},
+		{
+			name: "商品库存不足",
+			newGinFunc: func(t *testing.T, ctrl *gomock.Controller) *egin.Component {
+				t.Helper()
+				return s.newGinServer(s.createOrderFailedHandler(t, ctrl))
+			},
+			req: web.CreateOrderReq{
+				RequestID: "requestID04",
+				SKUs: []web.SKU{
+					{
+						SN:       "SKU101",
+						Quantity: 11,
+					},
+				},
+			},
+			wantCode: 500,
+			wantResp: test.Result[any]{
+				Code: errs.SystemError.Code,
+				Msg:  errs.SystemError.Msg,
+			},
+		},
+		{
+			name: "支付渠道非法",
+			newGinFunc: func(t *testing.T, ctrl *gomock.Controller) *egin.Component {
+				t.Helper()
+				return s.newGinServer(s.createOrderFailedHandler(t, ctrl))
+			},
+			req: web.CreateOrderReq{
+				RequestID: "requestID05",
+				SKUs: []web.SKU{
+					{
+						SN:       "SKU101",
+						Quantity: 1,
+					},
+				},
+				PaymentItems: []web.PaymentItem{
+					{
+						Type: 0,
+					},
+				},
+			},
+			wantCode: 500,
+			wantResp: test.Result[any]{
+				Code: errs.SystemError.Code,
+				Msg:  errs.SystemError.Msg,
+			},
+		},
+		{
+			name: "商品总实价非法",
+			newGinFunc: func(t *testing.T, ctrl *gomock.Controller) *egin.Component {
+				t.Helper()
+				return s.newGinServer(s.createOrderFailedHandler(t, ctrl))
+			},
+			req: web.CreateOrderReq{
+				RequestID: "requestID06",
+				SKUs: []web.SKU{
+					{
+						SN:       "SKU101",
+						Quantity: 1,
+					},
+				},
+				PaymentItems: []web.PaymentItem{
+					{Type: int64(payment.ChannelTypeCredit), Amount: 3000},
+					{Type: int64(payment.ChannelTypeWechat), Amount: 4900},
+				},
+			},
+			wantCode: 500,
+			wantResp: test.Result[any]{
+				Code: errs.SystemError.Code,
+				Msg:  errs.SystemError.Msg,
+			},
+		},
+		{
+			name: "执行支付计划失败",
+			newGinFunc: func(t *testing.T, ctrl *gomock.Controller) *egin.Component {
+				t.Helper()
+
+				mockPaymentSvc := paymentmocks.NewMockService(ctrl)
+				id := int64(2)
+				var pmt *payment.Payment
+				mockPaymentSvc.EXPECT().CreatePayment(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, p payment.Payment) (payment.Payment, error) {
+					pmt = &payment.Payment{
+						ID:               id,
+						SN:               fmt.Sprintf("PaymentSN-create-order-%d", id),
+						OrderID:          p.OrderID,
+						OrderSN:          p.OrderSN,
+						PayerID:          p.PayerID,
+						OrderDescription: p.OrderDescription,
+						TotalAmount:      p.TotalAmount,
+						Records: []payment.Record{
+							{
+								PaymentNO3rd: "credit-1",
+								Channel:      payment.ChannelTypeCredit,
+								Amount:       1000,
+							},
+							{
+								PaymentNO3rd: "wechat-2",
+								Channel:      payment.ChannelTypeWechat,
+								Amount:       8990,
+							},
+						},
+					}
+					return *pmt, nil
+				})
+
+				mockErr := fmt.Errorf("mock: 支付ID非法")
+				mockPaymentSvc.EXPECT().PayByID(gomock.Any(), id).Return(payment.Payment{}, mockErr)
+				pm := &payment.Module{Svc: mockPaymentSvc}
+
+				mockProductSvc := productmocks.NewMockService(ctrl)
+				mockProductSvc.EXPECT().FindSKUBySN(gomock.Any(), gomock.Any()).Return(product.SKU{
+					ID:       101,
+					SPUID:    101,
+					SN:       "SKU101",
+					Image:    "SKUImage101",
+					Name:     "商品SKU101",
+					Desc:     "商品SKU101",
+					Price:    9900,
+					Stock:    1,
+					SaleType: product.SaleTypeUnlimited, // 无限制
+					Status:   product.StatusOnShelf,
+				}, nil)
+				ppm := &product.Module{Svc: mockProductSvc}
+
+				mockCreditSvc := creditmocks.NewMockService(ctrl)
+				mockCreditSvc.EXPECT().GetCreditsByUID(gomock.Any(), testUID).AnyTimes().Return(credit.Credit{
+					TotalAmount: 10000,
+				}, nil)
+				cm := &credit.Module{Svc: mockCreditSvc}
+
+				handler, err := startup.InitHandler(pm, ppm, cm)
+				require.NoError(t, err)
+				return s.newGinServer(handler)
+			},
+			req: web.CreateOrderReq{
+				RequestID: "requestID07",
+				SKUs: []web.SKU{
+					{
+						SN:       "SKU101",
+						Quantity: 1,
+					},
+				},
+				PaymentItems: []web.PaymentItem{
+					{Type: int64(payment.ChannelTypeCredit), Amount: 5000},
+					{Type: int64(payment.ChannelTypeWechat), Amount: 4900},
+				},
+			},
+			wantCode: 500,
+			wantResp: test.Result[any]{
+				Code: errs.SystemError.Code,
+				Msg:  errs.SystemError.Msg,
+			},
+		},
+		// todo: 重复请求
+		// todo: 要购买商品超过库存限制(stockLimit)但是库存充足
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Cleanup(func() {
+				_, err := s.cache.Delete(context.Background(), fmt.Sprintf("order:create:%s", tc.req.RequestID))
+				require.NoError(t, err)
+			})
+
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			req, err := http.NewRequest(http.MethodPost,
+				"/order/create", iox.NewJSONReader(tc.req))
+			req.Header.Set("content-type", "application/json")
+			require.NoError(t, err)
+			recorder := test.NewJSONResponseRecorder[any]()
+			server := tc.newGinFunc(t, ctrl)
+			server.ServeHTTP(recorder, req)
+			require.Equal(t, tc.wantCode, recorder.Code)
+			require.Equal(t, tc.wantResp, recorder.MustScan())
+		})
+	}
+}
+
+func (s *OrderModuleTestSuite) createOrderFailedHandler(t *testing.T, ctrl *gomock.Controller) *web.Handler {
+	pm := &payment.Module{Svc: paymentmocks.NewMockService(ctrl)}
+
+	mockProductSvc := productmocks.NewMockService(ctrl)
+	mockProductSvc.EXPECT().FindSKUBySN(gomock.Any(), gomock.Any()).Return(product.SKU{
+		ID:       101,
+		SPUID:    101,
+		SN:       "SKU101",
+		Image:    "SKUImage101",
+		Name:     "商品SKU101",
+		Desc:     "商品SKU101",
+		Price:    9900,
+		Stock:    1,
+		SaleType: product.SaleTypeUnlimited, // 无限制
+		Status:   product.StatusOnShelf,
+	}, nil)
+	ppm := &product.Module{Svc: mockProductSvc}
+
+	mockCreditSvc := creditmocks.NewMockService(ctrl)
+	mockCreditSvc.EXPECT().GetCreditsByUID(gomock.Any(), testUID).AnyTimes().Return(credit.Credit{
+		TotalAmount: 10000,
+	}, nil)
+	cm := &credit.Module{Svc: mockCreditSvc}
+
+	handler, err := startup.InitHandler(pm, ppm, cm)
+	require.NoError(t, err)
+	return handler
 }
 
 func (s *OrderModuleTestSuite) TestHandler_Repay() {
