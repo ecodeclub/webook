@@ -26,21 +26,28 @@ import (
 )
 
 type PaymentConsumer struct {
-	svc      service.Service
-	consumer mq.Consumer
-	logger   *elog.Component
+	svc                service.Service
+	consumer           mq.Consumer
+	orderEventProducer OrderEventProducer
+	logger             *elog.Component
 }
 
 func NewPaymentConsumer(svc service.Service, q mq.MQ) (*PaymentConsumer, error) {
 	const groupID = "order"
-	consumer, err := q.Consumer(paymentEvents, groupID)
+	consumer, err := q.Consumer(paymentEventName, groupID)
 	if err != nil {
 		return nil, err
 	}
+	producer, err := q.Producer(orderEventName)
+	if err != nil {
+		return nil, err
+	}
+	orderEventProducer, _ := NewOrderEventProducer(producer)
 	return &PaymentConsumer{
-		svc:      svc,
-		consumer: consumer,
-		logger:   elog.DefaultLogger,
+		svc:                svc,
+		consumer:           consumer,
+		orderEventProducer: orderEventProducer,
+		logger:             elog.DefaultLogger,
 	}, nil
 }
 
@@ -67,23 +74,50 @@ func (c *PaymentConsumer) Consume(ctx context.Context) error {
 		return fmt.Errorf("解析消息失败: %w", err)
 	}
 
-	var warnMessage string
 	if evt.Status == uint8(payment.StatusPaidSuccess) {
 		err = c.svc.SucceedOrder(ctx, evt.PayerID, evt.OrderSN)
-		warnMessage = "设置订单'支付成功'状态失败"
+		if err != nil {
+			c.logger.Warn("设置订单'支付成功'状态失败",
+				elog.FieldErr(err),
+				elog.Any("event", evt),
+			)
+			return err
+		}
+		return c.sendOrderEvent(ctx, evt)
 	} else if evt.Status == uint8(payment.StatusPaidFailed) {
 		err = c.svc.FailOrder(ctx, evt.PayerID, evt.OrderSN)
-		warnMessage = "设置订单'支付失败'状态失败"
+		if err != nil {
+			c.logger.Warn("设置订单'支付失败'状态失败",
+				elog.FieldErr(err),
+				elog.Any("event", evt),
+			)
+		}
+		return err
 	} else {
 		return fmt.Errorf("未知支付状态: %d", evt.Status)
 	}
+}
 
+func (c *PaymentConsumer) sendOrderEvent(ctx context.Context, p PaymentEvent) error {
+	order, err := c.svc.FindUserVisibleOrderByUIDAndSN(ctx, p.PayerID, p.OrderSN)
 	if err != nil {
-		c.logger.Warn(warnMessage,
+		c.logger.Warn("发送'订单完成事件'失败",
+			elog.FieldErr(err),
+			elog.Any("event", p),
+		)
+	}
+	for _, item := range order.Items {
+		// todo: 一个订单有有多个商品, 每个商品有不同的category
+		fmt.Printf("%d\n", item.SKU.SPUID)
+	}
+
+	evt := OrderEvent{}
+	err = c.orderEventProducer.Produce(ctx, evt)
+	if err != nil {
+		c.logger.Warn("发送'订单完成事件'失败",
 			elog.FieldErr(err),
 			elog.Any("event", evt),
 		)
 	}
 	return err
-
 }

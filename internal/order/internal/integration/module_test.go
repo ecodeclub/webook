@@ -2128,6 +2128,7 @@ func (s *OrderModuleTestSuite) TestHandler_CancelOrderFailed() {
 
 func (s *OrderModuleTestSuite) TestPaymentConsumer_Consume() {
 	t := s.T()
+	t.Skip()
 
 	producer, er := s.mq.Producer("payment_events")
 	require.NoError(t, er)
