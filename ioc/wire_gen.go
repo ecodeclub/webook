@@ -79,7 +79,7 @@ func InitApp() (*App, error) {
 		return nil, err
 	}
 	handler8 := orderModule.Hdl
-	projectModule := project.InitModule()
+	projectModule := project.InitModule(db)
 	handler9 := projectModule.Hdl
 	handler10 := creditModule.Hdl
 	handler11 := paymentModule.Hdl

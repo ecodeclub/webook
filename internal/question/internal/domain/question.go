@@ -65,6 +65,6 @@ const (
 	UnknownStatus QuestionStatus = 0
 	// UnPublishedStatus 未发布
 	UnPublishedStatus QuestionStatus = 1
-	// PublishStatus 发布
+	// PublishedStatus 发布
 	PublishedStatus QuestionStatus = 2
 )

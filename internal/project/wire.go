@@ -17,14 +17,44 @@
 package project
 
 import (
+	"sync"
+
+	"github.com/ecodeclub/webook/internal/project/internal/repository"
+	"github.com/ecodeclub/webook/internal/project/internal/repository/dao"
+	"github.com/ecodeclub/webook/internal/project/internal/service"
 	"github.com/ecodeclub/webook/internal/project/internal/web"
+	"github.com/ego-component/egorm"
 	"github.com/google/wire"
 )
 
-func InitModule() *Module {
+func InitModule(db *egorm.Component) *Module {
 	wire.Build(
+		initAdminDAO,
+		repository.NewProjectAdminRepository,
+		service.NewProjectAdminService,
 		web.NewAdminHandler,
+
+		dao.NewGORMProjectDAO,
+		repository.NewCachedRepository,
+		service.NewService,
 		web.NewHandler,
+
 		wire.Struct(new(Module), "*"))
 	return &Module{}
+}
+
+var (
+	adminDAO     dao.ProjectAdminDAO
+	adminDAOOnce sync.Once
+)
+
+func initAdminDAO(db *egorm.Component) dao.ProjectAdminDAO {
+	adminDAOOnce.Do(func() {
+		err := dao.InitTables(db)
+		if err != nil {
+			panic(err)
+		}
+		adminDAO = dao.NewGORMProjectAdminDAO(db)
+	})
+	return adminDAO
 }
