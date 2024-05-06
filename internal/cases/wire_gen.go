@@ -28,7 +28,10 @@ func InitModule(db *gorm.DB, ec ecache.Cache, q mq.MQ) (*Module, error) {
 	caseDAO := InitCaseDAO(db)
 	caseCache := cache.NewCaseCache(ec)
 	caseRepo := repository.NewCaseRepo(caseDAO, caseCache)
-	syncEventProducer := initSyncEventProducer(q)
+	syncEventProducer, err := event.NewSyncEventProducer(q)
+	if err != nil {
+		return nil, err
+	}
 	service := NewService(caseRepo, syncEventProducer)
 	handler := web.NewHandler(service)
 	module := &Module{
@@ -58,14 +61,6 @@ func NewService(repo repository.CaseRepo, producer event.SyncEventProducer) Serv
 func InitCaseDAO(db *egorm.Component) dao.CaseDAO {
 	InitTableOnce(db)
 	return dao.NewCaseDao(db)
-}
-
-func initSyncEventProducer(q mq.MQ) event.SyncEventProducer {
-	producer, err := event.NewSyncEventProducer(q)
-	if err != nil {
-		panic(err)
-	}
-	return producer
 }
 
 type Handler = web.Handler

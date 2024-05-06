@@ -27,7 +27,10 @@ func InitModule(db *gorm.DB, ec ecache.Cache, q mq.MQ) (*Module, error) {
 	questionDAO := InitQuestionDAO(db)
 	questionCache := cache.NewQuestionECache(ec)
 	repositoryRepository := repository.NewCacheRepository(questionDAO, questionCache)
-	syncEventProducer := initSyncEventProducer(q)
+	syncEventProducer, err := event.NewSyncEventProducer(q)
+	if err != nil {
+		return nil, err
+	}
 	serviceService := service.NewService(repositoryRepository, syncEventProducer)
 	handler := web.NewHandler(serviceService)
 	questionSetDAO := InitQuestionSetDAO(db)
@@ -56,14 +59,6 @@ func InitTableOnce(db *gorm.DB) {
 			panic(err)
 		}
 	})
-}
-
-func initSyncEventProducer(q mq.MQ) event.SyncEventProducer {
-	producer, err := event.NewSyncEventProducer(q)
-	if err != nil {
-		panic(err)
-	}
-	return producer
 }
 
 func InitQuestionDAO(db *egorm.Component) dao.QuestionDAO {

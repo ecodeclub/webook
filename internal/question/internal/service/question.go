@@ -43,12 +43,11 @@ type Service interface {
 	PubDetail(ctx context.Context, qid int64) (domain.Question, error)
 }
 
-const defaultSyncTimeout = 10 * time.Second
-
 type service struct {
-	repo     repository.Repository
-	producer event.SyncEventProducer
-	logger   *elog.Component
+	repo        repository.Repository
+	producer    event.SyncEventProducer
+	logger      *elog.Component
+	syncTimeout time.Duration
 }
 
 func (s *service) GetPubByIDs(ctx context.Context, ids []int64) ([]domain.Question, error) {
@@ -135,14 +134,15 @@ func (s *service) Publish(ctx context.Context, question *domain.Question) (int64
 
 func NewService(repo repository.Repository, producer event.SyncEventProducer) Service {
 	return &service{
-		repo:     repo,
-		producer: producer,
-		logger:   elog.DefaultLogger,
+		repo:        repo,
+		producer:    producer,
+		logger:      elog.DefaultLogger,
+		syncTimeout: 10 * time.Second,
 	}
 }
 
 func (s *service) syncQuestion(id int64) {
-	ctx, cancel := context.WithTimeout(context.Background(), defaultSyncTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), s.syncTimeout)
 	defer cancel()
 	que, err := s.repo.GetById(ctx, id)
 	if err != nil {

@@ -25,7 +25,7 @@ func InitModule(db *egorm.Component, ec ecache.Cache, q mq.MQ) (*Module, error) 
 	wire.Build(InitCaseDAO,
 		cache.NewCaseCache,
 		repository.NewCaseRepo,
-		initSyncEventProducer,
+		event.NewSyncEventProducer,
 		NewService,
 		web.NewHandler,
 		wire.Struct(new(Module), "*"),
@@ -51,13 +51,6 @@ func NewService(repo repository.CaseRepo, producer event.SyncEventProducer) Serv
 func InitCaseDAO(db *egorm.Component) dao.CaseDAO {
 	InitTableOnce(db)
 	return dao.NewCaseDao(db)
-}
-func initSyncEventProducer(q mq.MQ) event.SyncEventProducer {
-	producer, err := event.NewSyncEventProducer(q)
-	if err != nil {
-		panic(err)
-	}
-	return producer
 }
 
 type Handler = web.Handler

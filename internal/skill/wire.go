@@ -50,7 +50,7 @@ func InitHandler(
 		wire.FieldsOf(new(*cases.Module), "Svc"),
 		cache.NewSkillCache,
 		repository.NewSkillRepo,
-		initSyncEventProducer,
+		event.NewSyncEventProducer,
 		service.NewSkillService,
 		web.NewHandler,
 	)
@@ -71,14 +71,6 @@ func InitTableOnce(db *gorm.DB) {
 func InitSkillDAO(db *egorm.Component) dao2.SkillDAO {
 	InitTableOnce(db)
 	return dao2.NewSkillDAO(db)
-}
-
-func initSyncEventProducer(q mq.MQ) event.SyncEventProducer {
-	producer, err := event.NewSyncEventProducer(q)
-	if err != nil {
-		panic(err)
-	}
-	return producer
 }
 
 type Handler = web.Handler

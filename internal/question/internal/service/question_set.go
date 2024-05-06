@@ -16,6 +16,7 @@ package service
 
 import (
 	"context"
+	"time"
 
 	"github.com/ecodeclub/webook/internal/question/internal/event"
 	"github.com/gotomicro/ego/core/elog"
@@ -33,16 +34,18 @@ type QuestionSetService interface {
 }
 
 type questionSetService struct {
-	repo     repository.QuestionSetRepository
-	producer event.SyncEventProducer
-	logger   *elog.Component
+	repo        repository.QuestionSetRepository
+	producer    event.SyncEventProducer
+	logger      *elog.Component
+	syncTimeout time.Duration
 }
 
 func NewQuestionSetService(repo repository.QuestionSetRepository, producer event.SyncEventProducer) QuestionSetService {
 	return &questionSetService{
-		repo:     repo,
-		producer: producer,
-		logger:   elog.DefaultLogger,
+		repo:        repo,
+		producer:    producer,
+		logger:      elog.DefaultLogger,
+		syncTimeout: 10 * time.Second,
 	}
 }
 
@@ -95,7 +98,7 @@ func (q *questionSetService) List(ctx context.Context, offset, limit int) ([]dom
 }
 
 func (q *questionSetService) syncQuestionSet(id int64) {
-	ctx, cancel := context.WithTimeout(context.Background(), defaultSyncTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), q.syncTimeout)
 	defer cancel()
 	qSet, err := q.repo.GetByID(ctx, id)
 	if err != nil {

@@ -23,12 +23,11 @@ type SkillService interface {
 }
 
 type skillService struct {
-	repo     repository.SkillRepo
-	producer event.SyncEventProducer
-	logger   *elog.Component
+	repo        repository.SkillRepo
+	producer    event.SyncEventProducer
+	logger      *elog.Component
+	syncTimeout time.Duration
 }
-
-const defaultSyncTimeout = 10 * time.Second
 
 func (s *skillService) RefsByLevelIDs(ctx context.Context, ids []int64) ([]domain.SkillLevel, error) {
 	return s.repo.RefsByLevelIDs(ctx, ids)
@@ -70,14 +69,15 @@ func (s *skillService) Info(ctx context.Context, id int64) (domain.Skill, error)
 
 func NewSkillService(repo repository.SkillRepo, p event.SyncEventProducer) SkillService {
 	return &skillService{
-		repo:     repo,
-		producer: p,
-		logger:   elog.DefaultLogger,
+		repo:        repo,
+		producer:    p,
+		logger:      elog.DefaultLogger,
+		syncTimeout: 10 * time.Second,
 	}
 }
 
 func (s *skillService) syncSkill(id int64) {
-	ctx, cancel := context.WithTimeout(context.Background(), defaultSyncTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), s.syncTimeout)
 	defer cancel()
 	sk, err := s.repo.Info(ctx, id)
 	fmt.Printf("开始发送 %d\n", id)

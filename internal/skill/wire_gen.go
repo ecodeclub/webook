@@ -29,7 +29,10 @@ func InitHandler(db *gorm.DB, ec ecache.Cache, queModule *baguwen.Module, caseMo
 	skillDAO := InitSkillDAO(db)
 	skillCache := cache.NewSkillCache(ec)
 	skillRepo := repository.NewSkillRepo(skillDAO, skillCache)
-	syncEventProducer := initSyncEventProducer(q)
+	syncEventProducer, err := event.NewSyncEventProducer(q)
+	if err != nil {
+		return nil, err
+	}
 	skillService := service.NewSkillService(skillRepo, syncEventProducer)
 	serviceService := queModule.Svc
 	service2 := caseModule.Svc
@@ -53,14 +56,6 @@ func InitTableOnce(db *gorm.DB) {
 func InitSkillDAO(db *egorm.Component) dao.SkillDAO {
 	InitTableOnce(db)
 	return dao.NewSkillDAO(db)
-}
-
-func initSyncEventProducer(q mq.MQ) event.SyncEventProducer {
-	producer, err := event.NewSyncEventProducer(q)
-	if err != nil {
-		panic(err)
-	}
-	return producer
 }
 
 type Handler = web.Handler
