@@ -15,11 +15,23 @@
 package event
 
 const (
-	paymentEvents = "payment_events"
+	paymentEventName = "payment_events"
+	orderEventName   = "order_events"
 )
 
 type PaymentEvent struct {
 	OrderSN string `json:"orderSN"`
 	PayerID int64  `json:"payerID"`
 	Status  uint8  `json:"status"` // Success, Failed
+}
+
+type OrderEvent struct {
+	OrderID int64 `json:"orderID"`
+	BuyerID int64 `json:"buyerID"`
+	SPUs    []SPU `json:"spus"`
+}
+
+type SPU struct {
+	ID       int64  `json:"id"`
+	Category string `json:"category"`
 }

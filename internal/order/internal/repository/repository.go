@@ -73,11 +73,14 @@ func (o *orderRepository) toOrderEntity(order domain.Order) dao.Order {
 func (o *orderRepository) toOrderItemEntities(orderItems []domain.OrderItem) []dao.OrderItem {
 	return slice.Map(orderItems, func(idx int, src domain.OrderItem) dao.OrderItem {
 		return dao.OrderItem{
-			SPUId:            src.SKU.SPUID,
+			SPUId:            src.SPU.ID,
+			SPUCategory:      src.SPU.Category.Name,
+			SPUCategoryDesc:  src.SPU.Category.Desc,
 			SKUId:            src.SKU.ID,
 			SKUSN:            src.SKU.SN,
 			SKUName:          src.SKU.Name,
 			SKUImage:         src.SKU.Image,
+			SKUAttrs:         sqlx.NewNullString(src.SKU.Attrs),
 			SKUDescription:   src.SKU.Description,
 			SKUOriginalPrice: src.SKU.OriginalPrice,
 			SKURealPrice:     src.SKU.RealPrice,
@@ -122,11 +125,18 @@ func (o *orderRepository) toOrderDomain(order dao.Order, orderItems []dao.OrderI
 		Status:           domain.OrderStatus(order.Status),
 		Items: slice.Map(orderItems, func(idx int, src dao.OrderItem) domain.OrderItem {
 			return domain.OrderItem{
+				SPU: domain.SPU{
+					ID: src.SPUId,
+					Category: domain.Category{
+						Name: src.SPUCategory,
+						Desc: src.SPUCategoryDesc,
+					},
+				},
 				SKU: domain.SKU{
-					SPUID:         src.SPUId,
 					ID:            src.SKUId,
 					SN:            src.SKUSN,
 					Image:         src.SKUImage,
+					Attrs:         src.SKUAttrs.String,
 					Name:          src.SKUName,
 					Description:   src.SKUDescription,
 					OriginalPrice: src.SKUOriginalPrice,

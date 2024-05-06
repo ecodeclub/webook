@@ -35,6 +35,10 @@ type SKU struct {
 	Quantity      int64  `json:"quantity"`
 }
 
+type SPU struct {
+	Category string `json:"category"`
+}
+
 type PaymentItem struct {
 	Type   int64 `json:"type"` // 1 积分, 2微信
 	Amount int64 `json:"amount,omitempty"`
@@ -100,4 +104,5 @@ type Payment struct {
 
 type OrderItem struct {
 	SKU SKU `json:"sku"`
+	SPU SPU `json:"spu"`
 }
