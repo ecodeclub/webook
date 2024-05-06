@@ -34,6 +34,7 @@ import (
 	"github.com/ecodeclub/webook/internal/order/internal/domain"
 	"github.com/ecodeclub/webook/internal/order/internal/errs"
 	"github.com/ecodeclub/webook/internal/order/internal/event"
+	evtmocks "github.com/ecodeclub/webook/internal/order/internal/event/mocks"
 	"github.com/ecodeclub/webook/internal/order/internal/integration/startup"
 	"github.com/ecodeclub/webook/internal/order/internal/job"
 	"github.com/ecodeclub/webook/internal/order/internal/repository/dao"
@@ -44,6 +45,7 @@ import (
 	productmocks "github.com/ecodeclub/webook/internal/product/mocks"
 	"github.com/ecodeclub/webook/internal/test"
 	testioc "github.com/ecodeclub/webook/internal/test/ioc"
+	"github.com/ecodeclub/webook/internal/test/mocks"
 	"github.com/ego-component/egorm"
 	"github.com/gin-gonic/gin"
 	"github.com/gotomicro/ego/core/econf"
@@ -66,7 +68,6 @@ type OrderModuleTestSuite struct {
 	suite.Suite
 	server *egin.Component
 	db     *egorm.Component
-	mq     mq.MQ
 	cache  ecache.Cache
 	dao    dao.OrderDAO
 	svc    order.Service
@@ -78,7 +79,6 @@ func (s *OrderModuleTestSuite) SetupSuite() {
 	require.NoError(s.T(), err)
 	s.dao = dao.NewOrderGORMDAO(s.db)
 	s.svc = order.InitService(s.db)
-	s.mq = testioc.InitMQ()
 	s.cache = testioc.InitCache()
 }
 
@@ -132,9 +132,10 @@ func (s *OrderModuleTestSuite) TestHandler_PreviewOrder() {
 				pm := &payment.Module{Svc: mockPaymentSvc}
 
 				mockProductSvc := productmocks.NewMockService(ctrl)
+				spuId := int64(100)
 				mockProductSvc.EXPECT().FindSKUBySN(gomock.Any(), gomock.Any()).Return(product.SKU{
 					ID:       100,
-					SPUID:    100,
+					SPUID:    spuId,
 					SN:       "SKU100",
 					Image:    "SKUImage100",
 					Name:     "商品SKU100",
@@ -143,6 +144,13 @@ func (s *OrderModuleTestSuite) TestHandler_PreviewOrder() {
 					Stock:    10,
 					SaleType: product.SaleTypeUnlimited, // 无限制
 					Status:   product.StatusOnShelf,
+				}, nil)
+				mockProductSvc.EXPECT().FindSPUByID(gomock.Any(), spuId).Return(product.SPU{
+					ID:       spuId,
+					SN:       "SPU-SKU100",
+					Name:     "SPU-商品SKU100",
+					Desc:     "SPU-商品SKU100",
+					Category: product.Category{Name: "member", Desc: "商品会员"},
 				}, nil)
 				ppm := &product.Module{Svc: mockProductSvc}
 
@@ -178,6 +186,7 @@ func (s *OrderModuleTestSuite) TestHandler_PreviewOrder() {
 						RealTotalAmt:     990,
 						Items: []web.OrderItem{
 							{
+								SPU: web.SPU{Category: "member"},
 								SKU: web.SKU{
 									SN:            "SKU100",
 									Image:         "SKUImage100",
@@ -352,9 +361,10 @@ func (s *OrderModuleTestSuite) TestHandler_PreviewOrderFailed() {
 				pm := &payment.Module{Svc: mockPaymentSvc}
 
 				mockProductSvc := productmocks.NewMockService(ctrl)
+				spuId := int64(100)
 				mockProductSvc.EXPECT().FindSKUBySN(gomock.Any(), gomock.Any()).Return(product.SKU{
 					ID:       100,
-					SPUID:    100,
+					SPUID:    spuId,
 					SN:       "SKU100",
 					Image:    "SKUImage100",
 					Name:     "商品SKU100",
@@ -363,6 +373,13 @@ func (s *OrderModuleTestSuite) TestHandler_PreviewOrderFailed() {
 					Stock:    10,
 					SaleType: product.SaleTypeUnlimited, // 无限制
 					Status:   product.StatusOnShelf,
+				}, nil)
+				mockProductSvc.EXPECT().FindSPUByID(gomock.Any(), spuId).Return(product.SPU{
+					ID:       spuId,
+					SN:       "SPU-SKU100",
+					Name:     "SPU-商品SKU100",
+					Desc:     "SPU-商品SKU100",
+					Category: product.Category{Name: "member", Desc: "会员商品"},
 				}, nil)
 				ppm := &product.Module{Svc: mockProductSvc}
 
@@ -454,9 +471,10 @@ func (s *OrderModuleTestSuite) TestHandler_CreateOrder() {
 				pm := &payment.Module{Svc: mockPaymentSvc}
 
 				mockProductSvc := productmocks.NewMockService(ctrl)
+				spuId := int64(100)
 				mockProductSvc.EXPECT().FindSKUBySN(gomock.Any(), gomock.Any()).Return(product.SKU{
 					ID:       100,
-					SPUID:    100,
+					SPUID:    spuId,
 					SN:       "SKU100",
 					Image:    "SKUImage100",
 					Name:     "商品SKU100",
@@ -465,6 +483,13 @@ func (s *OrderModuleTestSuite) TestHandler_CreateOrder() {
 					Stock:    10,
 					SaleType: product.SaleTypeUnlimited, // 无限制
 					Status:   product.StatusOnShelf,
+				}, nil)
+				mockProductSvc.EXPECT().FindSPUByID(gomock.Any(), spuId).Return(product.SPU{
+					ID:       spuId,
+					SN:       "SPU-SKU101",
+					Name:     "SPU-商品SKU101",
+					Desc:     "SPU-商品SKU101",
+					Category: product.Category{Name: "Code", Desc: "兑换码"},
 				}, nil)
 				ppm := &product.Module{Svc: mockProductSvc}
 
@@ -541,9 +566,10 @@ func (s *OrderModuleTestSuite) TestHandler_CreateOrder() {
 				pm := &payment.Module{Svc: mockPaymentSvc}
 
 				mockProductSvc := productmocks.NewMockService(ctrl)
+				spuId := int64(101)
 				mockProductSvc.EXPECT().FindSKUBySN(gomock.Any(), gomock.Any()).Return(product.SKU{
 					ID:       101,
-					SPUID:    101,
+					SPUID:    spuId,
 					SN:       "SKU101",
 					Image:    "SKUImage101",
 					Name:     "商品SKU101",
@@ -552,6 +578,13 @@ func (s *OrderModuleTestSuite) TestHandler_CreateOrder() {
 					Stock:    1,
 					SaleType: product.SaleTypeUnlimited, // 无限制
 					Status:   product.StatusOnShelf,
+				}, nil)
+				mockProductSvc.EXPECT().FindSPUByID(gomock.Any(), spuId).Return(product.SPU{
+					ID:       spuId,
+					SN:       "SPU-SKU101",
+					Name:     "SPU-商品SKU101",
+					Desc:     "SPU-商品SKU101",
+					Category: product.Category{Name: "Code", Desc: "兑换码"},
 				}, nil)
 				ppm := &product.Module{Svc: mockProductSvc}
 
@@ -830,9 +863,10 @@ func (s *OrderModuleTestSuite) TestHandler_CreateOrderFailed() {
 				pm := &payment.Module{Svc: mockPaymentSvc}
 
 				mockProductSvc := productmocks.NewMockService(ctrl)
+				spuId := int64(101)
 				mockProductSvc.EXPECT().FindSKUBySN(gomock.Any(), gomock.Any()).Return(product.SKU{
 					ID:       101,
-					SPUID:    101,
+					SPUID:    spuId,
 					SN:       "SKU101",
 					Image:    "SKUImage101",
 					Name:     "商品SKU101",
@@ -842,6 +876,13 @@ func (s *OrderModuleTestSuite) TestHandler_CreateOrderFailed() {
 					SaleType: product.SaleTypeUnlimited, // 无限制
 					Status:   product.StatusOnShelf,
 				}, nil)
+				mockProductSvc.EXPECT().FindSPUByID(gomock.Any(), spuId).Return(product.SPU{
+					ID:       spuId,
+					SN:       "SPU-SKU101",
+					Name:     "SPU-商品SKU101",
+					Desc:     "SPU-商品SKU101",
+					Category: product.Category{Name: "Code", Desc: "兑换码"},
+				}, nil).AnyTimes()
 				ppm := &product.Module{Svc: mockProductSvc}
 
 				mockCreditSvc := creditmocks.NewMockService(ctrl)
@@ -903,9 +944,10 @@ func (s *OrderModuleTestSuite) createOrderFailedHandler(t *testing.T, ctrl *gomo
 	pm := &payment.Module{Svc: paymentmocks.NewMockService(ctrl)}
 
 	mockProductSvc := productmocks.NewMockService(ctrl)
+	spuId := int64(101)
 	mockProductSvc.EXPECT().FindSKUBySN(gomock.Any(), gomock.Any()).Return(product.SKU{
 		ID:       101,
-		SPUID:    101,
+		SPUID:    spuId,
 		SN:       "SKU101",
 		Image:    "SKUImage101",
 		Name:     "商品SKU101",
@@ -916,6 +958,13 @@ func (s *OrderModuleTestSuite) createOrderFailedHandler(t *testing.T, ctrl *gomo
 		Status:   product.StatusOnShelf,
 	}, nil)
 	ppm := &product.Module{Svc: mockProductSvc}
+	mockProductSvc.EXPECT().FindSPUByID(gomock.Any(), spuId).Return(product.SPU{
+		ID:       spuId,
+		SN:       "SPU-SKU101",
+		Name:     "SPU-商品SKU101",
+		Desc:     "SPU-商品SKU101",
+		Category: product.Category{Name: "Code", Desc: "兑换码"},
+	}, nil).AnyTimes()
 
 	cm := &credit.Module{Svc: creditmocks.NewMockService(ctrl)}
 
@@ -2128,32 +2177,44 @@ func (s *OrderModuleTestSuite) TestHandler_CancelOrderFailed() {
 
 func (s *OrderModuleTestSuite) TestPaymentConsumer_Consume() {
 	t := s.T()
-	t.Skip()
-
-	producer, er := s.mq.Producer("payment_events")
-	require.NoError(t, er)
 
 	testCases := []struct {
 		name string
 
-		before         func(t *testing.T, producer mq.Producer, message *mq.Message)
-		evt            event.PaymentEvent
-		after          func(t *testing.T, orderSN string)
-		errRequireFunc require.ErrorAssertionFunc
+		gePaymentConsumer func(t *testing.T, ctrl *gomock.Controller, evt event.PaymentEvent) (*event.PaymentConsumer, error)
+		before            func(t *testing.T, evt event.PaymentEvent)
+		evt               event.PaymentEvent
+		after             func(t *testing.T, orderSN string)
+		errRequireFunc    require.ErrorAssertionFunc
 	}{
 		{
 			name: "设置支付成功成功",
-			before: func(t *testing.T, producer mq.Producer, message *mq.Message) {
+			gePaymentConsumer: func(t *testing.T, ctrl *gomock.Controller, evt event.PaymentEvent) (*event.PaymentConsumer, error) {
+				t.Helper()
+
+				mockOrderEventProducer := evtmocks.NewMockOrderEventProducer(ctrl)
+				mockOrderEventProducer.EXPECT().Produce(gomock.Any(), gomock.Any()).Return(nil).Times(2)
+
+				mockConsumer := mocks.NewMockConsumer(ctrl)
+				mockConsumer.EXPECT().Consume(gomock.Any()).Return(s.newPaymentEvent(t, evt), nil).Times(2)
+
+				mockMQ := mocks.NewMockMQ(ctrl)
+				mockMQ.EXPECT().Consumer(gomock.Any(), gomock.Any()).Return(mockConsumer, nil)
+
+				return event.NewPaymentConsumer(s.svc, mockOrderEventProducer, mockMQ)
+			},
+			before: func(t *testing.T, evt event.PaymentEvent) {
 				t.Helper()
 				_, err := s.dao.CreateOrder(context.Background(), dao.Order{
-					SN:        "orderSN-PaymentConsumer-22",
-					BuyerId:   testUID,
+					SN:        evt.OrderSN,
+					BuyerId:   evt.PayerID,
 					PaymentId: sqlx.NewNullInt64(22),
 					PaymentSn: sqlx.NewNullString("paymentSN-22"),
 					Status:    domain.StatusProcessing.ToUint8(),
 				}, []dao.OrderItem{
 					{
 						SPUId:            1,
+						SPUCategory:      "member",
 						SKUId:            1,
 						SKUName:          "商品SKU",
 						SKUDescription:   "商品SKU描述",
@@ -2162,13 +2223,6 @@ func (s *OrderModuleTestSuite) TestPaymentConsumer_Consume() {
 						Quantity:         1,
 					},
 				})
-				require.NoError(t, err)
-
-				_, err = producer.Produce(context.Background(), message)
-				require.NoError(t, err)
-
-				// 模拟重试
-				_, err = producer.Produce(context.Background(), message)
 				require.NoError(t, err)
 			},
 			evt: event.PaymentEvent{
@@ -2185,14 +2239,72 @@ func (s *OrderModuleTestSuite) TestPaymentConsumer_Consume() {
 			errRequireFunc: require.NoError,
 		},
 		{
-			name: "设置支付成功_忽略订单序列号为空",
-			before: func(t *testing.T, producer mq.Producer, message *mq.Message) {
-				_, err := producer.Produce(context.Background(), message)
-				require.NoError(t, err)
-				// 模拟重试
-				_, err = producer.Produce(context.Background(), message)
+			name: "设置支付成功成功_发送消息失败",
+			gePaymentConsumer: func(t *testing.T, ctrl *gomock.Controller, evt event.PaymentEvent) (*event.PaymentConsumer, error) {
+				t.Helper()
+
+				mockOrderEventProducer := evtmocks.NewMockOrderEventProducer(ctrl)
+				mockErr := fmt.Errorf("mock: 发送订单完成消息失败")
+				mockOrderEventProducer.EXPECT().Produce(gomock.Any(), gomock.Any()).Return(mockErr).Times(2)
+
+				mockConsumer := mocks.NewMockConsumer(ctrl)
+				mockConsumer.EXPECT().Consume(gomock.Any()).Return(s.newPaymentEvent(t, evt), nil).Times(2)
+
+				mockMQ := mocks.NewMockMQ(ctrl)
+				mockMQ.EXPECT().Consumer(gomock.Any(), gomock.Any()).Return(mockConsumer, nil)
+
+				return event.NewPaymentConsumer(s.svc, mockOrderEventProducer, mockMQ)
+			},
+			before: func(t *testing.T, evt event.PaymentEvent) {
+				t.Helper()
+				_, err := s.dao.CreateOrder(context.Background(), dao.Order{
+					SN:        evt.OrderSN,
+					BuyerId:   evt.PayerID,
+					PaymentId: sqlx.NewNullInt64(25),
+					PaymentSn: sqlx.NewNullString("paymentSN-25"),
+					Status:    domain.StatusProcessing.ToUint8(),
+				}, []dao.OrderItem{
+					{
+						SPUId:            1,
+						SKUId:            1,
+						SKUName:          "商品SKU",
+						SKUDescription:   "商品SKU描述",
+						SKUOriginalPrice: 9900,
+						SKURealPrice:     9900,
+						Quantity:         1,
+					},
+				})
 				require.NoError(t, err)
 			},
+			evt: event.PaymentEvent{
+				OrderSN: "OrderSN-25",
+				PayerID: testUID,
+				Status:  domain.StatusSuccess.ToUint8(),
+			},
+			after: func(t *testing.T, orderSN string) {
+				t.Helper()
+				orderEntity, err := s.dao.FindOrderByUIDAndSNAndStatus(context.Background(), testUID, orderSN, domain.StatusProcessing.ToUint8())
+				assert.NoError(t, err)
+				assert.Equal(t, domain.StatusSuccess.ToUint8(), orderEntity.Status)
+			},
+			errRequireFunc: require.Error,
+		},
+		{
+			name: "设置支付成功失败_忽略订单序列号为空",
+			gePaymentConsumer: func(t *testing.T, ctrl *gomock.Controller, evt event.PaymentEvent) (*event.PaymentConsumer, error) {
+				t.Helper()
+
+				mockOrderEventProducer := evtmocks.NewMockOrderEventProducer(ctrl)
+
+				mockConsumer := mocks.NewMockConsumer(ctrl)
+				mockConsumer.EXPECT().Consume(gomock.Any()).Return(s.newPaymentEvent(t, evt), nil).Times(2)
+
+				mockMQ := mocks.NewMockMQ(ctrl)
+				mockMQ.EXPECT().Consumer(gomock.Any(), gomock.Any()).Return(mockConsumer, nil)
+
+				return event.NewPaymentConsumer(s.svc, mockOrderEventProducer, mockMQ)
+			},
+			before: func(t *testing.T, evt event.PaymentEvent) {},
 			evt: event.PaymentEvent{
 				OrderSN: "",
 				PayerID: testUID,
@@ -2203,17 +2315,24 @@ func (s *OrderModuleTestSuite) TestPaymentConsumer_Consume() {
 				_, err := s.dao.FindOrderByUIDAndSNAndStatus(context.Background(), testUID, orderSN, domain.StatusSuccess.ToUint8())
 				assert.Error(t, err)
 			},
-			errRequireFunc: require.NoError,
+			errRequireFunc: require.Error,
 		},
 		{
-			name: "设置支付成功_忽略订单序列号非法",
-			before: func(t *testing.T, producer mq.Producer, message *mq.Message) {
-				_, err := producer.Produce(context.Background(), message)
-				require.NoError(t, err)
-				// 模拟重试
-				_, err = producer.Produce(context.Background(), message)
-				require.NoError(t, err)
+			name: "设置支付成功失败_忽略订单序列号非法",
+			gePaymentConsumer: func(t *testing.T, ctrl *gomock.Controller, evt event.PaymentEvent) (*event.PaymentConsumer, error) {
+				t.Helper()
+
+				mockOrderEventProducer := evtmocks.NewMockOrderEventProducer(ctrl)
+
+				mockConsumer := mocks.NewMockConsumer(ctrl)
+				mockConsumer.EXPECT().Consume(gomock.Any()).Return(s.newPaymentEvent(t, evt), nil).Times(2)
+
+				mockMQ := mocks.NewMockMQ(ctrl)
+				mockMQ.EXPECT().Consumer(gomock.Any(), gomock.Any()).Return(mockConsumer, nil)
+
+				return event.NewPaymentConsumer(s.svc, mockOrderEventProducer, mockMQ)
 			},
+			before: func(t *testing.T, evt event.PaymentEvent) {},
 			evt: event.PaymentEvent{
 				OrderSN: "InvalidOrderSN",
 				PayerID: testUID,
@@ -2224,17 +2343,24 @@ func (s *OrderModuleTestSuite) TestPaymentConsumer_Consume() {
 				_, err := s.dao.FindOrderByUIDAndSNAndStatus(context.Background(), testUID, orderSN, domain.StatusSuccess.ToUint8())
 				assert.Error(t, err)
 			},
-			errRequireFunc: require.NoError,
+			errRequireFunc: require.Error,
 		},
 		{
 			name: "设置支付成功失败_买家ID非法",
-			before: func(t *testing.T, producer mq.Producer, message *mq.Message) {
-				_, err := producer.Produce(context.Background(), message)
-				require.NoError(t, err)
-				// 模拟重试
-				_, err = producer.Produce(context.Background(), message)
-				require.NoError(t, err)
+			gePaymentConsumer: func(t *testing.T, ctrl *gomock.Controller, evt event.PaymentEvent) (*event.PaymentConsumer, error) {
+				t.Helper()
+
+				mockOrderEventProducer := evtmocks.NewMockOrderEventProducer(ctrl)
+
+				mockConsumer := mocks.NewMockConsumer(ctrl)
+				mockConsumer.EXPECT().Consume(gomock.Any()).Return(s.newPaymentEvent(t, evt), nil).Times(2)
+
+				mockMQ := mocks.NewMockMQ(ctrl)
+				mockMQ.EXPECT().Consumer(gomock.Any(), gomock.Any()).Return(mockConsumer, nil)
+
+				return event.NewPaymentConsumer(s.svc, mockOrderEventProducer, mockMQ)
 			},
+			before: func(t *testing.T, evt event.PaymentEvent) {},
 			evt: event.PaymentEvent{
 				OrderSN: "OrderSN-3",
 				PayerID: 0,
@@ -2245,15 +2371,28 @@ func (s *OrderModuleTestSuite) TestPaymentConsumer_Consume() {
 				_, err := s.dao.FindOrderByUIDAndSNAndStatus(context.Background(), 0, orderSN, domain.StatusSuccess.ToUint8())
 				assert.Error(t, err)
 			},
-			errRequireFunc: require.NoError,
+			errRequireFunc: require.Error,
 		},
 		{
 			name: "设置支付失败成功",
-			before: func(t *testing.T, producer mq.Producer, message *mq.Message) {
+			gePaymentConsumer: func(t *testing.T, ctrl *gomock.Controller, evt event.PaymentEvent) (*event.PaymentConsumer, error) {
+				t.Helper()
+
+				mockOrderEventProducer := evtmocks.NewMockOrderEventProducer(ctrl)
+
+				mockConsumer := mocks.NewMockConsumer(ctrl)
+				mockConsumer.EXPECT().Consume(gomock.Any()).Return(s.newPaymentEvent(t, evt), nil).Times(2)
+
+				mockMQ := mocks.NewMockMQ(ctrl)
+				mockMQ.EXPECT().Consumer(gomock.Any(), gomock.Any()).Return(mockConsumer, nil)
+
+				return event.NewPaymentConsumer(s.svc, mockOrderEventProducer, mockMQ)
+			},
+			before: func(t *testing.T, evt event.PaymentEvent) {
 				t.Helper()
 				_, err := s.dao.CreateOrder(context.Background(), dao.Order{
-					SN:        "orderSN-23",
-					BuyerId:   testUID,
+					SN:        evt.OrderSN,
+					BuyerId:   evt.PayerID,
 					PaymentId: sqlx.NewNullInt64(23),
 					PaymentSn: sqlx.NewNullString("paymentSN-23"),
 					Status:    domain.StatusProcessing.ToUint8(),
@@ -2268,13 +2407,6 @@ func (s *OrderModuleTestSuite) TestPaymentConsumer_Consume() {
 						Quantity:         1,
 					},
 				})
-				require.NoError(t, err)
-
-				_, err = producer.Produce(context.Background(), message)
-				require.NoError(t, err)
-
-				// 模拟重试
-				_, err = producer.Produce(context.Background(), message)
 				require.NoError(t, err)
 			},
 			evt: event.PaymentEvent{
@@ -2292,11 +2424,24 @@ func (s *OrderModuleTestSuite) TestPaymentConsumer_Consume() {
 		},
 		{
 			name: "设置支付失败或成功失败_支付状态非法",
-			before: func(t *testing.T, producer mq.Producer, message *mq.Message) {
+			gePaymentConsumer: func(t *testing.T, ctrl *gomock.Controller, evt event.PaymentEvent) (*event.PaymentConsumer, error) {
+				t.Helper()
+
+				mockOrderEventProducer := evtmocks.NewMockOrderEventProducer(ctrl)
+
+				mockConsumer := mocks.NewMockConsumer(ctrl)
+				mockConsumer.EXPECT().Consume(gomock.Any()).Return(s.newPaymentEvent(t, evt), nil).Times(2)
+
+				mockMQ := mocks.NewMockMQ(ctrl)
+				mockMQ.EXPECT().Consumer(gomock.Any(), gomock.Any()).Return(mockConsumer, nil)
+
+				return event.NewPaymentConsumer(s.svc, mockOrderEventProducer, mockMQ)
+			},
+			before: func(t *testing.T, evt event.PaymentEvent) {
 				t.Helper()
 				_, err := s.dao.CreateOrder(context.Background(), dao.Order{
-					SN:        "orderSN-24",
-					BuyerId:   testUID,
+					SN:        evt.OrderSN,
+					BuyerId:   evt.PayerID,
 					PaymentId: sqlx.NewNullInt64(24),
 					PaymentSn: sqlx.NewNullString("paymentSN-24"),
 					Status:    domain.StatusProcessing.ToUint8(),
@@ -2311,13 +2456,6 @@ func (s *OrderModuleTestSuite) TestPaymentConsumer_Consume() {
 						Quantity:         1,
 					},
 				})
-				require.NoError(t, err)
-
-				_, err = producer.Produce(context.Background(), message)
-				require.NoError(t, err)
-
-				// 模拟重试
-				_, err = producer.Produce(context.Background(), message)
 				require.NoError(t, err)
 			},
 			evt: event.PaymentEvent{
@@ -2334,13 +2472,16 @@ func (s *OrderModuleTestSuite) TestPaymentConsumer_Consume() {
 		},
 	}
 
-	consumer, err := event.NewPaymentConsumer(s.svc, s.mq)
-	require.NoError(t, err)
-
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			message := s.newPaymentEvent(t, tc.evt)
-			tc.before(t, producer, message)
+
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			tc.before(t, tc.evt)
+
+			consumer, err := tc.gePaymentConsumer(t, ctrl, tc.evt)
+			require.NoError(t, err)
 
 			err = consumer.Consume(context.Background())
 			tc.errRequireFunc(t, err)

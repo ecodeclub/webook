@@ -32,21 +32,16 @@ type PaymentConsumer struct {
 	logger             *elog.Component
 }
 
-func NewPaymentConsumer(svc service.Service, q mq.MQ) (*PaymentConsumer, error) {
+func NewPaymentConsumer(svc service.Service, p OrderEventProducer, q mq.MQ) (*PaymentConsumer, error) {
 	const groupID = "order"
 	consumer, err := q.Consumer(paymentEventName, groupID)
 	if err != nil {
 		return nil, err
 	}
-	producer, err := q.Producer(orderEventName)
-	if err != nil {
-		return nil, err
-	}
-	orderEventProducer, _ := NewOrderEventProducer(producer)
 	return &PaymentConsumer{
 		svc:                svc,
 		consumer:           consumer,
-		orderEventProducer: orderEventProducer,
+		orderEventProducer: p,
 		logger:             elog.DefaultLogger,
 	}, nil
 }
@@ -105,13 +100,20 @@ func (c *PaymentConsumer) sendOrderEvent(ctx context.Context, p PaymentEvent) er
 			elog.FieldErr(err),
 			elog.Any("event", p),
 		)
+		return err
 	}
+	spus := make([]SPU, 0, len(order.Items))
 	for _, item := range order.Items {
-		// todo: 一个订单有有多个商品, 每个商品有不同的category
-		fmt.Printf("%d\n", item.SKU.SPUID)
+		spus = append(spus, SPU{
+			ID:       item.SPU.ID,
+			Category: item.SPU.Category,
+		})
 	}
-
-	evt := OrderEvent{}
+	evt := OrderEvent{
+		OrderID: order.ID,
+		BuyerID: order.BuyerID,
+		SPUs:    spus,
+	}
 	err = c.orderEventProducer.Produce(ctx, evt)
 	if err != nil {
 		c.logger.Warn("发送'订单完成事件'失败",

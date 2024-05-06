@@ -26,5 +26,12 @@ type PaymentEvent struct {
 }
 
 type OrderEvent struct {
-	OrderID string `json:"orderId"`
+	OrderID int64 `json:"orderID"`
+	BuyerID int64 `json:"buyerID"`
+	SPUs    []SPU `json:"spus"`
+}
+
+type SPU struct {
+	ID       int64  `json:"id"`
+	Category string `json:"category"`
 }

@@ -23,7 +23,6 @@ import (
 	"github.com/ecodeclub/webook/internal/payment"
 	"github.com/ecodeclub/webook/internal/pkg/sequencenumber"
 	"github.com/ecodeclub/webook/internal/product"
-	"github.com/google/wire"
 	"gorm.io/gorm"
 )
 
@@ -32,7 +31,11 @@ import (
 func InitModule(db *gorm.DB, cache ecache.Cache, q mq.MQ, pm *payment.Module, ppm *product.Module, cm *credit.Module) (*Module, error) {
 	service := InitService(db)
 	handler := InitHandler(cache, service, pm, ppm, cm)
-	paymentConsumer := initCompleteOrderConsumer(service, q)
+	orderEventProducer, err := event.NewOrderEventProducer(q)
+	if err != nil {
+		return nil, err
+	}
+	paymentConsumer := initCompleteOrderConsumer(service, orderEventProducer, q)
 	closeTimeoutOrdersJob := initCloseExpiredOrdersJob(service)
 	module := &Module{
 		Hdl:                   handler,
@@ -59,7 +62,7 @@ type (
 	Service               = service.Service
 	CloseTimeoutOrdersJob = job.CloseTimeoutOrdersJob
 	Order                 = domain.Order
-	OrderStatus           = domain.OrderStatus
+	Status                = domain.OrderStatus
 	Payment               = domain.Payment
 )
 
@@ -69,8 +72,6 @@ const (
 	StatusSuccess    = domain.StatusSuccess
 	StatusFailed     = domain.StatusFailed
 )
-
-var HandlerSet = wire.NewSet(sequencenumber.NewGenerator, web.NewHandler)
 
 var (
 	once = &sync.Once{}
@@ -87,8 +88,8 @@ func InitService(db *gorm.DB) service.Service {
 	return svc
 }
 
-func initCompleteOrderConsumer(svc2 service.Service, q mq.MQ) *event.PaymentConsumer {
-	consumer, err := event.NewPaymentConsumer(svc2, q)
+func initCompleteOrderConsumer(svc2 service.Service, p event.OrderEventProducer, q mq.MQ) *event.PaymentConsumer {
+	consumer, err := event.NewPaymentConsumer(svc2, p, q)
 	if err != nil {
 		panic(err)
 	}

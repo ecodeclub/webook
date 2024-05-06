@@ -22,7 +22,7 @@ import (
 	"github.com/ecodeclub/mq-api"
 )
 
-//go:generate mockgen -source=./producer.go -package=evtmocks -destination=./mocks/producer.mock.go -typed OrderCompleteEventProducer
+//go:generate mockgen -source=./producer.go -package=evtmocks -destination=./mocks/producer.mock.go -typed OrderEventProducer
 type OrderEventProducer interface {
 	Produce(ctx context.Context, evt OrderEvent) error
 }
@@ -31,7 +31,11 @@ type orderEventProducer struct {
 	producer mq.Producer
 }
 
-func NewOrderEventProducer(p mq.Producer) (OrderEventProducer, error) {
+func NewOrderEventProducer(q mq.MQ) (OrderEventProducer, error) {
+	p, err := q.Producer(orderEventName)
+	if err != nil {
+		return nil, err
+	}
 	return &orderEventProducer{
 		p,
 	}, nil

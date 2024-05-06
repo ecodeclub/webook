@@ -87,6 +87,7 @@ func (h *Handler) PreviewOrder(ctx *ginx.Context, req PreviewOrderReq, sess sess
 				RealTotalAmt:     realTotalPrice,
 				Items: slice.Map(orderItems, func(idx int, src domain.OrderItem) OrderItem {
 					return OrderItem{
+						SPU: h.toSPUVO(src.SPU),
 						SKU: h.toSKUVO(src.SKU),
 					}
 				}),
@@ -95,6 +96,10 @@ func (h *Handler) PreviewOrder(ctx *ginx.Context, req PreviewOrderReq, sess sess
 			Policy:  "请注意: 虚拟商品、一旦支付成功不退、不换,请谨慎操作",
 		},
 	}, nil
+}
+
+func (h *Handler) toSPUVO(spu domain.SPU) SPU {
+	return SPU{Category: spu.Category}
 }
 
 func (h *Handler) toSKUVO(sku domain.SKU) SKU {
@@ -204,11 +209,19 @@ func (h *Handler) getDomainOrderItems(ctx context.Context, skus []SKU) ([]domain
 			// 暂时不需要修改
 			return nil, 0, 0, fmt.Errorf("商品数量非法")
 		}
+		spu, err := h.productSvc.FindSPUByID(ctx, productSKU.SPUID)
+		if err != nil {
+			return nil, 0, 0, fmt.Errorf("商品SPU ID非法: %w", err)
+		}
 		item := domain.OrderItem{
+			SPU: domain.SPU{
+				ID:       spu.ID,
+				Category: spu.Category.Name,
+			},
 			SKU: domain.SKU{
-				SPUID:         productSKU.SPUID,
 				ID:            productSKU.ID,
 				SN:            productSKU.SN,
+				Attrs:         productSKU.Attrs,
 				Image:         productSKU.Image,
 				Name:          productSKU.Name,
 				Description:   productSKU.Desc,
@@ -316,6 +329,7 @@ func (h *Handler) toOrderVO(order domain.Order) Order {
 		Status:           order.Status.ToUint8(),
 		Items: slice.Map(order.Items, func(idx int, src domain.OrderItem) OrderItem {
 			return OrderItem{
+				SPU: h.toSPUVO(src.SPU),
 				SKU: h.toSKUVO(src.SKU),
 			}
 		}),
