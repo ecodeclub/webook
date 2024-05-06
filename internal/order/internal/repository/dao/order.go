@@ -169,7 +169,7 @@ type OrderItem struct {
 	SPUCategory      string         `gorm:"type:varchar(255);not null;comment:SPU所属类别名称"`
 	SKUId            int64          `gorm:"column:sku_id;not null;index:idx_sku_id;comment:SKU自增ID"`
 	SKUSN            string         `gorm:"column:sku_sn;type:varchar(255);not null;comment:SKU序列号"`
-	SKUImage         string         `gorm:"type:varchar(512);not null;comment:SKU缩略图,CDN绝对路径"`
+	SKUImage         string         `gorm:"column:sku_image;type:varchar(512);not null;comment:SKU缩略图,CDN绝对路径"`
 	SKUAttrs         sql.NullString `gorm:"comment:商品销售属性,JSON格式"`
 	SKUName          string         `gorm:"column:sku_name;type:varchar(255);not null;comment:SKU名称"`
 	SKUDescription   string         `gorm:"column:sku_description;not null;comment:SKU描述"`
