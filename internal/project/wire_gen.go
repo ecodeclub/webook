@@ -7,17 +7,48 @@
 package project
 
 import (
+	"sync"
+
+	"github.com/ecodeclub/webook/internal/project/internal/repository"
+	"github.com/ecodeclub/webook/internal/project/internal/repository/dao"
+	"github.com/ecodeclub/webook/internal/project/internal/service"
 	"github.com/ecodeclub/webook/internal/project/internal/web"
+	"github.com/ego-component/egorm"
+	"gorm.io/gorm"
 )
 
 // Injectors from wire.go:
 
-func InitModule() *Module {
-	adminHandler := web.NewAdminHandler()
-	handler := web.NewHandler()
+func InitModule(db *gorm.DB) *Module {
+	projectAdminDAO := initAdminDAO(db)
+	projectAdminRepository := repository.NewProjectAdminRepository(projectAdminDAO)
+	projectAdminService := service.NewProjectAdminService(projectAdminRepository)
+	adminHandler := web.NewAdminHandler(projectAdminService)
+	projectDAO := dao.NewGORMProjectDAO(db)
+	repositoryRepository := repository.NewCachedRepository(projectDAO)
+	serviceService := service.NewService(repositoryRepository)
+	handler := web.NewHandler(serviceService)
 	module := &Module{
 		AdminHdl: adminHandler,
 		Hdl:      handler,
 	}
 	return module
+}
+
+// wire.go:
+
+var (
+	adminDAO     dao.ProjectAdminDAO
+	adminDAOOnce sync.Once
+)
+
+func initAdminDAO(db *egorm.Component) dao.ProjectAdminDAO {
+	adminDAOOnce.Do(func() {
+		err := dao.InitTables(db)
+		if err != nil {
+			panic(err)
+		}
+		adminDAO = dao.NewGORMProjectAdminDAO(db)
+	})
+	return adminDAO
 }

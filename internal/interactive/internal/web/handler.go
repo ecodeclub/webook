@@ -33,6 +33,9 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g.POST("/like", ginx.BS[LikeReq](h.Like))
 	// 获得某个数据的点赞数据
 	g.POST("/cnt", ginx.BS[GetCntReq](h.GetCnt))
+	// 传入 biz, biz id，你把对应的点赞收藏的数据返回回来
+	g.POST("/detail")
+	// 对应的 批量接口 []biz, []biz_id 传过来
 }
 
 func (h *Handler) PublicRoutes(server *gin.Engine) {

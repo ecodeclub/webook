@@ -53,7 +53,7 @@ func InitAdminServer(prj *project.AdminHandler) AdminServer {
 	// 登录校验
 	res.Use(session.CheckLoginMiddleware())
 	res.Use(AdminPermission())
-	prj.Routes(res.Engine)
+	prj.PrivateRoutes(res.Engine)
 	return res
 }
 

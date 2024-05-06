@@ -15,137 +15,232 @@
 package web
 
 import (
-	"fmt"
-	"time"
-
+	"github.com/ecodeclub/ekit/slice"
 	"github.com/ecodeclub/ginx"
-	"github.com/ecodeclub/ginx/session"
+	"github.com/ecodeclub/webook/internal/project/internal/domain"
+	"github.com/ecodeclub/webook/internal/project/internal/service"
 	"github.com/gin-gonic/gin"
+	"golang.org/x/sync/errgroup"
 )
 
 type AdminHandler struct {
+	svc service.ProjectAdminService
 }
 
-func NewAdminHandler() *AdminHandler {
-	return &AdminHandler{}
-}
-
-func (h *AdminHandler) Routes(server *gin.Engine) {
+func (h *AdminHandler) PrivateRoutes(server *gin.Engine) {
 	g := server.Group("/project")
 	g.POST("/list", ginx.B[Page](h.List))
 	g.POST("/detail", ginx.B[IdReq](h.Detail))
 	g.POST("/save", ginx.B[Project](h.Save))
 	g.POST("/publish", ginx.B[Project](h.Publish))
-	g.POST("/difficulty/save", ginx.BS(h.DifficultySave))
-	g.POST("/difficulty/publish", ginx.BS(h.DifficultyPublish))
-	g.POST("/resume/save", ginx.BS(h.ResumeSave))
-	g.POST("/resume/publish", ginx.BS(h.ResumePublish))
-	g.POST("/question/save", ginx.BS(h.QuestionSave))
-	g.POST("/question/publish", ginx.BS(h.QuestionPublish))
+
+	g.POST("/difficulty/save", ginx.B(h.DifficultySave))
+	g.POST("/difficulty/detail", ginx.B(h.DifficultyDetail))
+	g.POST("/difficulty/publish", ginx.B(h.DifficultyPublish))
+
+	g.POST("/resume/save", ginx.B(h.ResumeSave))
+	g.POST("/resume/publish", ginx.B(h.ResumePublish))
+	g.POST("/resume/detail", ginx.B(h.ResumeDetail))
+
+	g.POST("/question/save", ginx.B(h.QuestionSave))
+	g.POST("/question/detail", ginx.B(h.QuestionDetail))
+	g.POST("/question/publish", ginx.B(h.QuestionPublish))
+
+	g.POST("/introduction/save", ginx.B(h.IntroductionSave))
+	g.POST("/introduction/detail", ginx.B(h.IntroductionDetail))
+	g.POST("/introduction/publish", ginx.B(h.IntroductionPublish))
 }
 
 func (h *AdminHandler) List(ctx *ginx.Context, req Page) (ginx.Result, error) {
+	var (
+		eg   errgroup.Group
+		list []domain.Project
+		cnt  int64
+	)
+
+	eg.Go(func() error {
+		var err error
+		list, err = h.svc.List(ctx, req.Offset, req.Limit)
+		return err
+	})
+	eg.Go(func() error {
+		var err error
+		cnt, err = h.svc.Count(ctx)
+		return err
+	})
+	if err := eg.Wait(); err != nil {
+		return systemErrorResult, err
+	}
 	return ginx.Result{
 		Data: ProjectList{
-			Projects: []Project{
-				h.mockProject(1),
-				h.mockProject(2),
-				h.mockProject(3),
-			},
-			Total: 3,
+			Projects: slice.Map(list, func(idx int, src domain.Project) Project {
+				return newProject(src)
+			}),
+			Total: cnt,
 		},
 	}, nil
 }
 
-func (h *AdminHandler) mockProject(id int64) Project {
-	return Project{
-		Id:     id,
-		Title:  fmt.Sprintf("面试项目- %d", id),
-		Desc:   fmt.Sprintf("这是面试项目 - %d", id),
-		Status: uint8(id%2 + 1),
-		Utime:  time.Now().UnixMilli(),
-		Difficulties: []Difficulty{
-			h.mockDifficult(1),
-			h.mockDifficult(2),
-			h.mockDifficult(3),
-			h.mockDifficult(4),
-		},
-	}
-}
-
-func (h *AdminHandler) mockDifficult(id int64) Difficulty {
-	return Difficulty{
-		Id:       id,
-		Title:    fmt.Sprintf("项目难点- %d", id),
-		Analysis: fmt.Sprintf("这是项目难点 - %d", id),
-		Content:  fmt.Sprintf("这是面试时候的话术 - %d", id),
-		Status:   uint8(id%2 + 1),
-		Utime:    time.Now().UnixMilli(),
-	}
-}
-
 func (h *AdminHandler) Detail(ctx *ginx.Context, req IdReq) (ginx.Result, error) {
+	prj, err := h.svc.Detail(ctx, req.Id)
+	if err != nil {
+		return systemErrorResult, err
+	}
 	return ginx.Result{
-		Data: h.mockProject(123),
+		Data: newProject(prj),
 	}, nil
 }
 
 func (h *AdminHandler) DifficultySave(ctx *ginx.Context,
-	req DifficultySaveReq, sess session.Session) (ginx.Result, error) {
+	req DifficultySaveReq) (ginx.Result, error) {
+	id, err := h.svc.DifficultySave(ctx, req.Pid, req.Difficulty.toDomain())
+	if err != nil {
+		return systemErrorResult, err
+	}
 	return ginx.Result{
 		// 返回 Difficulty 的 id
-		Data: 123,
+		Data: id,
 	}, nil
 }
 
 func (h *AdminHandler) DifficultyPublish(ctx *ginx.Context,
-	req DifficultySaveReq, sess session.Session) (ginx.Result, error) {
+	req DifficultySaveReq) (ginx.Result, error) {
+	id, err := h.svc.DifficultyPublish(ctx, req.Pid, req.Difficulty.toDomain())
+	if err != nil {
+		return systemErrorResult, err
+	}
 	return ginx.Result{
-		// 返回 Difficulty 的 id
-		Data: 123,
+		Data: id,
 	}, nil
 }
 
 func (h *AdminHandler) ResumeSave(ctx *ginx.Context,
-	req ResumeSaveReq, sess session.Session) (ginx.Result, error) {
+	req ResumeSaveReq) (ginx.Result, error) {
+	id, err := h.svc.ResumeSave(ctx, req.Pid, req.Resume.toDomain())
+	if err != nil {
+		return systemErrorResult, err
+	}
 	return ginx.Result{
-		// 返回 Difficulty 的 id
-		Data: 123,
+		Data: id,
 	}, nil
 }
 
 func (h *AdminHandler) ResumePublish(ctx *ginx.Context,
-	req ResumeSaveReq, sess session.Session) (ginx.Result, error) {
+	req ResumeSaveReq) (ginx.Result, error) {
+	id, err := h.svc.ResumePublish(ctx, req.Pid, req.Resume.toDomain())
+	if err != nil {
+		return systemErrorResult, err
+	}
 	return ginx.Result{
 		// 返回 Difficulty 的 id
-		Data: 123,
+		Data: id,
 	}, nil
 }
 
 func (h *AdminHandler) QuestionSave(ctx *ginx.Context,
-	req QuestionSaveReq, sess session.Session) (ginx.Result, error) {
+	req QuestionSaveReq) (ginx.Result, error) {
+	id, err := h.svc.QuestionSave(ctx, req.Pid, req.Question.toDomain())
+	if err != nil {
+		return systemErrorResult, err
+	}
 	return ginx.Result{
-		// 返回 Difficulty 的 id
-		Data: 123,
+		Data: id,
 	}, nil
 }
 
 func (h *AdminHandler) QuestionPublish(ctx *ginx.Context,
-	req QuestionSaveReq, sess session.Session) (ginx.Result, error) {
+	req QuestionSaveReq) (ginx.Result, error) {
+	id, err := h.svc.QuestionPublish(ctx, req.Pid, req.Question.toDomain())
+	if err != nil {
+		return systemErrorResult, err
+	}
 	return ginx.Result{
-		// 返回 Difficulty 的 id
-		Data: 123,
+		Data: id,
 	}, nil
 }
 
 func (h *AdminHandler) Save(ctx *ginx.Context, req Project) (ginx.Result, error) {
+	id, err := h.svc.Save(ctx, req.toDomain())
+	if err != nil {
+		return systemErrorResult, err
+	}
 	return ginx.Result{
-		Data: 123,
+		Data: id,
 	}, nil
 }
 
 func (h *AdminHandler) Publish(ctx *ginx.Context, req Project) (ginx.Result, error) {
+	id, err := h.svc.Publish(ctx, req.toDomain())
+	if err != nil {
+		return systemErrorResult, err
+	}
 	return ginx.Result{
-		Data: 123,
+		Data: id,
 	}, nil
+}
+
+func (h *AdminHandler) ResumeDetail(ctx *ginx.Context, req IdReq) (ginx.Result, error) {
+	res, err := h.svc.ResumeDetail(ctx, req.Id)
+	if err != nil {
+		return systemErrorResult, err
+	}
+	return ginx.Result{
+		Data: newResume(res),
+	}, nil
+}
+
+func (h *AdminHandler) DifficultyDetail(ctx *ginx.Context, req IdReq) (ginx.Result, error) {
+	res, err := h.svc.DifficultyDetail(ctx, req.Id)
+	if err != nil {
+		return systemErrorResult, err
+	}
+	return ginx.Result{
+		Data: newDifficulty(res),
+	}, nil
+}
+
+func (h *AdminHandler) QuestionDetail(ctx *ginx.Context, req IdReq) (ginx.Result, error) {
+	res, err := h.svc.QuestionDetail(ctx, req.Id)
+	if err != nil {
+		return systemErrorResult, err
+	}
+	return ginx.Result{
+		Data: newQuestion(res),
+	}, nil
+}
+
+func (h *AdminHandler) IntroductionSave(ctx *ginx.Context,
+	req IntroductionSaveReq) (ginx.Result, error) {
+	id, err := h.svc.IntroductionSave(ctx, req.Pid, req.Introduction.toDomain())
+	if err != nil {
+		return systemErrorResult, err
+	}
+	return ginx.Result{Data: id}, nil
+}
+
+func (h *AdminHandler) IntroductionDetail(ctx *ginx.Context, req IdReq) (ginx.Result, error) {
+	res, err := h.svc.IntroductionDetail(ctx, req.Id)
+	if err != nil {
+		return systemErrorResult, err
+	}
+	return ginx.Result{
+		Data: newIntroduction(res),
+	}, nil
+}
+
+func (h *AdminHandler) IntroductionPublish(ctx *ginx.Context,
+	req IntroductionSaveReq) (ginx.Result, error) {
+	id, err := h.svc.IntroductionPublish(ctx, req.Pid, req.Introduction.toDomain())
+	if err != nil {
+		return systemErrorResult, err
+	}
+	return ginx.Result{
+		Data: id,
+	}, nil
+}
+
+func NewAdminHandler(svc service.ProjectAdminService) *AdminHandler {
+	return &AdminHandler{
+		svc: svc,
+	}
 }
