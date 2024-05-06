@@ -17,15 +17,33 @@
 package startup
 
 import (
+	"github.com/ecodeclub/ecache"
 	"github.com/ecodeclub/webook/internal/cases"
+	"github.com/ecodeclub/webook/internal/cases/internal/event"
+	"github.com/ecodeclub/webook/internal/cases/internal/repository"
+	"github.com/ecodeclub/webook/internal/cases/internal/repository/cache"
 	"github.com/ecodeclub/webook/internal/cases/internal/web"
+	"gorm.io/gorm"
 
 	testioc "github.com/ecodeclub/webook/internal/test/ioc"
 	"github.com/google/wire"
 )
 
-func InitHandler() (*web.Handler, error) {
-	wire.Build(testioc.BaseSet, cases.InitModule,
+func InitHandler(p event.SyncEventProducer) (*web.Handler, error) {
+	wire.Build(testioc.BaseSet, initModule,
 		wire.FieldsOf(new(*cases.Module), "Hdl"))
 	return new(web.Handler), nil
+}
+
+func initModule(db *gorm.DB, ec ecache.Cache, p event.SyncEventProducer) (*cases.Module, error) {
+	caseDAO := cases.InitCaseDAO(db)
+	caseCache := cache.NewCaseCache(ec)
+	caseRepo := repository.NewCaseRepo(caseDAO, caseCache)
+	service := cases.NewService(caseRepo, p)
+	handler := web.NewHandler(service)
+	module := &cases.Module{
+		Svc: service,
+		Hdl: handler,
+	}
+	return module, nil
 }

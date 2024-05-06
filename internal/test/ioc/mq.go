@@ -84,6 +84,10 @@ func initMQ() (mq.MQ, error) {
 			Partitions: 1,
 		},
 		{
+			Name:       "sync_events",
+			Partitions: 1,
+		},
+		{
 			Name:       "order_events",
 			Partitions: 1,
 		},

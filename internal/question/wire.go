@@ -19,7 +19,10 @@ package baguwen
 import (
 	"sync"
 
+	"github.com/ecodeclub/webook/internal/question/internal/event"
+
 	"github.com/ecodeclub/ecache"
+	"github.com/ecodeclub/mq-api"
 
 	"github.com/ecodeclub/webook/internal/question/internal/repository"
 	"github.com/ecodeclub/webook/internal/question/internal/repository/cache"
@@ -31,10 +34,11 @@ import (
 	"gorm.io/gorm"
 )
 
-func InitModule(db *egorm.Component, ec ecache.Cache) (*Module, error) {
+func InitModule(db *egorm.Component, ec ecache.Cache, q mq.MQ) (*Module, error) {
 	wire.Build(InitQuestionDAO,
 		cache.NewQuestionECache,
 		repository.NewCacheRepository,
+		event.NewSyncEventProducer,
 		service.NewService,
 		web.NewHandler,
 

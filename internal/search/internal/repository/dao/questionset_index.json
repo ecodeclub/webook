@@ -1,0 +1,24 @@
+{
+  "mappings": {
+    "properties": {
+      "id": {
+        "type": "long"
+      },
+      "uid": {
+        "type": "long"
+      },
+      "title": {
+        "type": "text"
+      },
+      "description": {
+        "type": "text"
+      },
+      "questions": {
+        "type": "long"
+      },
+      "utime": {
+        "type": "long"
+      }
+    }
+  }
+}

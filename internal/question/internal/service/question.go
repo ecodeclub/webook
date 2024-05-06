@@ -16,6 +16,10 @@ package service
 
 import (
 	"context"
+	"time"
+
+	"github.com/ecodeclub/webook/internal/question/internal/event"
+	"github.com/gotomicro/ego/core/elog"
 
 	"golang.org/x/sync/errgroup"
 
@@ -40,7 +44,10 @@ type Service interface {
 }
 
 type service struct {
-	repo repository.Repository
+	repo        repository.Repository
+	producer    event.SyncEventProducer
+	logger      *elog.Component
+	syncTimeout time.Duration
 }
 
 func (s *service) GetPubByIDs(ctx context.Context, ids []int64) ([]domain.Question, error) {
@@ -101,17 +108,55 @@ func (s *service) PubList(ctx context.Context, offset int, limit int) ([]domain.
 
 func (s *service) Save(ctx context.Context, question *domain.Question) (int64, error) {
 	question.Status = domain.UnPublishedStatus
+	var id = question.Id
+	var err error
 	if question.Id > 0 {
-		return question.Id, s.repo.Update(ctx, question)
+		err = s.repo.Update(ctx, question)
+	} else {
+		id, err = s.repo.Create(ctx, question)
 	}
-	return s.repo.Create(ctx, question)
+	if err != nil {
+		return 0, err
+	}
+	s.syncQuestion(id)
+	return id, nil
 }
 
 func (s *service) Publish(ctx context.Context, question *domain.Question) (int64, error) {
 	question.Status = domain.PublishedStatus
-	return s.repo.Sync(ctx, question)
+	id, err := s.repo.Sync(ctx, question)
+	if err != nil {
+		return 0, err
+	}
+	s.syncQuestion(id)
+	return id, nil
 }
 
-func NewService(repo repository.Repository) Service {
-	return &service{repo: repo}
+func NewService(repo repository.Repository, producer event.SyncEventProducer) Service {
+	return &service{
+		repo:        repo,
+		producer:    producer,
+		logger:      elog.DefaultLogger,
+		syncTimeout: 10 * time.Second,
+	}
+}
+
+func (s *service) syncQuestion(id int64) {
+	ctx, cancel := context.WithTimeout(context.Background(), s.syncTimeout)
+	defer cancel()
+	que, err := s.repo.GetById(ctx, id)
+	if err != nil {
+		s.logger.Error("发送同步搜索信息",
+			elog.FieldErr(err),
+		)
+		return
+	}
+	evt := event.NewQuestionEvent(&que)
+	err = s.producer.Produce(ctx, evt)
+	if err != nil {
+		s.logger.Error("发送同步搜索信息",
+			elog.FieldErr(err),
+			elog.Any("event", evt),
+		)
+	}
 }

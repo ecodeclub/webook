@@ -18,13 +18,18 @@ package integration
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/ecodeclub/webook/internal/cases/internal/domain"
+	"github.com/ecodeclub/webook/internal/cases/internal/event"
+	eveMocks "github.com/ecodeclub/webook/internal/cases/internal/event/mocks"
+	"go.uber.org/mock/gomock"
 
 	"github.com/ecodeclub/ecache"
 	"github.com/ecodeclub/ekit/iox"
@@ -49,10 +54,12 @@ const uid = 2051
 
 type HandlerTestSuite struct {
 	suite.Suite
-	server *egin.Component
-	db     *egorm.Component
-	rdb    ecache.Cache
-	dao    dao.CaseDAO
+	server   *egin.Component
+	db       *egorm.Component
+	rdb      ecache.Cache
+	dao      dao.CaseDAO
+	ctrl     *gomock.Controller
+	producer *eveMocks.MockSyncEventProducer
 }
 
 func (s *HandlerTestSuite) TearDownSuite() {
@@ -70,7 +77,9 @@ func (s *HandlerTestSuite) TearDownTest() {
 }
 
 func (s *HandlerTestSuite) SetupSuite() {
-	handler, err := startup.InitHandler()
+	s.ctrl = gomock.NewController(s.T())
+	s.producer = eveMocks.NewMockSyncEventProducer(s.ctrl)
+	handler, err := startup.InitHandler(s.producer)
 	require.NoError(s.T(), err)
 	econf.Set("server", map[string]any{"contextTimeout": "1s"})
 	server := egin.Load("server").Build()
@@ -109,7 +118,7 @@ func (s *HandlerTestSuite) TestSave() {
 		{
 			name: "新建",
 			before: func(t *testing.T) {
-
+				s.producer.EXPECT().Produce(gomock.Any(), gomock.Any()).Return(nil)
 			},
 			after: func(t *testing.T) {
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
@@ -152,6 +161,7 @@ func (s *HandlerTestSuite) TestSave() {
 		{
 			name: "部分更新",
 			before: func(t *testing.T) {
+				s.producer.EXPECT().Produce(gomock.Any(), gomock.Any()).Return(nil)
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 				defer cancel()
 				err := s.db.WithContext(ctx).Create(&dao.Case{
@@ -403,7 +413,7 @@ func (s *HandlerTestSuite) TestPublish() {
 		{
 			name: "新建并发布",
 			before: func(t *testing.T) {
-
+				s.producer.EXPECT().Produce(gomock.Any(), gomock.Any()).Return(nil)
 			},
 			after: func(t *testing.T) {
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
@@ -451,6 +461,7 @@ func (s *HandlerTestSuite) TestPublish() {
 			name: "更新并发布",
 			// publish_case表的ctime不更新
 			before: func(t *testing.T) {
+				s.producer.EXPECT().Produce(gomock.Any(), gomock.Any()).Return(nil)
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 				defer cancel()
 				err := s.db.WithContext(ctx).Create(&dao.Case{
@@ -520,6 +531,7 @@ func (s *HandlerTestSuite) TestPublish() {
 			name: "publish表有值发布",
 			// publish_case表的ctime不更新
 			before: func(t *testing.T) {
+				s.producer.EXPECT().Produce(gomock.Any(), gomock.Any()).Return(nil)
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 				defer cancel()
 				err := s.db.WithContext(ctx).Create(&dao.Case{
@@ -769,6 +781,99 @@ func (s *HandlerTestSuite) TestPubDetail() {
 			assert.Equal(t, tc.wantResp, recorder.MustScan())
 		})
 	}
+}
+
+func (s *HandlerTestSuite) TestEvent() {
+	t := s.T()
+	mu := &sync.RWMutex{}
+	ans := make([]event.Case, 0, 16)
+	s.producer.EXPECT().Produce(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, caseEvent event.CaseEvent) error {
+		var eve event.Case
+		err := json.Unmarshal([]byte(caseEvent.Data), &eve)
+		if err != nil {
+			return err
+		}
+		mu.Lock()
+		ans = append(ans, eve)
+		mu.Unlock()
+		return nil
+	}).Times(2)
+	// 保存
+	saveReq := web.SaveReq{
+		Case: web.Case{
+			Title:     "案例1",
+			Content:   "案例1内容",
+			Labels:    []string{"MySQL"},
+			CodeRepo:  "www.github.com",
+			Keywords:  "mysql_keywords",
+			Shorthand: "mysql_shorthand",
+			Highlight: "mysql_highlight",
+			Guidance:  "mysql_guidance",
+		},
+	}
+	req, err := http.NewRequest(http.MethodPost,
+		"/case/save", iox.NewJSONReader(saveReq))
+	req.Header.Set("content-type", "application/json")
+	require.NoError(t, err)
+	recorder := test.NewJSONResponseRecorder[int64]()
+	s.server.ServeHTTP(recorder, req)
+	require.Equal(t, 200, recorder.Code)
+	// 发布
+	publishReq := web.SaveReq{
+		Case: web.Case{
+			Title:     "案例2",
+			Content:   "案例2内容",
+			Labels:    []string{"MySQL"},
+			CodeRepo:  "www.github.com",
+			Keywords:  "mysql_keywords",
+			Shorthand: "mysql_shorthand",
+			Highlight: "mysql_highlight",
+			Guidance:  "mysql_guidance",
+		},
+	}
+	req2, err := http.NewRequest(http.MethodPost,
+		"/case/publish", iox.NewJSONReader(publishReq))
+	req2.Header.Set("content-type", "application/json")
+	require.NoError(t, err)
+	recorder = test.NewJSONResponseRecorder[int64]()
+	s.server.ServeHTTP(recorder, req2)
+	require.Equal(t, 200, recorder.Code)
+	time.Sleep(1 * time.Second)
+	for idx := range ans {
+		assert.True(t, ans[idx].Id != 0)
+		assert.True(t, ans[idx].Utime != 0)
+		assert.True(t, ans[idx].Ctime != 0)
+		ans[idx].Id = 0
+		ans[idx].Utime = 0
+		ans[idx].Ctime = 0
+	}
+	assert.Equal(t, []event.Case{
+		{
+			Title:     "案例1",
+			Uid:       uid,
+			Content:   "案例1内容",
+			Labels:    []string{"MySQL"},
+			CodeRepo:  "www.github.com",
+			Keywords:  "mysql_keywords",
+			Shorthand: "mysql_shorthand",
+			Highlight: "mysql_highlight",
+			Guidance:  "mysql_guidance",
+			Status:    1,
+		},
+		{
+
+			Title:     "案例2",
+			Uid:       uid,
+			Content:   "案例2内容",
+			Labels:    []string{"MySQL"},
+			CodeRepo:  "www.github.com",
+			Keywords:  "mysql_keywords",
+			Shorthand: "mysql_shorthand",
+			Highlight: "mysql_highlight",
+			Guidance:  "mysql_guidance",
+			Status:    2,
+		},
+	}, ans)
 }
 
 // assertCase 不比较 id

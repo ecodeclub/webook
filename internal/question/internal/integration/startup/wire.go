@@ -17,22 +17,44 @@
 package startup
 
 import (
+	"github.com/ecodeclub/ecache"
 	baguwen "github.com/ecodeclub/webook/internal/question"
+	"github.com/ecodeclub/webook/internal/question/internal/event"
+	"github.com/ecodeclub/webook/internal/question/internal/repository"
+	"github.com/ecodeclub/webook/internal/question/internal/repository/cache"
+	"github.com/ecodeclub/webook/internal/question/internal/service"
 	"github.com/ecodeclub/webook/internal/question/internal/web"
 	testioc "github.com/ecodeclub/webook/internal/test/ioc"
+	"github.com/ego-component/egorm"
 	"github.com/google/wire"
 )
 
-func InitHandler() (*web.Handler, error) {
-	wire.Build(testioc.BaseSet,
-		baguwen.InitModule,
+func InitHandler(p event.SyncEventProducer) (*web.Handler, error) {
+	wire.Build(
+		testioc.BaseSet,
+		initModule,
 		wire.FieldsOf(new(*baguwen.Module), "Hdl"),
 	)
 	return new(web.Handler), nil
 }
 
-func InitQuestionSetHandler() (*web.QuestionSetHandler, error) {
-	wire.Build(testioc.BaseSet, baguwen.InitModule,
+func initModule(db *egorm.Component, ec ecache.Cache, p event.SyncEventProducer) (*baguwen.Module, error) {
+	wire.Build(baguwen.InitQuestionDAO,
+		cache.NewQuestionECache,
+		repository.NewCacheRepository,
+		service.NewService,
+		web.NewHandler,
+		baguwen.InitQuestionSetDAO,
+		repository.NewQuestionSetRepository,
+		service.NewQuestionSetService,
+		web.NewQuestionSetHandler,
+		wire.Struct(new(baguwen.Module), "*"),
+	)
+	return new(baguwen.Module), nil
+}
+
+func InitQuestionSetHandler(p event.SyncEventProducer) (*web.QuestionSetHandler, error) {
+	wire.Build(testioc.BaseSet, initModule,
 		wire.FieldsOf(new(*baguwen.Module), "QsHdl"))
 	return new(web.QuestionSetHandler), nil
 }
