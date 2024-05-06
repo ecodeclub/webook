@@ -43,7 +43,7 @@ type (
 	Service               = service.Service
 	CloseTimeoutOrdersJob = job.CloseTimeoutOrdersJob
 	Order                 = domain.Order
-	OrderStatus           = domain.OrderStatus
+	Status                = domain.OrderStatus
 	Payment               = domain.Payment
 )
 
@@ -54,15 +54,12 @@ const (
 	StatusFailed     = domain.StatusFailed
 )
 
-var HandlerSet = wire.NewSet(
-	sequencenumber.NewGenerator,
-	web.NewHandler)
-
 func InitModule(db *egorm.Component, cache ecache.Cache, q mq.MQ, pm *payment.Module, ppm *product.Module, cm *credit.Module) (*Module, error) {
 	wire.Build(
 		wire.Struct(new(Module), "*"),
 		InitService,
 		InitHandler,
+		event.NewOrderEventProducer,
 		initCompleteOrderConsumer,
 		initCloseExpiredOrdersJob,
 	)
@@ -94,8 +91,8 @@ func InitService(db *gorm.DB) service.Service {
 	return svc
 }
 
-func initCompleteOrderConsumer(svc service.Service, q mq.MQ) *event.PaymentConsumer {
-	consumer, err := event.NewPaymentConsumer(svc, q)
+func initCompleteOrderConsumer(svc service.Service, p event.OrderEventProducer, q mq.MQ) *event.PaymentConsumer {
+	consumer, err := event.NewPaymentConsumer(svc, p, q)
 	if err != nil {
 		panic(err)
 	}

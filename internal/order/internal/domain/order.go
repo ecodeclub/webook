@@ -49,14 +49,25 @@ type Payment struct {
 }
 
 type OrderItem struct {
+	SPU SPU
 	SKU SKU
 }
 
+type Category struct {
+	Name string
+	Desc string
+}
+
+type SPU struct {
+	ID       int64
+	Category Category
+}
+
 type SKU struct {
-	SPUID         int64
 	ID            int64
 	SN            string
 	Image         string
+	Attrs         string
 	Name          string
 	Description   string
 	OriginalPrice int64
