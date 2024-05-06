@@ -54,7 +54,6 @@ type OrderItem struct {
 }
 
 type SKU struct {
-	// SPUID         int64
 	ID            int64
 	SN            string
 	Image         string
