@@ -9,20 +9,27 @@ package marketing
 import (
 	"github.com/ecodeclub/mq-api"
 	"github.com/ecodeclub/webook/internal/marketing/internal/event/producer"
+	"github.com/ecodeclub/webook/internal/marketing/internal/repository"
+	"github.com/ecodeclub/webook/internal/marketing/internal/repository/dao"
 	"github.com/ecodeclub/webook/internal/marketing/internal/service"
 	"github.com/ecodeclub/webook/internal/marketing/internal/web"
 	"github.com/ecodeclub/webook/internal/order"
+	"github.com/ecodeclub/webook/internal/pkg/sequencenumber"
+	"gorm.io/gorm"
 )
 
 // Injectors from wire.go:
 
-func InitModule(q mq.MQ, om *order.Module) (*Module, error) {
+func InitModule(db *gorm.DB, q mq.MQ, om *order.Module) (*Module, error) {
 	serviceService := om.Svc
 	memberEventProducer, err := producer.NewMemberEventProducer(q)
 	if err != nil {
 		return nil, err
 	}
-	service2 := service.NewService(serviceService, memberEventProducer)
+	generator := sequencenumber.NewGenerator()
+	marketingDAO := dao.NewGORMMarketingDAO(db)
+	marketingRepository := repository.NewRepository(marketingDAO)
+	service2 := service.NewService(serviceService, memberEventProducer, generator, marketingRepository)
 	handler := web.NewHandler(service2)
 	module := &Module{
 		Svc: service2,

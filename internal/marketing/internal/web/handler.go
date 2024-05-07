@@ -17,8 +17,10 @@ package web
 import (
 	"fmt"
 
+	"github.com/ecodeclub/ekit/slice"
 	"github.com/ecodeclub/ginx"
 	"github.com/ecodeclub/ginx/session"
+	"github.com/ecodeclub/webook/internal/marketing/internal/domain"
 	"github.com/ecodeclub/webook/internal/marketing/internal/service"
 	"github.com/gin-gonic/gin"
 )
@@ -42,7 +44,22 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 func (h *Handler) PublicRoutes(_ *gin.Engine) {}
 
 func (h *Handler) ListRedemptionCodes(ctx *ginx.Context, req ListRedemptionCodesReq, sess session.Session) (ginx.Result, error) {
-	return systemErrorResult, fmt.Errorf("unimplemented")
+	codes, total, err := h.svc.ListRedemptionCodes(ctx.Request.Context(), sess.Claims().Uid, req.Offset, req.Limit)
+	if err != nil {
+		return systemErrorResult, fmt.Errorf("获取个人兑换码失败: %w", err)
+	}
+	return ginx.Result{
+		Data: ListRedemptionCodesResp{
+			Total: total,
+			Codes: slice.Map(codes, func(idx int, src domain.RedemptionCode) RedemptionCode {
+				return RedemptionCode{
+					Code:   src.Code,
+					Status: src.Status.ToUint8(),
+					Utime:  src.Utime,
+				}
+			}),
+		},
+	}, nil
 }
 
 func (h *Handler) RedeemRedemptionCode(ctx *ginx.Context, req RedeemRedemptionCodeReq, sess session.Session) (ginx.Result, error) {

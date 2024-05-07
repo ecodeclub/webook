@@ -22,25 +22,35 @@ import (
 	"github.com/ecodeclub/webook/internal/marketing/internal/domain"
 	"github.com/ecodeclub/webook/internal/marketing/internal/event"
 	"github.com/ecodeclub/webook/internal/marketing/internal/event/producer"
+	"github.com/ecodeclub/webook/internal/marketing/internal/repository"
 	"github.com/ecodeclub/webook/internal/order"
+	"github.com/ecodeclub/webook/internal/pkg/sequencenumber"
+	"golang.org/x/sync/errgroup"
 )
 
 type Service interface {
 	ExecuteOrderCompletedActivity(ctx context.Context, act domain.OrderCompletedActivity) error
+	ListRedemptionCodes(ctx context.Context, uid int64, offset, list int) ([]domain.RedemptionCode, int64, error)
 }
 
 type service struct {
 	orderSvc       order.Service
 	memberProducer producer.MemberEventProducer
+	codeGenerator  *sequencenumber.Generator
+	repo           repository.MarketingRepository
 }
 
 func NewService(
 	orderSvc order.Service,
 	memberProducer producer.MemberEventProducer,
+	codeGenerator *sequencenumber.Generator,
+	repo repository.MarketingRepository,
 ) Service {
 	return &service{
 		orderSvc:       orderSvc,
 		memberProducer: memberProducer,
+		codeGenerator:  codeGenerator,
+		repo:           repo,
 	}
 }
 
@@ -76,4 +86,26 @@ func (s *service) handlerMemberOrder(ctx context.Context, o order.Order, item or
 		BizId:  o.ID,
 		Action: "购买会员商品",
 	})
+}
+
+func (s *service) ListRedemptionCodes(ctx context.Context, uid int64, offset, list int) ([]domain.RedemptionCode, int64, error) {
+	var (
+		eg    errgroup.Group
+		codes []domain.RedemptionCode
+		total int64
+	)
+
+	eg.Go(func() error {
+		var err error
+		codes, err = s.repo.FindRedemptionCodesByUID(ctx, uid, offset, list)
+		return err
+	})
+
+	eg.Go(func() error {
+		var err error
+		total, err = s.repo.TotalRedemptionCodes(ctx, uid)
+		return err
+	})
+
+	return codes, total, eg.Wait()
 }
