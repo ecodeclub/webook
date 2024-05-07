@@ -33,7 +33,7 @@ type memberEventProducer struct {
 }
 
 func NewMemberEventProducer(q mq.MQ) (MemberEventProducer, error) {
-	producer, err := q.Producer(event.MemberUpdateName)
+	producer, err := q.Producer(event.MemberUpdateEventName)
 	if err != nil {
 		return nil, err
 	}

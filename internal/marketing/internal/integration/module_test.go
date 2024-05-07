@@ -81,7 +81,7 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeOrderEvent() {
 				memberEvent := s.newMemberEventMessage(t, event.MemberEvent{
 					Key:    evt.OrderSN,
 					Uid:    evt.BuyerID,
-					Days:   7,
+					Days:   14,
 					Biz:    "order",
 					BizId:  1,
 					Action: "购买会员商品",
@@ -89,7 +89,7 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeOrderEvent() {
 				mockProducer.EXPECT().Produce(gomock.Any(), memberEvent).Return(&mq.ProducerResult{}, nil).Times(2)
 
 				mockMQ.EXPECT().Consumer(gomock.Any(), gomock.Any()).Return(mockConsumer, nil)
-				mockMQ.EXPECT().Producer(event.MemberUpdateName).Return(mockProducer, nil)
+				mockMQ.EXPECT().Producer(event.MemberUpdateEventName).Return(mockProducer, nil)
 				return mockMQ
 			},
 			newSvcFunc: func(t *testing.T, ctrl *gomock.Controller, evt event.OrderEvent, q mq.MQ) service.Service {
@@ -118,7 +118,7 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeOrderEvent() {
 									Attrs:         `{"days":7}`,
 									OriginalPrice: 330,
 									RealPrice:     330,
-									Quantity:      1,
+									Quantity:      2,
 								},
 							},
 						},
@@ -136,6 +136,39 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeOrderEvent() {
 					{
 						ID:       1,
 						Category: "member",
+					},
+				},
+			},
+			errRequireFunc: require.NoError,
+		},
+		{
+			name: "消费完成订单消息成功_忽略不关心的完成订单消息",
+			newMQFunc: func(t *testing.T, ctrl *gomock.Controller, evt event.OrderEvent) mq.MQ {
+				t.Helper()
+
+				mockMQ := mocks.NewMockMQ(ctrl)
+				mockConsumer := mocks.NewMockConsumer(ctrl)
+				mockConsumer.EXPECT().Consume(gomock.Any()).Return(s.newOrderEventMessage(t, evt), nil).Times(2)
+
+				mockProducer := mocks.NewMockProducer(ctrl)
+				mockMQ.EXPECT().Consumer(gomock.Any(), gomock.Any()).Return(mockConsumer, nil)
+				mockMQ.EXPECT().Producer(event.MemberUpdateEventName).Return(mockProducer, nil)
+				return mockMQ
+			},
+			newSvcFunc: func(t *testing.T, ctrl *gomock.Controller, evt event.OrderEvent, q mq.MQ) service.Service {
+				t.Helper()
+				mockOrderSvc := ordermocks.NewMockService(ctrl)
+				memberEventProducer, err := producer.NewMemberEventProducer(q)
+				require.NoError(t, err)
+				return service.NewService(mockOrderSvc, memberEventProducer)
+			},
+			evt: event.OrderEvent{
+				OrderSN: "OrderSN-marketing-other",
+				BuyerID: 123457,
+				SPUs: []event.SPU{
+					{
+						ID:       10,
+						Category: "other",
 					},
 				},
 			},

@@ -15,8 +15,8 @@
 package event
 
 const (
-	MemberUpdateName = "member_update_events"
-	OrderEventName   = "order_events"
+	MemberUpdateEventName = "member_update_events"
+	OrderEventName        = "order_events"
 )
 
 type MemberEvent struct {
