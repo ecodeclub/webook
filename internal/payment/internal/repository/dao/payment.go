@@ -134,8 +134,8 @@ func (g *PaymentGORMDAO) CountTimeoutPayments(ctx context.Context, ctime int64) 
 type Payment struct {
 	Id               int64          `gorm:"primaryKey;autoIncrement;comment:支付自增ID"`
 	SN               string         `gorm:"type:varchar(255);not null;uniqueIndex:uniq_payment_sn;comment:支付序列号"`
-	PayerId          int64          `gorm:"index:idx_payer_id,comment:支付者ID"`
-	OrderId          int64          `gorm:"uniqueIndex:uniq_order_id,comment:订单自增ID,冗余允许为NULL"`
+	PayerId          int64          `gorm:"index:idx_payer_id;comment:支付者ID"`
+	OrderId          int64          `gorm:"uniqueIndex:uniq_order_id;comment:订单自增ID,冗余允许为NULL"`
 	OrderSn          sql.NullString `gorm:"type:varchar(255);uniqueIndex:uniq_order_sn;comment:订单序列号,冗余允许为NULL"`
 	OrderDescription string         `gorm:"type:varchar(255);not null;comment:订单简要描述"`
 	TotalAmount      int64          `gorm:"not null;comment:支付总金额, 多种支付方式支付金额的总和"`

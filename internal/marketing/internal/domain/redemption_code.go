@@ -16,7 +16,19 @@ package domain
 
 type RedemptionCodeStatus uint8
 
+const (
+	RedemptionCodeStatusUnused RedemptionCodeStatus = 1
+	RedemptionCodeStatusUsed   RedemptionCodeStatus = 2
+)
+
+func (r RedemptionCodeStatus) ToUint8() uint8 {
+	return uint8(r)
+}
+
 type RedemptionCode struct {
-	Code   string
-	Status RedemptionCodeStatus
+	OwnerID int64
+	OrderID int64
+	Code    string
+	Status  RedemptionCodeStatus
+	Utime   int64
 }

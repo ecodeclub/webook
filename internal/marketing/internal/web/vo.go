@@ -33,4 +33,5 @@ type ListRedemptionCodesResp struct {
 type RedemptionCode struct {
 	Code   string `json:"code"`
 	Status uint8  `json:"status"`
+	Utime  int64  `json:"utime"`
 }

@@ -19,9 +19,14 @@ package marketing
 import (
 	"github.com/ecodeclub/mq-api"
 	"github.com/ecodeclub/webook/internal/marketing/internal/event/producer"
+
+	"github.com/ecodeclub/webook/internal/marketing/internal/repository"
+	"github.com/ecodeclub/webook/internal/marketing/internal/repository/dao"
 	"github.com/ecodeclub/webook/internal/marketing/internal/service"
 	"github.com/ecodeclub/webook/internal/marketing/internal/web"
 	"github.com/ecodeclub/webook/internal/order"
+	"github.com/ecodeclub/webook/internal/pkg/sequencenumber"
+	"github.com/ego-component/egorm"
 	"github.com/google/wire"
 )
 
@@ -30,12 +35,15 @@ type (
 	Handler = web.Handler
 )
 
-func InitModule(q mq.MQ, om *order.Module) (*Module, error) {
+func InitModule(db *egorm.Component, q mq.MQ, om *order.Module) (*Module, error) {
 	wire.Build(
-		service.NewService,
+		dao.NewGORMMarketingDAO,
+		repository.NewRepository,
+		sequencenumber.NewGenerator,
 		producer.NewMemberEventProducer,
-		web.NewHandler,
 		wire.FieldsOf(new(*order.Module), "Svc"),
+		service.NewService,
+		web.NewHandler,
 		wire.Struct(new(Module), "*"),
 	)
 	return nil, nil
