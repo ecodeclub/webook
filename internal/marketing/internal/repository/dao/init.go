@@ -12,23 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package domain
+package dao
 
-type RedemptionCodeStatus uint8
+import "github.com/ego-component/egorm"
 
-const (
-	RedemptionCodeStatusUnused RedemptionCodeStatus = 1
-	RedemptionCodeStatusUsed   RedemptionCodeStatus = 2
-)
-
-func (r RedemptionCodeStatus) ToUint8() uint8 {
-	return uint8(r)
-}
-
-type RedemptionCode struct {
-	OwnerID int64
-	OrderID int64
-	Code    string
-	Status  RedemptionCodeStatus
-	Utime   int64
+func InitTables(db *egorm.Component) error {
+	return db.AutoMigrate(&RedemptionCode{}, &RedeemLog{})
 }
