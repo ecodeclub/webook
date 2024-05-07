@@ -12,26 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package event
+package errs
 
-const (
-	paymentEventName = "payment_events"
-	orderEventName   = "order_events"
+var (
+	SystemError = ErrorCode{Code: 512001, Msg: "系统错误"}
 )
 
-type PaymentEvent struct {
-	OrderSN string `json:"orderSN"`
-	PayerID int64  `json:"payerID"`
-	Status  uint8  `json:"status"` // Success, Failed
-}
-
-type OrderEvent struct {
-	OrderSN string `json:"orderSN"`
-	BuyerID int64  `json:"buyerID"`
-	SPUs    []SPU  `json:"spus"`
-}
-
-type SPU struct {
-	ID       int64  `json:"id"`
-	Category string `json:"category"`
+type ErrorCode struct {
+	Code int
+	Msg  string
 }
