@@ -12,26 +12,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package event
+package web
 
-const (
-	paymentEventName = "payment_events"
-	orderEventName   = "order_events"
-)
-
-type PaymentEvent struct {
-	OrderSN string `json:"orderSN"`
-	PayerID int64  `json:"payerID"`
-	Status  uint8  `json:"status"` // Success, Failed
+// RedeemRedemptionCodeReq 使用兑换码
+type RedeemRedemptionCodeReq struct {
+	Code string `json:"code"`
 }
 
-type OrderEvent struct {
-	OrderSN string `json:"orderSN"`
-	BuyerID int64  `json:"buyerID"`
-	SPUs    []SPU  `json:"spus"`
+// ListRedemptionCodesReq 分页查询用户所有兑换码
+type ListRedemptionCodesReq struct {
+	Offset int `json:"offset,omitempty"`
+	Limit  int `json:"limit,omitempty"`
 }
 
-type SPU struct {
-	ID       int64  `json:"id"`
-	Category string `json:"category"`
+type ListRedemptionCodesResp struct {
+	Total int64            `json:"total"`
+	Codes []RedemptionCode `json:"codes"`
+}
+
+type RedemptionCode struct {
+	Code   string `json:"code"`
+	Status uint8  `json:"status"`
 }

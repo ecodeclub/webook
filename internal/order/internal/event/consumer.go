@@ -110,7 +110,7 @@ func (c *PaymentConsumer) sendOrderEvent(ctx context.Context, p PaymentEvent) er
 		})
 	}
 	evt := OrderEvent{
-		OrderID: order.ID,
+		OrderSN: order.SN,
 		BuyerID: order.BuyerID,
 		SPUs:    spus,
 	}

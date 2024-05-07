@@ -12,26 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package event
+package web
 
-const (
-	paymentEventName = "payment_events"
-	orderEventName   = "order_events"
+import (
+	"github.com/ecodeclub/ginx"
+	"github.com/ecodeclub/webook/internal/marketing/errs"
 )
 
-type PaymentEvent struct {
-	OrderSN string `json:"orderSN"`
-	PayerID int64  `json:"payerID"`
-	Status  uint8  `json:"status"` // Success, Failed
-}
-
-type OrderEvent struct {
-	OrderSN string `json:"orderSN"`
-	BuyerID int64  `json:"buyerID"`
-	SPUs    []SPU  `json:"spus"`
-}
-
-type SPU struct {
-	ID       int64  `json:"id"`
-	Category string `json:"category"`
-}
+var (
+	systemErrorResult = ginx.Result{
+		Code: errs.SystemError.Code,
+		Msg:  errs.SystemError.Msg,
+	}
+)
