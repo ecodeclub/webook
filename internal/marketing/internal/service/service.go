@@ -24,7 +24,6 @@ import (
 	"github.com/ecodeclub/webook/internal/marketing/internal/event/producer"
 	"github.com/ecodeclub/webook/internal/marketing/internal/repository"
 	"github.com/ecodeclub/webook/internal/order"
-	"github.com/ecodeclub/webook/internal/pkg/sequencenumber"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -34,23 +33,32 @@ type Service interface {
 }
 
 type service struct {
-	orderSvc       order.Service
-	memberProducer producer.MemberEventProducer
-	codeGenerator  *sequencenumber.Generator
-	repo           repository.MarketingRepository
+	repo                    repository.MarketingRepository
+	orderSvc                order.Service
+	redemptionCodeGenerator func(id int64) string
+	eventKeyGenerator       func() string
+	memberEventProducer     producer.MemberEventProducer
+	creditEventProducer     producer.CreditEventProducer
+	permissionEventProducer producer.PermissionEventProducer
 }
 
 func NewService(
-	orderSvc order.Service,
-	memberProducer producer.MemberEventProducer,
-	codeGenerator *sequencenumber.Generator,
 	repo repository.MarketingRepository,
+	orderSvc order.Service,
+	redemptionCodeGenerator func(id int64) string,
+	eventKeyGenerator func() string,
+	memberEventProducer producer.MemberEventProducer,
+	creditEventProducer producer.CreditEventProducer,
+	permissionEventProducer producer.PermissionEventProducer,
 ) Service {
 	return &service{
-		orderSvc:       orderSvc,
-		memberProducer: memberProducer,
-		codeGenerator:  codeGenerator,
-		repo:           repo,
+		repo:                    repo,
+		orderSvc:                orderSvc,
+		redemptionCodeGenerator: redemptionCodeGenerator,
+		eventKeyGenerator:       eventKeyGenerator,
+		memberEventProducer:     memberEventProducer,
+		creditEventProducer:     creditEventProducer,
+		permissionEventProducer: permissionEventProducer,
 	}
 }
 
@@ -78,8 +86,8 @@ func (s *service) handlerMemberOrder(ctx context.Context, o order.Order, item or
 	if err != nil {
 		return fmt.Errorf("解析会员商品属性失败: %w, attrs: %s", err, item.SKU.Attrs)
 	}
-	return s.memberProducer.Produce(ctx, event.MemberEvent{
-		Key:    o.SN,
+	return s.memberEventProducer.Produce(ctx, event.MemberEvent{
+		Key:    s.eventKeyGenerator(),
 		Uid:    o.BuyerID,
 		Days:   attrs.Days * uint64(item.SKU.Quantity),
 		Biz:    "order",
@@ -94,7 +102,6 @@ func (s *service) ListRedemptionCodes(ctx context.Context, uid int64, offset, li
 		codes []domain.RedemptionCode
 		total int64
 	)
-
 	eg.Go(func() error {
 		var err error
 		codes, err = s.repo.FindRedemptionCodesByUID(ctx, uid, offset, list)
