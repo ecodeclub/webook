@@ -19,6 +19,7 @@ package marketing
 import (
 	"github.com/ecodeclub/mq-api"
 	"github.com/ecodeclub/webook/internal/marketing/internal/event/producer"
+	"github.com/lithammer/shortuuid/v4"
 
 	"github.com/ecodeclub/webook/internal/marketing/internal/repository"
 	"github.com/ecodeclub/webook/internal/marketing/internal/repository/dao"
@@ -39,12 +40,27 @@ func InitModule(db *egorm.Component, q mq.MQ, om *order.Module) (*Module, error)
 	wire.Build(
 		dao.NewGORMMarketingDAO,
 		repository.NewRepository,
-		sequencenumber.NewGenerator,
-		producer.NewMemberEventProducer,
 		wire.FieldsOf(new(*order.Module), "Svc"),
+		sequencenumber.NewGenerator,
+		redemptionCodeGenerator,
+		eventKeyGenerator,
+		producer.NewMemberEventProducer,
+		producer.NewCreditEventProducer,
+		producer.NewPermissionEventProducer,
 		service.NewService,
 		web.NewHandler,
 		wire.Struct(new(Module), "*"),
 	)
 	return nil, nil
+}
+
+func redemptionCodeGenerator(generator *sequencenumber.Generator) func(id int64) string {
+	return func(id int64) string {
+		code, _ := generator.Generate(id)
+		return code
+	}
+}
+
+func eventKeyGenerator() func() string {
+	return shortuuid.New
 }

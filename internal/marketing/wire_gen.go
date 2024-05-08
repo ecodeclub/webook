@@ -15,21 +15,32 @@ import (
 	"github.com/ecodeclub/webook/internal/marketing/internal/web"
 	"github.com/ecodeclub/webook/internal/order"
 	"github.com/ecodeclub/webook/internal/pkg/sequencenumber"
+	"github.com/lithammer/shortuuid/v4"
 	"gorm.io/gorm"
 )
 
 // Injectors from wire.go:
 
 func InitModule(db *gorm.DB, q mq.MQ, om *order.Module) (*Module, error) {
+	marketingDAO := dao.NewGORMMarketingDAO(db)
+	marketingRepository := repository.NewRepository(marketingDAO)
 	serviceService := om.Svc
+	generator := sequencenumber.NewGenerator()
+	v := redemptionCodeGenerator(generator)
+	v2 := eventKeyGenerator()
 	memberEventProducer, err := producer.NewMemberEventProducer(q)
 	if err != nil {
 		return nil, err
 	}
-	generator := sequencenumber.NewGenerator()
-	marketingDAO := dao.NewGORMMarketingDAO(db)
-	marketingRepository := repository.NewRepository(marketingDAO)
-	service2 := service.NewService(serviceService, memberEventProducer, generator, marketingRepository)
+	creditEventProducer, err := producer.NewCreditEventProducer(q)
+	if err != nil {
+		return nil, err
+	}
+	permissionEventProducer, err := producer.NewPermissionEventProducer(q)
+	if err != nil {
+		return nil, err
+	}
+	service2 := service.NewService(marketingRepository, serviceService, v, v2, memberEventProducer, creditEventProducer, permissionEventProducer)
 	handler := web.NewHandler(service2)
 	module := &Module{
 		Svc: service2,
@@ -44,3 +55,14 @@ type (
 	Service = service.Service
 	Handler = web.Handler
 )
+
+func redemptionCodeGenerator(generator *sequencenumber.Generator) func(id int64) string {
+	return func(id int64) string {
+		code, _ := generator.Generate(id)
+		return code
+	}
+}
+
+func eventKeyGenerator() func() string {
+	return shortuuid.New
+}

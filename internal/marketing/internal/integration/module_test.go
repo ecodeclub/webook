@@ -120,7 +120,7 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeOrderEvent() {
 
 				mockProducer := mocks.NewMockProducer(ctrl)
 				memberEvent := s.newMemberEventMessage(t, event.MemberEvent{
-					Key:    evt.OrderSN,
+					Key:    fmt.Sprintf("event-key-%s", evt.OrderSN),
 					Uid:    evt.BuyerID,
 					Days:   14,
 					Biz:    "order",
@@ -168,7 +168,10 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeOrderEvent() {
 				memberEventProducer, err := producer.NewMemberEventProducer(q)
 				require.NoError(t, err)
 
-				return service.NewService(mockOrderSvc, memberEventProducer, nil, nil)
+				eventKeyGenerator := func() string {
+					return fmt.Sprintf("event-key-%s", evt.OrderSN)
+				}
+				return service.NewService(nil, mockOrderSvc, nil, eventKeyGenerator, memberEventProducer, nil, nil)
 			},
 			evt: event.OrderEvent{
 				OrderSN: "OrderSN-marketing-member",
@@ -271,7 +274,7 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeOrderEvent() {
 				mockOrderSvc := ordermocks.NewMockService(ctrl)
 				memberEventProducer, err := producer.NewMemberEventProducer(q)
 				require.NoError(t, err)
-				return service.NewService(mockOrderSvc, memberEventProducer, nil, nil)
+				return service.NewService(nil, mockOrderSvc, nil, nil, memberEventProducer, nil, nil)
 			},
 			evt: event.OrderEvent{
 				OrderSN: "OrderSN-marketing-other",
@@ -356,7 +359,9 @@ func (s *ModuleTestSuite) TestHandler_ListRedemptionCode() {
 			name: "获取成功",
 			newHandlerFunc: func(t *testing.T, ctrl *gomock.Controller) *web.Handler {
 				t.Helper()
-				svc := service.NewService(nil, nil, sequencenumber.NewGenerator(), s.repo)
+
+				redemptionCodeGenerator := s.getRedemptionCodeGenerator(sequencenumber.NewGenerator())
+				svc := service.NewService(s.repo, nil, redemptionCodeGenerator, nil, nil, nil, nil)
 				return web.NewHandler(svc)
 			},
 			req: web.ListRedemptionCodesReq{
@@ -398,6 +403,16 @@ func (s *ModuleTestSuite) TestHandler_ListRedemptionCode() {
 			s.assertListRedemptionCodesRespEqual(t, tc.wantResp.Data, recorder.MustScan().Data)
 		})
 	}
+}
+
+func (s *ModuleTestSuite) getRedemptionCodeGenerator(g *sequencenumber.Generator) func(id int64) string {
+	redemptionCodeGenerator := func(generator *sequencenumber.Generator) func(id int64) string {
+		return func(id int64) string {
+			code, _ := generator.Generate(id)
+			return code
+		}
+	}
+	return redemptionCodeGenerator(g)
 }
 
 func (s *ModuleTestSuite) assertListRedemptionCodesRespEqual(t *testing.T, expected web.ListRedemptionCodesResp, actual web.ListRedemptionCodesResp) {
