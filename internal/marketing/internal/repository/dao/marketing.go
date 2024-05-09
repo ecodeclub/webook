@@ -59,10 +59,7 @@ func (g *gormMarketingDAO) CreateRedemptionCodes(ctx context.Context, oid int64,
 	})
 	if err != nil {
 		if g.isMySQLUniqueIndexError(err) {
-			var res []int64
-			err = g.db.WithContext(ctx).Model(&RedemptionCode{}).
-				Select("id").Find(&res, "order_id", oid).Error
-			return res, err
+			return g.getRedemptionCodeIDsByOrderID(ctx, oid)
 		}
 		return nil, err
 	}
@@ -80,6 +77,13 @@ func (g *gormMarketingDAO) isMySQLUniqueIndexError(err error) bool {
 		}
 	}
 	return false
+}
+
+func (g *gormMarketingDAO) getRedemptionCodeIDsByOrderID(ctx context.Context, oid int64) ([]int64, error) {
+	var res []int64
+	err := g.db.WithContext(ctx).Model(&RedemptionCode{}).
+		Select("id").Find(&res, "order_id", oid).Error
+	return res, err
 }
 
 func (g *gormMarketingDAO) FindRedemptionCodeByCode(ctx context.Context, code string) (RedemptionCode, error) {
