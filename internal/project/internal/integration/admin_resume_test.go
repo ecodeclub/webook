@@ -123,6 +123,7 @@ func (s *AdminProjectTestSuite) TestResumeSave() {
 	}
 
 	for _, tc := range testCases {
+		tc := tc
 		s.T().Run(tc.name, func(t *testing.T) {
 			tc.before(t)
 			req, err := http.NewRequest(http.MethodPost,
@@ -264,6 +265,7 @@ func (s *AdminProjectTestSuite) TestResumePublish() {
 	}
 
 	for _, tc := range testCases {
+		tc := tc
 		s.T().Run(tc.name, func(t *testing.T) {
 			tc.before(t)
 			req, err := http.NewRequest(http.MethodPost,
@@ -321,6 +323,7 @@ func (s *AdminProjectTestSuite) TestResumeDetail() {
 	}
 
 	for _, tc := range testCases {
+		tc := tc
 		s.T().Run(tc.name, func(t *testing.T) {
 			tc.before(t)
 			req, err := http.NewRequest(http.MethodPost,

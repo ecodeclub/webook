@@ -661,6 +661,7 @@ func (s *HandlerTestSuite) TestBizSearch() {
 		},
 	}
 	for _, tc := range testCases {
+		tc := tc
 		s.T().Run(tc.name, func(t *testing.T) {
 			tc.before(t)
 			time.Sleep(1 * time.Second)

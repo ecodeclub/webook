@@ -120,6 +120,7 @@ func (s *HandlerTestSuite) TestCreate() {
 		},
 	}
 	for _, tc := range testCases {
+		tc := tc
 		s.T().Run(tc.name, func(t *testing.T) {
 			tc.before(t)
 			req, err := http.NewRequest(http.MethodPost,
@@ -218,6 +219,7 @@ func (s *HandlerTestSuite) TestUpdateStatus() {
 		},
 	}
 	for _, tc := range testCases {
+		tc := tc
 		s.T().Run(tc.name, func(t *testing.T) {
 			tc.before(t)
 			req, err := http.NewRequest(http.MethodPost,
@@ -340,6 +342,7 @@ func (s *HandlerTestSuite) TestList() {
 		},
 	}
 	for _, tc := range testCases {
+		tc := tc
 		s.T().Run(tc.name, func(t *testing.T) {
 			req, err := http.NewRequest(http.MethodPost,
 				"/feedback/list", iox.NewJSONReader(tc.req))

@@ -206,6 +206,7 @@ func (s *OrderModuleTestSuite) TestHandler_PreviewOrder() {
 		},
 	}
 	for _, tc := range testCases {
+		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
@@ -409,6 +410,7 @@ func (s *OrderModuleTestSuite) TestHandler_PreviewOrderFailed() {
 		// todo: 要购买商品超过库存限制(stockLimit)但是库存充足
 	}
 	for _, tc := range testCases {
+		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
@@ -622,6 +624,7 @@ func (s *OrderModuleTestSuite) TestHandler_CreateOrder() {
 		},
 	}
 	for _, tc := range testCases {
+		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Cleanup(func() {
 				_, err := s.cache.Delete(context.Background(), fmt.Sprintf("order:create:%s", tc.req.RequestID))
@@ -918,6 +921,7 @@ func (s *OrderModuleTestSuite) TestHandler_CreateOrderFailed() {
 		// todo: 要购买商品超过库存限制(stockLimit)但是库存充足
 	}
 	for _, tc := range testCases {
+		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Cleanup(func() {
 				_, err := s.cache.Delete(context.Background(), fmt.Sprintf("order:create:%s", tc.req.RequestID))
@@ -1126,6 +1130,7 @@ func (s *OrderModuleTestSuite) TestHandler_Repay() {
 		},
 	}
 	for _, tc := range testCases {
+		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
@@ -1424,6 +1429,7 @@ func (s *OrderModuleTestSuite) TestHandler_RepayFailed() {
 		},
 	}
 	for _, tc := range testCases {
+		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
@@ -1564,6 +1570,7 @@ func (s *OrderModuleTestSuite) TestHandler_ListOrders() {
 	}
 
 	for _, tc := range testCases {
+		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
@@ -1697,6 +1704,7 @@ func (s *OrderModuleTestSuite) TestHandler_RetrieveOrderDetail() {
 		},
 	}
 	for _, tc := range testCases {
+		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
@@ -1840,6 +1848,7 @@ func (s *OrderModuleTestSuite) TestHandler_RetrieveOrderDetailFailed() {
 		},
 	}
 	for _, tc := range testCases {
+		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
@@ -1911,6 +1920,7 @@ func (s *OrderModuleTestSuite) TestHandler_CancelOrder() {
 	}
 
 	for _, tc := range testCases {
+		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
@@ -2157,6 +2167,7 @@ func (s *OrderModuleTestSuite) TestHandler_CancelOrderFailed() {
 		},
 	}
 	for _, tc := range testCases {
+		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
@@ -2473,6 +2484,7 @@ func (s *OrderModuleTestSuite) TestPaymentConsumer_Consume() {
 	}
 
 	for _, tc := range testCases {
+		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 
 			ctrl := gomock.NewController(t)
@@ -2605,6 +2617,7 @@ func (s *OrderModuleTestSuite) TestJob_CloseTimeoutOrders() {
 	}
 
 	for _, tc := range testCases {
+		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			tc.before(t)
 			j := tc.getJobFunc(t)
