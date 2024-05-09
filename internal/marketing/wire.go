@@ -19,6 +19,7 @@ package marketing
 import (
 	"github.com/ecodeclub/mq-api"
 	"github.com/ecodeclub/webook/internal/marketing/internal/event/producer"
+	"github.com/ecodeclub/webook/internal/product"
 	"github.com/lithammer/shortuuid/v4"
 
 	"github.com/ecodeclub/webook/internal/marketing/internal/repository"
@@ -36,11 +37,12 @@ type (
 	Handler = web.Handler
 )
 
-func InitModule(db *egorm.Component, q mq.MQ, om *order.Module) (*Module, error) {
+func InitModule(db *egorm.Component, q mq.MQ, om *order.Module, pm *product.Module) (*Module, error) {
 	wire.Build(
 		dao.NewGORMMarketingDAO,
 		repository.NewRepository,
 		wire.FieldsOf(new(*order.Module), "Svc"),
+		wire.FieldsOf(new(*product.Module), "Svc"),
 		sequencenumber.NewGenerator,
 		redemptionCodeGenerator,
 		eventKeyGenerator,

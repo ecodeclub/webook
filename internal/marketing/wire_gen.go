@@ -15,16 +15,18 @@ import (
 	"github.com/ecodeclub/webook/internal/marketing/internal/web"
 	"github.com/ecodeclub/webook/internal/order"
 	"github.com/ecodeclub/webook/internal/pkg/sequencenumber"
+	"github.com/ecodeclub/webook/internal/product"
 	"github.com/lithammer/shortuuid/v4"
 	"gorm.io/gorm"
 )
 
 // Injectors from wire.go:
 
-func InitModule(db *gorm.DB, q mq.MQ, om *order.Module) (*Module, error) {
+func InitModule(db *gorm.DB, q mq.MQ, om *order.Module, pm *product.Module) (*Module, error) {
 	marketingDAO := dao.NewGORMMarketingDAO(db)
 	marketingRepository := repository.NewRepository(marketingDAO)
 	serviceService := om.Svc
+	service2 := pm.Svc
 	generator := sequencenumber.NewGenerator()
 	v := redemptionCodeGenerator(generator)
 	v2 := eventKeyGenerator()
@@ -40,10 +42,10 @@ func InitModule(db *gorm.DB, q mq.MQ, om *order.Module) (*Module, error) {
 	if err != nil {
 		return nil, err
 	}
-	service2 := service.NewService(marketingRepository, serviceService, v, v2, memberEventProducer, creditEventProducer, permissionEventProducer)
-	handler := web.NewHandler(service2)
+	service3 := service.NewService(marketingRepository, serviceService, service2, v, v2, memberEventProducer, creditEventProducer, permissionEventProducer)
+	handler := web.NewHandler(service3)
 	module := &Module{
-		Svc: service2,
+		Svc: service3,
 		Hdl: handler,
 	}
 	return module, nil

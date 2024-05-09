@@ -174,7 +174,7 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeOrderEvent() {
 				eventKeyGenerator := func() string {
 					return fmt.Sprintf("event-key-%s", evt.OrderSN)
 				}
-				return service.NewService(nil, mockOrderSvc, nil, eventKeyGenerator, memberEventProducer, nil, nil)
+				return service.NewService(nil, mockOrderSvc, nil, nil, eventKeyGenerator, memberEventProducer, nil, nil)
 			},
 			evt: event.OrderEvent{
 				OrderSN: "OrderSN-marketing-member",
@@ -265,7 +265,7 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeOrderEvent() {
 				eventKeyGenerator := func() string {
 					return fmt.Sprintf("event-key-%s", evt.OrderSN)
 				}
-				return service.NewService(nil, mockOrderSvc, nil, eventKeyGenerator, memberEventProducer, nil, nil)
+				return service.NewService(nil, mockOrderSvc, nil, nil, eventKeyGenerator, memberEventProducer, nil, nil)
 			},
 			evt: event.OrderEvent{
 				OrderSN: "OrderSN-marketing-member-2",
@@ -323,7 +323,7 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeOrderEvent() {
 						},
 					}, nil).Times(2)
 
-				return service.NewService(s.repo, mockOrderSvc, s.getRedemptionCodeGenerator(sequencenumber.NewGenerator()),
+				return service.NewService(s.repo, mockOrderSvc, nil, s.getRedemptionCodeGenerator(sequencenumber.NewGenerator()),
 					nil, nil, nil, nil)
 			},
 			evt: event.OrderEvent{
@@ -408,7 +408,7 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeOrderEvent() {
 						},
 					}, nil).Times(2)
 
-				return service.NewService(s.repo, mockOrderSvc, s.getRedemptionCodeGenerator(sequencenumber.NewGenerator()),
+				return service.NewService(s.repo, mockOrderSvc, nil, s.getRedemptionCodeGenerator(sequencenumber.NewGenerator()),
 					nil, nil, nil, nil)
 			},
 			evt: event.OrderEvent{
@@ -462,7 +462,7 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeOrderEvent() {
 				mockOrderSvc := ordermocks.NewMockService(ctrl)
 				memberEventProducer, err := producer.NewMemberEventProducer(q)
 				require.NoError(t, err)
-				return service.NewService(nil, mockOrderSvc, nil, nil, memberEventProducer, nil, nil)
+				return service.NewService(nil, mockOrderSvc, nil, nil, nil, memberEventProducer, nil, nil)
 			},
 			evt: event.OrderEvent{
 				OrderSN: "OrderSN-marketing-other",
@@ -525,6 +525,69 @@ func (s *ModuleTestSuite) newMemberEventMessage(t *testing.T, evt event.MemberEv
 	return &mq.Message{Key: []byte(evt.Key), Value: marshal}
 }
 
+func (s *ModuleTestSuite) TestHandler_RedeemRedemptionCode() {
+	t := s.T()
+
+	testCases := []struct {
+		name string
+
+		before         func(t *testing.T, req web.RedeemRedemptionCodeReq)
+		newHandlerFunc func(t *testing.T, ctrl *gomock.Controller) *web.Handler
+		req            web.RedeemRedemptionCodeReq
+
+		wantCode int
+		wantResp test.Result[any]
+	}{
+		{
+			name: "兑换成功_所有者兑换",
+			before: func(t *testing.T, req web.RedeemRedemptionCodeReq) {
+				t.Helper()
+
+			},
+			newHandlerFunc: func(t *testing.T, ctrl *gomock.Controller) *web.Handler {
+				t.Helper()
+
+				// todo: 发送会员消息
+
+				redemptionCodeGenerator := s.getRedemptionCodeGenerator(sequencenumber.NewGenerator())
+				svc := service.NewService(s.repo, nil, nil, redemptionCodeGenerator, nil, nil, nil, nil)
+				return web.NewHandler(svc)
+			},
+			req: web.RedeemRedemptionCodeReq{
+				Code: "redemption-code-001",
+			},
+			wantCode: 200,
+			wantResp: test.Result[any]{
+				Msg: "OK",
+			},
+		},
+		// 兑换成功_所有者重复兑换
+		// 兑换成功_非所有者兑换
+		// 兑换成功_非所有者重复兑换
+		// 兑换失败_兑换码已使用
+		// 兑换失败_兑换码不存在
+		// 兑换失败 —— 超过限流次数1s一次
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			req, err := http.NewRequest(http.MethodPost,
+				"/code/redeem", iox.NewJSONReader(tc.req))
+			req.Header.Set("content-type", "application/json")
+			require.NoError(t, err)
+			recorder := test.NewJSONResponseRecorder[web.RedeemRedemptionCodeResp]()
+			server := s.newGinServer(tc.newHandlerFunc(t, ctrl))
+			server.ServeHTTP(recorder, req)
+			require.Equal(t, tc.wantCode, recorder.Code)
+			require.Equal(t, tc.wantResp.Data, recorder.MustScan().Data)
+		})
+	}
+}
+
 func (s *ModuleTestSuite) TestHandler_ListRedemptionCode() {
 	t := s.T()
 
@@ -562,7 +625,7 @@ func (s *ModuleTestSuite) TestHandler_ListRedemptionCode() {
 				t.Helper()
 
 				redemptionCodeGenerator := s.getRedemptionCodeGenerator(sequencenumber.NewGenerator())
-				svc := service.NewService(s.repo, nil, redemptionCodeGenerator, nil, nil, nil, nil)
+				svc := service.NewService(s.repo, nil, nil, redemptionCodeGenerator, nil, nil, nil, nil)
 				return web.NewHandler(svc)
 			},
 			req: web.ListRedemptionCodesReq{
@@ -626,13 +689,3 @@ func (s *ModuleTestSuite) assertListRedemptionCodesRespEqual(t *testing.T, expec
 	}
 	assert.Equal(t, expected.Codes, actual.Codes)
 }
-
-// 兑换流程
-// 2. 兑换成功 —— 兑换码为已使用 + 发送“会员消息”
-// 1. 重复消息返回第一次结果, 重复提交返回兑换成功
-// 3. 兑换失败 —— 兑换码非法
-// 4. 兑换失败 —— 超过限流次数1s一次
-// 5. 兑换失败 —— 已使用
-
-// 查询流程
-// 1. 分页查询

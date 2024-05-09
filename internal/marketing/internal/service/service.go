@@ -26,6 +26,7 @@ import (
 	"github.com/ecodeclub/webook/internal/marketing/internal/event/producer"
 	"github.com/ecodeclub/webook/internal/marketing/internal/repository"
 	"github.com/ecodeclub/webook/internal/order"
+	"github.com/ecodeclub/webook/internal/product"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -37,6 +38,7 @@ type Service interface {
 type service struct {
 	repo                    repository.MarketingRepository
 	orderSvc                order.Service
+	productSvc              product.Service
 	redemptionCodeGenerator func(id int64) string
 	eventKeyGenerator       func() string
 	memberEventProducer     producer.MemberEventProducer
@@ -47,6 +49,7 @@ type service struct {
 func NewService(
 	repo repository.MarketingRepository,
 	orderSvc order.Service,
+	productSvc product.Service,
 	redemptionCodeGenerator func(id int64) string,
 	eventKeyGenerator func() string,
 	memberEventProducer producer.MemberEventProducer,
@@ -56,6 +59,7 @@ func NewService(
 	return &service{
 		repo:                    repo,
 		orderSvc:                orderSvc,
+		productSvc:              productSvc,
 		redemptionCodeGenerator: redemptionCodeGenerator,
 		eventKeyGenerator:       eventKeyGenerator,
 		memberEventProducer:     memberEventProducer,
