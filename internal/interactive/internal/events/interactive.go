@@ -14,13 +14,45 @@
 
 package events
 
+import (
+	"context"
+
+	"github.com/ecodeclub/webook/internal/interactive/internal/service"
+)
+
 type Event struct {
 	Biz   string `json:"biz,omitempty"`
 	BizId int64  `json:"biz_id,omitempty"`
 	// 取值是
-	// like, collect, read 三个
+	// like, collect, view 三个
 	Action string `json:"action,omitempty"`
 	Uid    int64  `json:"uid,omitempty"`
 }
 
-// 需要一个消费者。
+type Handler interface {
+	Handle(ctx context.Context, evt Event) error
+}
+
+type LikeHandler struct {
+	svc service.InteractiveService
+}
+
+func (l *LikeHandler) Handle(ctx context.Context, evt Event) error {
+	return l.svc.Like(ctx, evt.Biz, evt.BizId, evt.Uid)
+}
+
+type CollectHandler struct {
+	svc service.InteractiveService
+}
+
+func (c *CollectHandler) Handle(ctx context.Context, evt Event) error {
+	return c.svc.Collect(ctx, evt.Biz, evt.BizId, evt.Uid)
+}
+
+type ViewHandler struct {
+	svc service.InteractiveService
+}
+
+func (v *ViewHandler) Handle(ctx context.Context, evt Event) error {
+	return v.svc.IncrReadCnt(ctx, evt.Biz, evt.BizId)
+}

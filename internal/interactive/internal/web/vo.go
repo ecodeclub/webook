@@ -14,6 +14,8 @@
 
 package web
 
+import "github.com/ecodeclub/webook/internal/interactive/internal/domain"
+
 type CollectReq struct {
 	Biz   string `json:"biz"`
 	BizId int64  `json:"bizId"`
@@ -24,10 +26,19 @@ type LikeReq struct {
 	Biz   string `json:"biz"`
 	BizId int64  `json:"bizId"`
 }
+type ViewReq struct {
+	Biz   string `json:"biz"`
+	BizId int64  `json:"bizId"`
+}
 
 type GetCntReq struct {
 	Biz   string `json:"biz"`
 	BizId int64  `json:"bizId"`
+}
+
+type BatchGetCntReq struct {
+	Biz    string  `json:"biz"`
+	BizIds []int64 `json:"bizIds"`
 }
 
 type GetCntResp struct {
@@ -38,4 +49,32 @@ type GetCntResp struct {
 	Collected bool `json:"collected"`
 	// 是否点赞过
 	Liked bool `json:"liked"`
+}
+
+type Interactive struct {
+	ID         int64 `json:"id"`
+	CollectCnt int   `json:"collectCnt"`
+	LikeCnt    int   `json:"likeCnt"`
+	ViewCnt    int   `json:"viewCnt"`
+}
+type BatatGetCntResp struct {
+	List []Interactive `json:"list"`
+}
+
+func NewGetCntResp(intr domain.Interactive) GetCntResp {
+	return GetCntResp{
+		CollectCnt: intr.CollectCnt,
+		Liked:      intr.Liked,
+		ViewCnt:    intr.ViewCnt,
+		LikeCnt:    intr.LikeCnt,
+		Collected:  intr.Collected,
+	}
+}
+func NewInteractive(intr domain.Interactive) Interactive {
+	return Interactive{
+		ID:         intr.BizId,
+		CollectCnt: intr.CollectCnt,
+		ViewCnt:    intr.ViewCnt,
+		LikeCnt:    intr.LikeCnt,
+	}
 }

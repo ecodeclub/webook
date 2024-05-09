@@ -12,33 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package web
+//go:build wireinject
+
+package startup
 
 import (
-	"github.com/ecodeclub/ginx"
-	"github.com/ecodeclub/webook/internal/interactive/internal/errs"
+	"github.com/ecodeclub/webook/internal/interactive"
+	"github.com/ecodeclub/webook/internal/interactive/internal/web"
+	testioc "github.com/ecodeclub/webook/internal/test/ioc"
+	"github.com/google/wire"
 )
 
-var (
-	systemErrorResult = ginx.Result{
-		Code: errs.SystemError.Code,
-		Msg:  errs.SystemError.Msg,
-	}
-)
-
-// Outbox 发件箱
-type Outbox struct {
-	Id int64
-	// 发件人
-	Uid     int64
-	Content string
-	// 其它字段
-}
-
-type Inbox struct {
-	Id int64
-	// 收件人
-	Uid     int64
-	Content string
-	// 其它字段
+func InitHandler() (*web.Handler, error) {
+	wire.Build(testioc.BaseSet, interactive.InitModule,
+		wire.FieldsOf(new(*interactive.Module), "Hdl"))
+	return new(web.Handler), nil
 }
