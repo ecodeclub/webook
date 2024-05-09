@@ -187,6 +187,7 @@ func (s *AdminProjectTestSuite) TestProjectSave() {
 	}
 
 	for _, tc := range testCases {
+		tc := tc
 		s.T().Run(tc.name, func(t *testing.T) {
 			tc.before(t)
 			req, err := http.NewRequest(http.MethodPost,
@@ -351,6 +352,7 @@ func (s *AdminProjectTestSuite) TestProjectPublish() {
 	}
 
 	for _, tc := range testCases {
+		tc := tc
 		s.T().Run(tc.name, func(t *testing.T) {
 			tc.before(t)
 			req, err := http.NewRequest(http.MethodPost,
@@ -437,6 +439,7 @@ func (s *AdminProjectTestSuite) TestProjectList() {
 	}
 
 	for _, tc := range testCases {
+		tc := tc
 		s.T().Run(tc.name, func(t *testing.T) {
 			req, err := http.NewRequest(http.MethodPost,
 				"/project/list", iox.NewJSONReader(tc.req))
@@ -537,6 +540,7 @@ func (s *AdminProjectTestSuite) TestProjectDetail() {
 	}
 
 	for _, tc := range testCases {
+		tc := tc
 		s.T().Run(tc.name, func(t *testing.T) {
 			req, err := http.NewRequest(http.MethodPost,
 				"/project/detail", iox.NewJSONReader(tc.req))

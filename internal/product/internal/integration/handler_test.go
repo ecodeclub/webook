@@ -163,6 +163,7 @@ func (s *ProductModuleTestSuite) TestHandler_RetrieveSKUDetail() {
 		},
 	}
 	for _, tc := range testCases {
+		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			tc.before(t)
 			req, err := http.NewRequest(http.MethodPost,
@@ -278,6 +279,7 @@ func (s *ProductModuleTestSuite) TestHandler_RetrieveSKUDetailFailed() {
 		},
 	}
 	for _, tc := range testCases {
+		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			tc.before(t)
 			req, err := http.NewRequest(http.MethodPost,
@@ -395,6 +397,7 @@ func (s *ProductModuleTestSuite) TestHandler_RetrieveSPUDetail() {
 		},
 	}
 	for _, tc := range testCases {
+		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			tc.before(t)
 			req, err := http.NewRequest(http.MethodPost,
@@ -525,6 +528,7 @@ func (s *ProductModuleTestSuite) TestHandler_RetrieveSPUDetailFailed() {
 		},
 	}
 	for _, tc := range testCases {
+		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			tc.before(t)
 			req, err := http.NewRequest(http.MethodPost,
@@ -640,6 +644,7 @@ func (s *ProductModuleTestSuite) TestService_FindSPUByID() {
 		},
 	}
 	for _, tc := range testCases {
+		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			id := tc.getSPUID(t)
 			spu, err := s.svc.FindSPUByID(context.Background(), id)

@@ -136,6 +136,7 @@ func (s *ProjectTestSuite) TestProjectList() {
 	}
 
 	for _, tc := range testCases {
+		tc := tc
 		s.T().Run(tc.name, func(t *testing.T) {
 			req, err := http.NewRequest(http.MethodPost,
 				"/project/list", iox.NewJSONReader(tc.req))
@@ -236,6 +237,7 @@ func (s *ProjectTestSuite) TestProjectDetail() {
 	}
 
 	for _, tc := range testCases {
+		tc := tc
 		s.T().Run(tc.name, func(t *testing.T) {
 			req, err := http.NewRequest(http.MethodPost,
 				"/project/detail", iox.NewJSONReader(tc.req))

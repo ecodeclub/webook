@@ -1745,6 +1745,7 @@ func (s *ModuleTestSuite) TestHandler_QueryCredits() {
 		},
 	}
 	for _, tc := range testCases {
+		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			tc.before(t)
 			req, err := http.NewRequest(http.MethodPost,
@@ -1898,6 +1899,7 @@ func (s *ModuleTestSuite) TestJob_CloseExpiredLockedCreditLogs() {
 	}
 
 	for _, tc := range testCases {
+		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			tc.before(t)
 			j := tc.getJobFunc(t)

@@ -162,8 +162,8 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeRegistrationEvent() {
 	consumer, err := event.NewRegistrationEventConsumer(s.svc, s.mq)
 	require.NoError(t, err)
 
-	for i := range testCases {
-		tc := testCases[i]
+	for _, tc := range testCases {
+		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			message := s.newRegistrationEventMessage(t, tc.evt)
 			tc.before(t, producer, message)
@@ -375,8 +375,8 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeMemberEvent() {
 	consumer, err := event.NewMemberEventConsumer(s.svc, s.mq)
 	require.NoError(t, err)
 
-	for i := range testCases {
-		tc := testCases[i]
+	for _, tc := range testCases {
+		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			message := s.newMemberEventMessage(t, tc.evt)
 			tc.before(t, producer, message)

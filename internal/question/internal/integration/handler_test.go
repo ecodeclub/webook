@@ -287,6 +287,7 @@ func (s *HandlerTestSuite) TestSave() {
 	}
 
 	for _, tc := range testCases {
+		tc := tc
 		s.T().Run(tc.name, func(t *testing.T) {
 			tc.before(t)
 			req, err := http.NewRequest(http.MethodPost,
@@ -381,6 +382,7 @@ func (s *HandlerTestSuite) TestList() {
 	}
 
 	for _, tc := range testCases {
+		tc := tc
 		s.T().Run(tc.name, func(t *testing.T) {
 			req, err := http.NewRequest(http.MethodPost,
 				"/question/pub/list", iox.NewJSONReader(tc.req))
@@ -545,6 +547,7 @@ func (s *HandlerTestSuite) TestSync() {
 	}
 
 	for _, tc := range testCases {
+		tc := tc
 		s.T().Run(tc.name, func(t *testing.T) {
 			tc.before(t)
 			req, err := http.NewRequest(http.MethodPost,
@@ -626,6 +629,7 @@ func (s *HandlerTestSuite) TestDelete() {
 	}
 
 	for _, tc := range testCases {
+		tc := tc
 		s.T().Run(tc.name, func(t *testing.T) {
 			req, err := http.NewRequest(http.MethodPost,
 				"/question/delete", iox.NewJSONReader(web.Qid{Qid: tc.qid}))
@@ -679,6 +683,7 @@ func (s *HandlerTestSuite) TestPubDetail() {
 		},
 	}
 	for _, tc := range testCases {
+		tc := tc
 		s.T().Run(tc.name, func(t *testing.T) {
 			req, err := http.NewRequest(http.MethodPost,
 				"/question/pub/detail", iox.NewJSONReader(tc.req))
@@ -819,6 +824,7 @@ func (s *HandlerTestSuite) TestQuestionSet_Save() {
 		},
 	}
 	for _, tc := range testCases {
+		tc := tc
 		s.T().Run(tc.name, func(t *testing.T) {
 			tc.before(t)
 			targeURL := "/question-sets/save"
@@ -1358,6 +1364,7 @@ func (s *HandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 	}
 
 	for _, tc := range testCases {
+		tc := tc
 		s.T().Run(tc.name, func(t *testing.T) {
 			tc.before(t)
 			req, err := http.NewRequest(http.MethodPost,
@@ -1515,6 +1522,7 @@ func (s *HandlerTestSuite) TestQuestionSet_RetrieveQuestionSetDetail() {
 	}
 
 	for _, tc := range testCases {
+		tc := tc
 		s.T().Run(tc.name, func(t *testing.T) {
 			tc.before(t)
 			req, err := http.NewRequest(http.MethodPost,
@@ -1583,6 +1591,7 @@ func (s *HandlerTestSuite) TestQuestionSet_RetrieveQuestionSetDetail_Failed() {
 		// },
 	}
 	for _, tc := range testCases {
+		tc := tc
 		s.T().Run(tc.name, func(t *testing.T) {
 			tc.before(t)
 			req, err := http.NewRequest(http.MethodPost,
@@ -1672,6 +1681,7 @@ func (s *HandlerTestSuite) TestQuestionSet_ListPrivateQuestionSets() {
 	}
 
 	for _, tc := range testCases {
+		tc := tc
 		s.T().Run(tc.name, func(t *testing.T) {
 			req, err := http.NewRequest(http.MethodPost,
 				"/question-sets/list", iox.NewJSONReader(tc.req))
@@ -1759,6 +1769,7 @@ func (s *HandlerTestSuite) TestQuestionSet_ListAllQuestionSets() {
 	}
 
 	for _, tc := range testCases {
+		tc := tc
 		s.T().Run(tc.name, func(t *testing.T) {
 			req, err := http.NewRequest(http.MethodPost,
 				"/question-sets/pub/list", iox.NewJSONReader(tc.req))

@@ -225,6 +225,7 @@ func (s *HandlerTestSuite) TestSave() {
 		},
 	}
 	for _, tc := range testCases {
+		tc := tc
 		s.T().Run(tc.name, func(t *testing.T) {
 			tc.before(t)
 			req, err := http.NewRequest(http.MethodPost,
@@ -319,6 +320,7 @@ func (s *HandlerTestSuite) TestList() {
 	}
 
 	for _, tc := range testCases {
+		tc := tc
 		s.T().Run(tc.name, func(t *testing.T) {
 			req, err := http.NewRequest(http.MethodPost,
 				"/case/list", iox.NewJSONReader(tc.req))
@@ -387,6 +389,7 @@ func (s *HandlerTestSuite) TestDetail() {
 		},
 	}
 	for _, tc := range testCases {
+		tc := tc
 		s.T().Run(tc.name, func(t *testing.T) {
 			req, err := http.NewRequest(http.MethodPost,
 				"/case/detail", iox.NewJSONReader(tc.req))
@@ -618,6 +621,7 @@ func (s *HandlerTestSuite) TestPublish() {
 		},
 	}
 	for _, tc := range testCases {
+		tc := tc
 		s.T().Run(tc.name, func(t *testing.T) {
 			tc.before(t)
 			req, err := http.NewRequest(http.MethodPost,
@@ -703,6 +707,7 @@ func (s *HandlerTestSuite) TestPublist() {
 	}
 
 	for _, tc := range testCases {
+		tc := tc
 		s.T().Run(tc.name, func(t *testing.T) {
 			req, err := http.NewRequest(http.MethodPost,
 				"/case/pub/list", iox.NewJSONReader(tc.req))
@@ -770,6 +775,7 @@ func (s *HandlerTestSuite) TestPubDetail() {
 		},
 	}
 	for _, tc := range testCases {
+		tc := tc
 		s.T().Run(tc.name, func(t *testing.T) {
 			req, err := http.NewRequest(http.MethodPost,
 				"/case/pub/detail", iox.NewJSONReader(tc.req))

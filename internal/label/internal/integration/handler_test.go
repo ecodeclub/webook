@@ -92,6 +92,7 @@ func (s *HandlerTestSuite) TestSystemLabels() {
 		},
 	}
 	for _, tc := range testCases {
+		tc := tc
 		s.T().Run(tc.name, func(t *testing.T) {
 			tc.before(t)
 			req, err := http.NewRequest(http.MethodGet,
@@ -143,6 +144,7 @@ func (s *HandlerTestSuite) TestCreate() {
 	}
 
 	for _, tc := range testCases {
+		tc := tc
 		s.T().Run(tc.name, func(t *testing.T) {
 			req, err := http.NewRequest(http.MethodPost,
 				"/label/system/create", iox.NewJSONReader(tc.req))
