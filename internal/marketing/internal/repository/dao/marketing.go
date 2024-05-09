@@ -16,12 +16,17 @@ package dao
 
 import (
 	"context"
+	"errors"
+	"fmt"
+	"time"
 
+	"github.com/ecodeclub/ekit/slice"
 	"github.com/ego-component/egorm"
+	"github.com/go-sql-driver/mysql"
 )
 
 type MarketingDAO interface {
-	CreateRedemptionCode(ctx context.Context, code RedemptionCode) (int64, error)
+	CreateRedemptionCodes(ctx context.Context, oid int64, code []RedemptionCode) ([]int64, error)
 	FindRedemptionCodeByCode(ctx context.Context, code string) (RedemptionCode, error)
 
 	CountRedemptionCodes(ctx context.Context, uid int64) (int64, error)
@@ -36,9 +41,45 @@ func NewGORMMarketingDAO(db *egorm.Component) MarketingDAO {
 	return &gormMarketingDAO{db: db}
 }
 
-func (g *gormMarketingDAO) CreateRedemptionCode(ctx context.Context, code RedemptionCode) (int64, error) {
-	err := g.db.WithContext(ctx).Create(&code).Error
-	return code.Id, err
+func (g *gormMarketingDAO) CreateRedemptionCodes(ctx context.Context, oid int64, codes []RedemptionCode) ([]int64, error) {
+	now := time.Now().UnixMilli()
+	for i := range codes {
+		codes[i].Ctime, codes[i].Utime = now, now
+	}
+	err := g.db.WithContext(ctx).Transaction(func(tx *egorm.Component) error {
+		if err := tx.Create(&codes).Error; err != nil {
+			return fmt.Errorf("创建兑换码主记录失败: %w", err)
+		}
+		var l GenerateLog
+		l.Ctime = now
+		l.Utime = now
+		l.OrderId = oid
+		l.CodeCount = int64(len(codes))
+		return tx.Create(&l).Error
+	})
+	if err != nil {
+		if g.isMySQLUniqueIndexError(err) {
+			var res []int64
+			err = g.db.WithContext(ctx).Model(&RedemptionCode{}).
+				Select("id").Find(&res, "order_id", oid).Error
+			return res, err
+		}
+		return nil, err
+	}
+	return slice.Map(codes, func(idx int, src RedemptionCode) int64 {
+		return src.Id
+	}), nil
+}
+
+func (g *gormMarketingDAO) isMySQLUniqueIndexError(err error) bool {
+	var me *mysql.MySQLError
+	if errors.As(err, &me) {
+		const uniqueIndexErrNo uint16 = 1062
+		if me.Number == uniqueIndexErrNo {
+			return true
+		}
+	}
+	return false
 }
 
 func (g *gormMarketingDAO) FindRedemptionCodeByCode(ctx context.Context, code string) (RedemptionCode, error) {
@@ -65,10 +106,19 @@ type RedemptionCode struct {
 	Id      int64  `gorm:"primaryKey;autoIncrement;comment:兑换码自增ID"`
 	OwnerId int64  `gorm:"not null;index:idx_owner_id;comment:所有者ID"`
 	OrderId int64  `gorm:"not null;index:idx_order_id;comment:订单自增ID"`
+	SPUID   int64  `gorm:"column:spu_id;not null;index:idx_spu_id;comment:订单项对应的SPU自增ID"`
 	Code    string `gorm:"type:varchar(255);not null;uniqueIndex:uniq_code;comment:兑换码"`
 	Status  uint8  `gorm:"type:tinyint unsigned;not null;default:1;comment:使用状态 1=未使用 2=已使用"`
 	Ctime   int64
 	Utime   int64
+}
+
+type GenerateLog struct {
+	Id        int64 `gorm:"primaryKey;autoIncrement;comment:兑换码兑换记录ID"`
+	OrderId   int64 `gorm:"not null;uniqueIndex:idx_order_id_code_count;comment:订单ID"`
+	CodeCount int64 `gorm:"not null;uniqueIndex:idx_order_id_code_count;comment:订单中包含的兑换码个数"`
+	Ctime     int64
+	Utime     int64
 }
 
 type RedeemLog struct {

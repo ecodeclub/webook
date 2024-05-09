@@ -16,6 +16,7 @@ package repository
 
 import (
 	"context"
+	"log"
 
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/ecodeclub/webook/internal/marketing/internal/domain"
@@ -23,7 +24,7 @@ import (
 )
 
 type MarketingRepository interface {
-	CreateRedemptionCode(ctx context.Context, order domain.RedemptionCode) (domain.RedemptionCode, error)
+	CreateRedemptionCodes(ctx context.Context, oid int64, codes []domain.RedemptionCode) ([]int64, error)
 
 	FindRedemptionCode(ctx context.Context, code string) (domain.RedemptionCode, error)
 	SetUnusedRedemptionCodeStatusUsed(ctx context.Context, uid int64, code string) error
@@ -42,9 +43,10 @@ func NewRepository(d dao.MarketingDAO) MarketingRepository {
 	}
 }
 
-func (m *marketingRepository) CreateRedemptionCode(ctx context.Context, order domain.RedemptionCode) (domain.RedemptionCode, error) {
-	// TODO implement me
-	panic("implement me")
+func (m *marketingRepository) CreateRedemptionCodes(ctx context.Context, oid int64, codes []domain.RedemptionCode) ([]int64, error) {
+	entities := m.toEntities(codes)
+	log.Printf("entities: %#v\n", entities)
+	return m.dao.CreateRedemptionCodes(ctx, oid, entities)
 }
 
 func (m *marketingRepository) FindRedemptionCode(ctx context.Context, code string) (domain.RedemptionCode, error) {
@@ -74,9 +76,22 @@ func (m *marketingRepository) toDomain(codes []dao.RedemptionCode) []domain.Rede
 		return domain.RedemptionCode{
 			OwnerID: src.OwnerId,
 			OrderID: src.OrderId,
+			SPUID:   src.SPUID,
 			Code:    src.Code,
 			Status:  domain.RedemptionCodeStatus(src.Status),
 			Utime:   src.Utime,
+		}
+	})
+}
+
+func (m *marketingRepository) toEntities(codes []domain.RedemptionCode) []dao.RedemptionCode {
+	return slice.Map(codes, func(idx int, src domain.RedemptionCode) dao.RedemptionCode {
+		return dao.RedemptionCode{
+			OwnerId: src.OwnerID,
+			OrderId: src.OrderID,
+			SPUID:   src.SPUID,
+			Code:    src.Code,
+			Status:  src.Status.ToUint8(),
 		}
 	})
 }

@@ -8,8 +8,8 @@ CREATE TABLE IF NOT EXISTS `categories` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 INSERT INTO `categories` (id, name, description, ctime, utime)
-VALUES (1, '会员', '周期性商品', UNIX_TIMESTAMP(), UNIX_TIMESTAMP()),
-       (2, '项目', '永久性商品', UNIX_TIMESTAMP(), UNIX_TIMESTAMP());
+VALUES (1, 'member', '会员商品', UNIX_TIMESTAMP(), UNIX_TIMESTAMP()),
+       (2, 'code', '兑换码商品', UNIX_TIMESTAMP(), UNIX_TIMESTAMP());
 
 CREATE TABLE IF NOT EXISTS `spus` (
     `id` bigint NOT NULL AUTO_INCREMENT COMMENT '商品SPU自增ID',
