@@ -71,7 +71,7 @@ func (c *OrderEventConsumer) Consume(ctx context.Context) error {
 	}
 
 	for _, spu := range evt.SPUs {
-		if spu.Category != "member" {
+		if spu.Category != "member" && spu.Category != "code" {
 			return nil
 		}
 	}

@@ -18,7 +18,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 
+	"github.com/ecodeclub/ekit/slice"
 	"github.com/ecodeclub/webook/internal/marketing/internal/domain"
 	"github.com/ecodeclub/webook/internal/marketing/internal/event"
 	"github.com/ecodeclub/webook/internal/marketing/internal/event/producer"
@@ -63,37 +65,84 @@ func NewService(
 }
 
 func (s *service) ExecuteOrderCompletedActivity(ctx context.Context, act domain.OrderCompletedActivity) error {
+	const (
+		memberCategory = "member"
+		codeCategory   = "code"
+	)
 	o, err := s.orderSvc.FindUserVisibleOrderByUIDAndSN(ctx, act.BuyerID, act.OrderSN)
 	if err != nil {
 		return err
 	}
-	for _, item := range o.Items {
-		if item.SPU.Category.Name == "member" {
-			if er := s.handlerMemberOrder(ctx, o, item); er != nil {
-				return fmt.Errorf("处理会员商品失败: %w", er)
-			}
+
+	memberItems := make([]order.Item, 0, len(o.Items))
+	codeItems := make([]order.Item, 0, len(o.Items))
+
+	_ = slice.FindAll(o.Items, func(src order.Item) bool {
+		if src.SPU.Category.Name == memberCategory {
+			memberItems = append(memberItems, src)
+		} else if src.SPU.Category.Name == codeCategory {
+			codeItems = append(codeItems, src)
+		}
+		return false
+	})
+
+	if len(memberItems) > 0 {
+		err = s.handleMemberCategoryOrderItems(ctx, o, memberItems)
+		if err != nil {
+			return fmt.Errorf("处理会员商品失败: %w", err)
 		}
 	}
+
+	if len(codeItems) > 0 {
+		err = s.handleCodeCategoryOrderItems(ctx, o, codeItems)
+		if err != nil {
+			return fmt.Errorf("处理兑换码商品失败: %w", err)
+		}
+	}
+
 	return nil
 }
 
-func (s *service) handlerMemberOrder(ctx context.Context, o order.Order, item order.Item) error {
+func (s *service) handleMemberCategoryOrderItems(ctx context.Context, o order.Order, items []order.Item) error {
 	type Attrs struct {
 		Days uint64 `json:"days"`
 	}
-	var attrs Attrs
-	err := json.Unmarshal([]byte(item.SKU.Attrs), &attrs)
-	if err != nil {
-		return fmt.Errorf("解析会员商品属性失败: %w, attrs: %s", err, item.SKU.Attrs)
+
+	var days uint64
+	for _, item := range items {
+		var attrs Attrs
+		err := json.Unmarshal([]byte(item.SKU.Attrs), &attrs)
+		if err != nil {
+			return fmt.Errorf("解析会员商品属性失败: %w, oid: %d, skuid:%d, attrs: %s", err, o.ID, item.SKU.ID, item.SKU.Attrs)
+		}
+		days += attrs.Days * uint64(item.SKU.Quantity)
 	}
 	return s.memberEventProducer.Produce(ctx, event.MemberEvent{
-		Key:    s.eventKeyGenerator(),
+		Key:    o.SN,
 		Uid:    o.BuyerID,
-		Days:   attrs.Days * uint64(item.SKU.Quantity),
+		Days:   days,
 		Biz:    "order",
 		BizId:  o.ID,
 		Action: "购买会员商品",
 	})
+}
+
+func (s *service) handleCodeCategoryOrderItems(ctx context.Context, o order.Order, items []order.Item) error {
+	codes := make([]domain.RedemptionCode, 0, len(items))
+	for _, item := range items {
+		for i := int64(0); i < item.SKU.Quantity; i++ {
+			codes = append(codes, domain.RedemptionCode{
+				OwnerID: o.BuyerID,
+				OrderID: o.ID,
+				SPUID:   item.SPU.ID,
+				Code:    s.redemptionCodeGenerator(o.BuyerID),
+				Status:  domain.RedemptionCodeStatusUnused,
+			})
+		}
+	}
+	log.Printf("codes = %#v\n", codes)
+	_, err := s.repo.CreateRedemptionCodes(ctx, o.ID, codes)
+	return err
 }
 
 func (s *service) ListRedemptionCodes(ctx context.Context, uid int64, offset, list int) ([]domain.RedemptionCode, int64, error) {
