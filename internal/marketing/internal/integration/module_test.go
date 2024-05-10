@@ -37,6 +37,7 @@ import (
 	"github.com/ecodeclub/webook/internal/order"
 	ordermocks "github.com/ecodeclub/webook/internal/order/mocks"
 	"github.com/ecodeclub/webook/internal/pkg/sequencenumber"
+	productmocks "github.com/ecodeclub/webook/internal/product/mocks"
 	"github.com/ecodeclub/webook/internal/test"
 	testioc "github.com/ecodeclub/webook/internal/test/ioc"
 	"github.com/ecodeclub/webook/internal/test/mocks"
@@ -532,29 +533,77 @@ func (s *ModuleTestSuite) TestHandler_RedeemRedemptionCode() {
 		name string
 
 		before         func(t *testing.T, req web.RedeemRedemptionCodeReq)
-		newHandlerFunc func(t *testing.T, ctrl *gomock.Controller) *web.Handler
+		newMQFunc      func(t *testing.T, ctrl *gomock.Controller, evt event.MemberEvent) mq.MQ
+		newHandlerFunc func(t *testing.T, ctrl *gomock.Controller, q mq.MQ) *web.Handler
 		req            web.RedeemRedemptionCodeReq
-
-		wantCode int
-		wantResp test.Result[any]
+		evt            event.MemberEvent
+		after          func(t *testing.T, req web.RedeemRedemptionCodeReq)
+		wantCode       int
+		wantResp       test.Result[any]
 	}{
 		{
 			name: "兑换成功_所有者兑换",
+			evt: event.MemberEvent{
+				Key:    "101-1", // 订单ID-订单项
+				Uid:    87654321,
+				Days:   0,
+				Biz:    "order",
+				BizId:  101,
+				Action: "兑换会员商品",
+			},
 			before: func(t *testing.T, req web.RedeemRedemptionCodeReq) {
 				t.Helper()
-
+				oid := int64(101)
+				spuId := int64(2)
+				_, err := s.repo.CreateRedemptionCodes(context.Background(), oid, []domain.RedemptionCode{
+					{
+						OwnerID: testID,
+						OrderID: oid,
+						SPUID:   spuId,
+						Code:    req.Code,
+						Status:  domain.RedemptionCodeStatusUnused,
+					},
+				})
+				require.NoError(t, err)
 			},
-			newHandlerFunc: func(t *testing.T, ctrl *gomock.Controller) *web.Handler {
+			newMQFunc: func(t *testing.T, ctrl *gomock.Controller, evt event.MemberEvent) mq.MQ {
+				t.Helper()
+				mockMQ := mocks.NewMockMQ(ctrl)
+
+				mockProducer := mocks.NewMockProducer(ctrl)
+				memberEvent := s.newMemberEventMessage(t, evt)
+				mockProducer.EXPECT().Produce(gomock.Any(), memberEvent).Return(&mq.ProducerResult{}, nil).Times(2)
+
+				mockMQ.EXPECT().Producer(event.MemberUpdateEventName).Return(mockProducer, nil)
+				return mockMQ
+			},
+			newHandlerFunc: func(t *testing.T, ctrl *gomock.Controller, q mq.MQ) *web.Handler {
 				t.Helper()
 
-				// todo: 发送会员消息
+				mockProductSvc := productmocks.NewMockService(ctrl)
 
-				redemptionCodeGenerator := s.getRedemptionCodeGenerator(sequencenumber.NewGenerator())
-				svc := service.NewService(s.repo, nil, nil, redemptionCodeGenerator, nil, nil, nil, nil)
+				mockOrderSvc := ordermocks.NewMockService(ctrl)
+
+				memberEventProducer, err := producer.NewMemberEventProducer(q)
+				require.NoError(t, err)
+
+				svc := service.NewService(s.repo, mockOrderSvc, mockProductSvc, nil, nil, memberEventProducer, nil, nil)
 				return web.NewHandler(svc)
 			},
 			req: web.RedeemRedemptionCodeReq{
 				Code: "redemption-code-001",
+			},
+
+			after: func(t *testing.T, req web.RedeemRedemptionCodeReq) {
+				t.Helper()
+				code, err := s.repo.FindRedemptionCode(context.Background(), req.Code)
+				require.NoError(t, err)
+				require.Equal(t, req.Code, code.Code)
+				require.Equal(t, domain.RedemptionCodeStatusUsed, code.Status)
+				require.Equal(t, domain.RedeemLog{
+					RedeemerId: testID,
+					Code:       req.Code,
+					OwnerId:    testID}, code.RedeemLog)
 			},
 			wantCode: 200,
 			wantResp: test.Result[any]{
@@ -579,8 +628,9 @@ func (s *ModuleTestSuite) TestHandler_RedeemRedemptionCode() {
 				"/code/redeem", iox.NewJSONReader(tc.req))
 			req.Header.Set("content-type", "application/json")
 			require.NoError(t, err)
-			recorder := test.NewJSONResponseRecorder[web.RedeemRedemptionCodeResp]()
-			server := s.newGinServer(tc.newHandlerFunc(t, ctrl))
+			recorder := test.NewJSONResponseRecorder[any]()
+			q := tc.newMQFunc(t, ctrl, tc.evt)
+			server := s.newGinServer(tc.newHandlerFunc(t, ctrl, q))
 			server.ServeHTTP(recorder, req)
 			require.Equal(t, tc.wantCode, recorder.Code)
 			require.Equal(t, tc.wantResp.Data, recorder.MustScan().Data)

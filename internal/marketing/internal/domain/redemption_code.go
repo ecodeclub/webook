@@ -26,11 +26,19 @@ func (r RedemptionCodeStatus) ToUint8() uint8 {
 }
 
 type RedemptionCode struct {
-	OwnerID  int64
-	OrderID  int64
-	SPUID    int64
-	SKUAttrs string
-	Code     string
-	Status   RedemptionCodeStatus
-	Utime    int64
+	ID        int64
+	OwnerID   int64
+	OrderID   int64
+	SPUID     int64
+	SKUAttrs  string
+	Code      string
+	Status    RedemptionCodeStatus
+	RedeemLog RedeemLog
+	Utime     int64
+}
+
+type RedeemLog struct {
+	RedeemerId int64
+	Code       string
+	OwnerId    int64
 }

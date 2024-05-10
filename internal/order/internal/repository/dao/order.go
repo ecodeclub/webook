@@ -83,7 +83,7 @@ func (g *gormOrderDAO) FindOrderByUIDAndSNAndStatus(ctx context.Context, uid int
 
 func (g *gormOrderDAO) FindOrderItemsByOrderID(ctx context.Context, oid int64) ([]OrderItem, error) {
 	var res []OrderItem
-	err := g.db.WithContext(ctx).Order("ctime DESC").Find(&res, "order_id = ?", oid).Error
+	err := g.db.WithContext(ctx).Order("ctime DESC, id ASC").Find(&res, "order_id = ?", oid).Error
 	return res, err
 }
 
