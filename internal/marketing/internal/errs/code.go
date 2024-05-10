@@ -15,6 +15,7 @@
 package errs
 
 var (
+	UserError   = ErrorCode{Code: 412001, Msg: "用户错误"}
 	SystemError = ErrorCode{Code: 512001, Msg: "系统错误"}
 )
 

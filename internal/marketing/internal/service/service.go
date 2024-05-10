@@ -30,9 +30,19 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
+var (
+	ErrRedemptionNotFound = repository.ErrRedemptionNotFound
+	ErrRedemptionCodeUsed = repository.ErrRedemptionCodeUsed
+)
+
 type Service interface {
 	ExecuteOrderCompletedActivity(ctx context.Context, act domain.OrderCompletedActivity) error
+	RedeemRedemptionCode(ctx context.Context, uid int64, code string) error
 	ListRedemptionCodes(ctx context.Context, uid int64, offset, list int) ([]domain.RedemptionCode, int64, error)
+}
+
+type skuAttrs struct {
+	Days uint64 `json:"days,omitempty"`
 }
 
 type service struct {
@@ -108,14 +118,9 @@ func (s *service) ExecuteOrderCompletedActivity(ctx context.Context, act domain.
 }
 
 func (s *service) handleMemberCategoryOrderItems(ctx context.Context, o order.Order, items []order.Item) error {
-	type Attrs struct {
-		Days uint64 `json:"days"`
-	}
-
 	var days uint64
 	for _, item := range items {
-		var attrs Attrs
-		err := json.Unmarshal([]byte(item.SKU.Attrs), &attrs)
+		attrs, err := s.unmarshalSPUAttrs(item.SKU.Attrs)
 		if err != nil {
 			return fmt.Errorf("解析会员商品属性失败: %w, oid: %d, skuid:%d, attrs: %s", err, o.ID, item.SKU.ID, item.SKU.Attrs)
 		}
@@ -129,6 +134,12 @@ func (s *service) handleMemberCategoryOrderItems(ctx context.Context, o order.Or
 		BizId:  o.ID,
 		Action: "购买会员商品",
 	})
+}
+
+func (s *service) unmarshalSPUAttrs(attrs string) (skuAttrs, error) {
+	var a skuAttrs
+	err := json.Unmarshal([]byte(attrs), &a)
+	return a, err
 }
 
 func (s *service) handleCodeCategoryOrderItems(ctx context.Context, o order.Order, items []order.Item) error {
@@ -148,6 +159,43 @@ func (s *service) handleCodeCategoryOrderItems(ctx context.Context, o order.Orde
 	log.Printf("codes = %#v\n", codes)
 	_, err := s.repo.CreateRedemptionCodes(ctx, o.ID, codes)
 	return err
+}
+
+func (s *service) RedeemRedemptionCode(ctx context.Context, uid int64, code string) error {
+	r, err := s.repo.FindRedemptionCode(ctx, code)
+	if err != nil {
+		return err
+	}
+	if r.Status == domain.RedemptionCodeStatusUsed {
+		return fmt.Errorf("%w: code:%s", ErrRedemptionCodeUsed, code)
+	}
+	err = s.repo.SetUnusedRedemptionCodeStatusUsed(ctx, uid, code)
+	if err != nil {
+		return err
+	}
+	return s.sendEvent(ctx, uid, r)
+}
+
+func (s *service) sendEvent(ctx context.Context, uid int64, code domain.RedemptionCode) error {
+	// todo: 按照SPU分类执行不同的后续动作, 当前只支持发送会员消息
+	return s.sendMemberEvent(ctx, uid, code)
+}
+
+func (s *service) sendMemberEvent(ctx context.Context, uid int64, code domain.RedemptionCode) error {
+	attrs, err := s.unmarshalSPUAttrs(code.SKUAttrs)
+	if err != nil {
+		return fmt.Errorf("解析会员兑换码属性失败: %w, codeID:%d, spuAttrs:%s", err, code.ID, code.SKUAttrs)
+	}
+	memberEvent := event.MemberEvent{
+		Key:    fmt.Sprintf("code-member-%d", code.ID),
+		Uid:    uid,
+		Days:   attrs.Days,
+		Biz:    "order",
+		BizId:  code.OrderID,
+		Action: "兑换会员商品",
+	}
+	log.Printf("svc memberEvent = %#v\n", memberEvent)
+	return s.memberEventProducer.Produce(ctx, memberEvent)
 }
 
 func (s *service) ListRedemptionCodes(ctx context.Context, uid int64, offset, list int) ([]domain.RedemptionCode, int64, error) {
