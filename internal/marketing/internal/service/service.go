@@ -132,11 +132,12 @@ func (s *service) handleCodeCategoryOrderItems(ctx context.Context, o order.Orde
 	for _, item := range items {
 		for i := int64(0); i < item.SKU.Quantity; i++ {
 			codes = append(codes, domain.RedemptionCode{
-				OwnerID: o.BuyerID,
-				OrderID: o.ID,
-				SPUID:   item.SPU.ID,
-				Code:    s.redemptionCodeGenerator(o.BuyerID),
-				Status:  domain.RedemptionCodeStatusUnused,
+				OwnerID:  o.BuyerID,
+				OrderID:  o.ID,
+				SPUID:    item.SPU.ID,
+				SKUAttrs: item.SKU.Attrs,
+				Code:     s.redemptionCodeGenerator(o.BuyerID),
+				Status:   domain.RedemptionCodeStatusUnused,
 			})
 		}
 	}
