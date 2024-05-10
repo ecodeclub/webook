@@ -19,6 +19,7 @@ import (
 	"log"
 
 	"github.com/ecodeclub/ekit/slice"
+	"github.com/ecodeclub/ekit/sqlx"
 	"github.com/ecodeclub/webook/internal/marketing/internal/domain"
 	"github.com/ecodeclub/webook/internal/marketing/internal/repository/dao"
 )
@@ -74,12 +75,13 @@ func (m *marketingRepository) FindRedemptionCodesByUID(ctx context.Context, uid 
 func (m *marketingRepository) toDomain(codes []dao.RedemptionCode) []domain.RedemptionCode {
 	return slice.Map(codes, func(idx int, src dao.RedemptionCode) domain.RedemptionCode {
 		return domain.RedemptionCode{
-			OwnerID: src.OwnerId,
-			OrderID: src.OrderId,
-			SPUID:   src.SPUID,
-			Code:    src.Code,
-			Status:  domain.RedemptionCodeStatus(src.Status),
-			Utime:   src.Utime,
+			OwnerID:  src.OwnerId,
+			OrderID:  src.OrderId,
+			SPUID:    src.SPUID,
+			SKUAttrs: src.SKUAttrs.String,
+			Code:     src.Code,
+			Status:   domain.RedemptionCodeStatus(src.Status),
+			Utime:    src.Utime,
 		}
 	})
 }
@@ -87,11 +89,12 @@ func (m *marketingRepository) toDomain(codes []dao.RedemptionCode) []domain.Rede
 func (m *marketingRepository) toEntities(codes []domain.RedemptionCode) []dao.RedemptionCode {
 	return slice.Map(codes, func(idx int, src domain.RedemptionCode) dao.RedemptionCode {
 		return dao.RedemptionCode{
-			OwnerId: src.OwnerID,
-			OrderId: src.OrderID,
-			SPUID:   src.SPUID,
-			Code:    src.Code,
-			Status:  src.Status.ToUint8(),
+			OwnerId:  src.OwnerID,
+			OrderId:  src.OrderID,
+			SPUID:    src.SPUID,
+			SKUAttrs: sqlx.NewNullString(src.SKUAttrs),
+			Code:     src.Code,
+			Status:   src.Status.ToUint8(),
 		}
 	})
 }
