@@ -342,10 +342,11 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeOrderEvent() {
 				codes, err := s.repo.FindRedemptionCodesByUID(context.Background(), evt.BuyerID, 0, 10)
 				require.NoError(t, err)
 				code := domain.RedemptionCode{
-					OwnerID: evt.BuyerID,
-					OrderID: int64(3),
-					SPUID:   int64(2),
-					Status:  domain.RedemptionCodeStatusUnused,
+					OwnerID:  evt.BuyerID,
+					OrderID:  int64(3),
+					SPUID:    int64(2),
+					SKUAttrs: `{"days":90}`,
+					Status:   domain.RedemptionCodeStatusUnused,
 				}
 				s.assertRedemptionCodeEqual(t, []domain.RedemptionCode{code, code}, codes)
 			},
@@ -372,8 +373,8 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeOrderEvent() {
 						ID:               4,
 						SN:               evt.OrderSN,
 						BuyerID:          evt.BuyerID,
-						OriginalTotalAmt: 2970,
-						RealTotalAmt:     2970,
+						OriginalTotalAmt: 2310,
+						RealTotalAmt:     2310,
 						Status:           order.StatusSuccess,
 						Items: []order.Item{
 							{
@@ -398,9 +399,9 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeOrderEvent() {
 								SKU: order.SKU{
 									ID:            5,
 									SN:            "sku-sn-code-member-5",
-									Attrs:         `{"days":90}`,
-									OriginalPrice: 990,
-									RealPrice:     990,
+									Attrs:         `{"days":30}`,
+									OriginalPrice: 330,
+									RealPrice:     330,
 									Quantity:      1,
 								},
 							},
@@ -425,13 +426,21 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeOrderEvent() {
 				t.Helper()
 				codes, err := s.repo.FindRedemptionCodesByUID(context.Background(), evt.BuyerID, 0, 10)
 				require.NoError(t, err)
-				code := domain.RedemptionCode{
-					OwnerID: evt.BuyerID,
-					OrderID: int64(4),
-					SPUID:   int64(2),
-					Status:  domain.RedemptionCodeStatusUnused,
+				code90 := domain.RedemptionCode{
+					OwnerID:  evt.BuyerID,
+					OrderID:  int64(4),
+					SPUID:    int64(2),
+					SKUAttrs: `{"days":90}`,
+					Status:   domain.RedemptionCodeStatusUnused,
 				}
-				s.assertRedemptionCodeEqual(t, []domain.RedemptionCode{code, code, code}, codes)
+				code30 := domain.RedemptionCode{
+					OwnerID:  evt.BuyerID,
+					OrderID:  int64(4),
+					SPUID:    int64(2),
+					SKUAttrs: `{"days":30}`,
+					Status:   domain.RedemptionCodeStatusUnused,
+				}
+				s.assertRedemptionCodeEqual(t, []domain.RedemptionCode{code90, code90, code30}, codes)
 			},
 		},
 		{

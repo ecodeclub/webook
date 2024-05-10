@@ -16,6 +16,7 @@ package dao
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"time"
@@ -101,20 +102,21 @@ func (g *gormMarketingDAO) CountRedemptionCodes(ctx context.Context, uid int64) 
 
 func (g *gormMarketingDAO) FindRedemptionCodesByUID(ctx context.Context, uid int64, offset int, limit int) ([]RedemptionCode, error) {
 	var res []RedemptionCode
-	err := g.db.WithContext(ctx).Model(&RedemptionCode{}).Order("Utime DESC").
+	err := g.db.WithContext(ctx).Model(&RedemptionCode{}).Order("Utime DESC, id ASC").
 		Offset(offset).Limit(limit).Find(&res, "owner_id = ?", uid).Error
 	return res, err
 }
 
 type RedemptionCode struct {
-	Id      int64  `gorm:"primaryKey;autoIncrement;comment:兑换码自增ID"`
-	OwnerId int64  `gorm:"not null;index:idx_owner_id;comment:所有者ID"`
-	OrderId int64  `gorm:"not null;index:idx_order_id;comment:订单自增ID"`
-	SPUID   int64  `gorm:"column:spu_id;not null;index:idx_spu_id;comment:订单项对应的SPU自增ID"`
-	Code    string `gorm:"type:varchar(255);not null;uniqueIndex:uniq_code;comment:兑换码"`
-	Status  uint8  `gorm:"type:tinyint unsigned;not null;default:1;comment:使用状态 1=未使用 2=已使用"`
-	Ctime   int64
-	Utime   int64
+	Id       int64          `gorm:"primaryKey;autoIncrement;comment:兑换码自增ID"`
+	OwnerId  int64          `gorm:"not null;index:idx_owner_id;comment:所有者ID"`
+	OrderId  int64          `gorm:"not null;index:idx_order_id;comment:订单自增ID"`
+	SPUID    int64          `gorm:"column:spu_id;not null;index:idx_spu_id;comment:订单项对应的SPU自增ID"`
+	SKUAttrs sql.NullString `gorm:"comment:商品销售属性,JSON格式"`
+	Code     string         `gorm:"type:varchar(255);not null;uniqueIndex:uniq_code;comment:兑换码"`
+	Status   uint8          `gorm:"type:tinyint unsigned;not null;default:1;comment:使用状态 1=未使用 2=已使用"`
+	Ctime    int64
+	Utime    int64
 }
 
 type GenerateLog struct {
