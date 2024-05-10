@@ -28,31 +28,14 @@ type Event struct {
 	Action string `json:"action,omitempty"`
 	Uid    int64  `json:"uid,omitempty"`
 }
+type handleFunc func(ctx context.Context, svc service.InteractiveService, evt Event) error
 
-type Handler interface {
-	Handle(ctx context.Context, evt Event) error
+func likeHandle(ctx context.Context, svc service.InteractiveService, evt Event) error {
+	return svc.Like(ctx, evt.Biz, evt.BizId, evt.Uid)
 }
-
-type LikeHandler struct {
-	svc service.InteractiveService
+func collectHandle(ctx context.Context, svc service.InteractiveService, evt Event) error {
+	return svc.Collect(ctx, evt.Biz, evt.BizId, evt.Uid)
 }
-
-func (l *LikeHandler) Handle(ctx context.Context, evt Event) error {
-	return l.svc.Like(ctx, evt.Biz, evt.BizId, evt.Uid)
-}
-
-type CollectHandler struct {
-	svc service.InteractiveService
-}
-
-func (c *CollectHandler) Handle(ctx context.Context, evt Event) error {
-	return c.svc.Collect(ctx, evt.Biz, evt.BizId, evt.Uid)
-}
-
-type ViewHandler struct {
-	svc service.InteractiveService
-}
-
-func (v *ViewHandler) Handle(ctx context.Context, evt Event) error {
-	return v.svc.IncrReadCnt(ctx, evt.Biz, evt.BizId)
+func viewHandle(ctx context.Context, svc service.InteractiveService, evt Event) error {
+	return svc.IncrReadCnt(ctx, evt.Biz, evt.BizId)
 }

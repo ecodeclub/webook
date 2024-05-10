@@ -2,11 +2,10 @@ package dao
 
 import (
 	"context"
-	"time"
-
 	"github.com/ego-component/egorm"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
+	"time"
 )
 
 type InteractiveDAO interface {
@@ -34,7 +33,7 @@ func NewInteractiveDAO(db *egorm.Component) *GORMInteractiveDAO {
 func (g *GORMInteractiveDAO) IncrViewCnt(ctx context.Context, biz string, bizId int64) error {
 	now := time.Now().UnixMilli()
 	return g.db.WithContext(ctx).Clauses(clause.OnConflict{
-		DoUpdates: clause.Assignments(map[string]interface{}{
+		DoUpdates: clause.Assignments(map[string]any{
 			"view_cnt": gorm.Expr("`view_cnt` + 1"),
 			"utime":    now,
 		}),
@@ -61,7 +60,7 @@ func (g *GORMInteractiveDAO) InsertLikeInfo(ctx context.Context, biz string, id 
 			return err
 		}
 		return tx.WithContext(ctx).Clauses(clause.OnConflict{
-			DoUpdates: clause.Assignments(map[string]interface{}{
+			DoUpdates: clause.Assignments(map[string]any{
 				"like_cnt": gorm.Expr("`like_cnt` + 1"),
 				"utime":    now,
 			}),
@@ -80,12 +79,13 @@ func (g *GORMInteractiveDAO) InsertCollectionBiz(ctx context.Context, cb UserCol
 	cb.Ctime = now
 	cb.Utime = now
 	return g.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+
 		err := tx.Create(&cb).Error
 		if err != nil {
 			return err
 		}
 		return tx.WithContext(ctx).Clauses(clause.OnConflict{
-			DoUpdates: clause.Assignments(map[string]interface{}{
+			DoUpdates: clause.Assignments(map[string]any{
 				"collect_cnt": gorm.Expr("`collect_cnt` + 1"),
 				"utime":       now,
 			}),

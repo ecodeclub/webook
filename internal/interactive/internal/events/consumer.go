@@ -28,8 +28,9 @@ import (
 const syncTopic = "interactive_events"
 
 type Consumer struct {
-	handlerMap map[string]Handler
+	handlerMap map[string]handleFunc
 	consumer   mq.Consumer
+	svc        service.InteractiveService
 	logger     *elog.Component
 }
 
@@ -39,20 +40,15 @@ func NewSyncConsumer(svc service.InteractiveService, q mq.MQ) (*Consumer, error)
 	if err != nil {
 		return nil, err
 	}
-	handlerMap := map[string]Handler{
-		"like": &LikeHandler{
-			svc: svc,
-		},
-		"collect": &CollectHandler{
-			svc: svc,
-		},
-		"view": &ViewHandler{
-			svc: svc,
-		},
+	handlerMap := map[string]handleFunc{
+		"like":    likeHandle,
+		"collect": collectHandle,
+		"view":    viewHandle,
 	}
 	return &Consumer{
 		handlerMap: handlerMap,
 		consumer:   consumer,
+		svc:        svc,
 		logger:     elog.DefaultLogger,
 	}, nil
 }
@@ -72,7 +68,7 @@ func (s *Consumer) Consume(ctx context.Context) error {
 	if !ok {
 		return errors.New("未找到相关业务的处理方法")
 	}
-	err = handler.Handle(ctx, evt)
+	err = handler(ctx, s.svc, evt)
 	if err != nil {
 		s.logger.Error("同步消息失败", elog.Any("interactive_event", evt))
 	}

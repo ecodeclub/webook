@@ -54,20 +54,20 @@ type InteractiveSuite struct {
 }
 
 func (i *InteractiveSuite) TearDownSuite() {
-	err := i.db.Exec("DROP TABLE `interactive`").Error
+	err := i.db.Exec("DROP TABLE `interactives`").Error
 	require.NoError(i.T(), err)
-	err = i.db.Exec("DROP TABLE `user_like_biz`").Error
+	err = i.db.Exec("DROP TABLE `user_like_bizs`").Error
 	require.NoError(i.T(), err)
-	err = i.db.Exec("DROP TABLE `user_collection_biz`").Error
+	err = i.db.Exec("DROP TABLE `user_collection_bizs`").Error
 	require.NoError(i.T(), err)
 }
 
 func (i *InteractiveSuite) TearDownTest() {
-	err := i.db.Exec("TRUNCATE TABLE `interactive`").Error
+	err := i.db.Exec("TRUNCATE TABLE `interactives`").Error
 	require.NoError(i.T(), err)
-	err = i.db.Exec("TRUNCATE TABLE `user_like_biz`").Error
+	err = i.db.Exec("TRUNCATE TABLE `user_like_bizs`").Error
 	require.NoError(i.T(), err)
-	err = i.db.Exec("TRUNCATE TABLE `user_collection_biz`").Error
+	err = i.db.Exec("TRUNCATE TABLE `user_collection_bizs`").Error
 	require.NoError(i.T(), err)
 }
 
@@ -106,7 +106,7 @@ func (i *InteractiveSuite) Test_Like() {
 		wantCode int
 	}{
 		{
-			name: "点赞",
+			name: "用户点赞一次，有一条记录，计数加一",
 			before: func(t *testing.T) {
 
 			},
@@ -133,13 +133,19 @@ func (i *InteractiveSuite) Test_Like() {
 			wantCode: 200,
 		},
 		{
-			name: "多次点赞,加入不进去",
+			name: "同一用户多次点赞,只记录一次",
 			before: func(t *testing.T) {
 				err := i.intrDAO.InsertLikeInfo(context.Background(), "case", 3, uid)
 				require.NoError(t, err)
 			},
 			after: func(t *testing.T) {
-
+				likeInfo, err := i.intrDAO.GetLikeInfo(context.Background(), "case", 3, uid)
+				require.NoError(t, err)
+				i.assertLikeBiz(dao.UserLikeBiz{
+					Uid:   uid,
+					Biz:   "case",
+					BizId: 3,
+				}, likeInfo)
 			},
 			req: web.LikeReq{
 				BizId: 3,
@@ -201,7 +207,7 @@ func (i *InteractiveSuite) Test_Collect() {
 		wantCode int
 	}{
 		{
-			name: "收藏",
+			name: "用户收藏一次，有一条记录，计数加一",
 			before: func(t *testing.T) {
 
 			},
@@ -228,7 +234,7 @@ func (i *InteractiveSuite) Test_Collect() {
 			wantCode: 200,
 		},
 		{
-			name: "多次收藏失败",
+			name: "同一用户多次收藏,只记录一次",
 			before: func(t *testing.T) {
 				err := i.intrDAO.InsertCollectionBiz(context.Background(), dao.UserCollectionBiz{
 					Uid:   uid,
@@ -238,7 +244,13 @@ func (i *InteractiveSuite) Test_Collect() {
 				require.NoError(t, err)
 			},
 			after: func(t *testing.T) {
-
+				collectInfo, err := i.intrDAO.GetCollectInfo(context.Background(), "question", 3, uid)
+				require.NoError(t, err)
+				i.assertCollectBiz(dao.UserCollectionBiz{
+					Uid:   uid,
+					Biz:   "question",
+					BizId: 3,
+				}, collectInfo)
 			},
 			req: web.CollectReq{
 				BizId: 3,
@@ -289,7 +301,6 @@ func (i *InteractiveSuite) Test_Collect() {
 			recorder := test.NewJSONResponseRecorder[int64]()
 			i.server.ServeHTTP(recorder, req)
 			require.Equal(t, tc.wantCode, recorder.Code)
-
 			tc.after(t)
 		})
 	}
@@ -304,7 +315,7 @@ func (i *InteractiveSuite) Test_View() {
 		wantCode int
 	}{
 		{
-			name: "浏览",
+			name: "用户首次浏览资源 资源浏览计数加1",
 			before: func(t *testing.T) {
 
 			},
@@ -324,7 +335,7 @@ func (i *InteractiveSuite) Test_View() {
 			wantCode: 200,
 		},
 		{
-			name: "多次浏览",
+			name: "用户重复浏览资源 资源浏览计数加1",
 			before: func(t *testing.T) {
 				err := i.intrDAO.IncrViewCnt(context.Background(), "order", 4)
 				require.NoError(t, err)
@@ -370,7 +381,7 @@ func (i *InteractiveSuite) Test_Cnt() {
 		wantCode int
 	}{
 		{
-			name: "点赞过",
+			name: "用户点赞过的详情",
 			before: func(t *testing.T) {
 				err := i.intrDAO.IncrViewCnt(context.Background(), "product", 1)
 				require.NoError(i.T(), err)
@@ -400,7 +411,7 @@ func (i *InteractiveSuite) Test_Cnt() {
 			},
 		},
 		{
-			name: "收藏过",
+			name: "用户收藏过的详情",
 			before: func(t *testing.T) {
 				err := i.intrDAO.IncrViewCnt(context.Background(), "product", 2)
 				require.NoError(i.T(), err)
@@ -447,6 +458,7 @@ func (i *InteractiveSuite) Test_Cnt() {
 }
 
 func (i *InteractiveSuite) Test_Detail() {
+	// 批量获取skill模块的id为1,2,3的点赞收藏数据
 	t := i.T()
 	i.initInteractiveData()
 	req, err := http.NewRequest(http.MethodPost,
