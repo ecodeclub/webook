@@ -23,6 +23,6 @@ import (
 )
 
 func InitModule() *project.Module {
-	wire.Build(project.InitModule, testioc.InitDB)
+	wire.Build(project.InitModule, testioc.InitDB, testioc.InitMQ)
 	return new(project.Module)
 }

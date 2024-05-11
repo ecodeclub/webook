@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	SyncTopic = "sync_events"
+	SyncTopic = "sync_data_to_search"
 )
 
 type SyncEventProducer interface {

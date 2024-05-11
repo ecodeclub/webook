@@ -1,0 +1,115 @@
+{
+  "mapping": {
+    "properties": {
+      "id": {
+        "type": "long"
+      },
+      "title": {
+        "type": "text"
+      },
+      "desc": {
+        "type": "text"
+      },
+      "labels": {
+        "type": "keyword"
+      },
+      "difficulties": {
+        "properties": {
+          "id": {
+            "type": "long"
+          },
+          "title": {
+            "type": "text"
+          },
+          "analysis": {
+            "type": "text"
+          },
+          "content": {
+            "type": "text"
+          },
+          "status": {
+            "type": "integer"
+          },
+          "utime": {
+            "type": "long"
+          }
+        }
+      },
+      "resumes": {
+        "properties": {
+          "id": {
+            "type": "long"
+          },
+          "role": {
+            "type": "integer"
+          },
+          "analysis": {
+            "type": "text"
+          },
+          "content": {
+            "type": "text"
+          },
+          "status": {
+            "type": "integer"
+          },
+          "utime": {
+            "type": "long"
+          }
+        }
+      },
+      "introductions": {
+        "properties": {
+          "id": {
+            "type": "long"
+          },
+          "role": {
+            "type": "integer"
+          },
+          "analysis": {
+            "type": "text"
+          },
+          "content": {
+            "type": "text"
+          },
+          "status": {
+            "type": "integer"
+          },
+          "utime": {
+            "type": "long"
+          }
+        }
+      },
+      "questions": {
+        "properties": {
+          "id": {
+            "type": "long"
+          },
+          "title": {
+            "type": "text"
+          },
+          "analysis": {
+            "type": "text"
+          },
+          "answer": {
+            "type": "text"
+          },
+          "status": {
+            "type": "integer"
+          },
+          "utime": {
+            "type": "long"
+          }
+        }
+      },
+      "status": {
+        "type": "integer"
+      },
+      "utime": {
+        "type": "long"
+      },
+      "ctime": {
+        "type": "long"
+      }
+    }
+  }
+}
