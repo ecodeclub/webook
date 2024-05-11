@@ -66,28 +66,28 @@ func NewService(
 
 func (s *service) ExecuteOrderCompletedActivity(ctx context.Context, act domain.OrderCompletedActivity) error {
 	const (
-		memberCategory = "member"
-		codeCategory   = "code"
+		productCategory = "product"
+		codeCategory    = "code"
 	)
 	o, err := s.orderSvc.FindUserVisibleOrderByUIDAndSN(ctx, act.BuyerID, act.OrderSN)
 	if err != nil {
 		return err
 	}
 
-	memberItems := make([]order.Item, 0, len(o.Items))
+	productItems := make([]order.Item, 0, len(o.Items))
 	codeItems := make([]order.Item, 0, len(o.Items))
 
 	_ = slice.FindAll(o.Items, func(src order.Item) bool {
-		if src.SPU.Category.Name == memberCategory {
-			memberItems = append(memberItems, src)
-		} else if src.SPU.Category.Name == codeCategory {
+		if src.SPU.Category == productCategory {
+			productItems = append(productItems, src)
+		} else if src.SPU.Category == codeCategory {
 			codeItems = append(codeItems, src)
 		}
 		return false
 	})
 
-	if len(memberItems) > 0 {
-		err = s.handleMemberCategoryOrderItems(ctx, o, memberItems)
+	if len(productItems) > 0 {
+		err = s.handleMemberCategoryOrderItems(ctx, o, productItems)
 		if err != nil {
 			return fmt.Errorf("处理会员商品失败: %w", err)
 		}

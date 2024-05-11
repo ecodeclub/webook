@@ -150,7 +150,8 @@ func (s *OrderModuleTestSuite) TestHandler_PreviewOrder() {
 					SN:       "SPU-SKU100",
 					Name:     "SPU-商品SKU100",
 					Desc:     "SPU-商品SKU100",
-					Category: product.Category{Name: "member", Desc: "商品会员"},
+					Category: "code",
+					Type:     "member",
 				}, nil)
 				ppm := &product.Module{Svc: mockProductSvc}
 
@@ -186,7 +187,7 @@ func (s *OrderModuleTestSuite) TestHandler_PreviewOrder() {
 						RealTotalAmt:     990,
 						Items: []web.OrderItem{
 							{
-								SPU: web.SPU{Category: "member"},
+								SPU: web.SPU{Category: "code"},
 								SKU: web.SKU{
 									SN:            "SKU100",
 									Image:         "SKUImage100",
@@ -380,7 +381,8 @@ func (s *OrderModuleTestSuite) TestHandler_PreviewOrderFailed() {
 					SN:       "SPU-SKU100",
 					Name:     "SPU-商品SKU100",
 					Desc:     "SPU-商品SKU100",
-					Category: product.Category{Name: "member", Desc: "会员商品"},
+					Category: "product",
+					Type:     "member",
 				}, nil)
 				ppm := &product.Module{Svc: mockProductSvc}
 
@@ -491,7 +493,8 @@ func (s *OrderModuleTestSuite) TestHandler_CreateOrder() {
 					SN:       "SPU-SKU101",
 					Name:     "SPU-商品SKU101",
 					Desc:     "SPU-商品SKU101",
-					Category: product.Category{Name: "Code", Desc: "兑换码"},
+					Category: "code",
+					Type:     "member",
 				}, nil)
 				ppm := &product.Module{Svc: mockProductSvc}
 
@@ -586,7 +589,8 @@ func (s *OrderModuleTestSuite) TestHandler_CreateOrder() {
 					SN:       "SPU-SKU101",
 					Name:     "SPU-商品SKU101",
 					Desc:     "SPU-商品SKU101",
-					Category: product.Category{Name: "Code", Desc: "兑换码"},
+					Category: "code",
+					Type:     "member",
 				}, nil)
 				ppm := &product.Module{Svc: mockProductSvc}
 
@@ -884,7 +888,8 @@ func (s *OrderModuleTestSuite) TestHandler_CreateOrderFailed() {
 					SN:       "SPU-SKU101",
 					Name:     "SPU-商品SKU101",
 					Desc:     "SPU-商品SKU101",
-					Category: product.Category{Name: "Code", Desc: "兑换码"},
+					Category: "code",
+					Type:     "member",
 				}, nil).AnyTimes()
 				ppm := &product.Module{Svc: mockProductSvc}
 
@@ -967,7 +972,8 @@ func (s *OrderModuleTestSuite) createOrderFailedHandler(t *testing.T, ctrl *gomo
 		SN:       "SPU-SKU101",
 		Name:     "SPU-商品SKU101",
 		Desc:     "SPU-商品SKU101",
-		Category: product.Category{Name: "Code", Desc: "兑换码"},
+		Category: "code",
+		Type:     "member",
 	}, nil).AnyTimes()
 
 	cm := &credit.Module{Svc: creditmocks.NewMockService(ctrl)}

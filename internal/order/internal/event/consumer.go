@@ -106,7 +106,8 @@ func (c *PaymentConsumer) sendOrderEvent(ctx context.Context, p PaymentEvent) er
 	for _, item := range order.Items {
 		spus = append(spus, SPU{
 			ID:       item.SPU.ID,
-			Category: item.SPU.Category.Name,
+			Category: item.SPU.Category,
+			Type:     item.SPU.Type,
 		})
 	}
 	evt := OrderEvent{
