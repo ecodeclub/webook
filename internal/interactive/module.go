@@ -12,20 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package events
+package interactive
 
-import (
-	"context"
+import "github.com/ecodeclub/webook/internal/interactive/internal/events"
 
-	"github.com/ecodeclub/webook/internal/interactive/internal/service"
-)
-
-type Event struct {
-	Biz   string `json:"biz,omitempty"`
-	BizId int64  `json:"biz_id,omitempty"`
-	// 取值是
-	// like, collect, view 三个
-	Action string `json:"action,omitempty"`
-	Uid    int64  `json:"uid,omitempty"`
+type Module struct {
+	Svc InteractiveSvc
+	c   *events.Consumer
+	Hdl *Handler
 }
-type handleFunc func(ctx context.Context, svc service.InteractiveService, evt Event) error
