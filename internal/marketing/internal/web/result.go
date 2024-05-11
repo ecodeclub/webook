@@ -25,11 +25,11 @@ var (
 		Msg:  errs.SystemError.Msg,
 	}
 	redemptionCodeUsedErrResult = ginx.Result{
-		Code: errs.UserError.Code,
-		Msg:  "兑换码已使用",
+		Code: errs.RedemptionCodeUsedError.Code,
+		Msg:  errs.RedemptionCodeUsedError.Msg,
 	}
 	redemptionCodeNotFoundErrResult = ginx.Result{
-		Code: errs.UserError.Code,
-		Msg:  "兑换码不存在",
+		Code: errs.RedemptionCodeNotFoundErr.Code,
+		Msg:  errs.RedemptionCodeNotFoundErr.Msg,
 	}
 )

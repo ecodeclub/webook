@@ -789,7 +789,7 @@ func (s *ModuleTestSuite) TestHandler_RedeemRedemptionCode() {
 			after:    func(t *testing.T, code domain.RedemptionCode) {},
 			wantCode: 500,
 			wantResp: test.Result[any]{
-				Code: 412001,
+				Code: 412002,
 				Msg:  "兑换码不存在",
 			},
 		},
