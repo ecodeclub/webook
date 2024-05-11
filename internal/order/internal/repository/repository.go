@@ -74,8 +74,8 @@ func (o *orderRepository) toOrderItemEntities(orderItems []domain.OrderItem) []d
 	return slice.Map(orderItems, func(idx int, src domain.OrderItem) dao.OrderItem {
 		return dao.OrderItem{
 			SPUId:            src.SPU.ID,
-			SPUCategory:      src.SPU.Category.Name,
-			SPUCategoryDesc:  src.SPU.Category.Desc,
+			SPUCategory:      src.SPU.Category,
+			SPUType:          src.SPU.Type,
 			SKUId:            src.SKU.ID,
 			SKUSN:            src.SKU.SN,
 			SKUName:          src.SKU.Name,
@@ -126,11 +126,9 @@ func (o *orderRepository) toOrderDomain(order dao.Order, orderItems []dao.OrderI
 		Items: slice.Map(orderItems, func(idx int, src dao.OrderItem) domain.OrderItem {
 			return domain.OrderItem{
 				SPU: domain.SPU{
-					ID: src.SPUId,
-					Category: domain.Category{
-						Name: src.SPUCategory,
-						Desc: src.SPUCategoryDesc,
-					},
+					ID:       src.SPUId,
+					Category: src.SPUCategory,
+					Type:     src.SPUType,
 				},
 				SKU: domain.SKU{
 					ID:            src.SKUId,

@@ -34,4 +34,5 @@ type OrderEvent struct {
 type SPU struct {
 	ID       int64  `json:"id"`
 	Category string `json:"category"`
+	Type     string `json:"type"`
 }

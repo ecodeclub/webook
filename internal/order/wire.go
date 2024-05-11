@@ -46,7 +46,6 @@ type (
 	Item                  = domain.OrderItem
 	SPU                   = domain.SPU
 	SKU                   = domain.SKU
-	Category              = domain.Category
 	Status                = domain.OrderStatus
 	Payment               = domain.Payment
 )

@@ -99,7 +99,7 @@ func (h *Handler) PreviewOrder(ctx *ginx.Context, req PreviewOrderReq, sess sess
 }
 
 func (h *Handler) toSPUVO(spu domain.SPU) SPU {
-	return SPU{Category: spu.Category.Name}
+	return SPU{Category: spu.Category}
 }
 
 func (h *Handler) toSKUVO(sku domain.SKU) SKU {
@@ -215,11 +215,9 @@ func (h *Handler) getDomainOrderItems(ctx context.Context, skus []SKU) ([]domain
 		}
 		item := domain.OrderItem{
 			SPU: domain.SPU{
-				ID: spu.ID,
-				Category: domain.Category{
-					Name: spu.Category.Name,
-					Desc: spu.Category.Desc,
-				},
+				ID:       spu.ID,
+				Category: spu.Category,
+				Type:     spu.Type,
 			},
 			SKU: domain.SKU{
 				ID:            productSKU.ID,

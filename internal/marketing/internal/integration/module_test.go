@@ -155,7 +155,8 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeOrderEvent() {
 							{
 								SPU: order.SPU{
 									ID:       1,
-									Category: order.Category{Name: "member", Desc: "会员商品"},
+									Category: "product",
+									Type:     "member",
 								},
 								SKU: order.SKU{
 									ID:            1,
@@ -183,7 +184,8 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeOrderEvent() {
 				SPUs: []event.SPU{
 					{
 						ID:       1,
-						Category: "member",
+						Category: "product",
+						Type:     "member",
 					},
 				},
 			},
@@ -232,7 +234,8 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeOrderEvent() {
 							{
 								SPU: order.SPU{
 									ID:       1,
-									Category: order.Category{Name: "member", Desc: "会员商品"},
+									Category: "product",
+									Type:     "member",
 								},
 								SKU: order.SKU{
 									ID:            2,
@@ -246,7 +249,8 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeOrderEvent() {
 							{
 								SPU: order.SPU{
 									ID:       1,
-									Category: order.Category{Name: "member", Desc: "会员商品"},
+									Category: "product",
+									Type:     "member",
 								},
 								SKU: order.SKU{
 									ID:            3,
@@ -274,7 +278,13 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeOrderEvent() {
 				SPUs: []event.SPU{
 					{
 						ID:       1,
-						Category: "member",
+						Category: "product",
+						Type:     "member",
+					},
+					{
+						ID:       1,
+						Category: "product",
+						Type:     "member",
 					},
 				},
 			},
@@ -310,7 +320,8 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeOrderEvent() {
 							{
 								SPU: order.SPU{
 									ID:       2,
-									Category: order.Category{Name: "code", Desc: "会员兑换码"},
+									Category: "code",
+									Type:     "member",
 								},
 								SKU: order.SKU{
 									ID:            4,
@@ -334,6 +345,7 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeOrderEvent() {
 					{
 						ID:       2,
 						Category: "code",
+						Type:     "member",
 					},
 				},
 			},
@@ -381,7 +393,8 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeOrderEvent() {
 							{
 								SPU: order.SPU{
 									ID:       2,
-									Category: order.Category{Name: "code", Desc: "会员兑换码"},
+									Category: "code",
+									Type:     "member",
 								},
 								SKU: order.SKU{
 									ID:            4,
@@ -395,7 +408,8 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeOrderEvent() {
 							{
 								SPU: order.SPU{
 									ID:       2,
-									Category: order.Category{Name: "code", Desc: "会员兑换码"},
+									Category: "code",
+									Type:     "member",
 								},
 								SKU: order.SKU{
 									ID:            5,
@@ -419,6 +433,12 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeOrderEvent() {
 					{
 						ID:       2,
 						Category: "code",
+						Type:     "member",
+					},
+					{
+						ID:       2,
+						Category: "code",
+						Type:     "member",
 					},
 				},
 			},
@@ -472,6 +492,7 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeOrderEvent() {
 					{
 						ID:       10,
 						Category: "other",
+						Type:     "other",
 					},
 				},
 			},
