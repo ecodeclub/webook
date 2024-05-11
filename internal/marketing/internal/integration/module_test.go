@@ -565,9 +565,9 @@ func (s *ModuleTestSuite) TestHandler_RedeemRedemptionCode() {
 		wantResp       test.Result[any]
 	}{
 		{
-			name: "兑换成功_所有者兑换",
+			name: "兑换会员成功_所有者兑换",
 			req: web.RedeemRedemptionCodeReq{
-				Code: "redemption-code-001",
+				Code: "redemption-code-member-001",
 			},
 			before: func(t *testing.T, req web.RedeemRedemptionCodeReq) domain.RedemptionCode {
 				t.Helper()
@@ -636,9 +636,9 @@ func (s *ModuleTestSuite) TestHandler_RedeemRedemptionCode() {
 			},
 		},
 		{
-			name: "兑换成功_非所有者兑换",
+			name: "兑换会员成功_非所有者兑换",
 			req: web.RedeemRedemptionCodeReq{
-				Code: "redemption-code-002",
+				Code: "redemption-code-member-002",
 			},
 			before: func(t *testing.T, req web.RedeemRedemptionCodeReq) domain.RedemptionCode {
 				t.Helper()
@@ -709,7 +709,7 @@ func (s *ModuleTestSuite) TestHandler_RedeemRedemptionCode() {
 		{
 			name: "兑换失败_兑换码已使用",
 			req: web.RedeemRedemptionCodeReq{
-				Code: "redemption-code-003",
+				Code: "redemption-code-all-003",
 			},
 			before: func(t *testing.T, req web.RedeemRedemptionCodeReq) domain.RedemptionCode {
 				t.Helper()
@@ -776,7 +776,7 @@ func (s *ModuleTestSuite) TestHandler_RedeemRedemptionCode() {
 		{
 			name: "兑换失败_兑换码不存在",
 			req: web.RedeemRedemptionCodeReq{
-				Code: "redemption-code-004",
+				Code: "redemption-code-all-004",
 			},
 			before: func(t *testing.T, req web.RedeemRedemptionCodeReq) domain.RedemptionCode {
 				return domain.RedemptionCode{}

@@ -25,6 +25,7 @@ import (
 	"github.com/ecodeclub/webook/internal/marketing/internal/event"
 	"github.com/ecodeclub/webook/internal/marketing/internal/event/producer"
 	"github.com/ecodeclub/webook/internal/marketing/internal/repository"
+	"github.com/ecodeclub/webook/internal/marketing/internal/service/orderitem/handler"
 	"github.com/ecodeclub/webook/internal/order"
 	"github.com/ecodeclub/webook/internal/product"
 	"golang.org/x/sync/errgroup"
@@ -54,6 +55,8 @@ type service struct {
 	memberEventProducer     producer.MemberEventProducer
 	creditEventProducer     producer.CreditEventProducer
 	permissionEventProducer producer.PermissionEventProducer
+
+	orderItemHandlerRegistry *handler.OrderItemHandlerRegistry
 }
 
 func NewService(
@@ -66,49 +69,38 @@ func NewService(
 	creditEventProducer producer.CreditEventProducer,
 	permissionEventProducer producer.PermissionEventProducer,
 ) Service {
+
+	registry := handler.NewOrderItemHandlerRegistry()
+	registry.Register()
+
 	return &service{
-		repo:                    repo,
-		orderSvc:                orderSvc,
-		productSvc:              productSvc,
-		redemptionCodeGenerator: redemptionCodeGenerator,
-		eventKeyGenerator:       eventKeyGenerator,
-		memberEventProducer:     memberEventProducer,
-		creditEventProducer:     creditEventProducer,
-		permissionEventProducer: permissionEventProducer,
+		repo:                     repo,
+		orderSvc:                 orderSvc,
+		productSvc:               productSvc,
+		redemptionCodeGenerator:  redemptionCodeGenerator,
+		eventKeyGenerator:        eventKeyGenerator,
+		memberEventProducer:      memberEventProducer,
+		creditEventProducer:      creditEventProducer,
+		permissionEventProducer:  permissionEventProducer,
+		orderItemHandlerRegistry: registry,
 	}
 }
 
 func (s *service) ExecuteOrderCompletedActivity(ctx context.Context, act domain.OrderCompletedActivity) error {
-	const (
-		productCategory = "product"
-		codeCategory    = "code"
-	)
-	o, err := s.orderSvc.FindUserVisibleOrderByUIDAndSN(ctx, act.BuyerID, act.OrderSN)
+	o, productItems, codeItems, err := s.findOrderAndItems(ctx, act)
 	if err != nil {
 		return err
 	}
 
-	productItems := make([]order.Item, 0, len(o.Items))
-	codeItems := make([]order.Item, 0, len(o.Items))
-
-	_ = slice.FindAll(o.Items, func(src order.Item) bool {
-		if src.SPU.Category == productCategory {
-			productItems = append(productItems, src)
-		} else if src.SPU.Category == codeCategory {
-			codeItems = append(codeItems, src)
-		}
-		return false
-	})
-
 	if len(productItems) > 0 {
-		err = s.handleMemberCategoryOrderItems(ctx, o, productItems)
+		err = s.handleProductCategoryOrder(ctx, o, productItems)
 		if err != nil {
 			return fmt.Errorf("处理会员商品失败: %w", err)
 		}
 	}
 
 	if len(codeItems) > 0 {
-		err = s.handleCodeCategoryOrderItems(ctx, o, codeItems)
+		err = s.handleCodeCategoryOrder(ctx, o, codeItems)
 		if err != nil {
 			return fmt.Errorf("处理兑换码商品失败: %w", err)
 		}
@@ -117,7 +109,60 @@ func (s *service) ExecuteOrderCompletedActivity(ctx context.Context, act domain.
 	return nil
 }
 
-func (s *service) handleMemberCategoryOrderItems(ctx context.Context, o order.Order, items []order.Item) error {
+func (s *service) ExecuteOrderCompletedActivityV2(ctx context.Context, act domain.OrderCompletedActivity) error {
+	o, productItems, codeItems, err := s.findOrderAndItems(ctx, act)
+	if err != nil {
+		return err
+	}
+
+	if len(productItems) > 0 {
+		err = s.handleProductCategoryOrder(ctx, o, productItems)
+		if err != nil {
+			return fmt.Errorf("处理会员商品失败: %w", err)
+		}
+	}
+
+	if len(codeItems) > 0 {
+		err = s.handleCodeCategoryOrder(ctx, o, codeItems)
+		if err != nil {
+			return fmt.Errorf("处理兑换码商品失败: %w", err)
+		}
+	}
+
+	return nil
+}
+
+func (s *service) findOrderAndItems(ctx context.Context, act domain.OrderCompletedActivity) (order.Order, []order.Item, []order.Item, error) {
+	const (
+		productCategory = "product"
+		codeCategory    = "code"
+	)
+
+	o, err := s.orderSvc.FindUserVisibleOrderByUIDAndSN(ctx, act.BuyerID, act.OrderSN)
+	if err != nil {
+		return order.Order{}, nil, nil, err
+	}
+
+	products := make([]order.Item, 0, len(o.Items))
+	codes := make([]order.Item, 0, len(o.Items))
+	_ = slice.FindAll(o.Items, func(src order.Item) bool {
+		if src.SPU.Category == productCategory {
+			products = append(products, src)
+		} else if src.SPU.Category == codeCategory {
+			codes = append(codes, src)
+		}
+		return false
+	})
+
+	return o, products, codes, nil
+}
+
+func (s *service) handleProductCategoryOrder(ctx context.Context, o order.Order, items []order.Item) error {
+	// todo: items.SPU.Type == project/member来分流
+	return s.handleMemberProductOrder(ctx, o, items)
+}
+
+func (s *service) handleMemberProductOrder(ctx context.Context, o order.Order, items []order.Item) error {
 	var days uint64
 	for _, item := range items {
 		attrs, err := s.unmarshalSPUAttrs(item.SKU.Attrs)
@@ -142,7 +187,28 @@ func (s *service) unmarshalSPUAttrs(attrs string) (skuAttrs, error) {
 	return a, err
 }
 
-func (s *service) handleCodeCategoryOrderItems(ctx context.Context, o order.Order, items []order.Item) error {
+func (s *service) handleCodeCategoryOrder(ctx context.Context, o order.Order, items []order.Item) error {
+
+	const (
+		memberType  = "member"
+		projectType = "project"
+	)
+
+	members := make([]order.Item, 0, len(items))
+	projects := make([]order.Item, 0, len(items))
+
+	for _, item := range items {
+		if item.SPU.Type == memberType {
+			members = append(members, item)
+		} else if item.SPU.Type == projectType {
+			projects = append(projects, item)
+		}
+	}
+
+	return s.handleMemberCodeOrder(ctx, o, items)
+}
+
+func (s *service) handleMemberCodeOrder(ctx context.Context, o order.Order, items []order.Item) error {
 	codes := make([]domain.RedemptionCode, 0, len(items))
 	for _, item := range items {
 		for i := int64(0); i < item.SKU.Quantity; i++ {

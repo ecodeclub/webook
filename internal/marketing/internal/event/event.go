@@ -65,5 +65,8 @@ type CreditIncreaseEvent struct {
 
 type PermissionEvent struct {
 	// todo: 权限模块
-	Key string `json:"key"`
+	Key   string `json:"key"`
+	Uid   int64  `json:"uid"`
+	Biz   string `json:"biz"`
+	BizId int64  `json:"biz_id"`
 }
