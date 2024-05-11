@@ -29,13 +29,3 @@ type Event struct {
 	Uid    int64  `json:"uid,omitempty"`
 }
 type handleFunc func(ctx context.Context, svc service.InteractiveService, evt Event) error
-
-func likeHandle(ctx context.Context, svc service.InteractiveService, evt Event) error {
-	return svc.Like(ctx, evt.Biz, evt.BizId, evt.Uid)
-}
-func collectHandle(ctx context.Context, svc service.InteractiveService, evt Event) error {
-	return svc.Collect(ctx, evt.Biz, evt.BizId, evt.Uid)
-}
-func viewHandle(ctx context.Context, svc service.InteractiveService, evt Event) error {
-	return svc.IncrReadCnt(ctx, evt.Biz, evt.BizId)
-}

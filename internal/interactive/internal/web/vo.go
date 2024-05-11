@@ -58,19 +58,10 @@ type Interactive struct {
 	ViewCnt    int   `json:"viewCnt"`
 }
 type BatatGetCntResp struct {
-	List []Interactive `json:"list"`
+	InteractiveMap map[int64]Interactive `json:"interactiveMap"`
 }
 
-func NewGetCntResp(intr domain.Interactive) GetCntResp {
-	return GetCntResp{
-		CollectCnt: intr.CollectCnt,
-		Liked:      intr.Liked,
-		ViewCnt:    intr.ViewCnt,
-		LikeCnt:    intr.LikeCnt,
-		Collected:  intr.Collected,
-	}
-}
-func NewInteractive(intr domain.Interactive) Interactive {
+func newInteractive(intr domain.Interactive) Interactive {
 	return Interactive{
 		ID:         intr.BizId,
 		CollectCnt: intr.CollectCnt,

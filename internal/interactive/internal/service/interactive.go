@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 
 	"github.com/ecodeclub/webook/internal/interactive/internal/domain"
 	"github.com/ecodeclub/webook/internal/interactive/internal/repository"
@@ -13,7 +14,7 @@ type InteractiveService interface {
 	Like(c context.Context, biz string, id int64, uid int64) error
 	Collect(ctx context.Context, biz string, bizId, uid int64) error
 	Get(ctx context.Context, biz string, id int64, uid int64) (domain.Interactive, error)
-	GetByIds(ctx context.Context, biz string, ids []int64) ([]domain.Interactive, error)
+	GetByIds(ctx context.Context, biz string, ids []int64) (map[int64]domain.Interactive, error)
 }
 
 type interactiveService struct {
@@ -41,6 +42,9 @@ func (i *interactiveService) Collect(ctx context.Context, biz string, bizId, uid
 func (i *interactiveService) Get(ctx context.Context, biz string, id int64, uid int64) (domain.Interactive, error) {
 	intr, err := i.repo.Get(ctx, biz, id)
 	if err != nil {
+		if errors.Is(err, repository.ErrRecordNotFound) {
+			return domain.Interactive{}, nil
+		}
 		return domain.Interactive{}, err
 	}
 	var eg errgroup.Group
@@ -57,6 +61,23 @@ func (i *interactiveService) Get(ctx context.Context, biz string, id int64, uid 
 	return intr, eg.Wait()
 }
 
-func (i *interactiveService) GetByIds(ctx context.Context, biz string, ids []int64) ([]domain.Interactive, error) {
-	return i.repo.GetByIds(ctx, biz, ids)
+func (i *interactiveService) GetByIds(ctx context.Context, biz string, ids []int64) (map[int64]domain.Interactive, error) {
+	intrs, err := i.repo.GetByIds(ctx, biz, ids)
+	if err != nil {
+		return nil, err
+	}
+	intrMap := make(map[int64]domain.Interactive, len(ids))
+	for _, intr := range intrs {
+		intrMap[intr.BizId] = intr
+	}
+	for _, id := range ids {
+		if _, ok := intrMap[id]; !ok {
+			intrMap[id] = domain.Interactive{
+				Biz:   biz,
+				BizId: id,
+			}
+		}
+	}
+	return intrMap, nil
+
 }

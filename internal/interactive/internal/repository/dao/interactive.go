@@ -2,10 +2,12 @@ package dao
 
 import (
 	"context"
+	"errors"
+	"time"
+
 	"github.com/ego-component/egorm"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
-	"time"
 )
 
 type InteractiveDAO interface {
@@ -121,6 +123,9 @@ func (g *GORMInteractiveDAO) Get(ctx context.Context, biz string, id int64) (Int
 	err := g.db.WithContext(ctx).
 		Where("biz = ? AND biz_id = ?", biz, id).
 		First(&res).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return Interactive{}, ErrRecordNotFound
+	}
 	return res, err
 }
 

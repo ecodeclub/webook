@@ -2,10 +2,13 @@ package repository
 
 import (
 	"context"
+	"errors"
 
 	"github.com/ecodeclub/webook/internal/interactive/internal/domain"
 	"github.com/ecodeclub/webook/internal/interactive/internal/repository/dao"
 )
+
+var ErrRecordNotFound = dao.ErrRecordNotFound
 
 type InteractiveRepository interface {
 	IncrViewCnt(ctx context.Context, biz string, bizId int64) error
@@ -64,6 +67,9 @@ func (i *interactiveRepository) Collect(ctx context.Context, biz string, id int6
 func (i *interactiveRepository) Get(ctx context.Context, biz string, id int64) (domain.Interactive, error) {
 	intr, err := i.interactiveDao.Get(ctx, biz, id)
 	if err != nil {
+		if errors.Is(err, dao.ErrRecordNotFound) {
+			return domain.Interactive{}, ErrRecordNotFound
+		}
 		return domain.Interactive{}, err
 	}
 	return i.toDomain(intr), nil

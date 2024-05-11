@@ -106,7 +106,7 @@ func (i *InteractiveSuite) Test_Like() {
 		wantCode int
 	}{
 		{
-			name: "用户点赞一次，有一条记录，计数加一",
+			name: "用户点赞一次 该用户的点赞统计数加一",
 			before: func(t *testing.T) {
 
 			},
@@ -133,7 +133,7 @@ func (i *InteractiveSuite) Test_Like() {
 			wantCode: 200,
 		},
 		{
-			name: "同一用户多次点赞,只记录一次",
+			name: "用户重复点赞 该用户的点赞统计数不变",
 			before: func(t *testing.T) {
 				err := i.intrDAO.InsertLikeInfo(context.Background(), "case", 3, uid)
 				require.NoError(t, err)
@@ -207,7 +207,7 @@ func (i *InteractiveSuite) Test_Collect() {
 		wantCode int
 	}{
 		{
-			name: "用户收藏一次，有一条记录，计数加一",
+			name: "用户收藏一次 该用户的收藏统计计数加一",
 			before: func(t *testing.T) {
 
 			},
@@ -234,7 +234,7 @@ func (i *InteractiveSuite) Test_Collect() {
 			wantCode: 200,
 		},
 		{
-			name: "同一用户多次收藏,只记录一次",
+			name: "用户重复收藏， 该用户的收藏统计计数不变",
 			before: func(t *testing.T) {
 				err := i.intrDAO.InsertCollectionBiz(context.Background(), dao.UserCollectionBiz{
 					Uid:   uid,
@@ -259,7 +259,7 @@ func (i *InteractiveSuite) Test_Collect() {
 			wantCode: 500,
 		},
 		{
-			name: "不同的人收藏，次数会增加",
+			name: "不同的人收藏，统计次数会增加",
 			before: func(t *testing.T) {
 				err := i.intrDAO.InsertCollectionBiz(context.Background(), dao.UserCollectionBiz{
 					Biz:   "question",
@@ -381,7 +381,7 @@ func (i *InteractiveSuite) Test_Cnt() {
 		wantCode int
 	}{
 		{
-			name: "用户点赞过的详情",
+			name: "获取被点赞过的计数信息",
 			before: func(t *testing.T) {
 				err := i.intrDAO.IncrViewCnt(context.Background(), "product", 1)
 				require.NoError(i.T(), err)
@@ -411,7 +411,7 @@ func (i *InteractiveSuite) Test_Cnt() {
 			},
 		},
 		{
-			name: "用户收藏过的详情",
+			name: "获取被收藏过的计数信息",
 			before: func(t *testing.T) {
 				err := i.intrDAO.IncrViewCnt(context.Background(), "product", 2)
 				require.NoError(i.T(), err)
@@ -441,6 +441,23 @@ func (i *InteractiveSuite) Test_Cnt() {
 				LikeCnt:    3,
 			},
 		},
+		{
+			name: "获取没有点赞，收藏，阅读过的统计信息",
+			before: func(t *testing.T) {
+			},
+			req: web.GetCntReq{
+				Biz:   "product",
+				BizId: 3,
+			},
+			wantCode: 200,
+			wantResp: web.GetCntResp{
+				CollectCnt: 0,
+				Collected:  false,
+				Liked:      false,
+				ViewCnt:    0,
+				LikeCnt:    0,
+			},
+		},
 	}
 	for _, tc := range testcases {
 		i.T().Run(tc.name, func(t *testing.T) {
@@ -458,13 +475,13 @@ func (i *InteractiveSuite) Test_Cnt() {
 }
 
 func (i *InteractiveSuite) Test_Detail() {
-	// 批量获取skill模块的id为1,2,3的点赞收藏数据
+	// 批量获取skill模块的id为1,2,3,4的点赞收藏数据
 	t := i.T()
 	i.initInteractiveData()
 	req, err := http.NewRequest(http.MethodPost,
 		"/intr/detail", iox.NewJSONReader(web.BatchGetCntReq{
 			Biz:    "skill",
-			BizIds: []int64{1, 2, 3},
+			BizIds: []int64{1, 2, 3, 4},
 		}))
 	req.Header.Set("content-type", "application/json")
 	require.NoError(t, err)
@@ -472,20 +489,23 @@ func (i *InteractiveSuite) Test_Detail() {
 	i.server.ServeHTTP(recorder, req)
 	require.Equal(t, 200, recorder.Code)
 	require.Equal(t, web.BatatGetCntResp{
-		List: []web.Interactive{
-			{
+		InteractiveMap: map[int64]web.Interactive{
+			4: {
+				ID: 4,
+			},
+			3: {
 				ID:         3,
 				ViewCnt:    99,
 				LikeCnt:    88,
 				CollectCnt: 79,
 			},
-			{
+			2: {
 				ID:         2,
 				ViewCnt:    3,
 				LikeCnt:    2,
 				CollectCnt: 9,
 			},
-			{
+			1: {
 				ID:         1,
 				ViewCnt:    1,
 				LikeCnt:    1,

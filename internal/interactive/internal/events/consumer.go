@@ -40,21 +40,31 @@ func NewSyncConsumer(svc service.InteractiveService, q mq.MQ) (*Consumer, error)
 	if err != nil {
 		return nil, err
 	}
-	handlerMap := map[string]handleFunc{
-		"like":    likeHandle,
-		"collect": collectHandle,
-		"view":    viewHandle,
+	c := &Consumer{
+		consumer: consumer,
+		svc:      svc,
+		logger:   elog.DefaultLogger,
 	}
-	return &Consumer{
-		handlerMap: handlerMap,
-		consumer:   consumer,
-		svc:        svc,
-		logger:     elog.DefaultLogger,
-	}, nil
+	handlerMap := map[string]handleFunc{
+		"like":    c.likeHandle,
+		"collect": c.collectHandle,
+		"view":    c.viewHandle,
+	}
+	c.handlerMap = handlerMap
+	return c, nil
+}
+func (c *Consumer) likeHandle(ctx context.Context, svc service.InteractiveService, evt Event) error {
+	return svc.Like(ctx, evt.Biz, evt.BizId, evt.Uid)
+}
+func (c *Consumer) collectHandle(ctx context.Context, svc service.InteractiveService, evt Event) error {
+	return svc.Collect(ctx, evt.Biz, evt.BizId, evt.Uid)
+}
+func (c *Consumer) viewHandle(ctx context.Context, svc service.InteractiveService, evt Event) error {
+	return svc.IncrReadCnt(ctx, evt.Biz, evt.BizId)
 }
 
-func (s *Consumer) Consume(ctx context.Context) error {
-	msg, err := s.consumer.Consume(ctx)
+func (c *Consumer) Consume(ctx context.Context) error {
+	msg, err := c.consumer.Consume(ctx)
 	if err != nil {
 		return fmt.Errorf("获取消息失败: %w", err)
 	}
@@ -64,27 +74,27 @@ func (s *Consumer) Consume(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("解析消息失败: %w", err)
 	}
-	handler, ok := s.handlerMap[evt.Action]
+	handler, ok := c.handlerMap[evt.Action]
 	if !ok {
 		return errors.New("未找到相关业务的处理方法")
 	}
-	err = handler(ctx, s.svc, evt)
+	err = handler(ctx, c.svc, evt)
 	if err != nil {
-		s.logger.Error("同步消息失败", elog.Any("interactive_event", evt))
+		c.logger.Error("同步消息失败", elog.Any("interactive_event", evt))
 	}
 	return err
 }
 
-func (s *Consumer) Start(ctx context.Context) {
+func (c *Consumer) Start(ctx context.Context) {
 	go func() {
 		for {
-			err := s.Consume(ctx)
+			err := c.Consume(ctx)
 			if err != nil {
-				s.logger.Error("同步事件失败", elog.FieldErr(err))
+				c.logger.Error("同步事件失败", elog.FieldErr(err))
 			}
 		}
 	}()
 }
-func (s *Consumer) Stop(_ context.Context) error {
-	return s.consumer.Close()
+func (c *Consumer) Stop(_ context.Context) error {
+	return c.consumer.Close()
 }

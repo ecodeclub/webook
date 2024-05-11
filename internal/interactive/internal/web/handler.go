@@ -15,7 +15,6 @@
 package web
 
 import (
-	"github.com/ecodeclub/ekit/slice"
 	"github.com/ecodeclub/ginx"
 	"github.com/ecodeclub/ginx/session"
 	"github.com/ecodeclub/webook/internal/interactive/internal/domain"
@@ -101,9 +100,15 @@ func (h *Handler) BatchGetCnt(ctx *ginx.Context, req BatchGetCntReq) (ginx.Resul
 	}
 	return ginx.Result{
 		Data: &BatatGetCntResp{
-			List: slice.Map(intrs, func(idx int, intr domain.Interactive) Interactive {
-				return NewInteractive(intr)
-			}),
+			InteractiveMap: h.getInteractiveMap(intrs),
 		},
 	}, nil
+}
+
+func (h *Handler) getInteractiveMap(intrMap map[int64]domain.Interactive) map[int64]Interactive {
+	res := make(map[int64]Interactive, len(intrMap))
+	for id, intr := range intrMap {
+		res[id] = newInteractive(intr)
+	}
+	return res
 }
