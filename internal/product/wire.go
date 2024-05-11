@@ -29,12 +29,11 @@ import (
 )
 
 type (
-	Handler  = web.Handler
-	Service  = service.Service
-	SKU      = domain.SKU
-	SPU      = domain.SPU
-	Category = domain.Category
-	Status   = domain.Status
+	Handler = web.Handler
+	Service = service.Service
+	SKU     = domain.SKU
+	SPU     = domain.SPU
+	Status  = domain.Status
 )
 
 const (

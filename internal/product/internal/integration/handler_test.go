@@ -78,20 +78,17 @@ func (s *ProductModuleTestSuite) SetupSuite() {
 
 func (s *ProductModuleTestSuite) TearDownSuite() {
 	err := s.db.Exec("DROP TABLE `spus`").Error
-	require.NoError(s.T(), err)
+	s.NoError(err)
 	err = s.db.Exec("DROP TABLE `skus`").Error
-	require.NoError(s.T(), err)
-	err = s.db.Exec("DROP TABLE `categories`").Error
-	require.NoError(s.T(), err)
+	s.NoError(err)
+
 }
 
 func (s *ProductModuleTestSuite) TearDownTest() {
 	err := s.db.Exec("TRUNCATE TABLE `spus`").Error
-	require.NoError(s.T(), err)
+	s.NoError(err)
 	err = s.db.Exec("TRUNCATE TABLE `skus`").Error
-	require.NoError(s.T(), err)
-	err = s.db.Exec("TRUNCATE TABLE `categories`").Error
-	require.NoError(s.T(), err)
+	s.NoError(err)
 }
 
 func (s *ProductModuleTestSuite) TestHandler_RetrieveSKUDetail() {
@@ -109,15 +106,10 @@ func (s *ProductModuleTestSuite) TestHandler_RetrieveSKUDetail() {
 		{
 			name: "查找成功",
 			before: func(t *testing.T) {
-
-				c := dao.Category{
-					Name:        "会员1",
-					Description: "周期性商品1",
-				}
-				cid, err := s.dao.CreateCategory(context.Background(), c)
-				require.NoError(t, err)
+				t.Helper()
 				spu := dao.SPU{
-					CategoryId:  cid,
+					Category:    "product",
+					Type:        "member",
 					SN:          "SPU001",
 					Name:        "会员服务",
 					Description: "提供不同期限的会员服务",
@@ -203,6 +195,8 @@ func (s *ProductModuleTestSuite) TestHandler_RetrieveSKUDetailFailed() {
 			before: func(t *testing.T) {
 				t.Helper()
 				spu := dao.SPU{
+					Category:    "product",
+					Type:        "member001",
 					SN:          "SPU002",
 					Name:        "会员服务",
 					Description: "提供不同期限的会员服务",
@@ -242,6 +236,8 @@ func (s *ProductModuleTestSuite) TestHandler_RetrieveSKUDetailFailed() {
 			before: func(t *testing.T) {
 				t.Helper()
 				spu := dao.SPU{
+					Category:    "product",
+					Type:        "member002",
 					SN:          "SPU004",
 					Name:        "会员服务",
 					Description: "提供不同期限的会员服务",
@@ -309,15 +305,11 @@ func (s *ProductModuleTestSuite) TestHandler_RetrieveSPUDetail() {
 		{
 			name: "查找成功",
 			before: func(t *testing.T) {
-				c := dao.Category{
-					Name:        "会员2",
-					Description: "周期性商品2",
-				}
-				cid, err := s.dao.CreateCategory(context.Background(), c)
-				require.NoError(t, err)
+				t.Helper()
 
 				spu := dao.SPU{
-					CategoryId:  cid,
+					Category:    "product",
+					Type:        "member",
 					SN:          "SPU102",
 					Name:        "会员服务-2",
 					Description: "提供不同期限的会员服务-2",
@@ -364,10 +356,6 @@ func (s *ProductModuleTestSuite) TestHandler_RetrieveSPUDetail() {
 					SN:   "SPU102",
 					Name: "会员服务-2",
 					Desc: "提供不同期限的会员服务-2",
-					Category: web.Category{
-						Name: "会员2",
-						Desc: "周期性商品2",
-					},
 					SKUs: []web.SKU{
 						{
 							SN:         "SKU102",
@@ -437,14 +425,9 @@ func (s *ProductModuleTestSuite) TestHandler_RetrieveSPUDetailFailed() {
 			name: "SPU下架_SKU上架",
 			before: func(t *testing.T) {
 				t.Helper()
-				c := dao.Category{
-					Name:        "会员3",
-					Description: "周期性商品3",
-				}
-				cid, err := s.dao.CreateCategory(context.Background(), c)
-				require.NoError(t, err)
 				spu := dao.SPU{
-					CategoryId:  cid,
+					Category:    "product",
+					Type:        "member003",
 					SN:          "SPU103",
 					Name:        "会员服务-3",
 					Description: "提供不同期限的会员服务-3",
@@ -483,14 +466,9 @@ func (s *ProductModuleTestSuite) TestHandler_RetrieveSPUDetailFailed() {
 			name: "SPU下架_SKU下架",
 			before: func(t *testing.T) {
 				t.Helper()
-				c := dao.Category{
-					Name:        "会员4",
-					Description: "周期性商品4",
-				}
-				cid, err := s.dao.CreateCategory(context.Background(), c)
-				require.NoError(t, err)
 				spu := dao.SPU{
-					CategoryId:  cid,
+					Category:    "product",
+					Type:        "member005",
 					SN:          "SPU104",
 					Name:        "会员服务-4",
 					Description: "提供不同期限的会员服务-4",
@@ -556,14 +534,10 @@ func (s *ProductModuleTestSuite) TestService_FindSPUByID() {
 		{
 			name: "查找成功",
 			getSPUID: func(t *testing.T) int64 {
-				c := dao.Category{
-					Name:        "会员5",
-					Description: "周期性商品5",
-				}
-				cid, err := s.dao.CreateCategory(context.Background(), c)
-				require.NoError(t, err)
+				t.Helper()
 				spu := dao.SPU{
-					CategoryId:  cid,
+					Category:    "product",
+					Type:        "member006",
 					SN:          "SPU1102",
 					Name:        "会员服务-2",
 					Description: "提供不同期限的会员服务-2",
@@ -605,14 +579,12 @@ func (s *ProductModuleTestSuite) TestService_FindSPUByID() {
 				return id
 			},
 			SPU: domain.SPU{
-				SN:     "SPU1102",
-				Name:   "会员服务-2",
-				Desc:   "提供不同期限的会员服务-2",
-				Status: domain.StatusOnShelf,
-				Category: domain.Category{
-					Name: "会员5",
-					Desc: "周期性商品5",
-				},
+				SN:       "SPU1102",
+				Name:     "会员服务-2",
+				Category: "product",
+				Type:     "member006",
+				Desc:     "提供不同期限的会员服务-2",
+				Status:   domain.StatusOnShelf,
 				SKUs: []domain.SKU{
 					{
 						SN:         "SKU1102",
