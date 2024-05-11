@@ -14,18 +14,13 @@
 
 package events
 
-import (
-	"context"
-
-	"github.com/ecodeclub/webook/internal/interactive/internal/service"
-)
-
 type Event struct {
 	Biz   string `json:"biz,omitempty"`
 	BizId int64  `json:"biz_id,omitempty"`
 	// 取值是
-	// like, collect, view 三个
+	// like, collect, read 三个
 	Action string `json:"action,omitempty"`
 	Uid    int64  `json:"uid,omitempty"`
 }
-type handleFunc func(ctx context.Context, svc service.InteractiveService, evt Event) error
+
+// 需要一个消费者。
