@@ -66,8 +66,3 @@ type SKU struct {
 	Image  string
 	Status Status
 }
-
-// type Category struct {
-// 	Name string
-// 	Desc string
-// }
