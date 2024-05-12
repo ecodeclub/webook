@@ -12,8 +12,8 @@ var ErrRecordNotFound = dao.ErrRecordNotFound
 
 type InteractiveRepository interface {
 	IncrViewCnt(ctx context.Context, biz string, bizId int64) error
-	Like(ctx context.Context, biz string, id int64, uid int64) error
-	Collect(ctx context.Context, biz string, id int64, uid int64) error
+	LikeToggle(ctx context.Context, biz string, id int64, uid int64) error
+	CollectToggle(ctx context.Context, biz string, id int64, uid int64) error
 	Get(ctx context.Context, biz string, id int64) (domain.Interactive, error)
 	GetByIds(ctx context.Context, biz string, ids []int64) ([]domain.Interactive, error)
 	Liked(ctx context.Context, biz string, id int64, uid int64) (bool, error)
@@ -52,12 +52,12 @@ func (i *interactiveRepository) Collected(ctx context.Context, biz string, id in
 	}
 }
 
-func (i *interactiveRepository) Like(ctx context.Context, biz string, id int64, uid int64) error {
-	return i.interactiveDao.InsertLikeInfo(ctx, biz, id, uid)
+func (i *interactiveRepository) LikeToggle(ctx context.Context, biz string, id int64, uid int64) error {
+	return i.interactiveDao.LikeToggle(ctx, biz, id, uid)
 }
 
-func (i *interactiveRepository) Collect(ctx context.Context, biz string, id int64, uid int64) error {
-	return i.interactiveDao.InsertCollectionBiz(ctx, dao.UserCollectionBiz{
+func (i *interactiveRepository) CollectToggle(ctx context.Context, biz string, id int64, uid int64) error {
+	return i.interactiveDao.CollectionToggle(ctx, dao.UserCollectionBiz{
 		Biz:   biz,
 		Uid:   uid,
 		BizId: id,

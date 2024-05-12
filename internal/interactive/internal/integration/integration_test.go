@@ -24,6 +24,8 @@ import (
 	"testing"
 	"time"
 
+	"gorm.io/gorm"
+
 	"github.com/ecodeclub/ekit/iox"
 	"github.com/ecodeclub/ginx/session"
 	"github.com/ecodeclub/mq-api"
@@ -97,7 +99,7 @@ func (i *InteractiveSuite) SetupSuite() {
 	i.intrDAO = dao.NewInteractiveDAO(i.db)
 }
 
-func (i *InteractiveSuite) Test_Like() {
+func (i *InteractiveSuite) Test_LikeToggle() {
 	testcases := []struct {
 		name     string
 		before   func(t *testing.T)
@@ -106,7 +108,7 @@ func (i *InteractiveSuite) Test_Like() {
 		wantCode int
 	}{
 		{
-			name: "用户点赞一次 该用户的点赞统计数加一",
+			name: "如果没有点赞过，调用like/toggle接口,点赞计数+1",
 			before: func(t *testing.T) {
 
 			},
@@ -133,30 +135,35 @@ func (i *InteractiveSuite) Test_Like() {
 			wantCode: 200,
 		},
 		{
-			name: "用户重复点赞 该用户的点赞统计数不变",
+			name: "如果点赞过，调用like/toggle接口,点赞计数-1",
 			before: func(t *testing.T) {
-				err := i.intrDAO.InsertLikeInfo(context.Background(), "case", 3, uid)
+				// 直接使用intrDAO下的LikeToggle方法，表示调用一次like/toggle接口
+				err := i.intrDAO.LikeToggle(context.Background(), "case", 3, uid)
 				require.NoError(t, err)
 			},
 			after: func(t *testing.T) {
-				likeInfo, err := i.intrDAO.GetLikeInfo(context.Background(), "case", 3, uid)
+				_, err := i.intrDAO.GetLikeInfo(context.Background(), "case", 3, uid)
+				assert.Equal(t, gorm.ErrRecordNotFound, err)
+				intr, err := i.intrDAO.Get(context.Background(), "case", 3)
 				require.NoError(t, err)
-				i.assertLikeBiz(dao.UserLikeBiz{
-					Uid:   uid,
-					Biz:   "case",
-					BizId: 3,
-				}, likeInfo)
+				i.assertInteractive(dao.Interactive{
+					Biz:     "case",
+					BizId:   3,
+					LikeCnt: 0,
+				}, intr)
 			},
 			req: web.LikeReq{
 				BizId: 3,
 				Biz:   "case",
 			},
-			wantCode: 500,
+			wantCode: 200,
 		},
 		{
-			name: "不同的人点赞，次数会增加",
+			name: "同一个人调用like/toggle接口三次，统计计数+1",
 			before: func(t *testing.T) {
-				err := i.intrDAO.InsertLikeInfo(context.Background(), "case", 4, 77)
+				err := i.intrDAO.LikeToggle(context.Background(), "case", 4, uid)
+				require.NoError(t, err)
+				err = i.intrDAO.LikeToggle(context.Background(), "case", 4, uid)
 				require.NoError(t, err)
 			},
 			after: func(t *testing.T) {
@@ -172,11 +179,39 @@ func (i *InteractiveSuite) Test_Like() {
 				i.assertInteractive(dao.Interactive{
 					Biz:     "case",
 					BizId:   4,
-					LikeCnt: 2,
+					LikeCnt: 1,
 				}, intr)
 			},
 			req: web.LikeReq{
 				BizId: 4,
+				Biz:   "case",
+			},
+			wantCode: 200,
+		},
+		{
+			name: "两个人初次调用like/toggle接口，计数+2",
+			before: func(t *testing.T) {
+				err := i.intrDAO.LikeToggle(context.Background(), "case", 5, 77)
+				require.NoError(t, err)
+			},
+			after: func(t *testing.T) {
+				likeInfo, err := i.intrDAO.GetLikeInfo(context.Background(), "case", 5, uid)
+				require.NoError(t, err)
+				i.assertLikeBiz(dao.UserLikeBiz{
+					Uid:   uid,
+					Biz:   "case",
+					BizId: 5,
+				}, likeInfo)
+				intr, err := i.intrDAO.Get(context.Background(), "case", 5)
+				require.NoError(t, err)
+				i.assertInteractive(dao.Interactive{
+					Biz:     "case",
+					BizId:   5,
+					LikeCnt: 2,
+				}, intr)
+			},
+			req: web.LikeReq{
+				BizId: 5,
 				Biz:   "case",
 			},
 			wantCode: 200,
@@ -186,19 +221,18 @@ func (i *InteractiveSuite) Test_Like() {
 		i.T().Run(tc.name, func(t *testing.T) {
 			tc.before(t)
 			req, err := http.NewRequest(http.MethodPost,
-				"/intr/like", iox.NewJSONReader(tc.req))
+				"/intr/like/toggle", iox.NewJSONReader(tc.req))
 			req.Header.Set("content-type", "application/json")
 			require.NoError(t, err)
 			recorder := test.NewJSONResponseRecorder[int64]()
 			i.server.ServeHTTP(recorder, req)
 			require.Equal(t, tc.wantCode, recorder.Code)
-
 			tc.after(t)
 		})
 	}
 }
 
-func (i *InteractiveSuite) Test_Collect() {
+func (i *InteractiveSuite) Test_CollectToggle() {
 	testcases := []struct {
 		name     string
 		before   func(t *testing.T)
@@ -207,7 +241,7 @@ func (i *InteractiveSuite) Test_Collect() {
 		wantCode int
 	}{
 		{
-			name: "用户收藏一次 该用户的收藏统计计数加一",
+			name: "如果没有收藏过，调用collect/toggle接口,收藏计数+1",
 			before: func(t *testing.T) {
 
 			},
@@ -234,9 +268,9 @@ func (i *InteractiveSuite) Test_Collect() {
 			wantCode: 200,
 		},
 		{
-			name: "用户重复收藏， 该用户的收藏统计计数不变",
+			name: "如果收藏过，调用collect/toggle接口,收藏计数-1",
 			before: func(t *testing.T) {
-				err := i.intrDAO.InsertCollectionBiz(context.Background(), dao.UserCollectionBiz{
+				err := i.intrDAO.CollectionToggle(context.Background(), dao.UserCollectionBiz{
 					Uid:   uid,
 					Biz:   "question",
 					BizId: 3,
@@ -244,27 +278,35 @@ func (i *InteractiveSuite) Test_Collect() {
 				require.NoError(t, err)
 			},
 			after: func(t *testing.T) {
-				collectInfo, err := i.intrDAO.GetCollectInfo(context.Background(), "question", 3, uid)
+				_, err := i.intrDAO.GetCollectInfo(context.Background(), "question", 3, uid)
+				assert.Equal(t, gorm.ErrRecordNotFound, err)
+				intr, err := i.intrDAO.Get(context.Background(), "question", 3)
 				require.NoError(t, err)
-				i.assertCollectBiz(dao.UserCollectionBiz{
-					Uid:   uid,
-					Biz:   "question",
-					BizId: 3,
-				}, collectInfo)
+				i.assertInteractive(dao.Interactive{
+					Biz:        "question",
+					BizId:      3,
+					CollectCnt: 0,
+				}, intr)
 			},
 			req: web.CollectReq{
 				BizId: 3,
 				Biz:   "question",
 			},
-			wantCode: 500,
+			wantCode: 200,
 		},
 		{
-			name: "不同的人收藏，统计次数会增加",
+			name: "同一个人调用collect/toggle接口三次，统计计数+1",
 			before: func(t *testing.T) {
-				err := i.intrDAO.InsertCollectionBiz(context.Background(), dao.UserCollectionBiz{
+				err := i.intrDAO.CollectionToggle(context.Background(), dao.UserCollectionBiz{
 					Biz:   "question",
 					BizId: 4,
-					Uid:   34,
+					Uid:   uid,
+				})
+				require.NoError(t, err)
+				err = i.intrDAO.CollectionToggle(context.Background(), dao.UserCollectionBiz{
+					Biz:   "question",
+					BizId: 4,
+					Uid:   uid,
 				})
 				require.NoError(t, err)
 			},
@@ -281,11 +323,43 @@ func (i *InteractiveSuite) Test_Collect() {
 				i.assertInteractive(dao.Interactive{
 					Biz:        "question",
 					BizId:      4,
-					CollectCnt: 2,
+					CollectCnt: 1,
 				}, intr)
 			},
 			req: web.CollectReq{
 				BizId: 4,
+				Biz:   "question",
+			},
+			wantCode: 200,
+		},
+		{
+			name: "不同的人收藏，统计次数会增加",
+			before: func(t *testing.T) {
+				err := i.intrDAO.CollectionToggle(context.Background(), dao.UserCollectionBiz{
+					Biz:   "question",
+					BizId: 5,
+					Uid:   34,
+				})
+				require.NoError(t, err)
+			},
+			after: func(t *testing.T) {
+				collectInfo, err := i.intrDAO.GetCollectInfo(context.Background(), "question", 5, uid)
+				require.NoError(t, err)
+				i.assertCollectBiz(dao.UserCollectionBiz{
+					Uid:   uid,
+					Biz:   "question",
+					BizId: 5,
+				}, collectInfo)
+				intr, err := i.intrDAO.Get(context.Background(), "question", 5)
+				require.NoError(t, err)
+				i.assertInteractive(dao.Interactive{
+					Biz:        "question",
+					BizId:      5,
+					CollectCnt: 2,
+				}, intr)
+			},
+			req: web.CollectReq{
+				BizId: 5,
 				Biz:   "question",
 			},
 			wantCode: 200,
@@ -295,7 +369,7 @@ func (i *InteractiveSuite) Test_Collect() {
 		i.T().Run(tc.name, func(t *testing.T) {
 			tc.before(t)
 			req, err := http.NewRequest(http.MethodPost,
-				"/intr/collect", iox.NewJSONReader(tc.req))
+				"/intr/collect/toggle", iox.NewJSONReader(tc.req))
 			req.Header.Set("content-type", "application/json")
 			require.NoError(t, err)
 			recorder := test.NewJSONResponseRecorder[int64]()
@@ -385,13 +459,13 @@ func (i *InteractiveSuite) Test_Cnt() {
 			before: func(t *testing.T) {
 				err := i.intrDAO.IncrViewCnt(context.Background(), "product", 1)
 				require.NoError(i.T(), err)
-				err = i.intrDAO.InsertLikeInfo(context.Background(), "product", 1, uid)
+				err = i.intrDAO.LikeToggle(context.Background(), "product", 1, uid)
 				require.NoError(i.T(), err)
-				err = i.intrDAO.InsertLikeInfo(context.Background(), "product", 1, 11)
+				err = i.intrDAO.LikeToggle(context.Background(), "product", 1, 11)
 				require.NoError(i.T(), err)
-				err = i.intrDAO.InsertLikeInfo(context.Background(), "product", 1, 22)
+				err = i.intrDAO.LikeToggle(context.Background(), "product", 1, 22)
 				require.NoError(i.T(), err)
-				err = i.intrDAO.InsertCollectionBiz(context.Background(), dao.UserCollectionBiz{
+				err = i.intrDAO.CollectionToggle(context.Background(), dao.UserCollectionBiz{
 					Uid:   33,
 					Biz:   "product",
 					BizId: 1,
@@ -415,13 +489,13 @@ func (i *InteractiveSuite) Test_Cnt() {
 			before: func(t *testing.T) {
 				err := i.intrDAO.IncrViewCnt(context.Background(), "product", 2)
 				require.NoError(i.T(), err)
-				err = i.intrDAO.InsertLikeInfo(context.Background(), "product", 2, uid)
+				err = i.intrDAO.LikeToggle(context.Background(), "product", 2, uid)
 				require.NoError(i.T(), err)
-				err = i.intrDAO.InsertLikeInfo(context.Background(), "product", 2, 11)
+				err = i.intrDAO.LikeToggle(context.Background(), "product", 2, 11)
 				require.NoError(i.T(), err)
-				err = i.intrDAO.InsertLikeInfo(context.Background(), "product", 2, 22)
+				err = i.intrDAO.LikeToggle(context.Background(), "product", 2, 22)
 				require.NoError(i.T(), err)
-				err = i.intrDAO.InsertCollectionBiz(context.Background(), dao.UserCollectionBiz{
+				err = i.intrDAO.CollectionToggle(context.Background(), dao.UserCollectionBiz{
 					Uid:   uid,
 					Biz:   "product",
 					BizId: 2,
@@ -653,11 +727,11 @@ func (i *InteractiveSuite) initInteractiveBizData(biz string, bizId int64, viewC
 		require.NoError(i.T(), err)
 	}
 	for j := 0; j < likeCnt; j++ {
-		err := i.intrDAO.InsertLikeInfo(context.Background(), biz, bizId, int64(j+3))
+		err := i.intrDAO.LikeToggle(context.Background(), biz, bizId, int64(j+3))
 		require.NoError(i.T(), err)
 	}
 	for j := 0; j < collectCnt; j++ {
-		err := i.intrDAO.InsertCollectionBiz(context.Background(), dao.UserCollectionBiz{
+		err := i.intrDAO.CollectionToggle(context.Background(), dao.UserCollectionBiz{
 			Uid:   int64(j + 4),
 			Biz:   biz,
 			BizId: bizId,
