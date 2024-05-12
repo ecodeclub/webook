@@ -71,7 +71,6 @@ func NewService(
 ) Service {
 
 	registry := handler.NewOrderItemHandlerRegistry()
-	registry.Register()
 
 	return &service{
 		repo:                     repo,
@@ -205,7 +204,13 @@ func (s *service) handleCodeCategoryOrder(ctx context.Context, o order.Order, it
 		}
 	}
 
-	return s.handleMemberCodeOrder(ctx, o, items)
+	if len(members) > 0 {
+		return s.handleMemberCodeOrder(ctx, o, members)
+	}
+	if len(projects) > 0 {
+		return fmt.Errorf("未知SPU类型: project")
+	}
+	return fmt.Errorf("未知SPU类型")
 }
 
 func (s *service) handleMemberCodeOrder(ctx context.Context, o order.Order, items []order.Item) error {
@@ -216,6 +221,7 @@ func (s *service) handleMemberCodeOrder(ctx context.Context, o order.Order, item
 				OwnerID:  o.BuyerID,
 				OrderID:  o.ID,
 				SPUID:    item.SPU.ID,
+				SPUType:  item.SPU.Type,
 				SKUAttrs: item.SKU.Attrs,
 				Code:     s.redemptionCodeGenerator(o.BuyerID),
 				Status:   domain.RedemptionCodeStatusUnused,
@@ -228,14 +234,7 @@ func (s *service) handleMemberCodeOrder(ctx context.Context, o order.Order, item
 }
 
 func (s *service) RedeemRedemptionCode(ctx context.Context, uid int64, code string) error {
-	r, err := s.repo.FindRedemptionCode(ctx, code)
-	if err != nil {
-		return err
-	}
-	if r.Status == domain.RedemptionCodeStatusUsed {
-		return fmt.Errorf("%w: code:%s", ErrRedemptionCodeUsed, code)
-	}
-	err = s.repo.SetUnusedRedemptionCodeStatusUsed(ctx, uid, code)
+	r, err := s.repo.SetUnusedRedemptionCodeStatusUsed(ctx, uid, code)
 	if err != nil {
 		return err
 	}
@@ -243,8 +242,10 @@ func (s *service) RedeemRedemptionCode(ctx context.Context, uid int64, code stri
 }
 
 func (s *service) sendEvent(ctx context.Context, uid int64, code domain.RedemptionCode) error {
-	// todo: 按照SPU分类执行不同的后续动作, 当前只支持发送会员消息
-	return s.sendMemberEvent(ctx, uid, code)
+	if code.SPUType == "member" {
+		return s.sendMemberEvent(ctx, uid, code)
+	}
+	return fmt.Errorf("未知兑换码SPU类型: %s", code.SPUType)
 }
 
 func (s *service) sendMemberEvent(ctx context.Context, uid int64, code domain.RedemptionCode) error {

@@ -16,7 +16,7 @@ package errs
 
 var (
 	RedemptionCodeUsedError   = ErrorCode{Code: 412001, Msg: "兑换码已使用"}
-	RedemptionCodeNotFoundErr = ErrorCode{Code: 412002, Msg: "兑换码不存在"}
+	RedemptionCodeNotFoundErr = ErrorCode{Code: 412002, Msg: "兑换码不正确"}
 
 	SystemError = ErrorCode{Code: 512001, Msg: "系统错误"}
 )

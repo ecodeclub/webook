@@ -18,7 +18,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/ecodeclub/webook/internal/marketing/internal/service/orderItem"
+	"github.com/ecodeclub/webook/internal/marketing/internal/service/orderitem"
 	"github.com/ecodeclub/webook/internal/order"
 )
 
@@ -27,23 +27,23 @@ type OrderItemHandler interface {
 }
 
 type OrderItemHandlerRegistry struct {
-	handlers map[orderItem.SPUCategory]map[orderItem.SPUType]OrderItemHandler
+	handlers map[orderitem.SPUCategory]map[orderitem.SPUType]OrderItemHandler
 }
 
 func NewOrderItemHandlerRegistry() *OrderItemHandlerRegistry {
 	return &OrderItemHandlerRegistry{
-		handlers: make(map[orderItem.SPUCategory]map[orderItem.SPUType]OrderItemHandler),
+		handlers: make(map[orderitem.SPUCategory]map[orderitem.SPUType]OrderItemHandler),
 	}
 }
 
-func (r *OrderItemHandlerRegistry) Register(category orderItem.SPUCategory, itemType orderItem.SPUType, handler OrderItemHandler) {
+func (r *OrderItemHandlerRegistry) Register(category orderitem.SPUCategory, itemType orderitem.SPUType, handler OrderItemHandler) {
 	if r.handlers[category] == nil {
-		r.handlers[category] = make(map[orderItem.SPUType]OrderItemHandler)
+		r.handlers[category] = make(map[orderitem.SPUType]OrderItemHandler)
 	}
 	r.handlers[category][itemType] = handler
 }
 
-func (r *OrderItemHandlerRegistry) Get(category orderItem.SPUCategory, typ orderItem.SPUType) (OrderItemHandler, bool) {
+func (r *OrderItemHandlerRegistry) Get(category orderitem.SPUCategory, typ orderitem.SPUType) (OrderItemHandler, bool) {
 	if handlersByType, ok := r.handlers[category]; ok {
 		handler, exists := handlersByType[typ]
 		return handler, exists
@@ -51,7 +51,7 @@ func (r *OrderItemHandlerRegistry) Get(category orderItem.SPUCategory, typ order
 	return nil, false
 }
 
-func (r *OrderItemHandlerRegistry) Handle(ctx context.Context, category orderItem.SPUCategory, itemType orderItem.SPUType, order order.Order, items []order.Item) error {
+func (r *OrderItemHandlerRegistry) Handle(ctx context.Context, category orderitem.SPUCategory, itemType orderitem.SPUType, order order.Order, items []order.Item) error {
 	handler, exists := r.Get(category, itemType)
 	if !exists {
 		return fmt.Errorf("未注册的订单项处理器: category: %s, type: %s", category, itemType)

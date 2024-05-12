@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package orderItem
+package orderitem
 
 import "github.com/ecodeclub/webook/internal/order"
 

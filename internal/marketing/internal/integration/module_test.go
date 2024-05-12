@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"sync"
 	"testing"
 
 	"github.com/ecodeclub/ekit/iox"
@@ -354,13 +355,9 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeOrderEvent() {
 				t.Helper()
 				codes, err := s.repo.FindRedemptionCodesByUID(context.Background(), evt.BuyerID, 0, 10)
 				require.NoError(t, err)
-				code := domain.RedemptionCode{
-					OwnerID:  evt.BuyerID,
-					OrderID:  int64(3),
-					SPUID:    int64(2),
-					SKUAttrs: `{"days":90}`,
-					Status:   domain.RedemptionCodeStatusUnused,
-				}
+				code := s.newMemberRedemptionCodeDomain(evt.BuyerID, int64(3))
+				code.SKUAttrs = `{"days":90}`
+				code.Code = ""
 				s.assertRedemptionCodeEqual(t, []domain.RedemptionCode{code, code}, codes)
 			},
 		},
@@ -447,20 +444,12 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeOrderEvent() {
 				t.Helper()
 				codes, err := s.repo.FindRedemptionCodesByUID(context.Background(), evt.BuyerID, 0, 10)
 				require.NoError(t, err)
-				code90 := domain.RedemptionCode{
-					OwnerID:  evt.BuyerID,
-					OrderID:  int64(4),
-					SPUID:    int64(2),
-					SKUAttrs: `{"days":90}`,
-					Status:   domain.RedemptionCodeStatusUnused,
-				}
-				code30 := domain.RedemptionCode{
-					OwnerID:  evt.BuyerID,
-					OrderID:  int64(4),
-					SPUID:    int64(2),
-					SKUAttrs: `{"days":30}`,
-					Status:   domain.RedemptionCodeStatusUnused,
-				}
+				oid := int64(4)
+				code90 := s.newMemberRedemptionCodeDomain(evt.BuyerID, oid)
+				code90.SKUAttrs = `{"days":90}`
+				code90.Code = ""
+				code30 := s.newMemberRedemptionCodeDomain(evt.BuyerID, oid)
+				code30.Code = ""
 				s.assertRedemptionCodeEqual(t, []domain.RedemptionCode{code90, code90, code30}, codes)
 			},
 		},
@@ -527,9 +516,11 @@ func (s *ModuleTestSuite) assertRedemptionCodeEqual(t *testing.T, expected []dom
 	for i, c := range codes {
 		assert.NotZero(t, c.ID)
 		assert.NotZero(t, c.Code)
+		assert.NotZero(t, c.Ctime)
 		assert.NotZero(t, c.Utime)
 		codes[i].ID = 0
 		codes[i].Code = ""
+		codes[i].Ctime = 0
 		codes[i].Utime = 0
 	}
 	assert.Equal(t, expected, codes)
@@ -572,15 +563,8 @@ func (s *ModuleTestSuite) TestHandler_RedeemRedemptionCode() {
 			before: func(t *testing.T, req web.RedeemRedemptionCodeReq) domain.RedemptionCode {
 				t.Helper()
 				oid := int64(101)
-				spuId := int64(2)
-				code := domain.RedemptionCode{
-					OwnerID:  testID,
-					OrderID:  oid,
-					SPUID:    spuId,
-					SKUAttrs: `{"days":30}`,
-					Code:     req.Code,
-					Status:   domain.RedemptionCodeStatusUnused,
-				}
+				code := s.newMemberRedemptionCodeDomain(testID, oid)
+				code.Code = req.Code
 				ids, err := s.repo.CreateRedemptionCodes(context.Background(), oid, []domain.RedemptionCode{
 					code,
 				})
@@ -629,6 +613,7 @@ func (s *ModuleTestSuite) TestHandler_RedeemRedemptionCode() {
 				require.NoError(t, err)
 				require.Equal(t, code.Code, c.Code)
 				require.Equal(t, domain.RedemptionCodeStatusUsed, c.Status)
+				require.NotEqual(t, c.Utime, c.Ctime)
 			},
 			wantCode: 200,
 			wantResp: test.Result[any]{
@@ -643,15 +628,9 @@ func (s *ModuleTestSuite) TestHandler_RedeemRedemptionCode() {
 			before: func(t *testing.T, req web.RedeemRedemptionCodeReq) domain.RedemptionCode {
 				t.Helper()
 				oid := int64(102)
-				spuId := int64(2)
-				code := domain.RedemptionCode{
-					OwnerID:  8922391,
-					OrderID:  oid,
-					SPUID:    spuId,
-					SKUAttrs: `{"days":60}`,
-					Code:     req.Code,
-					Status:   domain.RedemptionCodeStatusUnused,
-				}
+				code := s.newMemberRedemptionCodeDomain(8922391, oid)
+				code.SKUAttrs = `{"days":60}`
+				code.Code = req.Code
 				ids, err := s.repo.CreateRedemptionCodes(context.Background(), oid, []domain.RedemptionCode{
 					code,
 				})
@@ -714,22 +693,16 @@ func (s *ModuleTestSuite) TestHandler_RedeemRedemptionCode() {
 			before: func(t *testing.T, req web.RedeemRedemptionCodeReq) domain.RedemptionCode {
 				t.Helper()
 				oid := int64(103)
-				spuId := int64(2)
-				code := domain.RedemptionCode{
-					OwnerID:  7622391,
-					OrderID:  oid,
-					SPUID:    spuId,
-					SKUAttrs: `{"days":90}`,
-					Code:     req.Code,
-					Status:   domain.RedemptionCodeStatusUnused,
-				}
+				code := s.newMemberRedemptionCodeDomain(7622391, oid)
+				code.SKUAttrs = `{"days":90}`
+				code.Code = req.Code
 				ids, err := s.repo.CreateRedemptionCodes(context.Background(), oid, []domain.RedemptionCode{
 					code,
 				})
 				require.NoError(t, err)
 				code.ID = ids[0]
 
-				err = s.repo.SetUnusedRedemptionCodeStatusUsed(context.Background(), code.OwnerID, code.Code)
+				_, err = s.repo.SetUnusedRedemptionCodeStatusUsed(context.Background(), code.OwnerID, code.Code)
 				require.NoError(t, err)
 
 				return code
@@ -774,7 +747,7 @@ func (s *ModuleTestSuite) TestHandler_RedeemRedemptionCode() {
 			},
 		},
 		{
-			name: "兑换失败_兑换码不存在",
+			name: "兑换失败_兑换码不正确",
 			req: web.RedeemRedemptionCodeReq{
 				Code: "redemption-code-all-004",
 			},
@@ -811,7 +784,7 @@ func (s *ModuleTestSuite) TestHandler_RedeemRedemptionCode() {
 			wantCode: 500,
 			wantResp: test.Result[any]{
 				Code: 412002,
-				Msg:  "兑换码不存在",
+				Msg:  "兑换码不正确",
 			},
 		},
 		// 兑换失败 —— 超过限流次数1s一次
@@ -943,6 +916,72 @@ func (s *ModuleTestSuite) assertListRedemptionCodesRespEqual(t *testing.T, expec
 
 func (s *ModuleTestSuite) TestService_RedeemRedemptionCode() {
 	t := s.T()
-	t.Skip()
-	// 并发兑换码只有一个成功
+
+	oid := int64(101001)
+	code := s.newMemberRedemptionCodeDomain(testID, oid)
+	ids, err := s.repo.CreateRedemptionCodes(context.Background(), oid, []domain.RedemptionCode{
+		code,
+	})
+	require.NoError(t, err)
+	code.ID = ids[0]
+
+	require.Equal(t, domain.RedemptionCodeStatusUnused, code.Status)
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockMQ := mocks.NewMockMQ(ctrl)
+
+	mockProducer := mocks.NewMockProducer(ctrl)
+	mockProducer.EXPECT().Produce(gomock.Any(), gomock.Any()).Return(&mq.ProducerResult{}, nil)
+	mockMQ.EXPECT().Producer(event.MemberUpdateEventName).Return(mockProducer, nil)
+
+	mockProductSvc := productmocks.NewMockService(ctrl)
+
+	mockOrderSvc := ordermocks.NewMockService(ctrl)
+
+	memberEventProducer, err := producer.NewMemberEventProducer(mockMQ)
+	require.NoError(t, err)
+
+	svc := service.NewService(s.repo, mockOrderSvc, mockProductSvc, nil, nil, memberEventProducer, nil, nil)
+
+	var wg sync.WaitGroup
+	n := 100
+	errChan := make(chan error, n)
+	for i := 0; i < n; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			errChan <- svc.RedeemRedemptionCode(context.Background(), int64(i), code.Code)
+		}(i + 20001)
+	}
+
+	wg.Wait()
+
+	close(errChan)
+	errCounter := 0
+	for e := range errChan {
+		if e == nil {
+			continue
+		}
+		require.ErrorIs(t, e, service.ErrRedemptionCodeUsed)
+		errCounter++
+	}
+	require.Equal(t, n-1, errCounter)
+	c, err := s.repo.FindRedemptionCode(context.Background(), code.Code)
+	require.NoError(t, err)
+	require.Equal(t, domain.RedemptionCodeStatusUsed, c.Status)
+	require.NotEqual(t, c.Utime, c.Ctime)
+}
+
+func (s *ModuleTestSuite) newMemberRedemptionCodeDomain(ownerID int64, oid int64) domain.RedemptionCode {
+	return domain.RedemptionCode{
+		OwnerID:  ownerID,
+		OrderID:  oid,
+		SPUID:    2,
+		SPUType:  "member",
+		SKUAttrs: `{"days":30}`,
+		Code:     fmt.Sprintf("redemption-code-member-%d", oid),
+		Status:   domain.RedemptionCodeStatusUnused,
+	}
 }

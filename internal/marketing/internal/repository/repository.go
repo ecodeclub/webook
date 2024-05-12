@@ -32,7 +32,7 @@ var (
 type MarketingRepository interface {
 	CreateRedemptionCodes(ctx context.Context, oid int64, codes []domain.RedemptionCode) ([]int64, error)
 	FindRedemptionCode(ctx context.Context, code string) (domain.RedemptionCode, error)
-	SetUnusedRedemptionCodeStatusUsed(ctx context.Context, uid int64, code string) error
+	SetUnusedRedemptionCodeStatusUsed(ctx context.Context, uid int64, code string) (domain.RedemptionCode, error)
 	TotalRedemptionCodes(ctx context.Context, uid int64) (int64, error)
 	FindRedemptionCodesByUID(ctx context.Context, uid int64, offset, limit int) ([]domain.RedemptionCode, error)
 }
@@ -61,8 +61,12 @@ func (m *marketingRepository) FindRedemptionCode(ctx context.Context, code strin
 	return m.toDomain([]dao.RedemptionCode{r})[0], err
 }
 
-func (m *marketingRepository) SetUnusedRedemptionCodeStatusUsed(ctx context.Context, uid int64, code string) error {
-	return m.dao.SetUnusedRedemptionCodeStatusUsed(ctx, uid, code)
+func (m *marketingRepository) SetUnusedRedemptionCodeStatusUsed(ctx context.Context, uid int64, code string) (domain.RedemptionCode, error) {
+	r, err := m.dao.SetUnusedRedemptionCodeStatusUsed(ctx, uid, code)
+	if err != nil {
+		return domain.RedemptionCode{}, err
+	}
+	return m.toDomain([]dao.RedemptionCode{r})[0], err
 }
 
 func (m *marketingRepository) TotalRedemptionCodes(ctx context.Context, uid int64) (int64, error) {
@@ -84,9 +88,11 @@ func (m *marketingRepository) toDomain(codes []dao.RedemptionCode) []domain.Rede
 			OwnerID:  src.OwnerId,
 			OrderID:  src.OrderId,
 			SPUID:    src.SPUID,
+			SPUType:  src.SPUType,
 			SKUAttrs: src.SKUAttrs.String,
 			Code:     src.Code,
 			Status:   domain.RedemptionCodeStatus(src.Status),
+			Ctime:    src.Ctime,
 			Utime:    src.Utime,
 		}
 	})
@@ -98,6 +104,7 @@ func (m *marketingRepository) toEntities(codes []domain.RedemptionCode) []dao.Re
 			OwnerId:  src.OwnerID,
 			OrderId:  src.OrderID,
 			SPUID:    src.SPUID,
+			SPUType:  src.SPUType,
 			SKUAttrs: sqlx.NewNullString(src.SKUAttrs),
 			Code:     src.Code,
 			Status:   src.Status.ToUint8(),

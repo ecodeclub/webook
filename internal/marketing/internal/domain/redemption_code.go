@@ -30,8 +30,10 @@ type RedemptionCode struct {
 	OwnerID  int64
 	OrderID  int64
 	SPUID    int64
+	SPUType  string
 	SKUAttrs string
 	Code     string
 	Status   RedemptionCodeStatus
+	Ctime    int64
 	Utime    int64
 }
