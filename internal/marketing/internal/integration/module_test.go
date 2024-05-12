@@ -61,15 +61,13 @@ func TestMarketingModule(t *testing.T) {
 type ModuleTestSuite struct {
 	suite.Suite
 	db   *egorm.Component
-	dao  dao.MarketingDAO
 	repo repository.MarketingRepository
 }
 
 func (s *ModuleTestSuite) SetupSuite() {
 	s.db = testioc.InitDB()
 	s.NoError(dao.InitTables(s.db))
-	s.dao = dao.NewGORMMarketingDAO(s.db)
-	s.repo = repository.NewRepository(s.dao)
+	s.repo = repository.NewRepository(dao.NewGORMMarketingDAO(s.db))
 }
 
 func (s *ModuleTestSuite) TearDownSuite() {
@@ -819,19 +817,11 @@ func (s *ModuleTestSuite) TestHandler_ListRedemptionCode() {
 
 	total := 100
 	for idx := 0; idx < total; idx++ {
-		id := int64(100 + idx)
-		status := domain.RedemptionCodeStatus(uint8(id)%2 + 1).ToUint8()
-		codes := []dao.RedemptionCode{
-			{
-				Id:      id,
-				OwnerId: testID,
-				OrderId: id,
-				SPUID:   id,
-				Code:    fmt.Sprintf("code-%d", id),
-				Status:  status,
-			},
-		}
-		_, err := s.dao.CreateRedemptionCodes(context.Background(), id, codes)
+		id := int64(2000 + idx)
+		status := domain.RedemptionCodeStatus(uint8(id)%2 + 1)
+		code := s.newMemberRedemptionCodeDomain(testID, id)
+		code.Status = status
+		_, err := s.repo.CreateRedemptionCodes(context.Background(), id, []domain.RedemptionCode{code})
 		require.NoError(t, err)
 	}
 
@@ -862,11 +852,11 @@ func (s *ModuleTestSuite) TestHandler_ListRedemptionCode() {
 					Total: int64(total),
 					Codes: []web.RedemptionCode{
 						{
-							Code:   "code-199",
+							Code:   "redemption-code-member-2099",
 							Status: domain.RedemptionCodeStatusUsed.ToUint8(),
 						},
 						{
-							Code:   "code-198",
+							Code:   "redemption-code-member-2098",
 							Status: domain.RedemptionCodeStatusUnused.ToUint8(),
 						},
 					},
