@@ -12,28 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package domain
+package order
 
-type RedemptionCodeStatus uint8
-
-const (
-	RedemptionCodeStatusUnused RedemptionCodeStatus = 1
-	RedemptionCodeStatusUsed   RedemptionCodeStatus = 2
+type (
+	SPUCategory     string
+	SPUType         string
+	CategoryTypeSet map[SPUCategory]map[SPUType]struct{}
 )
-
-func (r RedemptionCodeStatus) ToUint8() uint8 {
-	return uint8(r)
-}
-
-type RedemptionCode struct {
-	ID       int64
-	OwnerID  int64
-	OrderID  int64
-	SPUID    int64
-	SPUType  string
-	SKUAttrs string
-	Code     string
-	Status   RedemptionCodeStatus
-	Ctime    int64
-	Utime    int64
-}

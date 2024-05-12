@@ -16,134 +16,84 @@ package service
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"log"
 
-	"github.com/ecodeclub/ekit/slice"
 	"github.com/ecodeclub/webook/internal/marketing/internal/domain"
-	"github.com/ecodeclub/webook/internal/marketing/internal/event"
 	"github.com/ecodeclub/webook/internal/marketing/internal/event/producer"
 	"github.com/ecodeclub/webook/internal/marketing/internal/repository"
+	orderexe "github.com/ecodeclub/webook/internal/marketing/internal/service/activity/order"
+	orderhdl "github.com/ecodeclub/webook/internal/marketing/internal/service/handler/order"
 	"github.com/ecodeclub/webook/internal/order"
+	"github.com/ecodeclub/webook/internal/product"
 	"golang.org/x/sync/errgroup"
+)
+
+var (
+	ErrRedemptionNotFound = repository.ErrRedemptionNotFound
+	ErrRedemptionCodeUsed = repository.ErrRedemptionCodeUsed
 )
 
 type Service interface {
 	ExecuteOrderCompletedActivity(ctx context.Context, act domain.OrderCompletedActivity) error
+	RedeemRedemptionCode(ctx context.Context, uid int64, code string) error
 	ListRedemptionCodes(ctx context.Context, uid int64, offset, list int) ([]domain.RedemptionCode, int64, error)
 }
 
 type service struct {
-	repo                    repository.MarketingRepository
-	orderSvc                order.Service
-	redemptionCodeGenerator func(id int64) string
+	repo repository.MarketingRepository
+
+	productSvc              product.Service
 	eventKeyGenerator       func() string
-	memberEventProducer     producer.MemberEventProducer
-	creditEventProducer     producer.CreditEventProducer
 	permissionEventProducer producer.PermissionEventProducer
+
+	orderActivityExecutor *orderexe.ActivityExecutor
+	redeemers             map[orderexe.SPUType]orderhdl.RedeemerHandler
 }
 
 func NewService(
 	repo repository.MarketingRepository,
 	orderSvc order.Service,
+	productSvc product.Service,
 	redemptionCodeGenerator func(id int64) string,
 	eventKeyGenerator func() string,
 	memberEventProducer producer.MemberEventProducer,
 	creditEventProducer producer.CreditEventProducer,
 	permissionEventProducer producer.PermissionEventProducer,
 ) Service {
+
+	orderRegistry := orderexe.NewOrderHandlerRegistry()
+	orderRegistry.Register("product", "member", orderhdl.NewProductMemberHandler(memberEventProducer, creditEventProducer))
+
+	codeMemberHandler := orderhdl.NewCodeMemberHandler(repo, memberEventProducer, creditEventProducer, redemptionCodeGenerator)
+	orderRegistry.Register("code", "member", codeMemberHandler)
+
+	redeemerRegistry := make(map[orderexe.SPUType]orderhdl.RedeemerHandler)
+	redeemerRegistry["member"] = codeMemberHandler
+
 	return &service{
 		repo:                    repo,
-		orderSvc:                orderSvc,
-		redemptionCodeGenerator: redemptionCodeGenerator,
+		productSvc:              productSvc,
 		eventKeyGenerator:       eventKeyGenerator,
-		memberEventProducer:     memberEventProducer,
-		creditEventProducer:     creditEventProducer,
 		permissionEventProducer: permissionEventProducer,
+		orderActivityExecutor:   orderexe.NewOrderActivityExecutor(orderSvc, orderRegistry),
+		redeemers:               redeemerRegistry,
 	}
 }
 
 func (s *service) ExecuteOrderCompletedActivity(ctx context.Context, act domain.OrderCompletedActivity) error {
-	const (
-		productCategory = "product"
-		codeCategory    = "code"
-	)
-	o, err := s.orderSvc.FindUserVisibleOrderByUIDAndSN(ctx, act.BuyerID, act.OrderSN)
+	return s.orderActivityExecutor.Execute(ctx, act)
+}
+
+func (s *service) RedeemRedemptionCode(ctx context.Context, uid int64, code string) error {
+	r, err := s.repo.SetUnusedRedemptionCodeStatusUsed(ctx, uid, code)
 	if err != nil {
 		return err
 	}
-
-	productItems := make([]order.Item, 0, len(o.Items))
-	codeItems := make([]order.Item, 0, len(o.Items))
-
-	_ = slice.FindAll(o.Items, func(src order.Item) bool {
-		if src.SPU.Category == productCategory {
-			productItems = append(productItems, src)
-		} else if src.SPU.Category == codeCategory {
-			codeItems = append(codeItems, src)
-		}
-		return false
-	})
-
-	if len(productItems) > 0 {
-		err = s.handleMemberCategoryOrderItems(ctx, o, productItems)
-		if err != nil {
-			return fmt.Errorf("处理会员商品失败: %w", err)
-		}
+	redeemer, ok := s.redeemers[orderexe.SPUType(r.SPUType)]
+	if !ok {
+		return fmt.Errorf("未知兑换码SPU类型: %s", r.SPUType)
 	}
-
-	if len(codeItems) > 0 {
-		err = s.handleCodeCategoryOrderItems(ctx, o, codeItems)
-		if err != nil {
-			return fmt.Errorf("处理兑换码商品失败: %w", err)
-		}
-	}
-
-	return nil
-}
-
-func (s *service) handleMemberCategoryOrderItems(ctx context.Context, o order.Order, items []order.Item) error {
-	type Attrs struct {
-		Days uint64 `json:"days"`
-	}
-
-	var days uint64
-	for _, item := range items {
-		var attrs Attrs
-		err := json.Unmarshal([]byte(item.SKU.Attrs), &attrs)
-		if err != nil {
-			return fmt.Errorf("解析会员商品属性失败: %w, oid: %d, skuid:%d, attrs: %s", err, o.ID, item.SKU.ID, item.SKU.Attrs)
-		}
-		days += attrs.Days * uint64(item.SKU.Quantity)
-	}
-	return s.memberEventProducer.Produce(ctx, event.MemberEvent{
-		Key:    o.SN,
-		Uid:    o.BuyerID,
-		Days:   days,
-		Biz:    "order",
-		BizId:  o.ID,
-		Action: "购买会员商品",
-	})
-}
-
-func (s *service) handleCodeCategoryOrderItems(ctx context.Context, o order.Order, items []order.Item) error {
-	codes := make([]domain.RedemptionCode, 0, len(items))
-	for _, item := range items {
-		for i := int64(0); i < item.SKU.Quantity; i++ {
-			codes = append(codes, domain.RedemptionCode{
-				OwnerID:  o.BuyerID,
-				OrderID:  o.ID,
-				SPUID:    item.SPU.ID,
-				SKUAttrs: item.SKU.Attrs,
-				Code:     s.redemptionCodeGenerator(o.BuyerID),
-				Status:   domain.RedemptionCodeStatusUnused,
-			})
-		}
-	}
-	log.Printf("codes = %#v\n", codes)
-	_, err := s.repo.CreateRedemptionCodes(ctx, o.ID, codes)
-	return err
+	return redeemer.Redeem(ctx, orderhdl.RedeemInfo{RedeemerID: uid, Code: r})
 }
 
 func (s *service) ListRedemptionCodes(ctx context.Context, uid int64, offset, list int) ([]domain.RedemptionCode, int64, error) {

@@ -15,6 +15,7 @@
 package web
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/ecodeclub/ekit/slice"
@@ -43,6 +44,20 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 
 func (h *Handler) PublicRoutes(_ *gin.Engine) {}
 
+func (h *Handler) RedeemRedemptionCode(ctx *ginx.Context, req RedeemRedemptionCodeReq, sess session.Session) (ginx.Result, error) {
+	err := h.svc.RedeemRedemptionCode(ctx.Request.Context(), sess.Claims().Uid, req.Code)
+	if err != nil {
+		if errors.Is(err, service.ErrRedemptionCodeUsed) {
+			return redemptionCodeUsedErrResult, err
+		}
+		if errors.Is(err, service.ErrRedemptionNotFound) {
+			return redemptionCodeNotFoundErrResult, err
+		}
+		return systemErrorResult, err
+	}
+	return ginx.Result{Msg: "OK"}, nil
+}
+
 func (h *Handler) ListRedemptionCodes(ctx *ginx.Context, req ListRedemptionCodesReq, sess session.Session) (ginx.Result, error) {
 	codes, total, err := h.svc.ListRedemptionCodes(ctx.Request.Context(), sess.Claims().Uid, req.Offset, req.Limit)
 	if err != nil {
@@ -60,8 +75,4 @@ func (h *Handler) ListRedemptionCodes(ctx *ginx.Context, req ListRedemptionCodes
 			}),
 		},
 	}, nil
-}
-
-func (h *Handler) RedeemRedemptionCode(ctx *ginx.Context, req RedeemRedemptionCodeReq, sess session.Session) (ginx.Result, error) {
-	return systemErrorResult, fmt.Errorf("unimplemented")
 }

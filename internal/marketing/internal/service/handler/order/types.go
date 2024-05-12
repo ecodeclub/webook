@@ -12,28 +12,30 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package domain
+package order
 
-type RedemptionCodeStatus uint8
+import (
+	"context"
 
-const (
-	RedemptionCodeStatusUnused RedemptionCodeStatus = 1
-	RedemptionCodeStatusUsed   RedemptionCodeStatus = 2
+	"github.com/ecodeclub/webook/internal/marketing/internal/domain"
+	"github.com/ecodeclub/webook/internal/order"
 )
 
-func (r RedemptionCodeStatus) ToUint8() uint8 {
-	return uint8(r)
-}
+type (
+	OrderInfo struct {
+		Order order.Order
+		Items []order.Item
+	}
+	OrderHandler interface {
+		Handle(ctx context.Context, info OrderInfo) error
+	}
 
-type RedemptionCode struct {
-	ID       int64
-	OwnerID  int64
-	OrderID  int64
-	SPUID    int64
-	SPUType  string
-	SKUAttrs string
-	Code     string
-	Status   RedemptionCodeStatus
-	Ctime    int64
-	Utime    int64
-}
+	RedeemInfo struct {
+		RedeemerID int64
+		Code       domain.RedemptionCode
+	}
+
+	RedeemerHandler interface {
+		Redeem(ctx context.Context, info RedeemInfo) error
+	}
+)
