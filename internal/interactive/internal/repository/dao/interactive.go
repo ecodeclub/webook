@@ -34,9 +34,10 @@ func NewInteractiveDAO(db *egorm.Component) *GORMInteractiveDAO {
 
 func (g *GORMInteractiveDAO) LikeToggle(ctx context.Context, biz string, id int64, uid int64) error {
 	return g.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		var res UserLikeBiz
-		err := tx.Where("biz = ? AND biz_id = ? AND uid = ?", biz, id, uid).
-			First(&res).Error
+		err := tx.
+			Clauses(clause.Locking{Strength: "UPDATE"}).
+			Where("biz = ? AND biz_id = ? AND uid = ?", biz, id, uid).
+			First(&UserLikeBiz{}).Error
 		switch err {
 		case nil:
 			return g.deleteLikeInfo(tx, biz, id, uid)
@@ -48,21 +49,6 @@ func (g *GORMInteractiveDAO) LikeToggle(ctx context.Context, biz string, id int6
 	})
 }
 
-func (g *GORMInteractiveDAO) CollectionToggle(ctx context.Context, cb UserCollectionBiz) error {
-	return g.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		var res UserCollectionBiz
-		err := tx.Where("biz = ? AND biz_id = ? AND uid = ?", cb.Biz, cb.BizId, cb.Uid).
-			First(&res).Error
-		switch err {
-		case nil:
-			return g.deleteCollectionInfo(tx, cb.Biz, cb.BizId, cb.Uid)
-		case gorm.ErrRecordNotFound:
-			return g.insertCollectionBiz(tx, cb)
-		default:
-			return err
-		}
-	})
-}
 func (g *GORMInteractiveDAO) insertLikeInfo(tx *gorm.DB, biz string, id int64, uid int64) error {
 	now := time.Now().UnixMilli()
 	err := tx.Create(&UserLikeBiz{
@@ -87,6 +73,39 @@ func (g *GORMInteractiveDAO) insertLikeInfo(tx *gorm.DB, biz string, id int64, u
 		Ctime:   now,
 		Utime:   now,
 	}).Error
+}
+func (g *GORMInteractiveDAO) CollectionToggle(ctx context.Context, cb UserCollectionBiz) error {
+	return g.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+			Where("biz = ? AND biz_id = ? AND uid = ?", cb.Biz, cb.BizId, cb.Uid).
+			First(&UserCollectionBiz{}).Error
+		switch {
+		case err == nil:
+			return g.deleteCollectionInfo(tx, cb.Biz, cb.BizId, cb.Uid)
+		case errors.Is(err, gorm.ErrRecordNotFound):
+			return g.insertCollectionBiz(tx, cb)
+		default:
+			return err
+		}
+	})
+}
+func (g *GORMInteractiveDAO) deleteCollectionInfo(tx *gorm.DB, biz string, id int64, uid int64) error {
+	now := time.Now().UnixMilli()
+	res := tx.Model(&UserCollectionBiz{}).
+		Where("uid=? AND biz_id = ? AND biz=?", uid, id, biz).
+		Delete(&UserCollectionBiz{})
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected < 1 {
+		return nil
+	}
+	return tx.Model(&Interactive{}).
+		Where("biz =? AND biz_id=?", biz, id).
+		Updates(map[string]any{
+			"collect_cnt": gorm.Expr("`collect_cnt` - 1"),
+			"utime":       now,
+		}).Error
 }
 
 func (g *GORMInteractiveDAO) insertCollectionBiz(tx *gorm.DB, cb UserCollectionBiz) error {
@@ -128,25 +147,6 @@ func (g *GORMInteractiveDAO) deleteLikeInfo(tx *gorm.DB, biz string, id int64, u
 		Updates(map[string]any{
 			"like_cnt": gorm.Expr("`like_cnt` - 1"),
 			"utime":    now,
-		}).Error
-}
-
-func (g *GORMInteractiveDAO) deleteCollectionInfo(tx *gorm.DB, biz string, id int64, uid int64) error {
-	now := time.Now().UnixMilli()
-	res := tx.Model(&UserCollectionBiz{}).
-		Where("uid=? AND biz_id = ? AND biz=?", uid, id, biz).
-		Delete(&UserCollectionBiz{})
-	if res.Error != nil {
-		return res.Error
-	}
-	if res.RowsAffected < 1 {
-		return nil
-	}
-	return tx.Model(&Interactive{}).
-		Where("biz =? AND biz_id=?", biz, id).
-		Updates(map[string]any{
-			"collect_cnt": gorm.Expr("`collect_cnt` - 1"),
-			"utime":       now,
 		}).Error
 }
 

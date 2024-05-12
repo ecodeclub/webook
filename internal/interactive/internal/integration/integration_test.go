@@ -18,18 +18,16 @@ package integration
 
 import (
 	"context"
-	"encoding/json"
+	"github.com/ecodeclub/webook/internal/interactive/internal/events"
+	"gorm.io/gorm"
 	"net/http"
 	"strconv"
 	"testing"
 	"time"
 
-	"gorm.io/gorm"
-
 	"github.com/ecodeclub/ekit/iox"
 	"github.com/ecodeclub/ginx/session"
 	"github.com/ecodeclub/mq-api"
-	"github.com/ecodeclub/webook/internal/interactive/internal/events"
 	"github.com/ecodeclub/webook/internal/interactive/internal/integration/startup"
 	"github.com/ecodeclub/webook/internal/interactive/internal/repository/dao"
 	"github.com/ecodeclub/webook/internal/interactive/internal/web"
@@ -218,6 +216,7 @@ func (i *InteractiveSuite) Test_LikeToggle() {
 		},
 	}
 	for _, tc := range testcases {
+		tc := tc
 		i.T().Run(tc.name, func(t *testing.T) {
 			tc.before(t)
 			req, err := http.NewRequest(http.MethodPost,
