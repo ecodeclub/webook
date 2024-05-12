@@ -12,19 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package handler
+package order
 
-import (
-	"context"
-
-	"github.com/ecodeclub/webook/internal/order"
+type (
+	SPUCategory     string
+	SPUType         string
+	CategoryTypeSet map[SPUCategory]map[SPUType]struct{}
 )
-
-var _ OrderItemHandler = (*CodeMemberHandler)(nil)
-
-type CodeMemberHandler struct {
-}
-
-func (h *CodeMemberHandler) Handle(ctx context.Context, o order.Order, items []order.Item) error {
-	return nil
-}

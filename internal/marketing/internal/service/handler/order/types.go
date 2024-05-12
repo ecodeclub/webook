@@ -12,27 +12,30 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package handler
+package order
 
 import (
 	"context"
 
-	"github.com/ecodeclub/webook/internal/marketing/internal/event/producer"
+	"github.com/ecodeclub/webook/internal/marketing/internal/domain"
 	"github.com/ecodeclub/webook/internal/order"
 )
 
-var _ OrderItemHandler = (*ProductMemberHandler)(nil)
-
-type ProductMemberHandler struct {
-	memberEventProducer producer.MemberEventProducer
-}
-
-func NewProductMemberHandler(memberEventProducer producer.MemberEventProducer) *ProductMemberHandler {
-	return &ProductMemberHandler{
-		memberEventProducer: memberEventProducer,
+type (
+	OrderInfo struct {
+		Order order.Order
+		Items []order.Item
 	}
-}
+	OrderHandler interface {
+		Handle(ctx context.Context, info OrderInfo) error
+	}
 
-func (h *ProductMemberHandler) Handle(ctx context.Context, o order.Order, items []order.Item) error {
-	return nil
-}
+	RedeemInfo struct {
+		RedeemerID int64
+		Code       domain.RedemptionCode
+	}
+
+	RedeemerHandler interface {
+		Redeem(ctx context.Context, info RedeemInfo) error
+	}
+)

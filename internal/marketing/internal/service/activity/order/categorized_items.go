@@ -12,14 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package orderitem
+package order
 
-import "github.com/ecodeclub/webook/internal/order"
-
-type (
-	SPUCategory     string
-	SPUType         string
-	CategoryTypeSet map[SPUCategory]map[SPUType]struct{}
+import (
+	"github.com/ecodeclub/webook/internal/order"
 )
 
 type CategorizedItems struct {
@@ -41,6 +37,10 @@ func (c *CategorizedItems) AddItem(category SPUCategory, typ SPUType, item order
 	}
 	c.items[category][typ] = append(c.items[category][typ], item)
 	c.categoryTypeSet[category][typ] = struct{}{}
+}
+
+func (c *CategorizedItems) GetItems(category SPUCategory, typ SPUType) []order.Item {
+	return c.items[category][typ]
 }
 
 func (c *CategorizedItems) CategoriesAndTypes() CategoryTypeSet {
