@@ -15,6 +15,7 @@ import (
 
 func InitModule() *project.Module {
 	db := testioc.InitDB()
-	module := project.InitModule(db)
+	mq := testioc.InitMQ()
+	module := project.InitModule(db, mq)
 	return module
 }

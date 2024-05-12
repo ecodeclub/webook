@@ -19,6 +19,9 @@ package project
 import (
 	"sync"
 
+	"github.com/ecodeclub/mq-api"
+	"github.com/ecodeclub/webook/internal/project/internal/event"
+
 	"github.com/ecodeclub/webook/internal/project/internal/repository"
 	"github.com/ecodeclub/webook/internal/project/internal/repository/dao"
 	"github.com/ecodeclub/webook/internal/project/internal/service"
@@ -27,18 +30,19 @@ import (
 	"github.com/google/wire"
 )
 
-func InitModule(db *egorm.Component) *Module {
+func InitModule(db *egorm.Component, q mq.MQ) *Module {
 	wire.Build(
+		initSyncToSearchEventProducer,
 		initAdminDAO,
 		repository.NewProjectAdminRepository,
 		service.NewProjectAdminService,
+		event.NewSyncProjectToSearchEventProducer,
 		web.NewAdminHandler,
 
 		dao.NewGORMProjectDAO,
 		repository.NewCachedRepository,
 		service.NewService,
 		web.NewHandler,
-
 		wire.Struct(new(Module), "*"))
 	return &Module{}
 }
@@ -57,4 +61,12 @@ func initAdminDAO(db *egorm.Component) dao.ProjectAdminDAO {
 		adminDAO = dao.NewGORMProjectAdminDAO(db)
 	})
 	return adminDAO
+}
+
+func initSyncToSearchEventProducer(q mq.MQ) mq.Producer {
+	res, err := q.Producer(event.SyncTopic)
+	if err != nil {
+		panic(err)
+	}
+	return res
 }

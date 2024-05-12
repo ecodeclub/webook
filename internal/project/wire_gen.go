@@ -9,6 +9,8 @@ package project
 import (
 	"sync"
 
+	"github.com/ecodeclub/mq-api"
+	"github.com/ecodeclub/webook/internal/project/internal/event"
 	"github.com/ecodeclub/webook/internal/project/internal/repository"
 	"github.com/ecodeclub/webook/internal/project/internal/repository/dao"
 	"github.com/ecodeclub/webook/internal/project/internal/service"
@@ -19,13 +21,15 @@ import (
 
 // Injectors from wire.go:
 
-func InitModule(db *gorm.DB) *Module {
+func InitModule(db *gorm.DB, q mq.MQ) *Module {
 	projectAdminDAO := initAdminDAO(db)
 	projectAdminRepository := repository.NewProjectAdminRepository(projectAdminDAO)
-	projectAdminService := service.NewProjectAdminService(projectAdminRepository)
-	adminHandler := web.NewAdminHandler(projectAdminService)
+	producer := initSyncToSearchEventProducer(q)
+	syncProjectToSearchEventProducer := event.NewSyncProjectToSearchEventProducer(producer)
 	projectDAO := dao.NewGORMProjectDAO(db)
 	repositoryRepository := repository.NewCachedRepository(projectDAO)
+	projectAdminService := service.NewProjectAdminService(projectAdminRepository, syncProjectToSearchEventProducer, repositoryRepository)
+	adminHandler := web.NewAdminHandler(projectAdminService)
 	serviceService := service.NewService(repositoryRepository)
 	handler := web.NewHandler(serviceService)
 	module := &Module{
@@ -51,4 +55,12 @@ func initAdminDAO(db *egorm.Component) dao.ProjectAdminDAO {
 		adminDAO = dao.NewGORMProjectAdminDAO(db)
 	})
 	return adminDAO
+}
+
+func initSyncToSearchEventProducer(q mq.MQ) mq.Producer {
+	res, err := q.Producer(event.SyncTopic)
+	if err != nil {
+		panic(err)
+	}
+	return res
 }

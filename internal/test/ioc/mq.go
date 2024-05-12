@@ -21,8 +21,7 @@ import (
 
 	"github.com/ecodeclub/ekit/retry"
 	"github.com/ecodeclub/mq-api"
-	"github.com/ecodeclub/mq-api/kafka"
-	"github.com/gotomicro/ego/core/econf"
+	"github.com/ecodeclub/mq-api/memory"
 )
 
 var (
@@ -58,15 +57,8 @@ func initMQ() (mq.MQ, error) {
 		Name       string `yaml:"name"`
 		Partitions int    `yaml:"partitions"`
 	}
-	type Config struct {
-		Network   string   `yaml:"network"`
-		Addresses []string `yaml:"addresses"`
-		Topics    []Topic  `yaml:"topics"`
-	}
-	var cfg Config
-	econf.Set("kafka.network", "tcp")
-	econf.Set("kafka.addresses", []string{"localhost:9092"})
-	econf.Set("kafka.topics", []Topic{
+
+	topics := []Topic{
 		{
 			Name:       "payment_events",
 			Partitions: 1,
@@ -84,7 +76,7 @@ func initMQ() (mq.MQ, error) {
 			Partitions: 1,
 		},
 		{
-			Name:       "sync_events",
+			Name:       "sync_data_to_search",
 			Partitions: 1,
 		},
 		{
@@ -95,17 +87,11 @@ func initMQ() (mq.MQ, error) {
 			Name:       "interactive_events",
 			Partitions: 1,
 		},
-	})
-	err := econf.UnmarshalKey("kafka", &cfg)
-	if err != nil {
-		return nil, err
 	}
-	qq, err := kafka.NewMQ(cfg.Network, cfg.Addresses)
-	if err != nil {
-		return nil, err
-	}
-	for _, t := range cfg.Topics {
-		err = qq.CreateTopic(context.Background(), t.Name, t.Partitions)
+	// 替换用内存实现，方便测试
+	qq := memory.NewMQ()
+	for _, t := range topics {
+		err := qq.CreateTopic(context.Background(), t.Name, t.Partitions)
 		if err != nil {
 			return nil, err
 		}
