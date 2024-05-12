@@ -83,6 +83,10 @@ func initMQ() (mq.MQ, error) {
 			Name:       "order_events",
 			Partitions: 1,
 		},
+		{
+			Name:       "interactive_events",
+			Partitions: 1,
+		},
 	}
 	// 替换用内存实现，方便测试
 	qq := memory.NewMQ()

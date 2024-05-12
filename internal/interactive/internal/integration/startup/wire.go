@@ -12,20 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package events
+//go:build wireinject
+
+package startup
 
 import (
-	"context"
-
-	"github.com/ecodeclub/webook/internal/interactive/internal/service"
+	"github.com/ecodeclub/webook/internal/interactive"
+	"github.com/ecodeclub/webook/internal/interactive/internal/web"
+	testioc "github.com/ecodeclub/webook/internal/test/ioc"
+	"github.com/google/wire"
 )
 
-type Event struct {
-	Biz   string `json:"biz,omitempty"`
-	BizId int64  `json:"biz_id,omitempty"`
-	// 取值是
-	// like, collect, view 三个
-	Action string `json:"action,omitempty"`
-	Uid    int64  `json:"uid,omitempty"`
+func InitHandler() (*web.Handler, error) {
+	wire.Build(testioc.BaseSet, interactive.InitModule,
+		wire.FieldsOf(new(*interactive.Module), "Hdl"))
+	return new(web.Handler), nil
 }
-type handleFunc func(ctx context.Context, svc service.InteractiveService, evt Event) error
