@@ -52,7 +52,7 @@ func (h *Handler) PublicRoutes(server *gin.Engine) {
 
 func (h *Handler) Collect(ctx *ginx.Context, req CollectReq, sess session.Session) (ginx.Result, error) {
 	uid := sess.Claims().Uid
-	err := h.svc.CollectToggle(ctx, req.Biz, req.BizId, uid)
+	err := h.svc.CollectToggle(ctx.Request.Context(), req.Biz, req.BizId, uid)
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -78,7 +78,7 @@ func (h *Handler) GetCnt(ctx *ginx.Context, req GetCntReq, sess session.Session)
 
 func (h *Handler) Like(ctx *ginx.Context, req LikeReq, sess session.Session) (ginx.Result, error) {
 	uid := sess.Claims().Uid
-	err := h.svc.LikeToggle(ctx, req.Biz, req.BizId, uid)
+	err := h.svc.LikeToggle(ctx.Request.Context(), req.Biz, req.BizId, uid)
 	if err != nil {
 		return systemErrorResult, err
 	}

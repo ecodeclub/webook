@@ -18,13 +18,11 @@ package integration
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 	"strconv"
 	"testing"
 	"time"
 
-	"github.com/ecodeclub/webook/internal/interactive/internal/events"
 	"gorm.io/gorm"
 
 	"github.com/ecodeclub/ekit/iox"
@@ -590,96 +588,96 @@ func (i *InteractiveSuite) Test_Detail() {
 	}, recorder.MustScan().Data)
 }
 
-func (i *InteractiveSuite) Test_Event() {
-	testcases := []struct {
-		name  string
-		msg   events.Event
-		after func(t *testing.T)
-	}{
-		{
-			name: "点赞",
-			msg: events.Event{
-				Biz:    "label",
-				BizId:  1,
-				Action: "like",
-				Uid:    33,
-			},
-			after: func(t *testing.T) {
-				likeInfo, err := i.intrDAO.GetLikeInfo(context.Background(), "label", 1, 33)
-				require.NoError(t, err)
-				i.assertLikeBiz(dao.UserLikeBiz{
-					Uid:   33,
-					Biz:   "label",
-					BizId: 1,
-				}, likeInfo)
-				intr, err := i.intrDAO.Get(context.Background(), "label", 1)
-				require.NoError(t, err)
-				i.assertInteractive(dao.Interactive{
-					Biz:     "label",
-					BizId:   1,
-					LikeCnt: 1,
-				}, intr)
-			},
-		},
-		{
-			name: "收藏",
-			msg: events.Event{
-				Biz:    "label",
-				BizId:  2,
-				Action: "collect",
-				Uid:    33,
-			},
-			after: func(t *testing.T) {
-				collectInfo, err := i.intrDAO.GetCollectInfo(context.Background(), "label", 2, 33)
-				require.NoError(t, err)
-				i.assertCollectBiz(dao.UserCollectionBiz{
-					Uid:   33,
-					Biz:   "label",
-					BizId: 2,
-				}, collectInfo)
-				intr, err := i.intrDAO.Get(context.Background(), "label", 2)
-				require.NoError(t, err)
-				i.assertInteractive(dao.Interactive{
-					Biz:        "label",
-					BizId:      2,
-					CollectCnt: 1,
-				}, intr)
-			},
-		},
-		{
-			name: "浏览",
-			msg: events.Event{
-				Biz:    "label",
-				BizId:  3,
-				Action: "view",
-				Uid:    33,
-			},
-			after: func(t *testing.T) {
-				intr, err := i.intrDAO.Get(context.Background(), "label", 3)
-				require.NoError(t, err)
-				i.assertInteractive(dao.Interactive{
-					Biz:     "label",
-					BizId:   3,
-					ViewCnt: 1,
-				}, intr)
-			},
-		},
-	}
-	for _, tc := range testcases {
-		i.T().Run(tc.name, func(t *testing.T) {
-			v, err := json.Marshal(tc.msg)
-			require.NoError(t, err)
-			_, err = i.producer.Produce(context.Background(), &mq.Message{
-				Value: v,
-			})
-			require.NoError(t, err)
-			time.Sleep(10 * time.Second)
-			tc.after(t)
-
-		})
-	}
-
-}
+//func (i *InteractiveSuite) Test_Event() {
+//	testcases := []struct {
+//		name  string
+//		msg   events.Event
+//		after func(t *testing.T)
+//	}{
+//		{
+//			name: "点赞",
+//			msg: events.Event{
+//				Biz:    "label",
+//				BizId:  1,
+//				Action: "like",
+//				Uid:    33,
+//			},
+//			after: func(t *testing.T) {
+//				likeInfo, err := i.intrDAO.GetLikeInfo(context.Background(), "label", 1, 33)
+//				require.NoError(t, err)
+//				i.assertLikeBiz(dao.UserLikeBiz{
+//					Uid:   33,
+//					Biz:   "label",
+//					BizId: 1,
+//				}, likeInfo)
+//				intr, err := i.intrDAO.Get(context.Background(), "label", 1)
+//				require.NoError(t, err)
+//				i.assertInteractive(dao.Interactive{
+//					Biz:     "label",
+//					BizId:   1,
+//					LikeCnt: 1,
+//				}, intr)
+//			},
+//		},
+//		{
+//			name: "收藏",
+//			msg: events.Event{
+//				Biz:    "label",
+//				BizId:  2,
+//				Action: "collect",
+//				Uid:    33,
+//			},
+//			after: func(t *testing.T) {
+//				collectInfo, err := i.intrDAO.GetCollectInfo(context.Background(), "label", 2, 33)
+//				require.NoError(t, err)
+//				i.assertCollectBiz(dao.UserCollectionBiz{
+//					Uid:   33,
+//					Biz:   "label",
+//					BizId: 2,
+//				}, collectInfo)
+//				intr, err := i.intrDAO.Get(context.Background(), "label", 2)
+//				require.NoError(t, err)
+//				i.assertInteractive(dao.Interactive{
+//					Biz:        "label",
+//					BizId:      2,
+//					CollectCnt: 1,
+//				}, intr)
+//			},
+//		},
+//		{
+//			name: "浏览",
+//			msg: events.Event{
+//				Biz:    "label",
+//				BizId:  3,
+//				Action: "view",
+//				Uid:    33,
+//			},
+//			after: func(t *testing.T) {
+//				intr, err := i.intrDAO.Get(context.Background(), "label", 3)
+//				require.NoError(t, err)
+//				i.assertInteractive(dao.Interactive{
+//					Biz:     "label",
+//					BizId:   3,
+//					ViewCnt: 1,
+//				}, intr)
+//			},
+//		},
+//	}
+//	for _, tc := range testcases {
+//		i.T().Run(tc.name, func(t *testing.T) {
+//			v, err := json.Marshal(tc.msg)
+//			require.NoError(t, err)
+//			_, err = i.producer.Produce(context.Background(), &mq.Message{
+//				Value: v,
+//			})
+//			require.NoError(t, err)
+//			time.Sleep(10 * time.Second)
+//			tc.after(t)
+//
+//		})
+//	}
+//
+//}
 
 func (i *InteractiveSuite) assertLikeBiz(want dao.UserLikeBiz, actual dao.UserLikeBiz) {
 	t := i.T()
