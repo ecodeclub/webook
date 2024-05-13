@@ -18,10 +18,13 @@ package integration
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"strconv"
 	"testing"
 	"time"
+
+	"github.com/ecodeclub/webook/internal/interactive/internal/events"
 
 	"gorm.io/gorm"
 
@@ -106,7 +109,7 @@ func (i *InteractiveSuite) Test_LikeToggle() {
 		wantCode int
 	}{
 		{
-			name: "如果没有点赞过，调用like/toggle接口,点赞计数+1",
+			name: "用户未点赞过_点赞后_点赞计数+1",
 			before: func(t *testing.T) {
 
 			},
@@ -133,7 +136,7 @@ func (i *InteractiveSuite) Test_LikeToggle() {
 			wantCode: 200,
 		},
 		{
-			name: "如果点赞过，调用like/toggle接口,点赞计数-1",
+			name: "用户点赞过_点赞后（相当于取消点赞）_点赞计数-1",
 			before: func(t *testing.T) {
 				// 直接使用intrDAO下的LikeToggle方法，表示调用一次like/toggle接口
 				err := i.intrDAO.LikeToggle(context.Background(), "case", 3, uid)
@@ -157,7 +160,7 @@ func (i *InteractiveSuite) Test_LikeToggle() {
 			wantCode: 200,
 		},
 		{
-			name: "同一个人调用like/toggle接口三次，统计计数+1",
+			name: "用户点赞过_再点赞后(相当于取消点赞)_又点赞_点赞计数+1",
 			before: func(t *testing.T) {
 				err := i.intrDAO.LikeToggle(context.Background(), "case", 4, uid)
 				require.NoError(t, err)
@@ -187,7 +190,7 @@ func (i *InteractiveSuite) Test_LikeToggle() {
 			wantCode: 200,
 		},
 		{
-			name: "两个人初次调用like/toggle接口，计数+2",
+			name: "从未点赞过的两个用户点赞_点赞计数+2",
 			before: func(t *testing.T) {
 				err := i.intrDAO.LikeToggle(context.Background(), "case", 5, 77)
 				require.NoError(t, err)
@@ -240,7 +243,7 @@ func (i *InteractiveSuite) Test_CollectToggle() {
 		wantCode int
 	}{
 		{
-			name: "如果没有收藏过，调用collect/toggle接口,收藏计数+1",
+			name: "用户未收藏过_收藏后_收藏计数+1",
 			before: func(t *testing.T) {
 
 			},
@@ -267,7 +270,7 @@ func (i *InteractiveSuite) Test_CollectToggle() {
 			wantCode: 200,
 		},
 		{
-			name: "如果收藏过，调用collect/toggle接口,收藏计数-1",
+			name: "用户收藏过_收藏后(相当于取消收藏)_收藏计数-1",
 			before: func(t *testing.T) {
 				err := i.intrDAO.CollectionToggle(context.Background(), dao.UserCollectionBiz{
 					Uid:   uid,
@@ -294,7 +297,7 @@ func (i *InteractiveSuite) Test_CollectToggle() {
 			wantCode: 200,
 		},
 		{
-			name: "同一个人调用collect/toggle接口三次，统计计数+1",
+			name: "用户收藏过_收藏后(相当于取消收藏)_再点击收藏_收藏计数+1",
 			before: func(t *testing.T) {
 				err := i.intrDAO.CollectionToggle(context.Background(), dao.UserCollectionBiz{
 					Biz:   "question",
@@ -332,7 +335,7 @@ func (i *InteractiveSuite) Test_CollectToggle() {
 			wantCode: 200,
 		},
 		{
-			name: "不同的人收藏，统计次数会增加",
+			name: "从未收藏过的两个用户收藏_收藏计数+2",
 			before: func(t *testing.T) {
 				err := i.intrDAO.CollectionToggle(context.Background(), dao.UserCollectionBiz{
 					Biz:   "question",
@@ -388,7 +391,7 @@ func (i *InteractiveSuite) Test_View() {
 		wantCode int
 	}{
 		{
-			name: "用户首次浏览资源 资源浏览计数加1",
+			name: "用户首次浏览资源，资源浏览计数加1",
 			before: func(t *testing.T) {
 
 			},
@@ -408,7 +411,7 @@ func (i *InteractiveSuite) Test_View() {
 			wantCode: 200,
 		},
 		{
-			name: "用户重复浏览资源 资源浏览计数加1",
+			name: "用户重复浏览资源，资源浏览计数加1",
 			before: func(t *testing.T) {
 				err := i.intrDAO.IncrViewCnt(context.Background(), "order", 4)
 				require.NoError(t, err)
@@ -515,7 +518,7 @@ func (i *InteractiveSuite) Test_Cnt() {
 			},
 		},
 		{
-			name: "获取没有点赞，收藏，阅读过的统计信息",
+			name: "获取没有点赞，收藏，阅读过的计数信息",
 			before: func(t *testing.T) {
 			},
 			req: web.GetCntReq{
@@ -588,96 +591,96 @@ func (i *InteractiveSuite) Test_Detail() {
 	}, recorder.MustScan().Data)
 }
 
-//func (i *InteractiveSuite) Test_Event() {
-//	testcases := []struct {
-//		name  string
-//		msg   events.Event
-//		after func(t *testing.T)
-//	}{
-//		{
-//			name: "点赞",
-//			msg: events.Event{
-//				Biz:    "label",
-//				BizId:  1,
-//				Action: "like",
-//				Uid:    33,
-//			},
-//			after: func(t *testing.T) {
-//				likeInfo, err := i.intrDAO.GetLikeInfo(context.Background(), "label", 1, 33)
-//				require.NoError(t, err)
-//				i.assertLikeBiz(dao.UserLikeBiz{
-//					Uid:   33,
-//					Biz:   "label",
-//					BizId: 1,
-//				}, likeInfo)
-//				intr, err := i.intrDAO.Get(context.Background(), "label", 1)
-//				require.NoError(t, err)
-//				i.assertInteractive(dao.Interactive{
-//					Biz:     "label",
-//					BizId:   1,
-//					LikeCnt: 1,
-//				}, intr)
-//			},
-//		},
-//		{
-//			name: "收藏",
-//			msg: events.Event{
-//				Biz:    "label",
-//				BizId:  2,
-//				Action: "collect",
-//				Uid:    33,
-//			},
-//			after: func(t *testing.T) {
-//				collectInfo, err := i.intrDAO.GetCollectInfo(context.Background(), "label", 2, 33)
-//				require.NoError(t, err)
-//				i.assertCollectBiz(dao.UserCollectionBiz{
-//					Uid:   33,
-//					Biz:   "label",
-//					BizId: 2,
-//				}, collectInfo)
-//				intr, err := i.intrDAO.Get(context.Background(), "label", 2)
-//				require.NoError(t, err)
-//				i.assertInteractive(dao.Interactive{
-//					Biz:        "label",
-//					BizId:      2,
-//					CollectCnt: 1,
-//				}, intr)
-//			},
-//		},
-//		{
-//			name: "浏览",
-//			msg: events.Event{
-//				Biz:    "label",
-//				BizId:  3,
-//				Action: "view",
-//				Uid:    33,
-//			},
-//			after: func(t *testing.T) {
-//				intr, err := i.intrDAO.Get(context.Background(), "label", 3)
-//				require.NoError(t, err)
-//				i.assertInteractive(dao.Interactive{
-//					Biz:     "label",
-//					BizId:   3,
-//					ViewCnt: 1,
-//				}, intr)
-//			},
-//		},
-//	}
-//	for _, tc := range testcases {
-//		i.T().Run(tc.name, func(t *testing.T) {
-//			v, err := json.Marshal(tc.msg)
-//			require.NoError(t, err)
-//			_, err = i.producer.Produce(context.Background(), &mq.Message{
-//				Value: v,
-//			})
-//			require.NoError(t, err)
-//			time.Sleep(10 * time.Second)
-//			tc.after(t)
-//
-//		})
-//	}
-//
-//}
+func (i *InteractiveSuite) Test_Event() {
+	testcases := []struct {
+		name  string
+		msg   events.Event
+		after func(t *testing.T)
+	}{
+		{
+			name: "同步点赞事件",
+			msg: events.Event{
+				Biz:    "label",
+				BizId:  1,
+				Action: "like",
+				Uid:    33,
+			},
+			after: func(t *testing.T) {
+				likeInfo, err := i.intrDAO.GetLikeInfo(context.Background(), "label", 1, 33)
+				require.NoError(t, err)
+				i.assertLikeBiz(dao.UserLikeBiz{
+					Uid:   33,
+					Biz:   "label",
+					BizId: 1,
+				}, likeInfo)
+				intr, err := i.intrDAO.Get(context.Background(), "label", 1)
+				require.NoError(t, err)
+				i.assertInteractive(dao.Interactive{
+					Biz:     "label",
+					BizId:   1,
+					LikeCnt: 1,
+				}, intr)
+			},
+		},
+		{
+			name: "同步收藏事件",
+			msg: events.Event{
+				Biz:    "label",
+				BizId:  2,
+				Action: "collect",
+				Uid:    33,
+			},
+			after: func(t *testing.T) {
+				collectInfo, err := i.intrDAO.GetCollectInfo(context.Background(), "label", 2, 33)
+				require.NoError(t, err)
+				i.assertCollectBiz(dao.UserCollectionBiz{
+					Uid:   33,
+					Biz:   "label",
+					BizId: 2,
+				}, collectInfo)
+				intr, err := i.intrDAO.Get(context.Background(), "label", 2)
+				require.NoError(t, err)
+				i.assertInteractive(dao.Interactive{
+					Biz:        "label",
+					BizId:      2,
+					CollectCnt: 1,
+				}, intr)
+			},
+		},
+		{
+			name: "同步浏览事件",
+			msg: events.Event{
+				Biz:    "label",
+				BizId:  3,
+				Action: "view",
+				Uid:    33,
+			},
+			after: func(t *testing.T) {
+				intr, err := i.intrDAO.Get(context.Background(), "label", 3)
+				require.NoError(t, err)
+				i.assertInteractive(dao.Interactive{
+					Biz:     "label",
+					BizId:   3,
+					ViewCnt: 1,
+				}, intr)
+			},
+		},
+	}
+	for _, tc := range testcases {
+		i.T().Run(tc.name, func(t *testing.T) {
+			v, err := json.Marshal(tc.msg)
+			require.NoError(t, err)
+			_, err = i.producer.Produce(context.Background(), &mq.Message{
+				Value: v,
+			})
+			require.NoError(t, err)
+			time.Sleep(10 * time.Second)
+			tc.after(t)
+
+		})
+	}
+
+}
 
 func (i *InteractiveSuite) assertLikeBiz(want dao.UserLikeBiz, actual dao.UserLikeBiz) {
 	t := i.T()
