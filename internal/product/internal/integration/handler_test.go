@@ -81,7 +81,6 @@ func (s *ProductModuleTestSuite) TearDownSuite() {
 	s.NoError(err)
 	err = s.db.Exec("DROP TABLE `skus`").Error
 	s.NoError(err)
-
 }
 
 func (s *ProductModuleTestSuite) TearDownTest() {
