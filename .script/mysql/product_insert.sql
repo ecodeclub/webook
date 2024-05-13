@@ -1,19 +1,7 @@
-CREATE TABLE IF NOT EXISTS `categories` (
-    `id` bigint NOT NULL AUTO_INCREMENT COMMENT '商品类别自增ID',
-    `name` varchar(255) NOT NULL COMMENT '商品类别名称',
-    `description` longtext NOT NULL COMMENT '商品类别描述',
-    `ctime` bigint DEFAULT NULL,
-    `utime` bigint DEFAULT NULL,
-    PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
-INSERT INTO `categories` (id, name, description, ctime, utime)
-VALUES (1, 'member', '会员商品', UNIX_TIMESTAMP(), UNIX_TIMESTAMP()),
-       (2, 'code', '兑换码商品', UNIX_TIMESTAMP(), UNIX_TIMESTAMP());
-
 CREATE TABLE IF NOT EXISTS `spus` (
     `id` bigint NOT NULL AUTO_INCREMENT COMMENT '商品SPU自增ID',
-    `category_id` bigint NOT NULL COMMENT '商品类别自增ID',
+    `category` varchar(255) NOT NULL COMMENT '商品SPU类别,系统内部使用product/code',
+    `type` varchar(255) NOT NULL COMMENT '商品SPU类型,系统内部使用member/project',
     `sn` varchar(255) NOT NULL COMMENT '商品SPU序列号',
     `name` varchar(255) NOT NULL COMMENT '商品名称',
     `description` longtext NOT NULL COMMENT '商品描述',
@@ -21,17 +9,20 @@ CREATE TABLE IF NOT EXISTS `spus` (
     `ctime` bigint DEFAULT NULL,
     `utime` bigint DEFAULT NULL,
     PRIMARY KEY (`id`),
+    UNIQUE KEY `uniq_category_type` (`category`,`type`),
     UNIQUE KEY `uniq_product_spu_sn` (`sn`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
-INSERT INTO `spus` (category_id, sn, name, description, status, ctime, utime)
-VALUES (1, 'SPU001', '会员服务', '提供不同期限的会员服务', 2, UNIX_TIMESTAMP(), UNIX_TIMESTAMP()),
-       (2, 'SPU002', '面试项目', '提供不同规模的面试项目', 2, UNIX_TIMESTAMP(), UNIX_TIMESTAMP());
+INSERT INTO `spus` (category, type, sn, name, description, status, ctime, utime)
+VALUES ('product', 'member', 'SPU001', '会员服务', '提供不同期限的会员服务', 2, UNIX_TIMESTAMP(), UNIX_TIMESTAMP()),
+       ('product', 'project', 'SPU002', '面试项目', '提供不同规模的面试项目', 2, UNIX_TIMESTAMP(), UNIX_TIMESTAMP()),
+       ('code', 'member', 'SPU003', '会员服务', '提供不同期限的会员服务', 2, UNIX_TIMESTAMP(), UNIX_TIMESTAMP()),
+       ('code', 'project', 'SPU004', '面试项目', '提供不同规模的面试项目', 2, UNIX_TIMESTAMP(), UNIX_TIMESTAMP());
 
 CREATE TABLE IF NOT EXISTS  `skus` (
     `id` bigint NOT NULL AUTO_INCREMENT COMMENT '商品SKU自增ID',
     `sn` varchar(255) NOT NULL COMMENT '商品SKU序列号',
-    `product_spu_id` bigint NOT NULL COMMENT '商品SPU自增ID',
+    `spu_id` bigint NOT NULL COMMENT '商品SPU自增ID',
     `name` varchar(255) NOT NULL COMMENT 'SKU名称',
     `description` longtext NOT NULL COMMENT '商品描述',
     `price` bigint NOT NULL COMMENT '商品单价',
@@ -45,11 +36,11 @@ CREATE TABLE IF NOT EXISTS  `skus` (
     `utime` bigint DEFAULT NULL,
     PRIMARY KEY (`id`),
     UNIQUE KEY `uniq_product_sku_sn` (`sn`),
-    KEY `idx_product_spu_id` (`product_spu_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+    KEY `idx_spu_id` (`spu_id`)
+)ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 
-INSERT INTO `skus` (sn, product_spu_id, name, description, price, stock, stock_limit, sale_type, attrs, image, status, ctime, utime)
+INSERT INTO `skus` (sn, spu_id, name, description, price, stock, stock_limit, sale_type, attrs, image, status, ctime, utime)
 VALUES
     ('SKU001', 1, '星期会员', '提供一周的会员服务', 799, 1000, 100000000, 1, '{"days":7}', 'image-SKU001', 2, UNIX_TIMESTAMP(), UNIX_TIMESTAMP()),
     ('SKU002', 1, '月会员', '提供一个月的会员服务', 990, 1000, 100000000, 1, '{"days":31}', 'image-SKU002',2,  UNIX_TIMESTAMP(), UNIX_TIMESTAMP()),
