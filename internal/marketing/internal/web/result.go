@@ -24,4 +24,12 @@ var (
 		Code: errs.SystemError.Code,
 		Msg:  errs.SystemError.Msg,
 	}
+	redemptionCodeUsedErrResult = ginx.Result{
+		Code: errs.RedemptionCodeUsedError.Code,
+		Msg:  errs.RedemptionCodeUsedError.Msg,
+	}
+	redemptionCodeNotFoundErrResult = ginx.Result{
+		Code: errs.RedemptionCodeNotFoundErr.Code,
+		Msg:  errs.RedemptionCodeNotFoundErr.Msg,
+	}
 )

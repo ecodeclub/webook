@@ -42,7 +42,8 @@ type SPU struct {
 	SN       string
 	Name     string
 	Desc     string
-	Category Category
+	Category string
+	Type     string
 	SKUs     []SKU
 	Status   Status
 }
@@ -64,9 +65,4 @@ type SKU struct {
 	Attrs  string
 	Image  string
 	Status Status
-}
-
-type Category struct {
-	Name string
-	Desc string
 }

@@ -80,11 +80,11 @@ func InitApp() (*App, error) {
 		return nil, err
 	}
 	handler8 := orderModule.Hdl
-	projectModule := project.InitModule(db)
+	projectModule := project.InitModule(db, mq)
 	handler9 := projectModule.Hdl
 	handler10 := creditModule.Hdl
 	handler11 := paymentModule.Hdl
-	marketingModule, err := marketing.InitModule(db, mq, orderModule)
+	marketingModule, err := marketing.InitModule(db, mq, orderModule, productModule)
 	if err != nil {
 		return nil, err
 	}

@@ -15,7 +15,7 @@
 package event
 
 const (
-	SyncTopic = "sync_events"
+	SyncTopic = "sync_data_to_search"
 )
 
 type SyncEvent struct {

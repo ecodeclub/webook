@@ -16,6 +16,10 @@ package service
 
 import (
 	"context"
+	"time"
+
+	"github.com/ecodeclub/webook/internal/project/internal/event"
+	"github.com/gotomicro/ego/core/elog"
 
 	"github.com/ecodeclub/webook/internal/project/internal/domain"
 	"github.com/ecodeclub/webook/internal/project/internal/repository"
@@ -47,88 +51,143 @@ type ProjectAdminService interface {
 }
 
 type projectAdminService struct {
-	repo repository.ProjectAdminRepository
+	adminRepo repository.ProjectAdminRepository
+	repo      repository.Repository
+	producer  event.SyncProjectToSearchEventProducer
+	logger    *elog.Component
 }
 
 func (svc *projectAdminService) ResumePublish(ctx context.Context, pid int64, resume domain.Resume) (int64, error) {
 	resume.Status = domain.ResumeStatusPublished
-	return svc.repo.ResumePublish(ctx, pid, resume)
+	id, err := svc.adminRepo.ResumePublish(ctx, pid, resume)
+	if err == nil {
+		// 同步数据
+		svc.syncToSearch(pid)
+	}
+	return id, err
 }
 
 func (svc *projectAdminService) QuestionPublish(ctx context.Context, pid int64, que domain.Question) (int64, error) {
 	que.Status = domain.QuestionStatusPublished
-	return svc.repo.QuestionSync(ctx, pid, que)
+	id, err := svc.adminRepo.QuestionSync(ctx, pid, que)
+	if err == nil {
+		// 同步数据
+		svc.syncToSearch(pid)
+	}
+	return id, err
 }
 
 func (svc *projectAdminService) DifficultyPublish(ctx context.Context, pid int64, diff domain.Difficulty) (int64, error) {
 	diff.Status = domain.DifficultyStatusPublished
-	return svc.repo.DifficultyPublish(ctx, pid, diff)
+	id, err := svc.adminRepo.DifficultyPublish(ctx, pid, diff)
+	if err == nil {
+		// 同步数据
+		svc.syncToSearch(pid)
+	}
+	return id, err
 }
 
 func (svc *projectAdminService) IntroductionPublish(ctx context.Context, pid int64, intr domain.Introduction) (int64, error) {
 	intr.Status = domain.IntroductionStatusPublished
-	return svc.repo.IntroductionSync(ctx, pid, intr)
+	id, err := svc.adminRepo.IntroductionSync(ctx, pid, intr)
+	if err == nil {
+		// 同步数据
+		svc.syncToSearch(pid)
+	}
+	return id, err
 }
 
 func (svc *projectAdminService) IntroductionDetail(ctx context.Context, id int64) (domain.Introduction, error) {
-	return svc.repo.IntroductionDetail(ctx, id)
+	return svc.adminRepo.IntroductionDetail(ctx, id)
 }
 
 func (svc *projectAdminService) IntroductionSave(ctx context.Context, pid int64, intr domain.Introduction) (int64, error) {
 	intr.Status = domain.IntroductionStatusUnpublished
-	return svc.repo.IntroductionSave(ctx, pid, intr)
+	return svc.adminRepo.IntroductionSave(ctx, pid, intr)
 }
 
 func (svc *projectAdminService) Publish(ctx context.Context, prj domain.Project) (int64, error) {
 	prj.Status = domain.ProjectStatusPublished
-	return svc.repo.Sync(ctx, prj)
+	id, err := svc.adminRepo.Sync(ctx, prj)
+	if err == nil {
+		// 同步数据，这边后续读写分离之后，可能会有问题
+		svc.syncToSearch(id)
+	}
+	return id, err
 }
 
 func (svc *projectAdminService) QuestionDetail(ctx context.Context, id int64) (domain.Question, error) {
-	return svc.repo.QuestionDetail(ctx, id)
+	return svc.adminRepo.QuestionDetail(ctx, id)
 }
 
 func (svc *projectAdminService) QuestionSave(ctx context.Context, pid int64, que domain.Question) (int64, error) {
 	que.Status = domain.QuestionStatusUnpublished
-	return svc.repo.QuestionSave(ctx, pid, que)
+	return svc.adminRepo.QuestionSave(ctx, pid, que)
 }
 
 func (svc *projectAdminService) DifficultyDetail(ctx context.Context, id int64) (domain.Difficulty, error) {
-	return svc.repo.DifficultyDetail(ctx, id)
+	return svc.adminRepo.DifficultyDetail(ctx, id)
 }
 
 func (svc *projectAdminService) DifficultySave(ctx context.Context, pid int64, diff domain.Difficulty) (int64, error) {
 	diff.Status = domain.DifficultyStatusUnpublished
-	return svc.repo.DifficultySave(ctx, pid, diff)
+	return svc.adminRepo.DifficultySave(ctx, pid, diff)
 }
 
 func (svc *projectAdminService) ResumeDetail(ctx context.Context, id int64) (domain.Resume, error) {
-	return svc.repo.ResumeDetail(ctx, id)
+	return svc.adminRepo.ResumeDetail(ctx, id)
 }
 
 func (svc *projectAdminService) ResumeSave(ctx context.Context, pid int64, resume domain.Resume) (int64, error) {
 	resume.Status = domain.ResumeStatusUnpublished
-	return svc.repo.ResumeSave(ctx, pid, resume)
+	return svc.adminRepo.ResumeSave(ctx, pid, resume)
 }
 
 func (svc *projectAdminService) Detail(ctx context.Context, id int64) (domain.Project, error) {
-	return svc.repo.Detail(ctx, id)
+	return svc.adminRepo.Detail(ctx, id)
 }
 
 func (svc *projectAdminService) Count(ctx context.Context) (int64, error) {
-	return svc.repo.Count(ctx)
+	return svc.adminRepo.Count(ctx)
 }
 
 func (svc *projectAdminService) List(ctx context.Context, offset int, limit int) ([]domain.Project, error) {
-	return svc.repo.List(ctx, offset, limit)
+	return svc.adminRepo.List(ctx, offset, limit)
 }
 
 func (svc *projectAdminService) Save(ctx context.Context,
 	prj domain.Project) (int64, error) {
 	prj.Status = domain.ProjectStatusUnpublished
-	return svc.repo.Save(ctx, prj)
+	return svc.adminRepo.Save(ctx, prj)
 }
 
-func NewProjectAdminService(repo repository.ProjectAdminRepository) ProjectAdminService {
-	return &projectAdminService{repo: repo}
+func (svc *projectAdminService) syncToSearch(id int64) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+	defer cancel()
+	prj, err := svc.repo.Detail(ctx, id)
+	if err != nil {
+		svc.logger.Error("准备同步数据，查询项目详情失败",
+			elog.Int64("id", id),
+			elog.FieldErr(err))
+		return
+	}
+	evt := event.NewSyncProjectToSearchEvent(prj)
+	err = svc.producer.Produce(ctx, evt)
+	if err != nil {
+		svc.logger.Error("同步数据到搜索失败",
+			elog.Int64("id", id),
+			elog.FieldErr(err))
+	}
+}
+
+func NewProjectAdminService(
+	adminRepo repository.ProjectAdminRepository,
+	producer event.SyncProjectToSearchEventProducer,
+	repo repository.Repository) ProjectAdminService {
+	return &projectAdminService{
+		adminRepo: adminRepo,
+		producer:  producer,
+		repo:      repo,
+		logger:    elog.DefaultLogger,
+	}
 }

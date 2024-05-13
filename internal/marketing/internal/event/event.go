@@ -39,6 +39,19 @@ type OrderEvent struct {
 type SPU struct {
 	ID       int64  `json:"id"`
 	Category string `json:"category"`
+	Type     string `json:"type"`
+}
+
+func (s SPU) IsProductCategory() bool {
+	return s.Category == "product"
+}
+
+func (s SPU) IsCodeCategory() bool {
+	return s.Category == "code"
+}
+
+func (s SPU) IsMemberProduct() bool {
+	return s.IsProductCategory() && s.Type == "member"
 }
 
 type CreditIncreaseEvent struct {
@@ -52,5 +65,8 @@ type CreditIncreaseEvent struct {
 
 type PermissionEvent struct {
 	// todo: 权限模块
-	Key string `json:"key"`
+	Key   string `json:"key"`
+	Uid   int64  `json:"uid"`
+	Biz   string `json:"biz"`
+	BizId int64  `json:"biz_id"`
 }

@@ -24,12 +24,15 @@ import (
 	"github.com/ecodeclub/webook/internal/marketing/internal/repository/dao"
 )
 
+var (
+	ErrRedemptionNotFound = dao.ErrRedemptionNotFound
+	ErrRedemptionCodeUsed = dao.ErrRedemptionCodeUsed
+)
+
 type MarketingRepository interface {
 	CreateRedemptionCodes(ctx context.Context, oid int64, codes []domain.RedemptionCode) ([]int64, error)
-
 	FindRedemptionCode(ctx context.Context, code string) (domain.RedemptionCode, error)
-	SetUnusedRedemptionCodeStatusUsed(ctx context.Context, uid int64, code string) error
-
+	SetUnusedRedemptionCodeStatusUsed(ctx context.Context, uid int64, code string) (domain.RedemptionCode, error)
 	TotalRedemptionCodes(ctx context.Context, uid int64) (int64, error)
 	FindRedemptionCodesByUID(ctx context.Context, uid int64, offset, limit int) ([]domain.RedemptionCode, error)
 }
@@ -51,13 +54,19 @@ func (m *marketingRepository) CreateRedemptionCodes(ctx context.Context, oid int
 }
 
 func (m *marketingRepository) FindRedemptionCode(ctx context.Context, code string) (domain.RedemptionCode, error) {
-	// TODO implement me
-	panic("implement me")
+	r, err := m.dao.FindRedemptionCodeByCode(ctx, code)
+	if err != nil {
+		return domain.RedemptionCode{}, err
+	}
+	return m.toDomain([]dao.RedemptionCode{r})[0], err
 }
 
-func (m *marketingRepository) SetUnusedRedemptionCodeStatusUsed(ctx context.Context, uid int64, code string) error {
-	// TODO implement me
-	panic("implement me")
+func (m *marketingRepository) SetUnusedRedemptionCodeStatusUsed(ctx context.Context, uid int64, code string) (domain.RedemptionCode, error) {
+	r, err := m.dao.SetUnusedRedemptionCodeStatusUsed(ctx, uid, code)
+	if err != nil {
+		return domain.RedemptionCode{}, err
+	}
+	return m.toDomain([]dao.RedemptionCode{r})[0], err
 }
 
 func (m *marketingRepository) TotalRedemptionCodes(ctx context.Context, uid int64) (int64, error) {
@@ -75,12 +84,15 @@ func (m *marketingRepository) FindRedemptionCodesByUID(ctx context.Context, uid 
 func (m *marketingRepository) toDomain(codes []dao.RedemptionCode) []domain.RedemptionCode {
 	return slice.Map(codes, func(idx int, src dao.RedemptionCode) domain.RedemptionCode {
 		return domain.RedemptionCode{
+			ID:       src.Id,
 			OwnerID:  src.OwnerId,
 			OrderID:  src.OrderId,
 			SPUID:    src.SPUID,
+			SPUType:  src.SPUType,
 			SKUAttrs: src.SKUAttrs.String,
 			Code:     src.Code,
 			Status:   domain.RedemptionCodeStatus(src.Status),
+			Ctime:    src.Ctime,
 			Utime:    src.Utime,
 		}
 	})
@@ -92,6 +104,7 @@ func (m *marketingRepository) toEntities(codes []domain.RedemptionCode) []dao.Re
 			OwnerId:  src.OwnerID,
 			OrderId:  src.OrderID,
 			SPUID:    src.SPUID,
+			SPUType:  src.SPUType,
 			SKUAttrs: sqlx.NewNullString(src.SKUAttrs),
 			Code:     src.Code,
 			Status:   src.Status.ToUint8(),

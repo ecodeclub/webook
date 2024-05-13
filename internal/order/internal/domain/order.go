@@ -60,7 +60,8 @@ type Category struct {
 
 type SPU struct {
 	ID       int64
-	Category Category
+	Category string
+	Type     string
 }
 
 type SKU struct {

@@ -150,7 +150,8 @@ func (s *OrderModuleTestSuite) TestHandler_PreviewOrder() {
 					SN:       "SPU-SKU100",
 					Name:     "SPU-商品SKU100",
 					Desc:     "SPU-商品SKU100",
-					Category: product.Category{Name: "member", Desc: "商品会员"},
+					Category: "code",
+					Type:     "member",
 				}, nil)
 				ppm := &product.Module{Svc: mockProductSvc}
 
@@ -186,7 +187,7 @@ func (s *OrderModuleTestSuite) TestHandler_PreviewOrder() {
 						RealTotalAmt:     990,
 						Items: []web.OrderItem{
 							{
-								SPU: web.SPU{Category: "member"},
+								SPU: web.SPU{Category: "code"},
 								SKU: web.SKU{
 									SN:            "SKU100",
 									Image:         "SKUImage100",
@@ -380,7 +381,8 @@ func (s *OrderModuleTestSuite) TestHandler_PreviewOrderFailed() {
 					SN:       "SPU-SKU100",
 					Name:     "SPU-商品SKU100",
 					Desc:     "SPU-商品SKU100",
-					Category: product.Category{Name: "member", Desc: "会员商品"},
+					Category: "product",
+					Type:     "member",
 				}, nil)
 				ppm := &product.Module{Svc: mockProductSvc}
 
@@ -491,7 +493,8 @@ func (s *OrderModuleTestSuite) TestHandler_CreateOrder() {
 					SN:       "SPU-SKU101",
 					Name:     "SPU-商品SKU101",
 					Desc:     "SPU-商品SKU101",
-					Category: product.Category{Name: "Code", Desc: "兑换码"},
+					Category: "code",
+					Type:     "member",
 				}, nil)
 				ppm := &product.Module{Svc: mockProductSvc}
 
@@ -586,7 +589,8 @@ func (s *OrderModuleTestSuite) TestHandler_CreateOrder() {
 					SN:       "SPU-SKU101",
 					Name:     "SPU-商品SKU101",
 					Desc:     "SPU-商品SKU101",
-					Category: product.Category{Name: "Code", Desc: "兑换码"},
+					Category: "code",
+					Type:     "member",
 				}, nil)
 				ppm := &product.Module{Svc: mockProductSvc}
 
@@ -884,7 +888,8 @@ func (s *OrderModuleTestSuite) TestHandler_CreateOrderFailed() {
 					SN:       "SPU-SKU101",
 					Name:     "SPU-商品SKU101",
 					Desc:     "SPU-商品SKU101",
-					Category: product.Category{Name: "Code", Desc: "兑换码"},
+					Category: "code",
+					Type:     "member",
 				}, nil).AnyTimes()
 				ppm := &product.Module{Svc: mockProductSvc}
 
@@ -967,7 +972,8 @@ func (s *OrderModuleTestSuite) createOrderFailedHandler(t *testing.T, ctrl *gomo
 		SN:       "SPU-SKU101",
 		Name:     "SPU-商品SKU101",
 		Desc:     "SPU-商品SKU101",
-		Category: product.Category{Name: "Code", Desc: "兑换码"},
+		Category: "code",
+		Type:     "member",
 	}, nil).AnyTimes()
 
 	cm := &credit.Module{Svc: creditmocks.NewMockService(ctrl)}
@@ -1003,16 +1009,7 @@ func (s *OrderModuleTestSuite) TestHandler_Repay() {
 					RealTotalAmt:     9900,
 					Status:           domain.StatusProcessing.ToUint8(),
 				}, []dao.OrderItem{
-					{
-						OrderId:          11212,
-						SPUId:            1,
-						SKUId:            1,
-						SKUName:          "商品SKU",
-						SKUDescription:   "商品SKU描述",
-						SKUOriginalPrice: 9900,
-						SKURealPrice:     9900,
-						Quantity:         1,
-					},
+					s.newOrderItemDAO(11212, 1),
 				})
 				require.NoError(t, err)
 			},
@@ -1076,16 +1073,7 @@ func (s *OrderModuleTestSuite) TestHandler_Repay() {
 					RealTotalAmt:     9900,
 					Status:           domain.StatusProcessing.ToUint8(),
 				}, []dao.OrderItem{
-					{
-						OrderId:          11213,
-						SPUId:            1,
-						SKUId:            1,
-						SKUName:          "商品SKU",
-						SKUDescription:   "商品SKU描述",
-						SKUOriginalPrice: 9900,
-						SKURealPrice:     9900,
-						Quantity:         1,
-					},
+					s.newOrderItemDAO(11213, 1),
 				})
 				require.NoError(t, err)
 			},
@@ -1151,6 +1139,23 @@ func (s *OrderModuleTestSuite) TestHandler_Repay() {
 
 }
 
+func (s *OrderModuleTestSuite) newOrderItemDAO(oid, id int64) dao.OrderItem {
+	return dao.OrderItem{
+		OrderId:          oid,
+		SPUId:            id,
+		SPUCategory:      "code",
+		SPUType:          "member",
+		SKUId:            id,
+		SKUSN:            fmt.Sprintf("SKUSN-%d", id),
+		SKUImage:         fmt.Sprintf("SKUImage-%d", id),
+		SKUName:          fmt.Sprintf("SKUName-%d", id),
+		SKUDescription:   fmt.Sprintf("SKUDescription-%d", id),
+		SKUOriginalPrice: 9900,
+		SKURealPrice:     9900,
+		Quantity:         1,
+	}
+}
+
 func (s *OrderModuleTestSuite) TestHandler_RepayFailed() {
 	t := s.T()
 
@@ -1176,17 +1181,7 @@ func (s *OrderModuleTestSuite) TestHandler_RepayFailed() {
 					RealTotalAmt:     9900,
 					Status:           domain.StatusInit.ToUint8(),
 				}, []dao.OrderItem{
-					{
-						SPUId:            1,
-						SKUId:            1,
-						SKUSN:            fmt.Sprintf("SKUSN-%d", 1),
-						SKUImage:         fmt.Sprintf("SKUImage-%d", 1),
-						SKUName:          "商品SKU",
-						SKUDescription:   "商品SKU描述",
-						SKUOriginalPrice: 9900,
-						SKURealPrice:     9900,
-						Quantity:         1,
-					},
+					s.newOrderItemDAO(0, 1),
 				})
 				require.NoError(t, err)
 			},
@@ -1214,17 +1209,7 @@ func (s *OrderModuleTestSuite) TestHandler_RepayFailed() {
 					RealTotalAmt:     9900,
 					Status:           domain.StatusFailed.ToUint8(),
 				}, []dao.OrderItem{
-					{
-						SPUId:            1,
-						SKUId:            1,
-						SKUSN:            fmt.Sprintf("SKUSN-%d", 1),
-						SKUImage:         fmt.Sprintf("SKUImage-%d", 1),
-						SKUName:          "商品SKU",
-						SKUDescription:   "商品SKU描述",
-						SKUOriginalPrice: 9900,
-						SKURealPrice:     9900,
-						Quantity:         1,
-					},
+					s.newOrderItemDAO(0, 1),
 				})
 				require.NoError(t, err)
 			},
@@ -1252,17 +1237,7 @@ func (s *OrderModuleTestSuite) TestHandler_RepayFailed() {
 					RealTotalAmt:     9900,
 					Status:           domain.StatusSuccess.ToUint8(),
 				}, []dao.OrderItem{
-					{
-						SPUId:            1,
-						SKUId:            1,
-						SKUSN:            fmt.Sprintf("SKUSN-%d", 1),
-						SKUImage:         fmt.Sprintf("SKUImage-%d", 1),
-						SKUName:          "商品SKU",
-						SKUDescription:   "商品SKU描述",
-						SKUOriginalPrice: 9900,
-						SKURealPrice:     9900,
-						Quantity:         1,
-					},
+					s.newOrderItemDAO(0, 1),
 				})
 				require.NoError(t, err)
 			},
@@ -1290,17 +1265,7 @@ func (s *OrderModuleTestSuite) TestHandler_RepayFailed() {
 					RealTotalAmt:     9900,
 					Status:           domain.StatusCanceled.ToUint8(),
 				}, []dao.OrderItem{
-					{
-						SPUId:            1,
-						SKUId:            1,
-						SKUSN:            fmt.Sprintf("SKUSN-%d", 1),
-						SKUImage:         fmt.Sprintf("SKUImage-%d", 1),
-						SKUName:          "商品SKU",
-						SKUDescription:   "商品SKU描述",
-						SKUOriginalPrice: 9900,
-						SKURealPrice:     9900,
-						Quantity:         1,
-					},
+					s.newOrderItemDAO(0, 1),
 				})
 				require.NoError(t, err)
 			},
@@ -1328,17 +1293,7 @@ func (s *OrderModuleTestSuite) TestHandler_RepayFailed() {
 					RealTotalAmt:     9900,
 					Status:           domain.StatusTimeoutClosed.ToUint8(),
 				}, []dao.OrderItem{
-					{
-						SPUId:            1,
-						SKUId:            1,
-						SKUSN:            fmt.Sprintf("SKUSN-%d", 1),
-						SKUImage:         fmt.Sprintf("SKUImage-%d", 1),
-						SKUName:          "商品SKU",
-						SKUDescription:   "商品SKU描述",
-						SKUOriginalPrice: 9900,
-						SKURealPrice:     9900,
-						Quantity:         1,
-					},
+					s.newOrderItemDAO(0, 1),
 				})
 				require.NoError(t, err)
 			},
@@ -1366,17 +1321,7 @@ func (s *OrderModuleTestSuite) TestHandler_RepayFailed() {
 					RealTotalAmt:     9900,
 					Status:           domain.StatusProcessing.ToUint8(),
 				}, []dao.OrderItem{
-					{
-						SPUId:            1,
-						SKUId:            1,
-						SKUSN:            fmt.Sprintf("SKUSN-%d", 1),
-						SKUImage:         fmt.Sprintf("SKUImage-%d", 1),
-						SKUName:          "商品SKU",
-						SKUDescription:   "商品SKU描述",
-						SKUOriginalPrice: 9900,
-						SKURealPrice:     9900,
-						Quantity:         1,
-					},
+					s.newOrderItemDAO(0, 1),
 				})
 				require.NoError(t, err)
 			},
@@ -1482,17 +1427,7 @@ func (s *OrderModuleTestSuite) TestHandler_ListOrders() {
 			Status:           status,
 		}
 		items := []dao.OrderItem{
-			{
-				SPUId:            id,
-				SKUId:            id,
-				SKUSN:            fmt.Sprintf("SKUSN-%d", id),
-				SKUImage:         fmt.Sprintf("SKUImage-%d", id),
-				SKUName:          fmt.Sprintf("SKUName-%d", id),
-				SKUDescription:   fmt.Sprintf("SKUDescription-%d", id),
-				SKUOriginalPrice: 100,
-				SKURealPrice:     100,
-				Quantity:         1,
-			},
+			s.newOrderItemDAO(0, id),
 		}
 		_, err := s.dao.CreateOrder(context.Background(), orderEntity, items)
 		require.NoError(s.T(), err)
@@ -1528,13 +1463,14 @@ func (s *OrderModuleTestSuite) TestHandler_ListOrders() {
 							Status:           domain.StatusProcessing.ToUint8(),
 							Items: []web.OrderItem{
 								{
+									SPU: web.SPU{Category: "code"},
 									SKU: web.SKU{
 										SN:            fmt.Sprintf("SKUSN-%d", 199),
 										Image:         fmt.Sprintf("SKUImage-%d", 199),
 										Name:          fmt.Sprintf("SKUName-%d", 199),
 										Desc:          fmt.Sprintf("SKUDescription-%d", 199),
-										OriginalPrice: 100,
-										RealPrice:     100,
+										OriginalPrice: 9900,
+										RealPrice:     9900,
 										Quantity:      1,
 									},
 								},
@@ -1551,13 +1487,14 @@ func (s *OrderModuleTestSuite) TestHandler_ListOrders() {
 							Status:           domain.StatusTimeoutClosed.ToUint8(),
 							Items: []web.OrderItem{
 								{
+									SPU: web.SPU{Category: "code"},
 									SKU: web.SKU{
 										SN:            fmt.Sprintf("SKUSN-%d", 197),
 										Image:         fmt.Sprintf("SKUImage-%d", 197),
 										Name:          fmt.Sprintf("SKUName-%d", 197),
 										Desc:          fmt.Sprintf("SKUDescription-%d", 197),
-										OriginalPrice: 100,
-										RealPrice:     100,
+										OriginalPrice: 9900,
+										RealPrice:     9900,
 										Quantity:      1,
 									},
 								},
@@ -1626,17 +1563,7 @@ func (s *OrderModuleTestSuite) TestHandler_RetrieveOrderDetail() {
 					RealTotalAmt:     9900,
 					Status:           domain.StatusProcessing.ToUint8(),
 				}, []dao.OrderItem{
-					{
-						SPUId:            1,
-						SKUId:            1,
-						SKUSN:            fmt.Sprintf("SKUSN-%d", 1),
-						SKUImage:         fmt.Sprintf("SKUImage-%d", 1),
-						SKUName:          "商品SKU",
-						SKUDescription:   "商品SKU描述",
-						SKUOriginalPrice: 9900,
-						SKURealPrice:     9900,
-						Quantity:         1,
-					},
+					s.newOrderItemDAO(0, 1),
 				})
 				require.NoError(t, err)
 			},
@@ -1687,11 +1614,12 @@ func (s *OrderModuleTestSuite) TestHandler_RetrieveOrderDetail() {
 						Status:           domain.StatusProcessing.ToUint8(),
 						Items: []web.OrderItem{
 							{
+								SPU: web.SPU{Category: "code"},
 								SKU: web.SKU{
 									SN:            fmt.Sprintf("SKUSN-%d", 1),
 									Image:         fmt.Sprintf("SKUImage-%d", 1),
-									Name:          "商品SKU",
-									Desc:          "商品SKU描述",
+									Name:          fmt.Sprintf("SKUName-%d", 1),
+									Desc:          fmt.Sprintf("SKUDescription-%d", 1),
 									OriginalPrice: 9900,
 									RealPrice:     9900,
 									Quantity:      1,
@@ -1746,17 +1674,7 @@ func (s *OrderModuleTestSuite) TestHandler_RetrieveOrderDetailFailed() {
 					RealTotalAmt:     9900,
 					Status:           domain.StatusInit.ToUint8(),
 				}, []dao.OrderItem{
-					{
-						SPUId:            1,
-						SKUId:            1,
-						SKUSN:            fmt.Sprintf("SKUSN-%d", 1),
-						SKUImage:         fmt.Sprintf("SKUImage-%d", 1),
-						SKUName:          "商品SKU",
-						SKUDescription:   "商品SKU描述",
-						SKUOriginalPrice: 9900,
-						SKURealPrice:     9900,
-						Quantity:         1,
-					},
+					s.newOrderItemDAO(0, 1),
 				})
 				require.NoError(t, err)
 			},
@@ -1809,17 +1727,7 @@ func (s *OrderModuleTestSuite) TestHandler_RetrieveOrderDetailFailed() {
 					RealTotalAmt:     9900,
 					Status:           domain.StatusProcessing.ToUint8(),
 				}, []dao.OrderItem{
-					{
-						SPUId:            1,
-						SKUId:            1,
-						SKUSN:            fmt.Sprintf("SKUSN-%d", 1),
-						SKUImage:         fmt.Sprintf("SKUImage-%d", 1),
-						SKUName:          "商品SKU",
-						SKUDescription:   "商品SKU描述",
-						SKUOriginalPrice: 9900,
-						SKURealPrice:     9900,
-						Quantity:         1,
-					},
+					s.newOrderItemDAO(0, 1),
 				})
 				require.NoError(t, err)
 			},
@@ -1890,15 +1798,7 @@ func (s *OrderModuleTestSuite) TestHandler_CancelOrder() {
 					PaymentSn: sqlx.NewNullString("paymentSN-44"),
 					Status:    domain.StatusProcessing.ToUint8(),
 				}, []dao.OrderItem{
-					{
-						SPUId:            1,
-						SKUId:            1,
-						SKUName:          "商品SKU",
-						SKUDescription:   "商品SKU描述",
-						SKUOriginalPrice: 9900,
-						SKURealPrice:     9900,
-						Quantity:         1,
-					},
+					s.newOrderItemDAO(0, 1),
 				})
 				require.NoError(t, err)
 			},
@@ -1963,17 +1863,7 @@ func (s *OrderModuleTestSuite) TestHandler_CancelOrderFailed() {
 					RealTotalAmt:     9900,
 					Status:           domain.StatusInit.ToUint8(),
 				}, []dao.OrderItem{
-					{
-						SPUId:            1,
-						SKUId:            1,
-						SKUSN:            fmt.Sprintf("SKUSN-%d", 1),
-						SKUImage:         fmt.Sprintf("SKUImage-%d", 1),
-						SKUName:          "商品SKU",
-						SKUDescription:   "商品SKU描述",
-						SKUOriginalPrice: 9900,
-						SKURealPrice:     9900,
-						Quantity:         1,
-					},
+					s.newOrderItemDAO(0, 1),
 				})
 				require.NoError(t, err)
 			},
@@ -2001,17 +1891,7 @@ func (s *OrderModuleTestSuite) TestHandler_CancelOrderFailed() {
 					RealTotalAmt:     9900,
 					Status:           domain.StatusFailed.ToUint8(),
 				}, []dao.OrderItem{
-					{
-						SPUId:            1,
-						SKUId:            1,
-						SKUSN:            fmt.Sprintf("SKUSN-%d", 1),
-						SKUImage:         fmt.Sprintf("SKUImage-%d", 1),
-						SKUName:          "商品SKU",
-						SKUDescription:   "商品SKU描述",
-						SKUOriginalPrice: 9900,
-						SKURealPrice:     9900,
-						Quantity:         1,
-					},
+					s.newOrderItemDAO(0, 1),
 				})
 				require.NoError(t, err)
 			},
@@ -2039,17 +1919,7 @@ func (s *OrderModuleTestSuite) TestHandler_CancelOrderFailed() {
 					RealTotalAmt:     9900,
 					Status:           domain.StatusSuccess.ToUint8(),
 				}, []dao.OrderItem{
-					{
-						SPUId:            1,
-						SKUId:            1,
-						SKUSN:            fmt.Sprintf("SKUSN-%d", 1),
-						SKUImage:         fmt.Sprintf("SKUImage-%d", 1),
-						SKUName:          "商品SKU",
-						SKUDescription:   "商品SKU描述",
-						SKUOriginalPrice: 9900,
-						SKURealPrice:     9900,
-						Quantity:         1,
-					},
+					s.newOrderItemDAO(0, 1),
 				})
 				require.NoError(t, err)
 			},
@@ -2077,17 +1947,7 @@ func (s *OrderModuleTestSuite) TestHandler_CancelOrderFailed() {
 					RealTotalAmt:     9900,
 					Status:           domain.StatusCanceled.ToUint8(),
 				}, []dao.OrderItem{
-					{
-						SPUId:            1,
-						SKUId:            1,
-						SKUSN:            fmt.Sprintf("SKUSN-%d", 1),
-						SKUImage:         fmt.Sprintf("SKUImage-%d", 1),
-						SKUName:          "商品SKU",
-						SKUDescription:   "商品SKU描述",
-						SKUOriginalPrice: 9900,
-						SKURealPrice:     9900,
-						Quantity:         1,
-					},
+					s.newOrderItemDAO(0, 1),
 				})
 				require.NoError(t, err)
 			},
@@ -2115,17 +1975,7 @@ func (s *OrderModuleTestSuite) TestHandler_CancelOrderFailed() {
 					RealTotalAmt:     9900,
 					Status:           domain.StatusTimeoutClosed.ToUint8(),
 				}, []dao.OrderItem{
-					{
-						SPUId:            1,
-						SKUId:            1,
-						SKUSN:            fmt.Sprintf("SKUSN-%d", 1),
-						SKUImage:         fmt.Sprintf("SKUImage-%d", 1),
-						SKUName:          "商品SKU",
-						SKUDescription:   "商品SKU描述",
-						SKUOriginalPrice: 9900,
-						SKURealPrice:     9900,
-						Quantity:         1,
-					},
+					s.newOrderItemDAO(0, 1),
 				})
 				require.NoError(t, err)
 			},
@@ -2223,16 +2073,7 @@ func (s *OrderModuleTestSuite) TestPaymentConsumer_Consume() {
 					PaymentSn: sqlx.NewNullString("paymentSN-22"),
 					Status:    domain.StatusProcessing.ToUint8(),
 				}, []dao.OrderItem{
-					{
-						SPUId:            1,
-						SPUCategory:      "member",
-						SKUId:            1,
-						SKUName:          "商品SKU",
-						SKUDescription:   "商品SKU描述",
-						SKUOriginalPrice: 9900,
-						SKURealPrice:     9900,
-						Quantity:         1,
-					},
+					s.newOrderItemDAO(0, 1),
 				})
 				require.NoError(t, err)
 			},
@@ -2275,15 +2116,7 @@ func (s *OrderModuleTestSuite) TestPaymentConsumer_Consume() {
 					PaymentSn: sqlx.NewNullString("paymentSN-25"),
 					Status:    domain.StatusProcessing.ToUint8(),
 				}, []dao.OrderItem{
-					{
-						SPUId:            1,
-						SKUId:            1,
-						SKUName:          "商品SKU",
-						SKUDescription:   "商品SKU描述",
-						SKUOriginalPrice: 9900,
-						SKURealPrice:     9900,
-						Quantity:         1,
-					},
+					s.newOrderItemDAO(0, 1),
 				})
 				require.NoError(t, err)
 			},
@@ -2408,15 +2241,7 @@ func (s *OrderModuleTestSuite) TestPaymentConsumer_Consume() {
 					PaymentSn: sqlx.NewNullString("paymentSN-23"),
 					Status:    domain.StatusProcessing.ToUint8(),
 				}, []dao.OrderItem{
-					{
-						SPUId:            1,
-						SKUId:            1,
-						SKUName:          "商品SKU",
-						SKUDescription:   "商品SKU描述",
-						SKUOriginalPrice: 9900,
-						SKURealPrice:     9900,
-						Quantity:         1,
-					},
+					s.newOrderItemDAO(0, 1),
 				})
 				require.NoError(t, err)
 			},
@@ -2457,15 +2282,7 @@ func (s *OrderModuleTestSuite) TestPaymentConsumer_Consume() {
 					PaymentSn: sqlx.NewNullString("paymentSN-24"),
 					Status:    domain.StatusProcessing.ToUint8(),
 				}, []dao.OrderItem{
-					{
-						SPUId:            1,
-						SKUId:            1,
-						SKUName:          "商品SKU",
-						SKUDescription:   "商品SKU描述",
-						SKUOriginalPrice: 9900,
-						SKURealPrice:     9900,
-						Quantity:         1,
-					},
+					s.newOrderItemDAO(0, 1),
 				})
 				require.NoError(t, err)
 			},
@@ -2540,15 +2357,7 @@ func (s *OrderModuleTestSuite) TestJob_CloseTimeoutOrders() {
 						RealTotalAmt:     100,
 					}
 					items := []dao.OrderItem{
-						{
-							SPUId:            id,
-							SKUId:            id,
-							SKUName:          fmt.Sprintf("SKUName-%d", id),
-							SKUDescription:   fmt.Sprintf("SKUDescription-%d", id),
-							SKUOriginalPrice: 100,
-							SKURealPrice:     100,
-							Quantity:         1,
-						},
+						s.newOrderItemDAO(0, 1),
 					}
 					_, err := s.dao.CreateOrder(context.Background(), orderEntity, items)
 					require.NoError(s.T(), err)
@@ -2585,15 +2394,7 @@ func (s *OrderModuleTestSuite) TestJob_CloseTimeoutOrders() {
 						RealTotalAmt:     100,
 					}
 					items := []dao.OrderItem{
-						{
-							SPUId:            id,
-							SKUId:            id,
-							SKUName:          fmt.Sprintf("SKUName-%d", id),
-							SKUDescription:   fmt.Sprintf("SKUDescription-%d", id),
-							SKUOriginalPrice: 100,
-							SKURealPrice:     100,
-							Quantity:         1,
-						},
+						s.newOrderItemDAO(0, 1),
 					}
 					_, err := s.dao.CreateOrder(context.Background(), orderEntity, items)
 					require.NoError(s.T(), err)

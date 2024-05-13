@@ -19,11 +19,10 @@ type SNReq struct {
 }
 
 type SPU struct {
-	SN       string   `json:"sn"`
-	Name     string   `json:"name"`
-	Desc     string   `json:"desc"`
-	Category Category `json:"category"`
-	SKUs     []SKU    `json:"skus"`
+	SN   string `json:"sn"`
+	Name string `json:"name"`
+	Desc string `json:"desc"`
+	SKUs []SKU  `json:"skus"`
 }
 
 type SKU struct {

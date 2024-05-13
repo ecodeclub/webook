@@ -22,35 +22,28 @@ import (
 	"github.com/ecodeclub/mq-api"
 )
 
-const (
-	SyncTopic = "sync_data_to_search"
-)
-
-type SyncEventProducer interface {
-	Produce(ctx context.Context, evt QuestionEvent) error
+type SyncProjectToSearchEventProducer interface {
+	Produce(ctx context.Context,
+		evt SyncProjectToSearchEvent) error
 }
-type syncEventProducerProducer struct {
+
+type syncProjectToSearchEventProducer struct {
 	producer mq.Producer
 }
 
-func NewSyncEventProducer(q mq.MQ) (SyncEventProducer, error) {
-	p, err := q.Producer(SyncTopic)
-	if err != nil {
-		return nil, err
-	}
-	return &syncEventProducerProducer{
-		producer: p,
-	}, nil
+func NewSyncProjectToSearchEventProducer(producer mq.Producer) SyncProjectToSearchEventProducer {
+	return &syncProjectToSearchEventProducer{producer: producer}
 }
 
-func (s *syncEventProducerProducer) Produce(ctx context.Context, evt QuestionEvent) error {
+func (p *syncProjectToSearchEventProducer) Produce(ctx context.Context,
+	evt SyncProjectToSearchEvent) error {
 	data, err := json.Marshal(&evt)
 	if err != nil {
 		return fmt.Errorf("序列化失败: %w", err)
 	}
-	_, err = s.producer.Produce(ctx, &mq.Message{Value: data})
+	_, err = p.producer.Produce(ctx, &mq.Message{Value: data})
 	if err != nil {
-		return fmt.Errorf("发送同步搜索消息失败: %w", err)
+		return fmt.Errorf("发送注册成功消息失败: %w", err)
 	}
 	return nil
 }

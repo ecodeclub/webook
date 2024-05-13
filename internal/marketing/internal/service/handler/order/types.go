@@ -12,27 +12,30 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package event
+package order
 
-const (
-	paymentEventName = "payment_events"
-	orderEventName   = "order_events"
+import (
+	"context"
+
+	"github.com/ecodeclub/webook/internal/marketing/internal/domain"
+	"github.com/ecodeclub/webook/internal/order"
 )
 
-type PaymentEvent struct {
-	OrderSN string `json:"orderSN"`
-	PayerID int64  `json:"payerID"`
-	Status  uint8  `json:"status"` // Success, Failed
-}
+type (
+	OrderInfo struct {
+		Order order.Order
+		Items []order.Item
+	}
+	OrderHandler interface {
+		Handle(ctx context.Context, info OrderInfo) error
+	}
 
-type OrderEvent struct {
-	OrderSN string `json:"orderSN"`
-	BuyerID int64  `json:"buyerID"`
-	SPUs    []SPU  `json:"spus"`
-}
+	RedeemInfo struct {
+		RedeemerID int64
+		Code       domain.RedemptionCode
+	}
 
-type SPU struct {
-	ID       int64  `json:"id"`
-	Category string `json:"category"`
-	Type     string `json:"type"`
-}
+	RedeemerHandler interface {
+		Redeem(ctx context.Context, info RedeemInfo) error
+	}
+)
