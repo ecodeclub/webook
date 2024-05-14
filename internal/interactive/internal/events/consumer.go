@@ -54,10 +54,10 @@ func NewSyncConsumer(svc service.InteractiveService, q mq.MQ) (*Consumer, error)
 	return c, nil
 }
 func (c *Consumer) likeHandle(ctx context.Context, svc service.InteractiveService, evt Event) error {
-	return svc.Like(ctx, evt.Biz, evt.BizId, evt.Uid)
+	return svc.LikeToggle(ctx, evt.Biz, evt.BizId, evt.Uid)
 }
 func (c *Consumer) collectHandle(ctx context.Context, svc service.InteractiveService, evt Event) error {
-	return svc.Collect(ctx, evt.Biz, evt.BizId, evt.Uid)
+	return svc.CollectToggle(ctx, evt.Biz, evt.BizId, evt.Uid)
 }
 func (c *Consumer) viewHandle(ctx context.Context, svc service.InteractiveService, evt Event) error {
 	return svc.IncrReadCnt(ctx, evt.Biz, evt.BizId)

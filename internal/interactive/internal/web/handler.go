@@ -38,8 +38,8 @@ func NewHandler(svc service.InteractiveService) *Handler {
 // 这算是一种反范式的设计和实现方式
 func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g := server.Group("/intr")
-	g.POST("/collect", ginx.BS[CollectReq](h.Collect))
-	g.POST("/like", ginx.BS[LikeReq](h.Like))
+	g.POST("/collect/toggle", ginx.BS[CollectReq](h.Collect))
+	g.POST("/like/toggle", ginx.BS[LikeReq](h.Like))
 	g.POST("/view", ginx.B[ViewReq](h.View))
 	// 获得某个数据的点赞数据
 	g.POST("/cnt", ginx.BS[GetCntReq](h.GetCnt))
@@ -52,7 +52,7 @@ func (h *Handler) PublicRoutes(server *gin.Engine) {
 
 func (h *Handler) Collect(ctx *ginx.Context, req CollectReq, sess session.Session) (ginx.Result, error) {
 	uid := sess.Claims().Uid
-	err := h.svc.Collect(ctx, req.Biz, req.BizId, uid)
+	err := h.svc.CollectToggle(ctx.Request.Context(), req.Biz, req.BizId, uid)
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -78,7 +78,7 @@ func (h *Handler) GetCnt(ctx *ginx.Context, req GetCntReq, sess session.Session)
 
 func (h *Handler) Like(ctx *ginx.Context, req LikeReq, sess session.Session) (ginx.Result, error) {
 	uid := sess.Claims().Uid
-	err := h.svc.Like(ctx, req.Biz, req.BizId, uid)
+	err := h.svc.LikeToggle(ctx.Request.Context(), req.Biz, req.BizId, uid)
 	if err != nil {
 		return systemErrorResult, err
 	}

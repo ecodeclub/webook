@@ -1,3 +1,17 @@
+// Copyright 2023 ecodeclub
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package service
 
 import (
@@ -11,8 +25,10 @@ import (
 
 type InteractiveService interface {
 	IncrReadCnt(ctx context.Context, biz string, bizId int64) error
-	Like(c context.Context, biz string, id int64, uid int64) error
-	Collect(ctx context.Context, biz string, bizId, uid int64) error
+	// LikeToggle 如果点赞过，就取消点赞，如果没点赞过，就点赞
+	LikeToggle(c context.Context, biz string, id int64, uid int64) error
+	// CollectToggle 如果收藏过，就取消收藏，如果没收藏过，就收藏
+	CollectToggle(ctx context.Context, biz string, bizId, uid int64) error
 	Get(ctx context.Context, biz string, id int64, uid int64) (domain.Interactive, error)
 	GetByIds(ctx context.Context, biz string, ids []int64) (map[int64]domain.Interactive, error)
 }
@@ -31,12 +47,12 @@ func (i *interactiveService) IncrReadCnt(ctx context.Context, biz string, bizId 
 	return i.repo.IncrViewCnt(ctx, biz, bizId)
 }
 
-func (i *interactiveService) Like(c context.Context, biz string, id int64, uid int64) error {
-	return i.repo.Like(c, biz, id, uid)
+func (i *interactiveService) LikeToggle(c context.Context, biz string, id int64, uid int64) error {
+	return i.repo.LikeToggle(c, biz, id, uid)
 }
 
-func (i *interactiveService) Collect(ctx context.Context, biz string, bizId, uid int64) error {
-	return i.repo.Collect(ctx, biz, bizId, uid)
+func (i *interactiveService) CollectToggle(ctx context.Context, biz string, bizId, uid int64) error {
+	return i.repo.CollectToggle(ctx, biz, bizId, uid)
 }
 
 func (i *interactiveService) Get(ctx context.Context, biz string, id int64, uid int64) (domain.Interactive, error) {
