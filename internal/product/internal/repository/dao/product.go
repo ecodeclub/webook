@@ -78,14 +78,6 @@ func (d *ProductGORMDAO) CreateSKU(ctx context.Context, sku SKU) (int64, error) 
 	return sku.Id, d.db.WithContext(ctx).Create(&sku).Error
 }
 
-type Category struct {
-	Id          int64  `gorm:"primaryKey;autoIncrement;comment:商品类别自增ID"`
-	Name        string `gorm:"type:varchar(255);not null;comment:商品类别名称"`
-	Description string `gorm:"not null;comment:商品类别描述"`
-	Ctime       int64
-	Utime       int64
-}
-
 type SPU struct {
 	Id          int64  `gorm:"primaryKey;autoIncrement;comment:商品SPU自增ID"`
 	Category    string `gorm:"type:varchar(255);not null;uniqueIndex:uniq_category_type;comment:商品SPU类别,系统内部使用product/code"`
