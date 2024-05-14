@@ -27,7 +27,7 @@ import (
 type InteractiveDAO interface {
 	IncrViewCnt(ctx context.Context, biz string, bizId int64) error
 	LikeToggle(ctx context.Context, biz string, id int64, uid int64) error
-	CollectionToggle(ctx context.Context, cb UserCollectionBiz) error
+	CollectToggle(ctx context.Context, cb UserCollectionBiz) error
 	GetLikeInfo(ctx context.Context,
 		biz string, id int64, uid int64) (UserLikeBiz, error)
 	GetCollectInfo(ctx context.Context,
@@ -49,13 +49,12 @@ func NewInteractiveDAO(db *egorm.Component) *GORMInteractiveDAO {
 func (g *GORMInteractiveDAO) LikeToggle(ctx context.Context, biz string, id int64, uid int64) error {
 	return g.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		err := tx.
-			Clauses(clause.Locking{Strength: "UPDATE"}).
 			Where("biz = ? AND biz_id = ? AND uid = ?", biz, id, uid).
 			First(&UserLikeBiz{}).Error
-		switch err {
-		case nil:
+		switch {
+		case err == nil:
 			return g.deleteLikeInfo(tx, biz, id, uid)
-		case gorm.ErrRecordNotFound:
+		case errors.Is(err, gorm.ErrRecordNotFound):
 			return g.insertLikeInfo(tx, biz, id, uid)
 		default:
 			return err
@@ -88,9 +87,10 @@ func (g *GORMInteractiveDAO) insertLikeInfo(tx *gorm.DB, biz string, id int64, u
 		Utime:   now,
 	}).Error
 }
-func (g *GORMInteractiveDAO) CollectionToggle(ctx context.Context, cb UserCollectionBiz) error {
+
+func (g *GORMInteractiveDAO) CollectToggle(ctx context.Context, cb UserCollectionBiz) error {
 	return g.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+		err := tx.
 			Where("biz = ? AND biz_id = ? AND uid = ?", cb.Biz, cb.BizId, cb.Uid).
 			First(&UserCollectionBiz{}).Error
 		switch {
@@ -103,6 +103,7 @@ func (g *GORMInteractiveDAO) CollectionToggle(ctx context.Context, cb UserCollec
 		}
 	})
 }
+
 func (g *GORMInteractiveDAO) deleteCollectionInfo(tx *gorm.DB, biz string, id int64, uid int64) error {
 	now := time.Now().UnixMilli()
 	res := tx.Model(&UserCollectionBiz{}).

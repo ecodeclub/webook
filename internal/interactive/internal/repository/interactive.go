@@ -71,7 +71,7 @@ func (i *interactiveRepository) LikeToggle(ctx context.Context, biz string, id i
 }
 
 func (i *interactiveRepository) CollectToggle(ctx context.Context, biz string, id int64, uid int64) error {
-	return i.interactiveDao.CollectionToggle(ctx, dao.UserCollectionBiz{
+	return i.interactiveDao.CollectToggle(ctx, dao.UserCollectionBiz{
 		Biz:   biz,
 		Uid:   uid,
 		BizId: id,

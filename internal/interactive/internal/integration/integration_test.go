@@ -272,7 +272,7 @@ func (i *InteractiveSuite) Test_CollectToggle() {
 		{
 			name: "用户收藏过_收藏后(相当于取消收藏)_收藏计数-1",
 			before: func(t *testing.T) {
-				err := i.intrDAO.CollectionToggle(context.Background(), dao.UserCollectionBiz{
+				err := i.intrDAO.CollectToggle(context.Background(), dao.UserCollectionBiz{
 					Uid:   uid,
 					Biz:   "question",
 					BizId: 3,
@@ -299,13 +299,13 @@ func (i *InteractiveSuite) Test_CollectToggle() {
 		{
 			name: "用户收藏过_收藏后(相当于取消收藏)_再点击收藏_收藏计数+1",
 			before: func(t *testing.T) {
-				err := i.intrDAO.CollectionToggle(context.Background(), dao.UserCollectionBiz{
+				err := i.intrDAO.CollectToggle(context.Background(), dao.UserCollectionBiz{
 					Biz:   "question",
 					BizId: 4,
 					Uid:   uid,
 				})
 				require.NoError(t, err)
-				err = i.intrDAO.CollectionToggle(context.Background(), dao.UserCollectionBiz{
+				err = i.intrDAO.CollectToggle(context.Background(), dao.UserCollectionBiz{
 					Biz:   "question",
 					BizId: 4,
 					Uid:   uid,
@@ -337,7 +337,7 @@ func (i *InteractiveSuite) Test_CollectToggle() {
 		{
 			name: "从未收藏过的两个用户收藏_收藏计数+2",
 			before: func(t *testing.T) {
-				err := i.intrDAO.CollectionToggle(context.Background(), dao.UserCollectionBiz{
+				err := i.intrDAO.CollectToggle(context.Background(), dao.UserCollectionBiz{
 					Biz:   "question",
 					BizId: 5,
 					Uid:   34,
@@ -467,7 +467,7 @@ func (i *InteractiveSuite) Test_Cnt() {
 				require.NoError(i.T(), err)
 				err = i.intrDAO.LikeToggle(context.Background(), "product", 1, 22)
 				require.NoError(i.T(), err)
-				err = i.intrDAO.CollectionToggle(context.Background(), dao.UserCollectionBiz{
+				err = i.intrDAO.CollectToggle(context.Background(), dao.UserCollectionBiz{
 					Uid:   33,
 					Biz:   "product",
 					BizId: 1,
@@ -497,7 +497,7 @@ func (i *InteractiveSuite) Test_Cnt() {
 				require.NoError(i.T(), err)
 				err = i.intrDAO.LikeToggle(context.Background(), "product", 2, 22)
 				require.NoError(i.T(), err)
-				err = i.intrDAO.CollectionToggle(context.Background(), dao.UserCollectionBiz{
+				err = i.intrDAO.CollectToggle(context.Background(), dao.UserCollectionBiz{
 					Uid:   uid,
 					Biz:   "product",
 					BizId: 2,
@@ -733,7 +733,7 @@ func (i *InteractiveSuite) initInteractiveBizData(biz string, bizId int64, viewC
 		require.NoError(i.T(), err)
 	}
 	for j := 0; j < collectCnt; j++ {
-		err := i.intrDAO.CollectionToggle(context.Background(), dao.UserCollectionBiz{
+		err := i.intrDAO.CollectToggle(context.Background(), dao.UserCollectionBiz{
 			Uid:   int64(j + 4),
 			Biz:   biz,
 			BizId: bizId,
