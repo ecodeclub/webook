@@ -16,6 +16,10 @@ package domain
 
 import "time"
 
+const (
+	BizProject = "project"
+)
+
 type Project struct {
 	Id     int64
 	Title  string

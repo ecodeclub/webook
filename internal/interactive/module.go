@@ -14,10 +14,10 @@
 
 package interactive
 
-import "github.com/ecodeclub/webook/internal/interactive/internal/events"
+import "github.com/ecodeclub/webook/internal/interactive/internal/event"
 
 type Module struct {
-	Svc InteractiveSvc
-	c   *events.Consumer
+	Svc Service
+	c   *event.Consumer
 	Hdl *Handler
 }

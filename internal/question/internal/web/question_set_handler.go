@@ -17,6 +17,9 @@ package web
 import (
 	"time"
 
+	"github.com/ecodeclub/webook/internal/interactive"
+	"golang.org/x/sync/errgroup"
+
 	"github.com/ecodeclub/ekit/bean/copier"
 	"github.com/ecodeclub/ekit/bean/copier/converter"
 	"github.com/ecodeclub/ekit/slice"
@@ -31,25 +34,18 @@ import (
 var _ ginx.Handler = (*QuestionSetHandler)(nil)
 
 type QuestionSetHandler struct {
-	dm2vo  copier.Copier[domain.QuestionSet, QuestionSet]
-	svc    service.QuestionSetService
-	logger *elog.Component
+	svc     service.QuestionSetService
+	logger  *elog.Component
+	intrSvc interactive.Service
 }
 
-func NewQuestionSetHandler(svc service.QuestionSetService) (*QuestionSetHandler, error) {
-	dm2vo, err := copier.NewReflectCopier[domain.QuestionSet, QuestionSet](
-		copier.ConvertField[time.Time, string]("Utime", converter.ConverterFunc[time.Time, string](func(src time.Time) (string, error) {
-			return src.Format(time.DateTime), nil
-		})),
-	)
-	if err != nil {
-		return nil, err
-	}
+func NewQuestionSetHandler(svc service.QuestionSetService,
+	intrSvc interactive.Service) *QuestionSetHandler {
 	return &QuestionSetHandler{
-		dm2vo:  dm2vo,
-		svc:    svc,
-		logger: elog.DefaultLogger,
-	}, nil
+		svc:     svc,
+		intrSvc: intrSvc,
+		logger:  elog.DefaultLogger,
+	}
 }
 
 func (h *QuestionSetHandler) PublicRoutes(server *gin.Engine) {}
@@ -58,13 +54,8 @@ func (h *QuestionSetHandler) PrivateRoutes(server *gin.Engine) {
 	g := server.Group("/question-sets")
 	g.POST("/save", ginx.BS[SaveQuestionSetReq](h.SaveQuestionSet))
 	g.POST("/questions/save", ginx.BS[UpdateQuestionsOfQuestionSetReq](h.UpdateQuestionsOfQuestionSet))
-	g.POST("/list", ginx.B[Page](h.ListPrivateQuestionSets))
-	g.POST("/detail", ginx.B[QuestionSetID](h.RetrieveQuestionSetDetail))
-
-}
-
-func (h *QuestionSetHandler) MemberRoutes(server *gin.Engine) {
-	server.POST("/question-sets/pub/list", ginx.B[Page](h.ListAllQuestionSets))
+	g.POST("/list", ginx.B[Page](h.ListQuestionSets))
+	g.POST("/detail", ginx.BS(h.RetrieveQuestionSetDetail))
 }
 
 // SaveQuestionSet 保存
@@ -101,67 +92,83 @@ func (h *QuestionSetHandler) UpdateQuestionsOfQuestionSet(ctx *ginx.Context, req
 	return ginx.Result{}, nil
 }
 
-// ListPrivateQuestionSets 展示个人题集
-func (h *QuestionSetHandler) ListPrivateQuestionSets(ctx *ginx.Context, req Page) (ginx.Result, error) {
+// ListQuestionSets 展示个人题集
+func (h *QuestionSetHandler) ListQuestionSets(ctx *ginx.Context, req Page) (ginx.Result, error) {
 	data, total, err := h.svc.List(ctx, req.Offset, req.Limit)
 	if err != nil {
 		return systemErrorResult, err
 	}
-	return ginx.Result{
-		Data: h.toQuestionSetList(data, total),
-	}, nil
-}
-
-func (h *QuestionSetHandler) toQuestionSetList(data []domain.QuestionSet, total int64) QuestionSetList {
-	return QuestionSetList{
-		Total: total,
-		QuestionSets: slice.Map(data, func(idx int, src domain.QuestionSet) QuestionSet {
-			dm2vo, _ := copier.NewReflectCopier[domain.QuestionSet, QuestionSet](
-				// 忽略题集中的问题列表
-				copier.IgnoreFields("Questions"),
-				copier.ConvertField[time.Time, int64]("Utime", converter.ConverterFunc[time.Time, int64](func(src time.Time) (int64, error) {
-					return src.UnixMilli(), nil
-				})),
-			)
-			dst, err := dm2vo.Copy(&src)
-			if err != nil {
-				h.logger.Error("转化为 vo 失败", elog.FieldErr(err))
-				return QuestionSet{}
-			}
-			return *dst
-		}),
-	}
-}
-
-// ListAllQuestionSets 展示所有题集
-func (h *QuestionSetHandler) ListAllQuestionSets(ctx *ginx.Context, req Page) (ginx.Result, error) {
-	data, total, err := h.svc.List(ctx, req.Offset, req.Limit)
-	if err != nil {
-		return systemErrorResult, err
+	// 查询点赞收藏记录
+	intrs := map[int64]interactive.Interactive{}
+	if len(data) > 0 {
+		ids := slice.Map(data, func(idx int, src domain.QuestionSet) int64 {
+			return src.Id
+		})
+		var err1 error
+		intrs, err1 = h.intrSvc.GetByIds(ctx, "questionSet", ids)
+		// 这个数据查询不到也不需要担心
+		if err1 != nil {
+			h.logger.Error("查询题集的点赞数据失败",
+				elog.Any("ids", ids),
+				elog.FieldErr(err))
+		}
 	}
 	return ginx.Result{
-		Data: h.toQuestionSetList(data, total),
+		Data: QuestionSetList{
+			Total: total,
+			QuestionSets: slice.Map(data, func(idx int, src domain.QuestionSet) QuestionSet {
+				return QuestionSet{
+					Id:          src.Id,
+					Title:       src.Title,
+					Description: src.Description,
+					Utime:       src.Utime.UnixMilli(),
+					Interactive: newInteractive(intrs[src.Id]),
+				}
+			}),
+		},
 	}, nil
 }
 
 // RetrieveQuestionSetDetail 题集详情
-func (h *QuestionSetHandler) RetrieveQuestionSetDetail(ctx *ginx.Context, req QuestionSetID) (ginx.Result, error) {
-	data, err := h.svc.Detail(ctx.Request.Context(), req.QSID)
+func (h *QuestionSetHandler) RetrieveQuestionSetDetail(
+	ctx *ginx.Context,
+	req QuestionSetID, sess session.Session) (ginx.Result, error) {
+	var (
+		eg   errgroup.Group
+		data domain.QuestionSet
+		intr interactive.Interactive
+	)
+	eg.Go(func() error {
+		var err error
+		data, err = h.svc.Detail(ctx.Request.Context(), req.QSID)
+		return err
+	})
+
+	eg.Go(func() error {
+		var err error
+		intr, err = h.intrSvc.Get(ctx, "questionSet", req.QSID, sess.Claims().Uid)
+		return err
+	})
+
+	err := eg.Wait()
 	if err != nil {
 		return systemErrorResult, err
 	}
 	return ginx.Result{
-		Data: h.toQuestionSetVO(data),
+		Data: h.toQuestionSetVO(data, intr),
 	}, nil
 }
 
-func (h *QuestionSetHandler) toQuestionSetVO(set domain.QuestionSet) QuestionSet {
+func (h *QuestionSetHandler) toQuestionSetVO(
+	set domain.QuestionSet,
+	intr interactive.Interactive) QuestionSet {
 	return QuestionSet{
 		Id:          set.Id,
 		Title:       set.Title,
 		Description: set.Description,
 		Questions:   h.toQuestionVO(set.Questions),
 		Utime:       set.Utime.UnixMilli(),
+		Interactive: newInteractive(intr),
 	}
 }
 

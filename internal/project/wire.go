@@ -19,6 +19,8 @@ package project
 import (
 	"sync"
 
+	"github.com/ecodeclub/webook/internal/interactive"
+
 	"github.com/ecodeclub/mq-api"
 	"github.com/ecodeclub/webook/internal/project/internal/event"
 
@@ -30,21 +32,25 @@ import (
 	"github.com/google/wire"
 )
 
-func InitModule(db *egorm.Component, q mq.MQ) *Module {
+func InitModule(db *egorm.Component,
+	intrModule *interactive.Module,
+	q mq.MQ) (*Module, error) {
 	wire.Build(
 		initSyncToSearchEventProducer,
 		initAdminDAO,
 		repository.NewProjectAdminRepository,
 		service.NewProjectAdminService,
 		event.NewSyncProjectToSearchEventProducer,
+		event.NewInteractiveEventProducer,
 		web.NewAdminHandler,
 
 		dao.NewGORMProjectDAO,
 		repository.NewCachedRepository,
 		service.NewService,
 		web.NewHandler,
+		wire.FieldsOf(new(*interactive.Module), "Svc"),
 		wire.Struct(new(Module), "*"))
-	return &Module{}
+	return &Module{}, nil
 }
 
 var (

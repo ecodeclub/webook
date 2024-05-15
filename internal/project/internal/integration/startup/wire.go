@@ -17,12 +17,13 @@
 package startup
 
 import (
+	"github.com/ecodeclub/webook/internal/interactive"
 	"github.com/ecodeclub/webook/internal/project"
 	testioc "github.com/ecodeclub/webook/internal/test/ioc"
 	"github.com/google/wire"
 )
 
-func InitModule() *project.Module {
+func InitModule(intrModule *interactive.Module) (*project.Module, error) {
 	wire.Build(project.InitModule, testioc.InitDB, testioc.InitMQ)
-	return new(project.Module)
+	return new(project.Module), nil
 }

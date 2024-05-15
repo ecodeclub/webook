@@ -12,20 +12,34 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package events
+package event
 
 import (
-	"context"
-
-	"github.com/ecodeclub/webook/internal/interactive/internal/service"
+	"github.com/ecodeclub/mq-api"
+	"github.com/ecodeclub/webook/internal/pkg/mqx"
 )
 
-type Event struct {
+type InteractiveEventProducer mqx.Producer[InteractiveEvent]
+
+func NewInteractiveEventProducer(p mq.MQ) (InteractiveEventProducer, error) {
+	return mqx.NewGeneralProducer[InteractiveEvent](p, intrTopic)
+}
+
+const intrTopic = "interactive_events"
+
+type InteractiveEvent struct {
 	Biz   string `json:"biz,omitempty"`
-	BizId int64  `json:"biz_id,omitempty"`
+	BizId int64  `json:"bizId,omitempty"`
 	// 取值是
 	// like, collect, view 三个
 	Action string `json:"action,omitempty"`
 	Uid    int64  `json:"uid,omitempty"`
 }
-type handleFunc func(ctx context.Context, svc service.InteractiveService, evt Event) error
+
+func NewViewCntEvent(id int64, biz string) InteractiveEvent {
+	return InteractiveEvent{
+		Biz:    biz,
+		BizId:  id,
+		Action: "view",
+	}
+}

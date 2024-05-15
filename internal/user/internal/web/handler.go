@@ -18,6 +18,8 @@ import (
 	"context"
 	"strconv"
 
+	"golang.org/x/sync/errgroup"
+
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/ecodeclub/ginx"
 	"github.com/ecodeclub/ginx/session"
@@ -87,7 +89,25 @@ func (h *Handler) RefreshAccessToken(ctx *ginx.Context) (ginx.Result, error) {
 }
 
 func (h *Handler) Profile(ctx *ginx.Context, sess session.Session) (ginx.Result, error) {
-	u, err := h.userSvc.Profile(ctx, sess.Claims().Uid)
+	var (
+		eg errgroup.Group
+		u  domain.User
+		m  member.Member
+	)
+	uid := sess.Claims().Uid
+	eg.Go(func() error {
+		var err error
+		u, err = h.userSvc.Profile(ctx, uid)
+		return err
+	})
+
+	eg.Go(func() error {
+		var err error
+		m, err = h.memberSvc.GetMembershipInfo(ctx, uid)
+		return err
+	})
+
+	err := eg.Wait()
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -95,8 +115,7 @@ func (h *Handler) Profile(ctx *ginx.Context, sess session.Session) (ginx.Result,
 	res.IsCreator = sess.Claims().
 		Get("creator").
 		StringOrDefault("") == "true"
-	res.MemberDDL, _ = sess.Claims().
-		Get("memberDDL").AsInt64()
+	res.MemberDDL = m.EndAt
 	return ginx.Result{
 		Data: res,
 	}, nil

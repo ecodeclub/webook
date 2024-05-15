@@ -37,15 +37,17 @@ type Service interface {
 	// Delete 会直接删除制作库和线上库的数据
 	Delete(ctx context.Context, qid int64) error
 
-	PubList(ctx context.Context, offset int, limit int) ([]domain.Question, int64, error)
+	PubList(ctx context.Context, offset int, limit int) ([]domain.Question, error)
 	// GetPubByIDs 目前只会获取基础信息，也就是不包括答案在内的信息
 	GetPubByIDs(ctx context.Context, ids []int64) ([]domain.Question, error)
 	PubDetail(ctx context.Context, qid int64) (domain.Question, error)
 }
 
 type service struct {
-	repo        repository.Repository
-	producer    event.SyncEventProducer
+	repo         repository.Repository
+	syncProducer event.SyncDataToSearchEventProducer
+	intrProducer event.InteractiveEventProducer
+
 	logger      *elog.Component
 	syncTimeout time.Duration
 }
@@ -55,7 +57,18 @@ func (s *service) GetPubByIDs(ctx context.Context, ids []int64) ([]domain.Questi
 }
 
 func (s *service) PubDetail(ctx context.Context, qid int64) (domain.Question, error) {
-	return s.repo.GetPubByID(ctx, qid)
+	que, err := s.repo.GetPubByID(ctx, qid)
+	if err == nil {
+		go func() {
+			newCtx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+			defer cancel()
+			err1 := s.intrProducer.Produce(newCtx, event.NewViewCntEvent(qid, domain.QuestionBiz))
+			if err1 != nil {
+				s.logger.Error("发送问题阅读计数消息到消息队列失败", elog.FieldErr(err1), elog.Int64("qid", qid))
+			}
+		}()
+	}
+	return que, err
 }
 
 func (s *service) Detail(ctx context.Context, qid int64) (domain.Question, error) {
@@ -86,24 +99,8 @@ func (s *service) List(ctx context.Context, offset int, limit int) ([]domain.Que
 	return qs, total, eg.Wait()
 }
 
-func (s *service) PubList(ctx context.Context, offset int, limit int) ([]domain.Question, int64, error) {
-	var (
-		eg    errgroup.Group
-		qs    []domain.Question
-		total int64
-	)
-	eg.Go(func() error {
-		var err error
-		qs, err = s.repo.PubList(ctx, offset, limit)
-		return err
-	})
-
-	eg.Go(func() error {
-		var err error
-		total, err = s.repo.PubTotal(ctx)
-		return err
-	})
-	return qs, total, eg.Wait()
+func (s *service) PubList(ctx context.Context, offset int, limit int) ([]domain.Question, error) {
+	return s.repo.PubList(ctx, offset, limit)
 }
 
 func (s *service) Save(ctx context.Context, question *domain.Question) (int64, error) {
@@ -132,12 +129,15 @@ func (s *service) Publish(ctx context.Context, question *domain.Question) (int64
 	return id, nil
 }
 
-func NewService(repo repository.Repository, producer event.SyncEventProducer) Service {
+func NewService(repo repository.Repository,
+	syncEvent event.SyncDataToSearchEventProducer,
+	intrEvent event.InteractiveEventProducer) Service {
 	return &service{
-		repo:        repo,
-		producer:    producer,
-		logger:      elog.DefaultLogger,
-		syncTimeout: 10 * time.Second,
+		repo:         repo,
+		syncProducer: syncEvent,
+		intrProducer: intrEvent,
+		logger:       elog.DefaultLogger,
+		syncTimeout:  10 * time.Second,
 	}
 }
 
@@ -152,7 +152,7 @@ func (s *service) syncQuestion(id int64) {
 		return
 	}
 	evt := event.NewQuestionEvent(&que)
-	err = s.producer.Produce(ctx, evt)
+	err = s.syncProducer.Produce(ctx, evt)
 	if err != nil {
 		s.logger.Error("发送同步搜索信息",
 			elog.FieldErr(err),

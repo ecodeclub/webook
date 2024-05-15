@@ -15,6 +15,7 @@
 package web
 
 import (
+	"github.com/ecodeclub/webook/internal/interactive"
 	"github.com/ecodeclub/webook/internal/question/internal/domain"
 )
 
@@ -32,8 +33,6 @@ type Question struct {
 	Content string `json:"content,omitempty"`
 	Utime   int64  `json:"utime,omitempty"`
 	Status  uint8  `json:"status,omitempty"`
-	// 题集 ID
-	Sets []QuestionSet `json:"sets"`
 
 	Analysis AnswerElement `json:"analysis,omitempty"`
 	// 基本回答
@@ -41,7 +40,8 @@ type Question struct {
 	// 进阶回答
 	Intermediate AnswerElement `json:"intermediate,omitempty"`
 	// 高阶回答
-	Advanced AnswerElement `json:"advanced,omitempty"`
+	Advanced    AnswerElement `json:"advanced,omitempty"`
+	Interactive Interactive   `json:"interactive"`
 }
 
 func (que Question) toDomain() domain.Question {
@@ -59,7 +59,7 @@ func (que Question) toDomain() domain.Question {
 	}
 }
 
-func newQuestion(que domain.Question) Question {
+func newQuestion(que domain.Question, intr interactive.Interactive) Question {
 	return Question{
 		Id:           que.Id,
 		Title:        que.Title,
@@ -71,6 +71,7 @@ func newQuestion(que domain.Question) Question {
 		Intermediate: newAnswerElement(que.Answer.Intermediate),
 		Advanced:     newAnswerElement(que.Answer.Advanced),
 		Utime:        que.Utime.UnixMilli(),
+		Interactive:  newInteractive(intr),
 	}
 }
 
@@ -142,14 +143,33 @@ type QuestionSetID struct {
 }
 
 type QuestionSet struct {
-	Id          int64      `json:"id,omitempty"`
-	Title       string     `json:"title,omitempty"`
-	Description string     `json:"description,omitempty"`
-	Questions   []Question `json:"questions,omitempty"`
-	Utime       int64      `json:"utime,omitempty"`
+	Id          int64       `json:"id,omitempty"`
+	Title       string      `json:"title,omitempty"`
+	Description string      `json:"description,omitempty"`
+	Questions   []Question  `json:"questions,omitempty"`
+	Utime       int64       `json:"utime,omitempty"`
+	Interactive Interactive `json:"interactive,omitempty"`
 }
 
 type QuestionSetList struct {
 	Total        int64         `json:"total,omitempty"`
 	QuestionSets []QuestionSet `json:"questionSets,omitempty"`
+}
+
+type Interactive struct {
+	CollectCnt int  `json:"collectCnt"`
+	LikeCnt    int  `json:"likeCnt"`
+	ViewCnt    int  `json:"viewCnt"`
+	Liked      bool `json:"liked"`
+	Collected  bool `json:"collected"`
+}
+
+func newInteractive(intr interactive.Interactive) Interactive {
+	return Interactive{
+		CollectCnt: intr.CollectCnt,
+		ViewCnt:    intr.ViewCnt,
+		LikeCnt:    intr.LikeCnt,
+		Liked:      intr.Liked,
+		Collected:  intr.Collected,
+	}
 }

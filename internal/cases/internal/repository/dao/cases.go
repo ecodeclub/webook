@@ -4,14 +4,15 @@ import (
 	"context"
 	"time"
 
+	"gorm.io/gorm/clause"
+
 	"github.com/ego-component/egorm"
 	"gorm.io/gorm"
 )
 
 type CaseDAO interface {
 	// 管理端操作 case表
-	Create(ctx context.Context, c Case) (int64, error)
-	Update(ctx context.Context, c Case) error
+	Save(ctx context.Context, c Case) (int64, error)
 	GetCaseByID(ctx context.Context, id int64) (Case, error)
 	List(ctx context.Context, offset, limit int) ([]Case, error)
 	Count(ctx context.Context) (int64, error)
@@ -26,7 +27,9 @@ type CaseDAO interface {
 }
 
 type caseDAO struct {
-	db *egorm.Component
+	db            *egorm.Component
+	listColumns   []string
+	updateColumns []string
 }
 
 func (ca *caseDAO) Count(ctx context.Context) (int64, error) {
@@ -35,46 +38,18 @@ func (ca *caseDAO) Count(ctx context.Context) (int64, error) {
 	return res, err
 }
 
-func (ca *caseDAO) Create(ctx context.Context, c Case) (int64, error) {
-	c.Ctime = time.Now().UnixMilli()
-	c.Utime = time.Now().UnixMilli()
-	err := ca.db.WithContext(ctx).Create(&c).Error
+func (ca *caseDAO) Save(ctx context.Context, c Case) (int64, error) {
+	return ca.save(ca.db.WithContext(ctx), &c)
+}
+
+func (ca *caseDAO) save(db *gorm.DB, c *Case) (int64, error) {
+	now := time.Now().UnixMilli()
+	c.Utime = now
+	c.Ctime = now
+	err := db.Clauses(clause.OnConflict{
+		DoUpdates: clause.AssignmentColumns(ca.updateColumns),
+	}).Create(c).Error
 	return c.Id, err
-}
-
-func (ca *caseDAO) Update(ctx context.Context, c Case) error {
-	now := time.Now().UnixMilli()
-	return ca.db.WithContext(ctx).
-		Model(&Case{}).Where("id = ?", c.Id).Updates(map[string]any{
-		"title":     c.Title,
-		"content":   c.Content,
-		"code_repo": c.CodeRepo,
-		"keywords":  c.Keywords,
-		"labels":    c.Labels,
-		"shorthand": c.Shorthand,
-		"highlight": c.Highlight,
-		"guidance":  c.Guidance,
-		"status":    c.Status,
-		"utime":     now,
-	}).Error
-}
-
-func (ca *caseDAO) update(ctx context.Context, tx *gorm.DB, c Case) error {
-	now := time.Now().UnixMilli()
-	return tx.WithContext(ctx).
-		Model(&Case{}).Where("id = ?", c.Id).Updates(map[string]any{
-		"title":     c.Title,
-		"content":   c.Content,
-		"code_repo": c.CodeRepo,
-		"keywords":  c.Keywords,
-		"shorthand": c.Shorthand,
-		"highlight": c.Highlight,
-		"labels":    c.Labels,
-		"status":    c.Status,
-		"guidance":  c.Guidance,
-		"utime":     now,
-	}).Error
-
 }
 
 func (ca *caseDAO) GetCaseByID(ctx context.Context, id int64) (Case, error) {
@@ -86,7 +61,7 @@ func (ca *caseDAO) GetCaseByID(ctx context.Context, id int64) (Case, error) {
 func (ca *caseDAO) List(ctx context.Context, offset, limit int) ([]Case, error) {
 	var caseList []Case
 	err := ca.db.WithContext(ctx).
-		Select("id", "title", "status", "content", "utime").
+		Select(ca.listColumns).
 		Order("id desc").
 		Offset(offset).
 		Limit(limit).
@@ -95,23 +70,17 @@ func (ca *caseDAO) List(ctx context.Context, offset, limit int) ([]Case, error) 
 }
 
 func (ca *caseDAO) Sync(ctx context.Context, c Case) (int64, error) {
-	id := c.Id
-	c.Utime = time.Now().UnixMilli()
-	err := ca.db.Transaction(func(tx *gorm.DB) error {
-		if c.Id == 0 {
-			c.Ctime = time.Now().UnixMilli()
-			err := tx.WithContext(ctx).Create(&c).Error
-			if err != nil {
-				return err
-			}
-			id = c.Id
-		} else {
-			err := ca.update(ctx, tx, c)
-			if err != nil {
-				return err
-			}
+	var id = c.Id
+	err := ca.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var err error
+		id, err = ca.save(tx, &c)
+		if err != nil {
+			return err
 		}
-		return tx.Save(PublishCase(c)).Error
+		pubC := PublishCase(c)
+		return tx.Clauses(clause.OnConflict{
+			DoUpdates: clause.AssignmentColumns(ca.updateColumns),
+		}).Create(&pubC).Error
 	})
 	return id, err
 }
@@ -120,7 +89,7 @@ func (ca *caseDAO) PublishCaseList(ctx context.Context, offset, limit int) ([]Pu
 	publishCaseList := make([]PublishCase, 0, limit)
 	err := ca.db.WithContext(ctx).
 		Order("id desc").
-		Select("id", "title", "content", "utime").
+		Select(ca.listColumns).
 		Offset(offset).
 		Limit(limit).
 		Find(&publishCaseList).Error
@@ -149,6 +118,11 @@ func (ca *caseDAO) GetPubByIDs(ctx context.Context, ids []int64) ([]PublishCase,
 
 func NewCaseDao(db *egorm.Component) CaseDAO {
 	return &caseDAO{
-		db: db,
+		db:          db,
+		listColumns: []string{"id", "labels", "status", "introduction", "title", "utime"},
+		updateColumns: []string{
+			"introduction", "labels", "title", "content",
+			"code_repo", "keywords", "shorthand", "highlight",
+			"guidance", "status", "utime"},
 	}
 }

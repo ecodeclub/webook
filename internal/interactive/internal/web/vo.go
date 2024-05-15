@@ -14,8 +14,6 @@
 
 package web
 
-import "github.com/ecodeclub/webook/internal/interactive/internal/domain"
-
 type CollectReq struct {
 	Biz   string `json:"biz"`
 	BizId int64  `json:"bizId"`
@@ -25,6 +23,9 @@ type CollectReq struct {
 type LikeReq struct {
 	Biz   string `json:"biz"`
 	BizId int64  `json:"bizId"`
+	// true => 点赞
+	// false => 取消点赞
+	Liked bool `json:"liked"`
 }
 type ViewReq struct {
 	Biz   string `json:"biz"`
@@ -56,16 +57,9 @@ type Interactive struct {
 	CollectCnt int   `json:"collectCnt"`
 	LikeCnt    int   `json:"likeCnt"`
 	ViewCnt    int   `json:"viewCnt"`
+	Liked      bool  `json:"liked"`
+	Collected  bool  `json:"collected"`
 }
 type BatatGetCntResp struct {
 	InteractiveMap map[int64]Interactive `json:"interactiveMap"`
-}
-
-func newInteractive(intr domain.Interactive) Interactive {
-	return Interactive{
-		ID:         intr.BizId,
-		CollectCnt: intr.CollectCnt,
-		ViewCnt:    intr.ViewCnt,
-		LikeCnt:    intr.LikeCnt,
-	}
 }

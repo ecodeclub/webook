@@ -5,8 +5,9 @@ import "github.com/ecodeclub/ekit/sqlx"
 type Case struct {
 	Id int64 `gorm:"primaryKey,autoIncrement"`
 	// 作者
-	Uid    int64                     `gorm:"index"`
-	Labels sqlx.JsonColumn[[]string] `gorm:"type:varchar(512)"`
+	Uid          int64 `gorm:"index"`
+	Introduction string
+	Labels       sqlx.JsonColumn[[]string] `gorm:"type:varchar(512)"`
 	// Case 标题
 	Title string `gorm:"type=varchar(512)"`
 	// Case 内容

@@ -18,6 +18,9 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/ecodeclub/webook/internal/interactive"
+	"golang.org/x/sync/errgroup"
+
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/ecodeclub/ginx"
 	"github.com/ecodeclub/ginx/session"
@@ -28,14 +31,16 @@ import (
 )
 
 type Handler struct {
-	svc    service.Service
-	logger *elog.Component
+	svc     service.Service
+	logger  *elog.Component
+	intrSvc interactive.Service
 }
 
-func NewHandler(svc service.Service) *Handler {
+func NewHandler(svc service.Service, intrSvc interactive.Service) *Handler {
 	return &Handler{
-		svc:    svc,
-		logger: elog.DefaultLogger,
+		svc:     svc,
+		intrSvc: intrSvc,
+		logger:  elog.DefaultLogger,
 	}
 }
 
@@ -52,7 +57,7 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 }
 
 func (h *Handler) MemberRoutes(server *gin.Engine) {
-	server.POST("/question/pub/detail", ginx.B[Qid](h.PubDetail))
+	server.POST("/question/pub/detail", ginx.BS[Qid](h.PubDetail))
 }
 
 func (h *Handler) Delete(ctx *ginx.Context, qid Qid) (ginx.Result, error) {
@@ -101,12 +106,40 @@ func (h *Handler) List(ctx *ginx.Context, req Page) (ginx.Result, error) {
 }
 
 func (h *Handler) PubList(ctx *ginx.Context, req Page) (ginx.Result, error) {
-	data, cnt, err := h.svc.PubList(ctx, req.Offset, req.Limit)
+	data, err := h.svc.PubList(ctx, req.Offset, req.Limit)
 	if err != nil {
 		return systemErrorResult, err
 	}
+	// 查询点赞收藏记录
+	intrs := map[int64]interactive.Interactive{}
+	if len(data) > 0 {
+		ids := slice.Map(data, func(idx int, src domain.Question) int64 {
+			return src.Id
+		})
+		var err1 error
+		intrs, err1 = h.intrSvc.GetByIds(ctx, "question", ids)
+		// 这个数据查询不到也不需要担心
+		if err1 != nil {
+			h.logger.Error("查询数据的点赞数据失败",
+				elog.Any("ids", ids),
+				elog.FieldErr(err))
+		}
+	}
+
+	// 获得数据
 	return ginx.Result{
-		Data: h.toQuestionList(data, cnt),
+		// 在 C 端是下拉刷新
+		Data: slice.Map(data, func(idx int, src domain.Question) Question {
+			return Question{
+				Id:          src.Id,
+				Title:       src.Title,
+				Content:     src.Content,
+				Labels:      src.Labels,
+				Status:      src.Status.ToUint8(),
+				Utime:       src.Utime.UnixMilli(),
+				Interactive: newInteractive(intrs[src.Id]),
+			}
+		}),
 	}, nil
 }
 
@@ -132,17 +165,34 @@ func (h *Handler) Detail(ctx *ginx.Context, req Qid) (ginx.Result, error) {
 		return systemErrorResult, err
 	}
 	return ginx.Result{
-		Data: newQuestion(detail),
+		Data: newQuestion(detail, interactive.Interactive{}),
 	}, err
 }
 
-func (h *Handler) PubDetail(ctx *ginx.Context, req Qid) (ginx.Result, error) {
-	detail, err := h.svc.PubDetail(ctx, req.Qid)
+func (h *Handler) PubDetail(ctx *ginx.Context,
+	req Qid, sess session.Session) (ginx.Result, error) {
+	var (
+		eg     errgroup.Group
+		detail domain.Question
+		intr   interactive.Interactive
+	)
+	eg.Go(func() error {
+		var err error
+		detail, err = h.svc.PubDetail(ctx, req.Qid)
+		return err
+	})
+
+	eg.Go(func() error {
+		var err error
+		intr, err = h.intrSvc.Get(ctx, domain.QuestionBiz, req.Qid, sess.Claims().Uid)
+		return err
+	})
+	err := eg.Wait()
 	if err != nil {
 		return systemErrorResult, err
 	}
 	return ginx.Result{
-		Data: newQuestion(detail),
+		Data: newQuestion(detail, intr),
 	}, err
 }
 

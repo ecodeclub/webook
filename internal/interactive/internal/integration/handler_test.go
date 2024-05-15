@@ -24,7 +24,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ecodeclub/webook/internal/interactive/internal/events"
+	"github.com/ecodeclub/webook/internal/interactive"
+
+	"github.com/ecodeclub/webook/internal/interactive/internal/event"
 
 	"gorm.io/gorm"
 
@@ -48,15 +50,16 @@ import (
 
 const uid = 1234
 
-type InteractiveSuite struct {
+type InteractiveTestSuite struct {
 	suite.Suite
 	server   *egin.Component
 	producer mq.Producer
 	db       *egorm.Component
 	intrDAO  dao.InteractiveDAO
+	svc      interactive.Service
 }
 
-func (i *InteractiveSuite) TearDownSuite() {
+func (i *InteractiveTestSuite) TearDownSuite() {
 	err := i.db.Exec("DROP TABLE `interactives`").Error
 	require.NoError(i.T(), err)
 	err = i.db.Exec("DROP TABLE `user_like_bizs`").Error
@@ -65,7 +68,7 @@ func (i *InteractiveSuite) TearDownSuite() {
 	require.NoError(i.T(), err)
 }
 
-func (i *InteractiveSuite) TearDownTest() {
+func (i *InteractiveTestSuite) TearDownTest() {
 	err := i.db.Exec("TRUNCATE TABLE `interactives`").Error
 	require.NoError(i.T(), err)
 	err = i.db.Exec("TRUNCATE TABLE `user_like_bizs`").Error
@@ -74,12 +77,13 @@ func (i *InteractiveSuite) TearDownTest() {
 	require.NoError(i.T(), err)
 }
 
-func (i *InteractiveSuite) SetupSuite() {
-	handler, err := startup.InitHandler()
+func (i *InteractiveTestSuite) SetupSuite() {
+	module, err := startup.InitModule()
 	require.NoError(i.T(), err)
 	econf.Set("server", map[string]any{"contextTimeout": "1s"})
 	server := egin.Load("server").Build()
-
+	handler := module.Hdl
+	i.svc = module.Svc
 	handler.PublicRoutes(server.Engine)
 	server.Use(func(ctx *gin.Context) {
 		ctx.Set("_session", session.NewMemorySession(session.Claims{
@@ -100,7 +104,7 @@ func (i *InteractiveSuite) SetupSuite() {
 	i.intrDAO = dao.NewInteractiveDAO(i.db)
 }
 
-func (i *InteractiveSuite) Test_LikeToggle() {
+func (i *InteractiveTestSuite) Test_LikeToggle() {
 	testcases := []struct {
 		name     string
 		before   func(t *testing.T)
@@ -223,7 +227,7 @@ func (i *InteractiveSuite) Test_LikeToggle() {
 		i.T().Run(tc.name, func(t *testing.T) {
 			tc.before(t)
 			req, err := http.NewRequest(http.MethodPost,
-				"/intr/like/toggle", iox.NewJSONReader(tc.req))
+				"/interactive/like/toggle", iox.NewJSONReader(tc.req))
 			req.Header.Set("content-type", "application/json")
 			require.NoError(t, err)
 			recorder := test.NewJSONResponseRecorder[int64]()
@@ -234,7 +238,7 @@ func (i *InteractiveSuite) Test_LikeToggle() {
 	}
 }
 
-func (i *InteractiveSuite) Test_CollectToggle() {
+func (i *InteractiveTestSuite) Test_CollectToggle() {
 	testcases := []struct {
 		name     string
 		before   func(t *testing.T)
@@ -371,7 +375,7 @@ func (i *InteractiveSuite) Test_CollectToggle() {
 		i.T().Run(tc.name, func(t *testing.T) {
 			tc.before(t)
 			req, err := http.NewRequest(http.MethodPost,
-				"/intr/collect/toggle", iox.NewJSONReader(tc.req))
+				"/interactive/collect/toggle", iox.NewJSONReader(tc.req))
 			req.Header.Set("content-type", "application/json")
 			require.NoError(t, err)
 			recorder := test.NewJSONResponseRecorder[int64]()
@@ -382,224 +386,15 @@ func (i *InteractiveSuite) Test_CollectToggle() {
 	}
 }
 
-func (i *InteractiveSuite) Test_View() {
-	testcases := []struct {
-		name     string
-		before   func(t *testing.T)
-		after    func(t *testing.T)
-		req      web.CollectReq
-		wantCode int
-	}{
-		{
-			name: "用户首次浏览资源，资源浏览计数加1",
-			before: func(t *testing.T) {
-
-			},
-			after: func(t *testing.T) {
-				intr, err := i.intrDAO.Get(context.Background(), "order", 3)
-				require.NoError(t, err)
-				i.assertInteractive(dao.Interactive{
-					Biz:     "order",
-					BizId:   3,
-					ViewCnt: 1,
-				}, intr)
-			},
-			req: web.CollectReq{
-				BizId: 3,
-				Biz:   "order",
-			},
-			wantCode: 200,
-		},
-		{
-			name: "用户重复浏览资源，资源浏览计数加1",
-			before: func(t *testing.T) {
-				err := i.intrDAO.IncrViewCnt(context.Background(), "order", 4)
-				require.NoError(t, err)
-			},
-			after: func(t *testing.T) {
-				intr, err := i.intrDAO.Get(context.Background(), "order", 4)
-				require.NoError(t, err)
-				i.assertInteractive(dao.Interactive{
-					Biz:     "order",
-					BizId:   4,
-					ViewCnt: 2,
-				}, intr)
-			},
-			req: web.CollectReq{
-				BizId: 4,
-				Biz:   "order",
-			},
-			wantCode: 200,
-		},
-	}
-	for _, tc := range testcases {
-		i.T().Run(tc.name, func(t *testing.T) {
-			tc.before(t)
-			req, err := http.NewRequest(http.MethodPost,
-				"/intr/view", iox.NewJSONReader(tc.req))
-			req.Header.Set("content-type", "application/json")
-			require.NoError(t, err)
-			recorder := test.NewJSONResponseRecorder[int64]()
-			i.server.ServeHTTP(recorder, req)
-			require.Equal(t, tc.wantCode, recorder.Code)
-			tc.after(t)
-		})
-	}
-}
-
-func (i *InteractiveSuite) Test_Cnt() {
-
-	testcases := []struct {
-		name     string
-		before   func(t *testing.T)
-		req      web.GetCntReq
-		wantResp web.GetCntResp
-		wantCode int
-	}{
-		{
-			name: "获取被点赞过的计数信息",
-			before: func(t *testing.T) {
-				err := i.intrDAO.IncrViewCnt(context.Background(), "product", 1)
-				require.NoError(i.T(), err)
-				err = i.intrDAO.LikeToggle(context.Background(), "product", 1, uid)
-				require.NoError(i.T(), err)
-				err = i.intrDAO.LikeToggle(context.Background(), "product", 1, 11)
-				require.NoError(i.T(), err)
-				err = i.intrDAO.LikeToggle(context.Background(), "product", 1, 22)
-				require.NoError(i.T(), err)
-				err = i.intrDAO.CollectToggle(context.Background(), dao.UserCollectionBiz{
-					Uid:   33,
-					Biz:   "product",
-					BizId: 1,
-				})
-				require.NoError(i.T(), err)
-			},
-			req: web.GetCntReq{
-				Biz:   "product",
-				BizId: 1,
-			},
-			wantCode: 200,
-			wantResp: web.GetCntResp{
-				CollectCnt: 1,
-				Liked:      true,
-				ViewCnt:    1,
-				LikeCnt:    3,
-			},
-		},
-		{
-			name: "获取被收藏过的计数信息",
-			before: func(t *testing.T) {
-				err := i.intrDAO.IncrViewCnt(context.Background(), "product", 2)
-				require.NoError(i.T(), err)
-				err = i.intrDAO.LikeToggle(context.Background(), "product", 2, uid)
-				require.NoError(i.T(), err)
-				err = i.intrDAO.LikeToggle(context.Background(), "product", 2, 11)
-				require.NoError(i.T(), err)
-				err = i.intrDAO.LikeToggle(context.Background(), "product", 2, 22)
-				require.NoError(i.T(), err)
-				err = i.intrDAO.CollectToggle(context.Background(), dao.UserCollectionBiz{
-					Uid:   uid,
-					Biz:   "product",
-					BizId: 2,
-				})
-				require.NoError(i.T(), err)
-			},
-			req: web.GetCntReq{
-				Biz:   "product",
-				BizId: 2,
-			},
-			wantCode: 200,
-			wantResp: web.GetCntResp{
-				CollectCnt: 1,
-				Collected:  true,
-				Liked:      true,
-				ViewCnt:    1,
-				LikeCnt:    3,
-			},
-		},
-		{
-			name: "获取没有点赞，收藏，阅读过的计数信息",
-			before: func(t *testing.T) {
-			},
-			req: web.GetCntReq{
-				Biz:   "product",
-				BizId: 3,
-			},
-			wantCode: 200,
-			wantResp: web.GetCntResp{
-				CollectCnt: 0,
-				Collected:  false,
-				Liked:      false,
-				ViewCnt:    0,
-				LikeCnt:    0,
-			},
-		},
-	}
-	for _, tc := range testcases {
-		i.T().Run(tc.name, func(t *testing.T) {
-			tc.before(t)
-			req, err := http.NewRequest(http.MethodPost,
-				"/intr/cnt", iox.NewJSONReader(tc.req))
-			req.Header.Set("content-type", "application/json")
-			require.NoError(t, err)
-			recorder := test.NewJSONResponseRecorder[web.GetCntResp]()
-			i.server.ServeHTTP(recorder, req)
-			require.Equal(t, tc.wantCode, recorder.Code)
-			require.Equal(t, tc.wantResp, recorder.MustScan().Data)
-		})
-	}
-}
-
-func (i *InteractiveSuite) Test_Detail() {
-	// 批量获取skill模块的id为1,2,3,4的点赞收藏数据
-	t := i.T()
-	i.initInteractiveData()
-	req, err := http.NewRequest(http.MethodPost,
-		"/intr/detail", iox.NewJSONReader(web.BatchGetCntReq{
-			Biz:    "skill",
-			BizIds: []int64{1, 2, 3, 4},
-		}))
-	req.Header.Set("content-type", "application/json")
-	require.NoError(t, err)
-	recorder := test.NewJSONResponseRecorder[web.BatatGetCntResp]()
-	i.server.ServeHTTP(recorder, req)
-	require.Equal(t, 200, recorder.Code)
-	require.Equal(t, web.BatatGetCntResp{
-		InteractiveMap: map[int64]web.Interactive{
-			4: {
-				ID: 4,
-			},
-			3: {
-				ID:         3,
-				ViewCnt:    99,
-				LikeCnt:    88,
-				CollectCnt: 79,
-			},
-			2: {
-				ID:         2,
-				ViewCnt:    3,
-				LikeCnt:    2,
-				CollectCnt: 9,
-			},
-			1: {
-				ID:         1,
-				ViewCnt:    1,
-				LikeCnt:    1,
-				CollectCnt: 3,
-			},
-		},
-	}, recorder.MustScan().Data)
-}
-
-func (i *InteractiveSuite) Test_Event() {
+func (i *InteractiveTestSuite) Test_Event() {
 	testcases := []struct {
 		name  string
-		msg   events.Event
+		msg   event.Event
 		after func(t *testing.T)
 	}{
 		{
 			name: "同步点赞事件",
-			msg: events.Event{
+			msg: event.Event{
 				Biz:    "label",
 				BizId:  1,
 				Action: "like",
@@ -624,7 +419,7 @@ func (i *InteractiveSuite) Test_Event() {
 		},
 		{
 			name: "同步收藏事件",
-			msg: events.Event{
+			msg: event.Event{
 				Biz:    "label",
 				BizId:  2,
 				Action: "collect",
@@ -649,7 +444,7 @@ func (i *InteractiveSuite) Test_Event() {
 		},
 		{
 			name: "同步浏览事件",
-			msg: events.Event{
+			msg: event.Event{
 				Biz:    "label",
 				BizId:  3,
 				Action: "view",
@@ -679,10 +474,9 @@ func (i *InteractiveSuite) Test_Event() {
 
 		})
 	}
-
 }
 
-func (i *InteractiveSuite) assertLikeBiz(want dao.UserLikeBiz, actual dao.UserLikeBiz) {
+func (i *InteractiveTestSuite) assertLikeBiz(want dao.UserLikeBiz, actual dao.UserLikeBiz) {
 	t := i.T()
 	require.True(t, actual.Id != 0)
 	require.True(t, actual.Ctime != 0)
@@ -693,7 +487,7 @@ func (i *InteractiveSuite) assertLikeBiz(want dao.UserLikeBiz, actual dao.UserLi
 	assert.Equal(t, want, actual)
 }
 
-func (i *InteractiveSuite) assertInteractive(want dao.Interactive, actual dao.Interactive) {
+func (i *InteractiveTestSuite) assertInteractive(want dao.Interactive, actual dao.Interactive) {
 	t := i.T()
 	require.True(t, actual.Id != 0)
 	require.True(t, actual.Ctime != 0)
@@ -705,7 +499,7 @@ func (i *InteractiveSuite) assertInteractive(want dao.Interactive, actual dao.In
 
 }
 
-func (i *InteractiveSuite) assertCollectBiz(want dao.UserCollectionBiz, actual dao.UserCollectionBiz) {
+func (i *InteractiveTestSuite) assertCollectBiz(want dao.UserCollectionBiz, actual dao.UserCollectionBiz) {
 	t := i.T()
 	require.True(t, actual.Id != 0)
 	require.True(t, actual.Ctime != 0)
@@ -716,14 +510,14 @@ func (i *InteractiveSuite) assertCollectBiz(want dao.UserCollectionBiz, actual d
 	assert.Equal(t, want, actual)
 }
 
-func (i *InteractiveSuite) initInteractiveData() {
+func (i *InteractiveTestSuite) initInteractiveData() {
 	biz := "skill"
 	i.initInteractiveBizData(biz, 1, 1, 1, 3)
 	i.initInteractiveBizData(biz, 2, 3, 2, 9)
 	i.initInteractiveBizData(biz, 3, 99, 88, 79)
 }
 
-func (i *InteractiveSuite) initInteractiveBizData(biz string, bizId int64, viewCnt, likeCnt, collectCnt int) {
+func (i *InteractiveTestSuite) initInteractiveBizData(biz string, bizId int64, viewCnt, likeCnt, collectCnt int) {
 	for j := 0; j < viewCnt; j++ {
 		err := i.intrDAO.IncrViewCnt(context.Background(), biz, bizId)
 		require.NoError(i.T(), err)
@@ -742,6 +536,6 @@ func (i *InteractiveSuite) initInteractiveBizData(biz string, bizId int64, viewC
 	}
 }
 
-func TestHandler(t *testing.T) {
-	suite.Run(t, new(InteractiveSuite))
+func TestInteractive(t *testing.T) {
+	suite.Run(t, new(InteractiveTestSuite))
 }

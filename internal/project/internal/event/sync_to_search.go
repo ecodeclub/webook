@@ -15,7 +15,11 @@
 package event
 
 import (
+	"context"
 	"encoding/json"
+	"fmt"
+
+	"github.com/ecodeclub/mq-api"
 
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/ecodeclub/webook/internal/project/internal/domain"
@@ -24,6 +28,32 @@ import (
 const (
 	SyncTopic = "sync_data_to_search"
 )
+
+type SyncProjectToSearchEventProducer interface {
+	Produce(ctx context.Context,
+		evt SyncProjectToSearchEvent) error
+}
+
+type syncProjectToSearchEventProducer struct {
+	producer mq.Producer
+}
+
+func NewSyncProjectToSearchEventProducer(producer mq.Producer) SyncProjectToSearchEventProducer {
+	return &syncProjectToSearchEventProducer{producer: producer}
+}
+
+func (p *syncProjectToSearchEventProducer) Produce(ctx context.Context,
+	evt SyncProjectToSearchEvent) error {
+	data, err := json.Marshal(&evt)
+	if err != nil {
+		return fmt.Errorf("序列化失败: %w", err)
+	}
+	_, err = p.producer.Produce(ctx, &mq.Message{Value: data})
+	if err != nil {
+		return fmt.Errorf("发送注册成功消息失败: %w", err)
+	}
+	return nil
+}
 
 type SyncProjectToSearchEvent struct {
 	Biz   string `json:"biz"`

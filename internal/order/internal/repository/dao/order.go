@@ -166,12 +166,12 @@ type OrderItem struct {
 	Id               int64          `gorm:"primaryKey;autoIncrement;comment:订单项自增ID"`
 	OrderId          int64          `gorm:"not null;index:idx_order_id;comment:订单自增ID"`
 	SPUId            int64          `gorm:"column:spu_id;not null;index:idx_spu_id;comment:SPU自增ID"`
-	SPUCategory      string         `gorm:"type:varchar(255);not null;comment:SPU分类名称, product/code"`
-	SPUType          string         `gorm:"type:varchar(255);not null;comment:SPU类型名称, member/project"`
+	SPUCategory      string         `gorm:"column:spu_category;type:varchar(255);not null;comment:SPU分类名称, product/code"`
+	SPUType          string         `gorm:"column:spu_type;type:varchar(255);not null;comment:SPU类型名称, member/project"`
 	SKUId            int64          `gorm:"column:sku_id;not null;index:idx_sku_id;comment:SKU自增ID"`
 	SKUSN            string         `gorm:"column:sku_sn;type:varchar(255);not null;comment:SKU序列号"`
 	SKUImage         string         `gorm:"column:sku_image;type:varchar(512);not null;comment:SKU缩略图,CDN绝对路径"`
-	SKUAttrs         sql.NullString `gorm:"comment:商品销售属性,JSON格式"`
+	SKUAttrs         sql.NullString `gorm:"column:spu_attrs;comment:商品销售属性,JSON格式"`
 	SKUName          string         `gorm:"column:sku_name;type:varchar(255);not null;comment:SKU名称"`
 	SKUDescription   string         `gorm:"column:sku_description;not null;comment:SKU描述"`
 	SKUOriginalPrice int64          `gorm:"column:sku_original_price;not null;comment:商品原始单价;单位为分, 999表示9.99元"`

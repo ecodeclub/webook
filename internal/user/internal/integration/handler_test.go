@@ -17,8 +17,13 @@
 package integration
 
 import (
+	"context"
 	"net/http"
 	"testing"
+
+	"github.com/ecodeclub/webook/internal/member"
+	membermocks "github.com/ecodeclub/webook/internal/member/mocks"
+	"go.uber.org/mock/gomock"
 
 	"github.com/ecodeclub/ekit/iox"
 	"github.com/ecodeclub/ginx/session"
@@ -49,7 +54,16 @@ func (s *HandleTestSuite) SetupSuite() {
 	require.NoError(s.T(), err)
 	econf.Set("server", map[string]string{})
 	server := egin.Load("server").Build()
-	hdl := startup.InitHandler(nil, nil, nil)
+	ctrl := gomock.NewController(s.T())
+	memSvc := membermocks.NewMockService(ctrl)
+	memSvc.EXPECT().GetMembershipInfo(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context,
+		uid int64) (member.Member, error) {
+		return member.Member{
+			Uid:   uid,
+			EndAt: 1234,
+		}, nil
+	}).AnyTimes()
+	hdl := startup.InitHandler(nil, memSvc, nil)
 	server.Use(func(ctx *gin.Context) {
 		ctx.Set("_session", session.NewMemorySession(session.Claims{
 			Uid: 123,
@@ -174,8 +188,9 @@ func (s *HandleTestSuite) TestProfile() {
 			},
 			wantResp: test2.Result[web.Profile]{
 				Data: web.Profile{
-					Nickname: "old name",
-					Avatar:   "old avatar",
+					Nickname:  "old name",
+					Avatar:    "old avatar",
+					MemberDDL: 1234,
 				},
 			},
 			wantCode: 200,

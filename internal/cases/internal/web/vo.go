@@ -1,6 +1,9 @@
 package web
 
-import "github.com/ecodeclub/webook/internal/cases/internal/domain"
+import (
+	"github.com/ecodeclub/webook/internal/cases/internal/domain"
+	"github.com/ecodeclub/webook/internal/interactive"
+)
 
 type Page struct {
 	Offset int `json:"offset,omitempty"`
@@ -14,7 +17,10 @@ type Case struct {
 	Id  int64 `json:"id,omitempty"`
 	UID int64 `json:"uid,omitempty"`
 	// 面试案例标题
-	Title  string   `json:"title,omitempty"`
+	Title string `json:"title,omitempty"`
+	// 面试案例的简介
+	Introduction string `json:"introduction,omitempty"`
+
 	Labels []string `json:"labels,omitempty"`
 	// 面试案例内容
 	Content  string `json:"content,omitempty"`
@@ -29,6 +35,8 @@ type Case struct {
 	Guidance string `json:"guidance,omitempty"`
 	Status   uint8  `json:"status,omitempty"`
 	Utime    int64  `json:"utime,omitempty"`
+
+	Interactive Interactive `json:"interactive,omitempty"`
 }
 
 type CaseId struct {
@@ -40,14 +48,33 @@ type SaveReq struct {
 
 func (c Case) toDomain() domain.Case {
 	return domain.Case{
-		Id:        c.Id,
-		Title:     c.Title,
-		Labels:    c.Labels,
-		Content:   c.Content,
-		CodeRepo:  c.CodeRepo,
-		Keywords:  c.Keywords,
-		Shorthand: c.Shorthand,
-		Highlight: c.Highlight,
-		Guidance:  c.Guidance,
+		Id:           c.Id,
+		Title:        c.Title,
+		Labels:       c.Labels,
+		Content:      c.Content,
+		CodeRepo:     c.CodeRepo,
+		Keywords:     c.Keywords,
+		Shorthand:    c.Shorthand,
+		Introduction: c.Introduction,
+		Highlight:    c.Highlight,
+		Guidance:     c.Guidance,
+	}
+}
+
+type Interactive struct {
+	CollectCnt int  `json:"collectCnt"`
+	LikeCnt    int  `json:"likeCnt"`
+	ViewCnt    int  `json:"viewCnt"`
+	Liked      bool `json:"liked"`
+	Collected  bool `json:"collected"`
+}
+
+func newInteractive(intr interactive.Interactive) Interactive {
+	return Interactive{
+		CollectCnt: intr.CollectCnt,
+		ViewCnt:    intr.ViewCnt,
+		LikeCnt:    intr.LikeCnt,
+		Liked:      intr.Liked,
+		Collected:  intr.Collected,
 	}
 }

@@ -26,6 +26,7 @@ const (
 	SyncTopic = "sync_data_to_search"
 )
 
+//go:generate mockgen -source=./producer.go -destination=./mocks/producer.mock.go -package=evtmocks -typed SyncEventProducer
 type SyncEventProducer interface {
 	Produce(ctx context.Context, evt CaseEvent) error
 }

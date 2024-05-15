@@ -17,7 +17,7 @@
 package startup
 
 import (
-	"github.com/ecodeclub/ecache"
+	"github.com/ecodeclub/webook/internal/interactive"
 	baguwen "github.com/ecodeclub/webook/internal/question"
 	"github.com/ecodeclub/webook/internal/question/internal/event"
 	"github.com/ecodeclub/webook/internal/question/internal/repository"
@@ -25,36 +25,38 @@ import (
 	"github.com/ecodeclub/webook/internal/question/internal/service"
 	"github.com/ecodeclub/webook/internal/question/internal/web"
 	testioc "github.com/ecodeclub/webook/internal/test/ioc"
-	"github.com/ego-component/egorm"
 	"github.com/google/wire"
 )
 
-func InitHandler(p event.SyncEventProducer) (*web.Handler, error) {
+func InitHandler(p event.SyncDataToSearchEventProducer,
+	intrModule *interactive.Module) (*web.Handler, error) {
 	wire.Build(
 		testioc.BaseSet,
-		initModule,
-		wire.FieldsOf(new(*baguwen.Module), "Hdl"),
+		moduleSet,
+		event.NewInteractiveEventProducer,
+		wire.FieldsOf(new(*interactive.Module), "Svc"),
 	)
 	return new(web.Handler), nil
 }
 
-func initModule(db *egorm.Component, ec ecache.Cache, p event.SyncEventProducer) (*baguwen.Module, error) {
-	wire.Build(baguwen.InitQuestionDAO,
-		cache.NewQuestionECache,
-		repository.NewCacheRepository,
-		service.NewService,
-		web.NewHandler,
-		baguwen.InitQuestionSetDAO,
-		repository.NewQuestionSetRepository,
-		service.NewQuestionSetService,
-		web.NewQuestionSetHandler,
-		wire.Struct(new(baguwen.Module), "*"),
-	)
-	return new(baguwen.Module), nil
-}
+var moduleSet = wire.NewSet(baguwen.InitQuestionDAO,
+	cache.NewQuestionECache,
+	repository.NewCacheRepository,
+	service.NewService,
+	web.NewHandler,
+	baguwen.InitQuestionSetDAO,
+	repository.NewQuestionSetRepository,
+	service.NewQuestionSetService,
+	web.NewQuestionSetHandler,
+	wire.Struct(new(baguwen.Module), "*"),
+)
 
-func InitQuestionSetHandler(p event.SyncEventProducer) (*web.QuestionSetHandler, error) {
-	wire.Build(testioc.BaseSet, initModule,
-		wire.FieldsOf(new(*baguwen.Module), "QsHdl"))
+func InitQuestionSetHandler(
+	p event.SyncDataToSearchEventProducer,
+	intrModule *interactive.Module,
+) (*web.QuestionSetHandler, error) {
+	wire.Build(testioc.BaseSet, moduleSet,
+		wire.FieldsOf(new(*interactive.Module), "Svc"),
+		event.NewInteractiveEventProducer)
 	return new(web.QuestionSetHandler), nil
 }

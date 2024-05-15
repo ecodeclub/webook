@@ -21,7 +21,7 @@ import (
 	"sync"
 
 	"github.com/ecodeclub/mq-api"
-	"github.com/ecodeclub/webook/internal/interactive/internal/events"
+	"github.com/ecodeclub/webook/internal/interactive/internal/event"
 	"github.com/ecodeclub/webook/internal/interactive/internal/repository"
 	"github.com/ecodeclub/webook/internal/interactive/internal/repository/dao"
 	"github.com/ecodeclub/webook/internal/interactive/internal/service"
@@ -57,15 +57,11 @@ func InitTablesOnce(db *egorm.Component) dao.InteractiveDAO {
 	return dao.NewInteractiveDAO(db)
 }
 
-func initConsumer(svc service.InteractiveService, q mq.MQ) *events.Consumer {
-	consumer, err := events.NewSyncConsumer(svc, q)
+func initConsumer(svc service.Service, q mq.MQ) *event.Consumer {
+	consumer, err := event.NewSyncConsumer(svc, q)
 	if err != nil {
 		panic(err)
 	}
 	consumer.Start(context.Background())
 	return consumer
 }
-
-type Handler = web.Handler
-
-type InteractiveSvc = service.InteractiveService

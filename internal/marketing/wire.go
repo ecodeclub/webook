@@ -17,7 +17,10 @@
 package marketing
 
 import (
+	"context"
+
 	"github.com/ecodeclub/mq-api"
+	"github.com/ecodeclub/webook/internal/marketing/internal/event/consumer"
 	"github.com/ecodeclub/webook/internal/marketing/internal/event/producer"
 	"github.com/ecodeclub/webook/internal/product"
 	"github.com/lithammer/shortuuid/v4"
@@ -51,9 +54,19 @@ func InitModule(db *egorm.Component, q mq.MQ, om *order.Module, pm *product.Modu
 		producer.NewPermissionEventProducer,
 		service.NewService,
 		web.NewHandler,
+
+		newOrderEventConsumer,
 		wire.Struct(new(Module), "*"),
 	)
 	return nil, nil
+}
+
+func newOrderEventConsumer(svc service.Service, q mq.MQ) (*consumer.OrderEventConsumer, error) {
+	res, err := consumer.NewOrderEventConsumer(svc, q)
+	if err == nil {
+		res.Start(context.Background())
+	}
+	return res, err
 }
 
 func redemptionCodeGenerator(generator *sequencenumber.Generator) func(id int64) string {

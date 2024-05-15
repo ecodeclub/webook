@@ -17,6 +17,8 @@ package web
 import (
 	"time"
 
+	"github.com/ecodeclub/webook/internal/interactive"
+
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/ecodeclub/webook/internal/project/internal/domain"
 )
@@ -37,9 +39,10 @@ type Project struct {
 	Resumes       []Resume       `json:"resumes,omitempty"`
 	Questions     []Question     `json:"questions,omitempty"`
 	Introductions []Introduction `json:"introductions,omitempty"`
+	Interactive   Interactive    `json:"interactive,omitempty"`
 }
 
-func newProject(p domain.Project) Project {
+func newProject(p domain.Project, intr interactive.Interactive) Project {
 	return Project{
 		Id:     p.Id,
 		Title:  p.Title,
@@ -59,6 +62,7 @@ func newProject(p domain.Project) Project {
 		Introductions: slice.Map(p.Introductions, func(idx int, src domain.Introduction) Introduction {
 			return newIntroduction(src)
 		}),
+		Interactive: newInteractive(intr),
 	}
 }
 
@@ -233,4 +237,22 @@ type ProjectList struct {
 // IdReq Admin 端一般操作 id
 type IdReq struct {
 	Id int64 `json:"id,omitempty"`
+}
+
+type Interactive struct {
+	CollectCnt int  `json:"collectCnt"`
+	LikeCnt    int  `json:"likeCnt"`
+	ViewCnt    int  `json:"viewCnt"`
+	Liked      bool `json:"liked"`
+	Collected  bool `json:"collected"`
+}
+
+func newInteractive(intr interactive.Interactive) Interactive {
+	return Interactive{
+		CollectCnt: intr.CollectCnt,
+		ViewCnt:    intr.ViewCnt,
+		LikeCnt:    intr.LikeCnt,
+		Liked:      intr.Liked,
+		Collected:  intr.Collected,
+	}
 }

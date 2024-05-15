@@ -26,6 +26,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ecodeclub/webook/internal/interactive"
+	intrmocks "github.com/ecodeclub/webook/internal/interactive/mocks"
+
 	"github.com/ecodeclub/webook/internal/question/internal/event"
 	eveMocks "github.com/ecodeclub/webook/internal/question/internal/event/mocks"
 	"go.uber.org/mock/gomock"
@@ -106,9 +109,39 @@ func (s *HandlerTestSuite) TearDownTest() {
 func (s *HandlerTestSuite) SetupSuite() {
 	s.ctrl = gomock.NewController(s.T())
 	s.producer = eveMocks.NewMockSyncEventProducer(s.ctrl)
-	handler, err := startup.InitHandler(s.producer)
+
+	intrSvc := intrmocks.NewMockService(s.ctrl)
+	intrModule := &interactive.Module{
+		Svc: intrSvc,
+	}
+
+	// 模拟返回的数据
+	// 使用如下规律:
+	// 1. liked == id % 2 == 1 (奇数为 true)
+	// 2. collected = id %2 == 0 (偶数为 true)
+	// 3. viewCnt = id + 1
+	// 4. likeCnt = id + 2
+	// 5. collectCnt = id + 3
+	intrSvc.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+		AnyTimes().DoAndReturn(func(ctx context.Context,
+		biz string, id int64, uid int64) (interactive.Interactive, error) {
+		intr := s.mockInteractive(biz, id)
+		return intr, nil
+	})
+	intrSvc.EXPECT().GetByIds(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context,
+		biz string, ids []int64) (map[int64]interactive.Interactive, error) {
+		res := make(map[int64]interactive.Interactive, len(ids))
+		for _, id := range ids {
+			intr := s.mockInteractive(biz, id)
+			res[id] = intr
+		}
+		return res, nil
+	}).AnyTimes()
+
+	handler, err := startup.InitHandler(s.producer, intrModule)
 	require.NoError(s.T(), err)
-	questionSetHandler, err := startup.InitQuestionSetHandler(s.producer)
+	require.NoError(s.T(), err)
+	questionSetHandler, err := startup.InitQuestionSetHandler(s.producer, intrModule)
 	require.NoError(s.T(), err)
 	econf.Set("server", map[string]any{"contextTimeout": "1s"})
 	server := egin.Load("server").Build()
@@ -128,7 +161,6 @@ func (s *HandlerTestSuite) SetupSuite() {
 	questionSetHandler.PrivateRoutes(server.Engine)
 	server.Use(middleware.NewCheckMembershipMiddlewareBuilder(nil).Build())
 	handler.MemberRoutes(server.Engine)
-	questionSetHandler.MemberRoutes(server.Engine)
 
 	s.server = server
 	s.db = testioc.InitDB()
@@ -308,7 +340,7 @@ func (s *HandlerTestSuite) TestSave() {
 	}
 }
 
-func (s *HandlerTestSuite) TestList() {
+func (s *HandlerTestSuite) TestPubList() {
 	// 插入一百条
 	data := make([]dao.PublishQuestion, 0, 100)
 	for idx := 0; idx < 100; idx++ {
@@ -317,6 +349,7 @@ func (s *HandlerTestSuite) TestList() {
 			Status:  domain.UnPublishedStatus.ToUint8(),
 			Title:   fmt.Sprintf("这是标题 %d", idx),
 			Content: fmt.Sprintf("这是解析 %d", idx),
+			Utime:   123,
 		})
 	}
 	err := s.db.Create(&data).Error
@@ -326,7 +359,7 @@ func (s *HandlerTestSuite) TestList() {
 		req  web.Page
 
 		wantCode int
-		wantResp test.Result[web.QuestionList]
+		wantResp test.Result[[]web.Question]
 	}{
 		{
 			name: "获取成功",
@@ -335,23 +368,34 @@ func (s *HandlerTestSuite) TestList() {
 				Offset: 0,
 			},
 			wantCode: 200,
-			wantResp: test.Result[web.QuestionList]{
-				Data: web.QuestionList{
-					Total: 100,
-					Questions: []web.Question{
-						{
-							Id:      100,
-							Title:   "这是标题 99",
-							Content: "这是解析 99",
-							Status:  domain.UnPublishedStatus.ToUint8(),
-							Utime:   0,
+			wantResp: test.Result[[]web.Question]{
+				Data: []web.Question{
+					{
+						Id:      100,
+						Title:   "这是标题 99",
+						Content: "这是解析 99",
+						Status:  domain.UnPublishedStatus.ToUint8(),
+						Utime:   123,
+						Interactive: web.Interactive{
+							ViewCnt:    101,
+							LikeCnt:    102,
+							CollectCnt: 103,
+							Liked:      false,
+							Collected:  true,
 						},
-						{
-							Id:      99,
-							Title:   "这是标题 98",
-							Content: "这是解析 98",
-							Status:  domain.UnPublishedStatus.ToUint8(),
-							Utime:   0,
+					},
+					{
+						Id:      99,
+						Title:   "这是标题 98",
+						Content: "这是解析 98",
+						Status:  domain.UnPublishedStatus.ToUint8(),
+						Utime:   123,
+						Interactive: web.Interactive{
+							ViewCnt:    100,
+							LikeCnt:    101,
+							CollectCnt: 102,
+							Liked:      true,
+							Collected:  false,
 						},
 					},
 				},
@@ -364,16 +408,20 @@ func (s *HandlerTestSuite) TestList() {
 				Offset: 99,
 			},
 			wantCode: 200,
-			wantResp: test.Result[web.QuestionList]{
-				Data: web.QuestionList{
-					Total: 100,
-					Questions: []web.Question{
-						{
-							Id:      1,
-							Title:   "这是标题 0",
-							Content: "这是解析 0",
-							Status:  domain.UnPublishedStatus.ToUint8(),
-							Utime:   0,
+			wantResp: test.Result[[]web.Question]{
+				Data: []web.Question{
+					{
+						Id:      1,
+						Title:   "这是标题 0",
+						Content: "这是解析 0",
+						Status:  domain.UnPublishedStatus.ToUint8(),
+						Utime:   123,
+						Interactive: web.Interactive{
+							ViewCnt:    2,
+							LikeCnt:    3,
+							CollectCnt: 4,
+							Liked:      true,
+							Collected:  false,
 						},
 					},
 				},
@@ -388,7 +436,7 @@ func (s *HandlerTestSuite) TestList() {
 				"/question/pub/list", iox.NewJSONReader(tc.req))
 			req.Header.Set("content-type", "application/json")
 			require.NoError(t, err)
-			recorder := test.NewJSONResponseRecorder[web.QuestionList]()
+			recorder := test.NewJSONResponseRecorder[[]web.Question]()
 			s.server.ServeHTTP(recorder, req)
 			require.Equal(t, tc.wantCode, recorder.Code)
 			assert.Equal(t, tc.wantResp, recorder.MustScan())
@@ -678,6 +726,13 @@ func (s *HandlerTestSuite) TestPubDetail() {
 					Status:  domain.PublishedStatus.ToUint8(),
 					Content: "这是解析 1",
 					Utime:   0,
+					Interactive: web.Interactive{
+						ViewCnt:    3,
+						LikeCnt:    4,
+						CollectCnt: 5,
+						Liked:      false,
+						Collected:  true,
+					},
 				},
 			},
 		},
@@ -1425,6 +1480,13 @@ func (s *HandlerTestSuite) TestQuestionSet_RetrieveQuestionSetDetail() {
 					Title:       "Go",
 					Description: "Go题集",
 					Utime:       now,
+					Interactive: web.Interactive{
+						ViewCnt:    322,
+						LikeCnt:    323,
+						CollectCnt: 324,
+						Liked:      true,
+						Collected:  false,
+					},
 				},
 			},
 		},
@@ -1498,6 +1560,13 @@ func (s *HandlerTestSuite) TestQuestionSet_RetrieveQuestionSetDetail() {
 					Id:          322,
 					Title:       "Go",
 					Description: "Go题集",
+					Interactive: web.Interactive{
+						ViewCnt:    323,
+						LikeCnt:    324,
+						CollectCnt: 325,
+						Liked:      false,
+						Collected:  true,
+					},
 					Questions: []web.Question{
 						{
 							Id:      614,
@@ -1618,6 +1687,7 @@ func (s *HandlerTestSuite) TestQuestionSet_ListPrivateQuestionSets() {
 			Uid:         uid,
 			Title:       fmt.Sprintf("题集标题 %d", idx),
 			Description: fmt.Sprintf("题集简介 %d", idx),
+			Utime:       123,
 		})
 	}
 	err := s.db.Create(&data).Error
@@ -1645,13 +1715,27 @@ func (s *HandlerTestSuite) TestQuestionSet_ListPrivateQuestionSets() {
 							Id:          100,
 							Title:       "题集标题 99",
 							Description: "题集简介 99",
-							Utime:       0,
+							Utime:       123,
+							Interactive: web.Interactive{
+								ViewCnt:    101,
+								LikeCnt:    102,
+								CollectCnt: 103,
+								Liked:      false,
+								Collected:  true,
+							},
 						},
 						{
 							Id:          99,
 							Title:       "题集标题 98",
 							Description: "题集简介 98",
-							Utime:       0,
+							Utime:       123,
+							Interactive: web.Interactive{
+								ViewCnt:    100,
+								LikeCnt:    101,
+								CollectCnt: 102,
+								Liked:      true,
+								Collected:  false,
+							},
 						},
 					},
 				},
@@ -1672,7 +1756,14 @@ func (s *HandlerTestSuite) TestQuestionSet_ListPrivateQuestionSets() {
 							Id:          1,
 							Title:       "题集标题 0",
 							Description: "题集简介 0",
-							Utime:       0,
+							Utime:       123,
+							Interactive: web.Interactive{
+								ViewCnt:    2,
+								LikeCnt:    3,
+								CollectCnt: 4,
+								Liked:      true,
+								Collected:  false,
+							},
 						},
 					},
 				},
@@ -1706,6 +1797,7 @@ func (s *HandlerTestSuite) TestQuestionSet_ListAllQuestionSets() {
 			Uid:         int64(uid + idx),
 			Title:       fmt.Sprintf("题集标题 %d", idx),
 			Description: fmt.Sprintf("题集简介 %d", idx),
+			Utime:       123,
 		})
 	}
 	err := s.db.Create(&data).Error
@@ -1733,13 +1825,27 @@ func (s *HandlerTestSuite) TestQuestionSet_ListAllQuestionSets() {
 							Id:          100,
 							Title:       "题集标题 99",
 							Description: "题集简介 99",
-							Utime:       0,
+							Utime:       123,
+							Interactive: web.Interactive{
+								ViewCnt:    101,
+								LikeCnt:    102,
+								CollectCnt: 103,
+								Liked:      false,
+								Collected:  true,
+							},
 						},
 						{
 							Id:          99,
 							Title:       "题集标题 98",
 							Description: "题集简介 98",
-							Utime:       0,
+							Utime:       123,
+							Interactive: web.Interactive{
+								ViewCnt:    100,
+								LikeCnt:    101,
+								CollectCnt: 102,
+								Liked:      true,
+								Collected:  false,
+							},
 						},
 					},
 				},
@@ -1760,7 +1866,14 @@ func (s *HandlerTestSuite) TestQuestionSet_ListAllQuestionSets() {
 							Id:          1,
 							Title:       "题集标题 0",
 							Description: "题集简介 0",
-							Utime:       0,
+							Utime:       123,
+							Interactive: web.Interactive{
+								ViewCnt:    2,
+								LikeCnt:    3,
+								CollectCnt: 4,
+								Liked:      true,
+								Collected:  false,
+							},
 						},
 					},
 				},
@@ -1772,7 +1885,7 @@ func (s *HandlerTestSuite) TestQuestionSet_ListAllQuestionSets() {
 		tc := tc
 		s.T().Run(tc.name, func(t *testing.T) {
 			req, err := http.NewRequest(http.MethodPost,
-				"/question-sets/pub/list", iox.NewJSONReader(tc.req))
+				"/question-sets/list", iox.NewJSONReader(tc.req))
 			req.Header.Set("content-type", "application/json")
 			require.NoError(t, err)
 			recorder := test.NewJSONResponseRecorder[web.QuestionSetList]()
@@ -1965,6 +2078,20 @@ func (s *HandlerTestSuite) buildEventEle(idx int64) event.AnswerElement {
 		Shorthand: fmt.Sprintf("快速记忆法 %d", idx),
 		Highlight: fmt.Sprintf("亮点 %d", idx),
 		Guidance:  fmt.Sprintf("引导点 %d", idx),
+	}
+}
+
+func (s *HandlerTestSuite) mockInteractive(biz string, id int64) interactive.Interactive {
+	liked := id%2 == 1
+	collected := id%2 == 0
+	return interactive.Interactive{
+		Biz:        biz,
+		BizId:      id,
+		ViewCnt:    int(id + 1),
+		LikeCnt:    int(id + 2),
+		CollectCnt: int(id + 3),
+		Liked:      liked,
+		Collected:  collected,
 	}
 }
 

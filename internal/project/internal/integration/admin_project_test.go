@@ -23,6 +23,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ecodeclub/webook/internal/interactive"
+	intrmocks "github.com/ecodeclub/webook/internal/interactive/mocks"
+	"go.uber.org/mock/gomock"
+
 	"github.com/ecodeclub/ekit/iox"
 	"github.com/ecodeclub/ekit/sqlx"
 	"github.com/ecodeclub/webook/internal/project"
@@ -51,7 +55,13 @@ type AdminProjectTestSuite struct {
 }
 
 func (s *AdminProjectTestSuite) SetupSuite() {
-	m := startup.InitModule()
+	ctrl := gomock.NewController(s.T())
+	intrSvc := intrmocks.NewMockService(ctrl)
+	intrModule := &interactive.Module{
+		Svc: intrSvc,
+	}
+	m, err := startup.InitModule(intrModule)
+	require.NoError(s.T(), err)
 	s.hdl = m.AdminHdl
 
 	econf.Set("server", map[string]any{"contextTimeout": "10s"})

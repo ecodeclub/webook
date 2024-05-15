@@ -235,13 +235,12 @@ func (c *ServicePubDetailCall) DoAndReturn(f func(context.Context, int64) (domai
 }
 
 // PubList mocks base method.
-func (m *MockService) PubList(ctx context.Context, offset, limit int) ([]domain.Question, int64, error) {
+func (m *MockService) PubList(ctx context.Context, offset, limit int) ([]domain.Question, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "PubList", ctx, offset, limit)
 	ret0, _ := ret[0].([]domain.Question)
-	ret1, _ := ret[1].(int64)
-	ret2, _ := ret[2].(error)
-	return ret0, ret1, ret2
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // PubList indicates an expected call of PubList.
@@ -257,19 +256,19 @@ type ServicePubListCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *ServicePubListCall) Return(arg0 []domain.Question, arg1 int64, arg2 error) *ServicePubListCall {
-	c.Call = c.Call.Return(arg0, arg1, arg2)
+func (c *ServicePubListCall) Return(arg0 []domain.Question, arg1 error) *ServicePubListCall {
+	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *ServicePubListCall) Do(f func(context.Context, int, int) ([]domain.Question, int64, error)) *ServicePubListCall {
+func (c *ServicePubListCall) Do(f func(context.Context, int, int) ([]domain.Question, error)) *ServicePubListCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *ServicePubListCall) DoAndReturn(f func(context.Context, int, int) ([]domain.Question, int64, error)) *ServicePubListCall {
+func (c *ServicePubListCall) DoAndReturn(f func(context.Context, int, int) ([]domain.Question, error)) *ServicePubListCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

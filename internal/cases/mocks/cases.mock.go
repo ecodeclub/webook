@@ -197,13 +197,12 @@ func (c *ServicePubDetailCall) DoAndReturn(f func(context.Context, int64) (domai
 }
 
 // PubList mocks base method.
-func (m *MockService) PubList(ctx context.Context, offset, limit int) ([]domain.Case, int64, error) {
+func (m *MockService) PubList(ctx context.Context, offset, limit int) ([]domain.Case, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "PubList", ctx, offset, limit)
 	ret0, _ := ret[0].([]domain.Case)
-	ret1, _ := ret[1].(int64)
-	ret2, _ := ret[2].(error)
-	return ret0, ret1, ret2
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // PubList indicates an expected call of PubList.
@@ -219,25 +218,25 @@ type ServicePubListCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *ServicePubListCall) Return(arg0 []domain.Case, arg1 int64, arg2 error) *ServicePubListCall {
-	c.Call = c.Call.Return(arg0, arg1, arg2)
+func (c *ServicePubListCall) Return(arg0 []domain.Case, arg1 error) *ServicePubListCall {
+	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *ServicePubListCall) Do(f func(context.Context, int, int) ([]domain.Case, int64, error)) *ServicePubListCall {
+func (c *ServicePubListCall) Do(f func(context.Context, int, int) ([]domain.Case, error)) *ServicePubListCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *ServicePubListCall) DoAndReturn(f func(context.Context, int, int) ([]domain.Case, int64, error)) *ServicePubListCall {
+func (c *ServicePubListCall) DoAndReturn(f func(context.Context, int, int) ([]domain.Case, error)) *ServicePubListCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // Publish mocks base method.
-func (m *MockService) Publish(ctx context.Context, ca *domain.Case) (int64, error) {
+func (m *MockService) Publish(ctx context.Context, ca domain.Case) (int64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Publish", ctx, ca)
 	ret0, _ := ret[0].(int64)
@@ -264,19 +263,19 @@ func (c *ServicePublishCall) Return(arg0 int64, arg1 error) *ServicePublishCall 
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *ServicePublishCall) Do(f func(context.Context, *domain.Case) (int64, error)) *ServicePublishCall {
+func (c *ServicePublishCall) Do(f func(context.Context, domain.Case) (int64, error)) *ServicePublishCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *ServicePublishCall) DoAndReturn(f func(context.Context, *domain.Case) (int64, error)) *ServicePublishCall {
+func (c *ServicePublishCall) DoAndReturn(f func(context.Context, domain.Case) (int64, error)) *ServicePublishCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // Save mocks base method.
-func (m *MockService) Save(ctx context.Context, ca *domain.Case) (int64, error) {
+func (m *MockService) Save(ctx context.Context, ca domain.Case) (int64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Save", ctx, ca)
 	ret0, _ := ret[0].(int64)
@@ -303,13 +302,13 @@ func (c *ServiceSaveCall) Return(arg0 int64, arg1 error) *ServiceSaveCall {
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *ServiceSaveCall) Do(f func(context.Context, *domain.Case) (int64, error)) *ServiceSaveCall {
+func (c *ServiceSaveCall) Do(f func(context.Context, domain.Case) (int64, error)) *ServiceSaveCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *ServiceSaveCall) DoAndReturn(f func(context.Context, *domain.Case) (int64, error)) *ServiceSaveCall {
+func (c *ServiceSaveCall) DoAndReturn(f func(context.Context, domain.Case) (int64, error)) *ServiceSaveCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
