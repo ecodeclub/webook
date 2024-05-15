@@ -18,6 +18,9 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/ecodeclub/webook/internal/interactive"
+	"golang.org/x/sync/errgroup"
+
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/ecodeclub/ginx"
 	"github.com/ecodeclub/ginx/session"
@@ -28,14 +31,16 @@ import (
 )
 
 type Handler struct {
-	svc    service.Service
-	logger *elog.Component
+	svc     service.Service
+	intrSvc interactive.Service
+	logger  *elog.Component
 }
 
-func NewHandler(svc service.Service) *Handler {
+func NewHandler(svc service.Service, intrSvc interactive.Service) *Handler {
 	return &Handler{
-		svc:    svc,
-		logger: elog.DefaultLogger,
+		svc:     svc,
+		intrSvc: intrSvc,
+		logger:  elog.DefaultLogger,
 	}
 }
 
@@ -51,7 +56,7 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 }
 
 func (h *Handler) MemberRoutes(server *gin.Engine) {
-	server.POST("/case/pub/detail", ginx.B[CaseId](h.PubDetail))
+	server.POST("/case/pub/detail", ginx.BS(h.PubDetail))
 }
 
 func (h *Handler) Save(ctx *ginx.Context,
@@ -59,7 +64,7 @@ func (h *Handler) Save(ctx *ginx.Context,
 	sess session.Session) (ginx.Result, error) {
 	ca := req.Case.toDomain()
 	ca.Uid = sess.Claims().Uid
-	id, err := h.svc.Save(ctx, &ca)
+	id, err := h.svc.Save(ctx, ca)
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -90,39 +95,74 @@ func (h *Handler) Detail(ctx *ginx.Context, req CaseId) (ginx.Result, error) {
 }
 
 func (h *Handler) PubList(ctx *ginx.Context, req Page) (ginx.Result, error) {
-	data, cnt, err := h.svc.PubList(ctx, req.Offset, req.Limit)
+	data, err := h.svc.PubList(ctx, req.Offset, req.Limit)
 	if err != nil {
 		return systemErrorResult, err
 	}
+
+	intrs := map[int64]interactive.Interactive{}
+	if len(data) > 0 {
+		ids := slice.Map(data, func(idx int, src domain.Case) int64 {
+			return src.Id
+		})
+		var err1 error
+		intrs, err1 = h.intrSvc.GetByIds(ctx, "question", ids)
+		// 这个数据查询不到也不需要担心
+		if err1 != nil {
+			h.logger.Error("查询数据的点赞数据失败",
+				elog.Any("ids", ids),
+				elog.FieldErr(err))
+		}
+	}
 	return ginx.Result{
 		Data: CasesList{
-			Total: cnt,
 			Cases: slice.Map(data, func(idx int, ca domain.Case) Case {
 				return Case{
-					Id:     ca.Id,
-					Title:  ca.Title,
-					Labels: ca.Labels,
-					Utime:  ca.Utime.UnixMilli(),
+					Id:           ca.Id,
+					Title:        ca.Title,
+					Introduction: ca.Introduction,
+					Labels:       ca.Labels,
+					Utime:        ca.Utime.UnixMilli(),
+					Interactive:  newInteractive(intrs[ca.Id]),
 				}
 			}),
 		},
 	}, nil
 }
 
-func (h *Handler) PubDetail(ctx *ginx.Context, req CaseId) (ginx.Result, error) {
-	detail, err := h.svc.PubDetail(ctx, req.Cid)
+func (h *Handler) PubDetail(ctx *ginx.Context, req CaseId, sess session.Session) (ginx.Result, error) {
+	var (
+		eg     errgroup.Group
+		detail domain.Case
+		intr   interactive.Interactive
+	)
+	eg.Go(func() error {
+		var err error
+		detail, err = h.svc.PubDetail(ctx, req.Cid)
+		return err
+	})
+
+	eg.Go(func() error {
+		var err error
+		intr, err = h.intrSvc.Get(ctx, domain.BizCase, req.Cid, sess.Claims().Uid)
+		return err
+	})
+
+	err := eg.Wait()
 	if err != nil {
 		return systemErrorResult, err
 	}
+	res := newCase(detail)
+	res.Interactive = newInteractive(intr)
 	return ginx.Result{
-		Data: newCase(detail),
+		Data: res,
 	}, err
 }
 
 func (h *Handler) Publish(ctx *ginx.Context, req SaveReq, sess session.Session) (ginx.Result, error) {
 	ca := req.Case.toDomain()
 	ca.Uid = sess.Claims().Uid
-	id, err := h.svc.Publish(ctx, &ca)
+	id, err := h.svc.Publish(ctx, ca)
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -142,17 +182,18 @@ func (h *Handler) toCaseList(data []domain.Case, cnt int64) CasesList {
 
 func newCase(ca domain.Case) Case {
 	return Case{
-		Id:        ca.Id,
-		Title:     ca.Title,
-		Content:   ca.Content,
-		Labels:    ca.Labels,
-		CodeRepo:  ca.CodeRepo,
-		Keywords:  ca.Keywords,
-		Shorthand: ca.Shorthand,
-		Highlight: ca.Highlight,
-		Guidance:  ca.Guidance,
-		Status:    ca.Status.ToUint8(),
-		Utime:     ca.Utime.UnixMilli(),
+		Id:           ca.Id,
+		Title:        ca.Title,
+		Introduction: ca.Introduction,
+		Content:      ca.Content,
+		Labels:       ca.Labels,
+		CodeRepo:     ca.CodeRepo,
+		Keywords:     ca.Keywords,
+		Shorthand:    ca.Shorthand,
+		Highlight:    ca.Highlight,
+		Guidance:     ca.Guidance,
+		Status:       ca.Status.ToUint8(),
+		Utime:        ca.Utime.UnixMilli(),
 	}
 }
 

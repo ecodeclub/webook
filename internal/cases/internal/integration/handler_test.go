@@ -26,6 +26,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ecodeclub/webook/internal/interactive"
+	intrmocks "github.com/ecodeclub/webook/internal/interactive/mocks"
+
 	"github.com/ecodeclub/webook/internal/cases/internal/domain"
 	"github.com/ecodeclub/webook/internal/cases/internal/event"
 	eveMocks "github.com/ecodeclub/webook/internal/cases/internal/event/mocks"
@@ -79,11 +82,36 @@ func (s *HandlerTestSuite) TearDownTest() {
 func (s *HandlerTestSuite) SetupSuite() {
 	s.ctrl = gomock.NewController(s.T())
 	s.producer = eveMocks.NewMockSyncEventProducer(s.ctrl)
-	handler, err := startup.InitHandler(s.producer)
+	intrSvc := intrmocks.NewMockService(s.ctrl)
+	intrModule := &interactive.Module{
+		Svc: intrSvc,
+	}
+	// 模拟返回的数据
+	// 使用如下规律:
+	// 1. liked == id % 2 == 1 (奇数为 true)
+	// 2. collected = id %2 == 0 (偶数为 true)
+	// 3. viewCnt = id + 1
+	// 4. likeCnt = id + 2
+	// 5. collectCnt = id + 3
+	intrSvc.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes().
+		DoAndReturn(func(ctx context.Context, biz string, id int64, uid int64) (interactive.Interactive, error) {
+			intr := s.mockInteractive(biz, id)
+			return intr, nil
+		})
+	intrSvc.EXPECT().GetByIds(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context,
+		biz string, ids []int64) (map[int64]interactive.Interactive, error) {
+		res := make(map[int64]interactive.Interactive, len(ids))
+		for _, id := range ids {
+			intr := s.mockInteractive(biz, id)
+			res[id] = intr
+		}
+		return res, nil
+	}).AnyTimes()
+	module, err := startup.InitModule(s.producer, intrModule)
 	require.NoError(s.T(), err)
+	handler := module.Hdl
 	econf.Set("server", map[string]any{"contextTimeout": "1s"})
 	server := egin.Load("server").Build()
-
 	handler.PublicRoutes(server.Engine)
 	server.Use(func(ctx *gin.Context) {
 		ctx.Set("_session", session.NewMemorySession(session.Claims{
@@ -118,7 +146,6 @@ func (s *HandlerTestSuite) TestSave() {
 		{
 			name: "新建",
 			before: func(t *testing.T) {
-				s.producer.EXPECT().Produce(gomock.Any(), gomock.Any()).Return(nil)
 			},
 			after: func(t *testing.T) {
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
@@ -126,9 +153,10 @@ func (s *HandlerTestSuite) TestSave() {
 				ca, err := s.dao.GetCaseByID(ctx, 1)
 				require.NoError(t, err)
 				s.assertCase(t, dao.Case{
-					Uid:     uid,
-					Title:   "案例1",
-					Content: "案例1内容",
+					Uid:          uid,
+					Title:        "案例1",
+					Content:      "案例1内容",
+					Introduction: "案例1介绍",
 					Labels: sqlx.JsonColumn[[]string]{
 						Valid: true,
 						Val:   []string{"MySQL"},
@@ -143,14 +171,15 @@ func (s *HandlerTestSuite) TestSave() {
 			},
 			req: web.SaveReq{
 				Case: web.Case{
-					Title:     "案例1",
-					Content:   "案例1内容",
-					Labels:    []string{"MySQL"},
-					CodeRepo:  "www.github.com",
-					Keywords:  "mysql_keywords",
-					Shorthand: "mysql_shorthand",
-					Highlight: "mysql_highlight",
-					Guidance:  "mysql_guidance",
+					Title:        "案例1",
+					Content:      "案例1内容",
+					Introduction: "案例1介绍",
+					Labels:       []string{"MySQL"},
+					CodeRepo:     "www.github.com",
+					Keywords:     "mysql_keywords",
+					Shorthand:    "mysql_shorthand",
+					Highlight:    "mysql_highlight",
+					Guidance:     "mysql_guidance",
 				},
 			},
 			wantCode: 200,
@@ -161,14 +190,14 @@ func (s *HandlerTestSuite) TestSave() {
 		{
 			name: "部分更新",
 			before: func(t *testing.T) {
-				s.producer.EXPECT().Produce(gomock.Any(), gomock.Any()).Return(nil)
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 				defer cancel()
 				err := s.db.WithContext(ctx).Create(&dao.Case{
-					Id:      2,
-					Uid:     uid,
-					Title:   "老的案例标题",
-					Content: "老的案例内容",
+					Id:           2,
+					Uid:          uid,
+					Title:        "老的案例标题",
+					Introduction: "老的案例介绍",
+					Content:      "老的案例内容",
 					Labels: sqlx.JsonColumn[[]string]{
 						Valid: true,
 						Val:   []string{"old-MySQL"},
@@ -189,10 +218,13 @@ func (s *HandlerTestSuite) TestSave() {
 				defer cancel()
 				ca, err := s.dao.GetCaseByID(ctx, 2)
 				require.NoError(t, err)
+				assert.True(t, ca.Utime > 234)
+				assert.Equal(t, int64(123), ca.Ctime)
 				s.assertCase(t, dao.Case{
-					Uid:     uid,
-					Title:   "案例2",
-					Content: "案例2内容",
+					Uid:          uid,
+					Title:        "案例2",
+					Introduction: "案例2介绍",
+					Content:      "案例2内容",
 					Labels: sqlx.JsonColumn[[]string]{
 						Valid: true,
 						Val:   []string{"MySQL"},
@@ -207,15 +239,16 @@ func (s *HandlerTestSuite) TestSave() {
 			},
 			req: web.SaveReq{
 				Case: web.Case{
-					Id:        2,
-					Title:     "案例2",
-					Content:   "案例2内容",
-					Labels:    []string{"MySQL"},
-					CodeRepo:  "www.github.com",
-					Keywords:  "mysql_keywords",
-					Shorthand: "mysql_shorthand",
-					Highlight: "mysql_highlight",
-					Guidance:  "mysql_guidance",
+					Id:           2,
+					Title:        "案例2",
+					Introduction: "案例2介绍",
+					Content:      "案例2内容",
+					Labels:       []string{"MySQL"},
+					CodeRepo:     "www.github.com",
+					Keywords:     "mysql_keywords",
+					Shorthand:    "mysql_shorthand",
+					Highlight:    "mysql_highlight",
+					Guidance:     "mysql_guidance",
 				},
 			},
 			wantCode: 200,
@@ -225,7 +258,6 @@ func (s *HandlerTestSuite) TestSave() {
 		},
 	}
 	for _, tc := range testCases {
-		tc := tc
 		s.T().Run(tc.name, func(t *testing.T) {
 			tc.before(t)
 			req, err := http.NewRequest(http.MethodPost,
@@ -251,11 +283,12 @@ func (s *HandlerTestSuite) TestList() {
 	data := make([]dao.Case, 0, 100)
 	for idx := 0; idx < 100; idx++ {
 		data = append(data, dao.Case{
-			Uid:     uid,
-			Title:   fmt.Sprintf("这是案例标题 %d", idx),
-			Content: fmt.Sprintf("这是案例内容 %d", idx),
-			Status:  domain.UnPublishedStatus.ToUint8(),
-			Utime:   0,
+			Uid:          uid,
+			Title:        fmt.Sprintf("这是案例标题 %d", idx),
+			Content:      fmt.Sprintf("这是案例内容 %d", idx),
+			Introduction: fmt.Sprintf("这是案例介绍 %d", idx),
+			Status:       domain.UnPublishedStatus.ToUint8(),
+			Utime:        0,
 		})
 	}
 	err := s.db.Create(&data).Error
@@ -278,18 +311,18 @@ func (s *HandlerTestSuite) TestList() {
 					Total: 100,
 					Cases: []web.Case{
 						{
-							Id:      100,
-							Title:   "这是案例标题 99",
-							Content: "这是案例内容 99",
-							Status:  domain.UnPublishedStatus.ToUint8(),
-							Utime:   0,
+							Id:           100,
+							Title:        "这是案例标题 99",
+							Introduction: fmt.Sprintf("这是案例介绍 %d", 99),
+							Status:       domain.UnPublishedStatus.ToUint8(),
+							Utime:        0,
 						},
 						{
-							Id:      99,
-							Title:   "这是案例标题 98",
-							Content: "这是案例内容 98",
-							Status:  domain.UnPublishedStatus.ToUint8(),
-							Utime:   0,
+							Id:           99,
+							Title:        "这是案例标题 98",
+							Introduction: fmt.Sprintf("这是案例介绍 %d", 98),
+							Status:       domain.UnPublishedStatus.ToUint8(),
+							Utime:        0,
 						},
 					},
 				},
@@ -307,11 +340,11 @@ func (s *HandlerTestSuite) TestList() {
 					Total: 100,
 					Cases: []web.Case{
 						{
-							Id:      1,
-							Title:   "这是案例标题 0",
-							Content: "这是案例内容 0",
-							Status:  domain.UnPublishedStatus.ToUint8(),
-							Utime:   0,
+							Id:           1,
+							Title:        "这是案例标题 0",
+							Introduction: fmt.Sprintf("这是案例介绍 %d", 0),
+							Status:       domain.UnPublishedStatus.ToUint8(),
+							Utime:        0,
 						},
 					},
 				},
@@ -416,7 +449,9 @@ func (s *HandlerTestSuite) TestPublish() {
 		{
 			name: "新建并发布",
 			before: func(t *testing.T) {
-				s.producer.EXPECT().Produce(gomock.Any(), gomock.Any()).Return(nil)
+				s.producer.EXPECT().Produce(gomock.Any(), gomock.Any()).
+					MaxTimes(1).
+					Return(nil)
 			},
 			after: func(t *testing.T) {
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
@@ -424,9 +459,10 @@ func (s *HandlerTestSuite) TestPublish() {
 				ca, err := s.dao.GetCaseByID(ctx, 1)
 				require.NoError(t, err)
 				wantCase := dao.Case{
-					Uid:     uid,
-					Title:   "案例1",
-					Content: "案例1内容",
+					Uid:          uid,
+					Title:        "案例1",
+					Content:      "案例1内容",
+					Introduction: "案例1介绍",
 					Labels: sqlx.JsonColumn[[]string]{
 						Valid: true,
 						Val:   []string{"MySQL"},
@@ -445,14 +481,15 @@ func (s *HandlerTestSuite) TestPublish() {
 			},
 			req: web.SaveReq{
 				Case: web.Case{
-					Title:     "案例1",
-					Content:   "案例1内容",
-					Labels:    []string{"MySQL"},
-					CodeRepo:  "www.github.com",
-					Keywords:  "mysql_keywords",
-					Shorthand: "mysql_shorthand",
-					Highlight: "mysql_highlight",
-					Guidance:  "mysql_guidance",
+					Title:        "案例1",
+					Content:      "案例1内容",
+					Introduction: "案例1介绍",
+					Labels:       []string{"MySQL"},
+					CodeRepo:     "www.github.com",
+					Keywords:     "mysql_keywords",
+					Shorthand:    "mysql_shorthand",
+					Highlight:    "mysql_highlight",
+					Guidance:     "mysql_guidance",
 				},
 			},
 			wantCode: 200,
@@ -464,14 +501,17 @@ func (s *HandlerTestSuite) TestPublish() {
 			name: "更新并发布",
 			// publish_case表的ctime不更新
 			before: func(t *testing.T) {
-				s.producer.EXPECT().Produce(gomock.Any(), gomock.Any()).Return(nil)
+				s.producer.EXPECT().Produce(gomock.Any(), gomock.Any()).
+					MaxTimes(1).
+					Return(nil)
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 				defer cancel()
 				err := s.db.WithContext(ctx).Create(&dao.Case{
-					Id:      2,
-					Uid:     uid,
-					Title:   "老的案例标题",
-					Content: "老的案例内容",
+					Id:           2,
+					Uid:          uid,
+					Title:        "老的案例标题",
+					Content:      "老的案例内容",
+					Introduction: "老的案例介绍",
 					Labels: sqlx.JsonColumn[[]string]{
 						Valid: true,
 						Val:   []string{"old-MySQL"},
@@ -492,9 +532,10 @@ func (s *HandlerTestSuite) TestPublish() {
 				ca, err := s.dao.GetCaseByID(ctx, 2)
 				require.NoError(t, err)
 				wantCase := dao.Case{
-					Uid:     uid,
-					Title:   "案例2",
-					Content: "案例2内容",
+					Uid:          uid,
+					Title:        "案例2",
+					Content:      "案例2内容",
+					Introduction: "案例2介绍",
 					Labels: sqlx.JsonColumn[[]string]{
 						Valid: true,
 						Val:   []string{"MySQL"},
@@ -514,15 +555,16 @@ func (s *HandlerTestSuite) TestPublish() {
 			},
 			req: web.SaveReq{
 				Case: web.Case{
-					Id:        2,
-					Title:     "案例2",
-					Content:   "案例2内容",
-					Labels:    []string{"MySQL"},
-					CodeRepo:  "www.github.com",
-					Keywords:  "mysql_keywords",
-					Shorthand: "mysql_shorthand",
-					Highlight: "mysql_highlight",
-					Guidance:  "mysql_guidance",
+					Id:           2,
+					Title:        "案例2",
+					Content:      "案例2内容",
+					Introduction: "案例2介绍",
+					Labels:       []string{"MySQL"},
+					CodeRepo:     "www.github.com",
+					Keywords:     "mysql_keywords",
+					Shorthand:    "mysql_shorthand",
+					Highlight:    "mysql_highlight",
+					Guidance:     "mysql_guidance",
 				},
 			},
 			wantCode: 200,
@@ -534,14 +576,17 @@ func (s *HandlerTestSuite) TestPublish() {
 			name: "publish表有值发布",
 			// publish_case表的ctime不更新
 			before: func(t *testing.T) {
-				s.producer.EXPECT().Produce(gomock.Any(), gomock.Any()).Return(nil)
+				s.producer.EXPECT().Produce(gomock.Any(), gomock.Any()).
+					MaxTimes(1).
+					Return(nil)
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 				defer cancel()
-				err := s.db.WithContext(ctx).Create(&dao.Case{
-					Id:      3,
-					Uid:     uid,
-					Title:   "老的案例标题",
-					Content: "老的案例内容",
+				oldCase := dao.Case{
+					Id:           3,
+					Uid:          uid,
+					Title:        "老的案例标题",
+					Introduction: "老的案例介绍",
+					Content:      "老的案例内容",
 					Labels: sqlx.JsonColumn[[]string]{
 						Valid: true,
 						Val:   []string{"old-MySQL"},
@@ -553,26 +598,11 @@ func (s *HandlerTestSuite) TestPublish() {
 					Guidance:  "old_mysql_guidance",
 					Ctime:     123,
 					Utime:     234,
-				}).Error
+				}
+				err := s.db.WithContext(ctx).Create(&oldCase).Error
 				require.NoError(t, err)
-				err = s.db.WithContext(ctx).Create(&dao.PublishCase{
-					Id:      3,
-					Uid:     uid,
-					Title:   "老的案例标题",
-					Content: "老的案例内容",
-					Labels: sqlx.JsonColumn[[]string]{
-						Valid: true,
-						Val:   []string{"old-MySQL"},
-					},
-
-					CodeRepo:  "old-github.com",
-					Keywords:  "old_mysql_keywords",
-					Shorthand: "old_mysql_shorthand",
-					Highlight: "old_mysql_highlight",
-					Guidance:  "old_mysql_guidance",
-					Ctime:     123,
-					Utime:     234,
-				}).Error
+				pubCase := dao.PublishCase(oldCase)
+				err = s.db.WithContext(ctx).Create(pubCase).Error
 				require.NoError(t, err)
 			},
 			after: func(t *testing.T) {
@@ -581,9 +611,10 @@ func (s *HandlerTestSuite) TestPublish() {
 				ca, err := s.dao.GetCaseByID(ctx, 3)
 				require.NoError(t, err)
 				wantCase := dao.Case{
-					Uid:     uid,
-					Title:   "案例2",
-					Content: "案例2内容",
+					Uid:          uid,
+					Title:        "案例2",
+					Content:      "案例2内容",
+					Introduction: "案例2介绍",
 					Labels: sqlx.JsonColumn[[]string]{
 						Valid: true,
 						Val:   []string{"MySQL"},
@@ -603,15 +634,16 @@ func (s *HandlerTestSuite) TestPublish() {
 			},
 			req: web.SaveReq{
 				Case: web.Case{
-					Id:        3,
-					Title:     "案例2",
-					Content:   "案例2内容",
-					Labels:    []string{"MySQL"},
-					CodeRepo:  "www.github.com",
-					Keywords:  "mysql_keywords",
-					Shorthand: "mysql_shorthand",
-					Highlight: "mysql_highlight",
-					Guidance:  "mysql_guidance",
+					Id:           3,
+					Title:        "案例2",
+					Content:      "案例2内容",
+					Introduction: "案例2介绍",
+					Labels:       []string{"MySQL"},
+					CodeRepo:     "www.github.com",
+					Keywords:     "mysql_keywords",
+					Shorthand:    "mysql_shorthand",
+					Highlight:    "mysql_highlight",
+					Guidance:     "mysql_guidance",
 				},
 			},
 			wantCode: 200,
@@ -641,14 +673,15 @@ func (s *HandlerTestSuite) TestPublish() {
 	}
 }
 
-func (s *HandlerTestSuite) TestPublist() {
+func (s *HandlerTestSuite) TestPubList() {
 	data := make([]dao.PublishCase, 0, 100)
 	for idx := 0; idx < 100; idx++ {
 		data = append(data, dao.PublishCase{
-			Uid:     uid,
-			Title:   fmt.Sprintf("这是发布的案例标题 %d", idx),
-			Content: fmt.Sprintf("这是发布的案例内容 %d", idx),
-			Utime:   0,
+			Id:           int64(idx + 1),
+			Uid:          uid,
+			Title:        fmt.Sprintf("这是发布的案例标题 %d", idx),
+			Introduction: fmt.Sprintf("这是发布的案例介绍 %d", idx),
+			Utime:        123,
 		})
 	}
 	err := s.db.Create(&data).Error
@@ -668,17 +701,32 @@ func (s *HandlerTestSuite) TestPublist() {
 			wantCode: 200,
 			wantResp: test.Result[web.CasesList]{
 				Data: web.CasesList{
-					Total: 100,
 					Cases: []web.Case{
 						{
-							Id:    100,
-							Title: "这是发布的案例标题 99",
-							Utime: 0,
+							Id:           100,
+							Title:        "这是发布的案例标题 99",
+							Introduction: fmt.Sprintf("这是发布的案例介绍 %d", 99),
+							Utime:        123,
+							Interactive: web.Interactive{
+								Liked:      false,
+								Collected:  true,
+								ViewCnt:    101,
+								LikeCnt:    102,
+								CollectCnt: 103,
+							},
 						},
 						{
-							Id:    99,
-							Title: "这是发布的案例标题 98",
-							Utime: 0,
+							Id:           99,
+							Title:        "这是发布的案例标题 98",
+							Introduction: fmt.Sprintf("这是发布的案例介绍 %d", 98),
+							Utime:        123,
+							Interactive: web.Interactive{
+								Liked:      true,
+								Collected:  false,
+								ViewCnt:    100,
+								LikeCnt:    101,
+								CollectCnt: 102,
+							},
 						},
 					},
 				},
@@ -693,12 +741,19 @@ func (s *HandlerTestSuite) TestPublist() {
 			wantCode: 200,
 			wantResp: test.Result[web.CasesList]{
 				Data: web.CasesList{
-					Total: 100,
 					Cases: []web.Case{
 						{
-							Id:    1,
-							Title: "这是发布的案例标题 0",
-							Utime: 0,
+							Id:           1,
+							Title:        "这是发布的案例标题 0",
+							Introduction: "这是发布的案例介绍 0",
+							Utime:        123,
+							Interactive: web.Interactive{
+								Liked:      true,
+								Collected:  false,
+								ViewCnt:    2,
+								LikeCnt:    3,
+								CollectCnt: 4,
+							},
 						},
 					},
 				},
@@ -719,16 +774,13 @@ func (s *HandlerTestSuite) TestPublist() {
 			assert.Equal(t, tc.wantResp, recorder.MustScan())
 		})
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
-	_, err = s.rdb.Delete(ctx, "webook:question:total")
-	require.NoError(s.T(), err)
 }
 
 func (s *HandlerTestSuite) TestPubDetail() {
 	err := s.db.Create(&dao.PublishCase{
-		Id:  3,
-		Uid: uid,
+		Id:           3,
+		Uid:          uid,
+		Introduction: "redis案例介绍",
 		Labels: sqlx.JsonColumn[[]string]{
 			Valid: true,
 			Val:   []string{"Redis"},
@@ -759,17 +811,25 @@ func (s *HandlerTestSuite) TestPubDetail() {
 			wantCode: 200,
 			wantResp: test.Result[web.Case]{
 				Data: web.Case{
-					Id:        3,
-					Labels:    []string{"Redis"},
-					Title:     "redis案例标题",
-					Content:   "redis案例内容",
-					CodeRepo:  "redis仓库",
-					Status:    domain.PublishedStatus.ToUint8(),
-					Keywords:  "redis_keywords",
-					Shorthand: "redis_shorthand",
-					Highlight: "redis_highlight",
-					Guidance:  "redis_guidance",
-					Utime:     13,
+					Id:           3,
+					Labels:       []string{"Redis"},
+					Title:        "redis案例标题",
+					Introduction: "redis案例介绍",
+					Content:      "redis案例内容",
+					CodeRepo:     "redis仓库",
+					Status:       domain.PublishedStatus.ToUint8(),
+					Keywords:     "redis_keywords",
+					Shorthand:    "redis_shorthand",
+					Highlight:    "redis_highlight",
+					Guidance:     "redis_guidance",
+					Utime:        13,
+					Interactive: web.Interactive{
+						Liked:      true,
+						Collected:  false,
+						ViewCnt:    4,
+						LikeCnt:    5,
+						CollectCnt: 6,
+					},
 				},
 			},
 		},
@@ -791,39 +851,19 @@ func (s *HandlerTestSuite) TestPubDetail() {
 
 func (s *HandlerTestSuite) TestEvent() {
 	t := s.T()
-	mu := &sync.RWMutex{}
-	ans := make([]event.Case, 0, 16)
+	var evt event.Case
+	var wg sync.WaitGroup
+	wg.Add(1)
 	s.producer.EXPECT().Produce(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, caseEvent event.CaseEvent) error {
 		var eve event.Case
 		err := json.Unmarshal([]byte(caseEvent.Data), &eve)
 		if err != nil {
 			return err
 		}
-		mu.Lock()
-		ans = append(ans, eve)
-		mu.Unlock()
+		evt = eve
+		wg.Done()
 		return nil
-	}).Times(2)
-	// 保存
-	saveReq := web.SaveReq{
-		Case: web.Case{
-			Title:     "案例1",
-			Content:   "案例1内容",
-			Labels:    []string{"MySQL"},
-			CodeRepo:  "www.github.com",
-			Keywords:  "mysql_keywords",
-			Shorthand: "mysql_shorthand",
-			Highlight: "mysql_highlight",
-			Guidance:  "mysql_guidance",
-		},
-	}
-	req, err := http.NewRequest(http.MethodPost,
-		"/case/save", iox.NewJSONReader(saveReq))
-	req.Header.Set("content-type", "application/json")
-	require.NoError(t, err)
-	recorder := test.NewJSONResponseRecorder[int64]()
-	s.server.ServeHTTP(recorder, req)
-	require.Equal(t, 200, recorder.Code)
+	}).Times(1)
 	// 发布
 	publishReq := web.SaveReq{
 		Case: web.Case{
@@ -841,45 +881,28 @@ func (s *HandlerTestSuite) TestEvent() {
 		"/case/publish", iox.NewJSONReader(publishReq))
 	req2.Header.Set("content-type", "application/json")
 	require.NoError(t, err)
-	recorder = test.NewJSONResponseRecorder[int64]()
+	recorder := test.NewJSONResponseRecorder[int64]()
 	s.server.ServeHTTP(recorder, req2)
 	require.Equal(t, 200, recorder.Code)
-	time.Sleep(1 * time.Second)
-	for idx := range ans {
-		assert.True(t, ans[idx].Id != 0)
-		assert.True(t, ans[idx].Utime != 0)
-		assert.True(t, ans[idx].Ctime != 0)
-		ans[idx].Id = 0
-		ans[idx].Utime = 0
-		ans[idx].Ctime = 0
-	}
-	assert.Equal(t, []event.Case{
-		{
-			Title:     "案例1",
-			Uid:       uid,
-			Content:   "案例1内容",
-			Labels:    []string{"MySQL"},
-			CodeRepo:  "www.github.com",
-			Keywords:  "mysql_keywords",
-			Shorthand: "mysql_shorthand",
-			Highlight: "mysql_highlight",
-			Guidance:  "mysql_guidance",
-			Status:    1,
-		},
-		{
-
-			Title:     "案例2",
-			Uid:       uid,
-			Content:   "案例2内容",
-			Labels:    []string{"MySQL"},
-			CodeRepo:  "www.github.com",
-			Keywords:  "mysql_keywords",
-			Shorthand: "mysql_shorthand",
-			Highlight: "mysql_highlight",
-			Guidance:  "mysql_guidance",
-			Status:    2,
-		},
-	}, ans)
+	wg.Wait()
+	assert.True(t, evt.Ctime > 0)
+	evt.Ctime = 0
+	assert.True(t, evt.Utime > 0)
+	evt.Utime = 0
+	assert.True(t, evt.Id > 0)
+	evt.Id = 0
+	assert.Equal(t, event.Case{
+		Title:     "案例2",
+		Uid:       uid,
+		Content:   "案例2内容",
+		Labels:    []string{"MySQL"},
+		CodeRepo:  "www.github.com",
+		Keywords:  "mysql_keywords",
+		Shorthand: "mysql_shorthand",
+		Highlight: "mysql_highlight",
+		Guidance:  "mysql_guidance",
+		Status:    2,
+	}, evt)
 }
 
 // assertCase 不比较 id
@@ -891,6 +914,20 @@ func (s *HandlerTestSuite) assertCase(t *testing.T, expect dao.Case, ca dao.Case
 	ca.Ctime = 0
 	ca.Utime = 0
 	assert.Equal(t, expect, ca)
+}
+
+func (s *HandlerTestSuite) mockInteractive(biz string, id int64) interactive.Interactive {
+	liked := id%2 == 1
+	collected := id%2 == 0
+	return interactive.Interactive{
+		Biz:        biz,
+		BizId:      id,
+		ViewCnt:    int(id + 1),
+		LikeCnt:    int(id + 2),
+		CollectCnt: int(id + 3),
+		Liked:      liked,
+		Collected:  collected,
+	}
 }
 
 func TestHandler(t *testing.T) {

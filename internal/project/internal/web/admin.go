@@ -17,6 +17,7 @@ package web
 import (
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/ecodeclub/ginx"
+	"github.com/ecodeclub/webook/internal/interactive"
 	"github.com/ecodeclub/webook/internal/project/internal/domain"
 	"github.com/ecodeclub/webook/internal/project/internal/service"
 	"github.com/gin-gonic/gin"
@@ -74,7 +75,7 @@ func (h *AdminHandler) List(ctx *ginx.Context, req Page) (ginx.Result, error) {
 	return ginx.Result{
 		Data: ProjectList{
 			Projects: slice.Map(list, func(idx int, src domain.Project) Project {
-				return newProject(src)
+				return newProject(src, interactive.Interactive{})
 			}),
 			Total: cnt,
 		},
@@ -87,7 +88,7 @@ func (h *AdminHandler) Detail(ctx *ginx.Context, req IdReq) (ginx.Result, error)
 		return systemErrorResult, err
 	}
 	return ginx.Result{
-		Data: newProject(prj),
+		Data: newProject(prj, interactive.Interactive{}),
 	}, nil
 }
 

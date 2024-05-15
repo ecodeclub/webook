@@ -23,7 +23,8 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-type InteractiveService interface {
+//go:generate mockgen -source=./interactive.go -destination=../../mocks/interactive.mock.go -package=intrmocks -typed InteractiveService
+type Service interface {
 	IncrReadCnt(ctx context.Context, biz string, bizId int64) error
 	// LikeToggle 如果点赞过，就取消点赞，如果没点赞过，就点赞
 	LikeToggle(c context.Context, biz string, id int64, uid int64) error
@@ -37,7 +38,7 @@ type interactiveService struct {
 	repo repository.InteractiveRepository
 }
 
-func NewService(repo repository.InteractiveRepository) InteractiveService {
+func NewService(repo repository.InteractiveRepository) Service {
 	return &interactiveService{
 		repo: repo,
 	}

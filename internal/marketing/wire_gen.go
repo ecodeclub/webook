@@ -7,7 +7,10 @@
 package marketing
 
 import (
+	"context"
+
 	"github.com/ecodeclub/mq-api"
+	"github.com/ecodeclub/webook/internal/marketing/internal/event/consumer"
 	"github.com/ecodeclub/webook/internal/marketing/internal/event/producer"
 	"github.com/ecodeclub/webook/internal/marketing/internal/repository"
 	"github.com/ecodeclub/webook/internal/marketing/internal/repository/dao"
@@ -44,9 +47,14 @@ func InitModule(db *gorm.DB, q mq.MQ, om *order.Module, pm *product.Module) (*Mo
 	}
 	service3 := service.NewService(marketingRepository, serviceService, service2, v, v2, memberEventProducer, creditEventProducer, permissionEventProducer)
 	handler := web.NewHandler(service3)
+	orderEventConsumer, err := newOrderEventConsumer(service3, q)
+	if err != nil {
+		return nil, err
+	}
 	module := &Module{
-		Svc: service3,
-		Hdl: handler,
+		Svc:           service3,
+		Hdl:           handler,
+		orderConsumer: orderEventConsumer,
 	}
 	return module, nil
 }
@@ -57,6 +65,14 @@ type (
 	Service = service.Service
 	Handler = web.Handler
 )
+
+func newOrderEventConsumer(svc service.Service, q mq.MQ) (*consumer.OrderEventConsumer, error) {
+	res, err := consumer.NewOrderEventConsumer(svc, q)
+	if err == nil {
+		res.Start(context.Background())
+	}
+	return res, err
+}
 
 func redemptionCodeGenerator(generator *sequencenumber.Generator) func(id int64) string {
 	return func(id int64) string {

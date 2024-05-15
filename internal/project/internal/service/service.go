@@ -16,6 +16,10 @@ package service
 
 import (
 	"context"
+	"time"
+
+	"github.com/ecodeclub/webook/internal/project/internal/event"
+	"github.com/gotomicro/ego/core/elog"
 
 	"github.com/ecodeclub/webook/internal/project/internal/domain"
 	"github.com/ecodeclub/webook/internal/project/internal/repository"
@@ -30,17 +34,32 @@ type Service interface {
 var _ Service = &service{}
 
 type service struct {
-	repo repository.Repository
+	repo     repository.Repository
+	producer event.InteractiveEventProducer
+	logger   *elog.Component
 }
 
 func (s *service) Detail(ctx context.Context, id int64) (domain.Project, error) {
-	return s.repo.Detail(ctx, id)
+	prj, err := s.repo.Detail(ctx, id)
+	if err == nil {
+		go func() {
+			newCtx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+			defer cancel()
+			err1 := s.producer.Produce(newCtx, event.NewViewCntEvent(id, domain.BizProject))
+			if err1 != nil {
+				if err1 != nil {
+					s.logger.Error("发送问题阅读计数消息到消息队列失败", elog.FieldErr(err1), elog.Int64("pid", id))
+				}
+			}
+		}()
+	}
+	return prj, err
 }
 
 func (s *service) List(ctx context.Context, offset int, limit int) ([]domain.Project, error) {
 	return s.repo.List(ctx, offset, limit)
 }
 
-func NewService(repo repository.Repository) Service {
-	return &service{repo: repo}
+func NewService(repo repository.Repository, producer event.InteractiveEventProducer) Service {
+	return &service{repo: repo, producer: producer, logger: elog.DefaultLogger}
 }

@@ -17,9 +17,16 @@
 package integration
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"testing"
+
+	"github.com/ecodeclub/ginx/session"
+	"github.com/ecodeclub/webook/internal/interactive"
+	intrmocks "github.com/ecodeclub/webook/internal/interactive/mocks"
+	"github.com/gin-gonic/gin"
+	"go.uber.org/mock/gomock"
 
 	"github.com/ecodeclub/ekit/iox"
 	"github.com/ecodeclub/ekit/sqlx"
@@ -47,11 +54,45 @@ type ProjectTestSuite struct {
 }
 
 func (s *ProjectTestSuite) SetupSuite() {
-	m := startup.InitModule()
+	ctrl := gomock.NewController(s.T())
+	intrSvc := intrmocks.NewMockService(ctrl)
+	intrModule := &interactive.Module{
+		Svc: intrSvc,
+	}
+
+	// 模拟返回的数据
+	// 使用如下规律:
+	// 1. liked == id % 2 == 1 (奇数为 true)
+	// 2. collected = id %2 == 0 (偶数为 true)
+	// 3. viewCnt = id + 1
+	// 4. likeCnt = id + 2
+	// 5. collectCnt = id + 3
+	intrSvc.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+		AnyTimes().DoAndReturn(func(ctx context.Context,
+		biz string, id int64, uid int64) (interactive.Interactive, error) {
+		intr := s.mockInteractive(biz, id)
+		return intr, nil
+	})
+	intrSvc.EXPECT().GetByIds(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context,
+		biz string, ids []int64) (map[int64]interactive.Interactive, error) {
+		res := make(map[int64]interactive.Interactive, len(ids))
+		for _, id := range ids {
+			intr := s.mockInteractive(biz, id)
+			res[id] = intr
+		}
+		return res, nil
+	}).AnyTimes()
+	m, err := startup.InitModule(intrModule)
+	require.NoError(s.T(), err)
 	s.hdl = m.Hdl
 
 	econf.Set("server", map[string]any{"contextTimeout": "10s"})
 	server := egin.Load("server").Build()
+	server.Use(func(ctx *gin.Context) {
+		ctx.Set(session.CtxSessionKey, session.NewMemorySession(session.Claims{
+			Uid: 123,
+		}))
+	})
 	s.hdl.PrivateRoutes(server.Engine)
 	s.server = server
 	s.db = testioc.InitDB()
@@ -101,6 +142,13 @@ func (s *ProjectTestSuite) TestProjectList() {
 						Labels: []string{"标签9"},
 						Desc:   "描述9",
 						Utime:  9,
+						Interactive: web.Interactive{
+							ViewCnt:    10,
+							LikeCnt:    11,
+							CollectCnt: 12,
+							Liked:      true,
+							Collected:  false,
+						},
 					},
 					{
 						Id:     7,
@@ -109,6 +157,13 @@ func (s *ProjectTestSuite) TestProjectList() {
 						Labels: []string{"标签7"},
 						Desc:   "描述7",
 						Utime:  7,
+						Interactive: web.Interactive{
+							ViewCnt:    8,
+							LikeCnt:    9,
+							CollectCnt: 10,
+							Liked:      true,
+							Collected:  false,
+						},
 					},
 				},
 			},
@@ -129,6 +184,13 @@ func (s *ProjectTestSuite) TestProjectList() {
 						Labels: []string{"标签1"},
 						Desc:   "描述1",
 						Utime:  1,
+						Interactive: web.Interactive{
+							ViewCnt:    2,
+							LikeCnt:    3,
+							CollectCnt: 4,
+							Liked:      true,
+							Collected:  false,
+						},
 					},
 				},
 			},
@@ -191,6 +253,13 @@ func (s *ProjectTestSuite) TestProjectDetail() {
 					Labels: []string{"标签1"},
 					Desc:   "描述1",
 					Utime:  1,
+					Interactive: web.Interactive{
+						ViewCnt:    2,
+						LikeCnt:    3,
+						CollectCnt: 4,
+						Liked:      true,
+						Collected:  false,
+					},
 					Difficulties: []web.Difficulty{
 						{
 							Id:       1,
@@ -308,6 +377,20 @@ func (s *ProjectTestSuite) mockDiff(pid, id int64) dao.PubProjectDifficulty {
 		Content:  fmt.Sprintf("内容%d", id),
 		Analysis: fmt.Sprintf("分析%d", id),
 		Utime:    id,
+	}
+}
+
+func (s *ProjectTestSuite) mockInteractive(biz string, id int64) interactive.Interactive {
+	liked := id%2 == 1
+	collected := id%2 == 0
+	return interactive.Interactive{
+		Biz:        biz,
+		BizId:      id,
+		ViewCnt:    int(id + 1),
+		LikeCnt:    int(id + 2),
+		CollectCnt: int(id + 3),
+		Liked:      liked,
+		Collected:  collected,
 	}
 }
 

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package event
+package mqx
 
 import (
 	"context"
@@ -22,33 +22,27 @@ import (
 	"github.com/ecodeclub/mq-api"
 )
 
-const (
-	SyncTopic = "sync_data_to_search"
-)
-
-type SyncEventProducer interface {
-	Produce(ctx context.Context, evt QuestionEvent) error
+type Producer[T any] interface {
+	Produce(ctx context.Context, evt T) error
 }
-type syncEventProducerProducer struct {
+
+type GeneralProducer[T any] struct {
 	producer mq.Producer
 }
 
-func NewSyncEventProducer(q mq.MQ) (SyncEventProducer, error) {
-	p, err := q.Producer(SyncTopic)
-	if err != nil {
-		return nil, err
-	}
-	return &syncEventProducerProducer{
+func NewGeneralProducer[T any](q mq.MQ, topic string) (*GeneralProducer[T], error) {
+	p, err := q.Producer(topic)
+	return &GeneralProducer[T]{
 		producer: p,
-	}, nil
+	}, err
 }
 
-func (s *syncEventProducerProducer) Produce(ctx context.Context, evt QuestionEvent) error {
+func (p *GeneralProducer[T]) Produce(ctx context.Context, evt T) error {
 	data, err := json.Marshal(&evt)
 	if err != nil {
 		return fmt.Errorf("序列化失败: %w", err)
 	}
-	_, err = s.producer.Produce(ctx, &mq.Message{Value: data})
+	_, err = p.producer.Produce(ctx, &mq.Message{Value: data})
 	if err != nil {
 		return fmt.Errorf("发送同步搜索消息失败: %w", err)
 	}

@@ -82,7 +82,7 @@ type SPU struct {
 	Id          int64  `gorm:"primaryKey;autoIncrement;comment:商品SPU自增ID"`
 	Category    string `gorm:"type:varchar(255);not null;uniqueIndex:uniq_category_type;comment:商品SPU类别,系统内部使用product/code"`
 	Type        string `gorm:"type:varchar(255);not null;uniqueIndex:uniq_category_type;comment:商品SPU类型,系统内部使用member/project"`
-	SN          string `gorm:"type:varchar(255);not null;uniqueIndex:uniq_product_spu_sn;comment:商品SPU序列号"`
+	SN          string `gorm:"column:sn;type:varchar(255);not null;uniqueIndex:uniq_product_spu_sn;comment:商品SPU序列号"`
 	Name        string `gorm:"type:varchar(255);not null;comment:商品名称"`
 	Description string `gorm:"not null; comment:商品描述"`
 	Status      uint8  `gorm:"type:tinyint unsigned;not null;default:1;comment:状态 1=下架 2=上架"`
@@ -92,7 +92,7 @@ type SPU struct {
 
 type SKU struct {
 	Id          int64  `gorm:"primaryKey;autoIncrement;comment:商品SKU自增ID"`
-	SN          string `gorm:"type:varchar(255);not null;uniqueIndex:uniq_product_sku_sn;comment:商品SKU序列号"`
+	SN          string `gorm:"column:sn;type:varchar(255);not null;uniqueIndex:uniq_product_sku_sn;comment:商品SKU序列号"`
 	SPUID       int64  `gorm:"column:spu_id;not null;index:idx_spu_id;comment:商品SPU自增ID"`
 	Name        string `gorm:"type:varchar(255);not null;comment:SKU名称"`
 	Description string `gorm:"not null;comment:商品描述"`

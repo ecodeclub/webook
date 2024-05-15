@@ -12,17 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:build wireinject
-
-package startup
+package interactive
 
 import (
-	"github.com/ecodeclub/webook/internal/interactive"
-	testioc "github.com/ecodeclub/webook/internal/test/ioc"
-	"github.com/google/wire"
+	"github.com/ecodeclub/webook/internal/interactive/internal/domain"
+	"github.com/ecodeclub/webook/internal/interactive/internal/service"
+	"github.com/ecodeclub/webook/internal/interactive/internal/web"
 )
 
-func InitModule() (*interactive.Module, error) {
-	wire.Build(testioc.BaseSet, interactive.InitModule)
-	return new(interactive.Module), nil
-}
+type Handler = web.Handler
+
+type Service = service.Service
+
+type Interactive = domain.Interactive

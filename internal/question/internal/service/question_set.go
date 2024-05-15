@@ -34,18 +34,22 @@ type QuestionSetService interface {
 }
 
 type questionSetService struct {
-	repo        repository.QuestionSetRepository
-	producer    event.SyncEventProducer
-	logger      *elog.Component
-	syncTimeout time.Duration
+	repo         repository.QuestionSetRepository
+	producer     event.SyncDataToSearchEventProducer
+	intrProducer event.InteractiveEventProducer
+	logger       *elog.Component
+	syncTimeout  time.Duration
 }
 
-func NewQuestionSetService(repo repository.QuestionSetRepository, producer event.SyncEventProducer) QuestionSetService {
+func NewQuestionSetService(repo repository.QuestionSetRepository,
+	intrProducer event.InteractiveEventProducer,
+	producer event.SyncDataToSearchEventProducer) QuestionSetService {
 	return &questionSetService{
-		repo:        repo,
-		producer:    producer,
-		logger:      elog.DefaultLogger,
-		syncTimeout: 10 * time.Second,
+		repo:         repo,
+		producer:     producer,
+		intrProducer: intrProducer,
+		logger:       elog.DefaultLogger,
+		syncTimeout:  10 * time.Second,
 	}
 }
 
@@ -74,7 +78,19 @@ func (q *questionSetService) UpdateQuestions(ctx context.Context, set domain.Que
 }
 
 func (q *questionSetService) Detail(ctx context.Context, id int64) (domain.QuestionSet, error) {
-	return q.repo.GetByID(ctx, id)
+	qs, err := q.repo.GetByID(ctx, id)
+	if err == nil {
+		// 没有区分 B 端还是 C 端，但是这种计数不需要精确计算
+		go func() {
+			newCtx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+			defer cancel()
+			err1 := q.intrProducer.Produce(newCtx, event.NewViewCntEvent(id, domain.QuestionSetBiz))
+			if err1 != nil {
+				q.logger.Error("发送阅读计数消息到消息队列失败", elog.FieldErr(err1), elog.Int64("qsid", id))
+			}
+		}()
+	}
+	return qs, err
 }
 
 func (q *questionSetService) List(ctx context.Context, offset, limit int) ([]domain.QuestionSet, int64, error) {

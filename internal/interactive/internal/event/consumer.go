@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package events
+package event
 
 import (
 	"context"
@@ -25,18 +25,18 @@ import (
 	"github.com/gotomicro/ego/core/elog"
 )
 
-const syncTopic = "interactive_events"
+const topic = "interactive_events"
 
 type Consumer struct {
 	handlerMap map[string]handleFunc
 	consumer   mq.Consumer
-	svc        service.InteractiveService
+	svc        service.Service
 	logger     *elog.Component
 }
 
-func NewSyncConsumer(svc service.InteractiveService, q mq.MQ) (*Consumer, error) {
+func NewSyncConsumer(svc service.Service, q mq.MQ) (*Consumer, error) {
 	groupID := "interactive_group"
-	consumer, err := q.Consumer(syncTopic, groupID)
+	consumer, err := q.Consumer(topic, groupID)
 	if err != nil {
 		return nil, err
 	}
@@ -53,13 +53,13 @@ func NewSyncConsumer(svc service.InteractiveService, q mq.MQ) (*Consumer, error)
 	c.handlerMap = handlerMap
 	return c, nil
 }
-func (c *Consumer) likeHandle(ctx context.Context, svc service.InteractiveService, evt Event) error {
+func (c *Consumer) likeHandle(ctx context.Context, svc service.Service, evt Event) error {
 	return svc.LikeToggle(ctx, evt.Biz, evt.BizId, evt.Uid)
 }
-func (c *Consumer) collectHandle(ctx context.Context, svc service.InteractiveService, evt Event) error {
+func (c *Consumer) collectHandle(ctx context.Context, svc service.Service, evt Event) error {
 	return svc.CollectToggle(ctx, evt.Biz, evt.BizId, evt.Uid)
 }
-func (c *Consumer) viewHandle(ctx context.Context, svc service.InteractiveService, evt Event) error {
+func (c *Consumer) viewHandle(ctx context.Context, svc service.Service, evt Event) error {
 	return svc.IncrReadCnt(ctx, evt.Biz, evt.BizId)
 }
 

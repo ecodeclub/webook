@@ -16,7 +16,7 @@ import (
 	gomock "go.uber.org/mock/gomock"
 )
 
-// MockSyncEventProducer is a mock of SyncEventProducer interface.
+// MockSyncEventProducer is a mock of SyncDataToSearchEventProducer interface.
 type MockSyncEventProducer struct {
 	ctrl     *gomock.Controller
 	recorder *MockSyncEventProducerMockRecorder

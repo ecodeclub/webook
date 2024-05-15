@@ -58,7 +58,6 @@ func (c *OrderEventConsumer) Start(ctx context.Context) {
 }
 
 func (c *OrderEventConsumer) Consume(ctx context.Context) error {
-
 	msg, err := c.consumer.Consume(ctx)
 	if err != nil {
 		return err
