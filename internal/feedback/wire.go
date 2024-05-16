@@ -33,7 +33,7 @@ import (
 
 func InitHandler(db *egorm.Component, q mq.MQ) (*Handler, error) {
 	wire.Build(
-		initIncreaseCreditsEventProducer,
+		event.NewIncreaseCreditsEventProducer,
 		InitService,
 		web.NewHandler,
 	)
@@ -60,14 +60,6 @@ func initFeedbackDAO(db *gorm.DB) dao.FeedbackDAO {
 		d = dao.NewFeedbackDAO(db)
 	})
 	return d
-}
-
-func initIncreaseCreditsEventProducer(q mq.MQ) event.IncreaseCreditsEventProducer {
-	producer, err := event.NewIncreaseCreditsEventProducer(q)
-	if err != nil {
-		panic(err)
-	}
-	return producer
 }
 
 type Handler = web.Handler

@@ -41,7 +41,7 @@ func InitModule(db *gorm.DB, mq2 mq.MQ, c ecache.Cache, cm *credit.Module) (*Mod
 	generator := sequencenumber.NewGenerator()
 	daoPaymentDAO := initDAO(db)
 	paymentRepository := repository.NewPaymentRepository(daoPaymentDAO)
-	paymentEventProducer, err := initPaymentEventProducer(mq2)
+	paymentEventProducer, err := event.NewPaymentEventProducer(mq2)
 	if err != nil {
 		return nil, err
 	}
@@ -90,14 +90,6 @@ var (
 	once       = &sync.Once{}
 	paymentDAO dao.PaymentDAO
 )
-
-func initPaymentEventProducer(mq2 mq.MQ) (event.PaymentEventProducer, error) {
-	p, err := mq2.Producer(event.PaymentEventName)
-	if err != nil {
-		return nil, err
-	}
-	return event.NewPaymentEventProducer(p)
-}
 
 func initDAO(db *gorm.DB) dao.PaymentDAO {
 	once.Do(func() {

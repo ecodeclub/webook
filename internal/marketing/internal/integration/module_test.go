@@ -535,7 +535,7 @@ func (s *ModuleTestSuite) newMemberEventMessage(t *testing.T, evt event.MemberEv
 	t.Helper()
 	marshal, err := json.Marshal(evt)
 	require.NoError(t, err)
-	return &mq.Message{Key: []byte(evt.Key), Value: marshal}
+	return &mq.Message{Value: marshal}
 }
 
 func (s *ModuleTestSuite) TestHandler_RedeemRedemptionCode() {

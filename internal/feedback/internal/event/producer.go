@@ -16,10 +16,9 @@ package event
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 
 	"github.com/ecodeclub/mq-api"
+	"github.com/ecodeclub/webook/internal/pkg/mqx"
 )
 
 //go:generate mockgen -source=./producer.go -package=evtmocks -destination=./mocks/producer.mock.go -typed IncreaseCreditsEventProducer
@@ -27,26 +26,6 @@ type IncreaseCreditsEventProducer interface {
 	Produce(ctx context.Context, evt CreditIncreaseEvent) error
 }
 
-type increaseCreditsEventProducer struct {
-	producer mq.Producer
-}
-
 func NewIncreaseCreditsEventProducer(q mq.MQ) (IncreaseCreditsEventProducer, error) {
-	producer, err := q.Producer(creditIncreaseEvents)
-	if err != nil {
-		return nil, err
-	}
-	return &increaseCreditsEventProducer{producer: producer}, nil
-}
-
-func (p *increaseCreditsEventProducer) Produce(ctx context.Context, evt CreditIncreaseEvent) error {
-	data, err := json.Marshal(&evt)
-	if err != nil {
-		return fmt.Errorf("序列化失败: %w", err)
-	}
-	_, err = p.producer.Produce(ctx, &mq.Message{Value: data})
-	if err != nil {
-		return fmt.Errorf("发送反馈成功消息失败: %w", err)
-	}
-	return nil
+	return mqx.NewGeneralProducer[CreditIncreaseEvent](q, creditIncreaseEvents)
 }

@@ -72,7 +72,7 @@ func InitModule(db *egorm.Component,
 		ioc.InitNativeApiService,
 		convertToNativeAPIService,
 		initDAO,
-		initPaymentEventProducer,
+		event.NewPaymentEventProducer,
 		web.NewHandler,
 		service.NewService,
 		repository.NewPaymentRepository,
@@ -96,14 +96,6 @@ var (
 	once       = &sync.Once{}
 	paymentDAO dao.PaymentDAO
 )
-
-func initPaymentEventProducer(mq mq.MQ) (event.PaymentEventProducer, error) {
-	p, err := mq.Producer(event.PaymentEventName)
-	if err != nil {
-		return nil, err
-	}
-	return event.NewPaymentEventProducer(p)
-}
 
 func initDAO(db *gorm.DB) dao.PaymentDAO {
 	once.Do(func() {

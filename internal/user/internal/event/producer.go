@@ -16,28 +16,15 @@ package event
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 
 	"github.com/ecodeclub/mq-api"
+	"github.com/ecodeclub/webook/internal/pkg/mqx"
 )
 
-type RegistrationEventProducer struct {
-	producer mq.Producer
+type RegistrationEventProducer interface {
+	Produce(ctx context.Context, evt RegistrationEvent) error
 }
 
-func NewRegistrationEventProducer(producer mq.Producer) *RegistrationEventProducer {
-	return &RegistrationEventProducer{producer: producer}
-}
-
-func (p *RegistrationEventProducer) Produce(ctx context.Context, evt RegistrationEvent) error {
-	data, err := json.Marshal(&evt)
-	if err != nil {
-		return fmt.Errorf("序列化失败: %w", err)
-	}
-	_, err = p.producer.Produce(ctx, &mq.Message{Value: data})
-	if err != nil {
-		return fmt.Errorf("发送注册成功消息失败: %w", err)
-	}
-	return nil
+func NewRegistrationEventProducer(q mq.MQ) (RegistrationEventProducer, error) {
+	return mqx.NewGeneralProducer[RegistrationEvent](q, registrationEventName)
 }

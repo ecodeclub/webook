@@ -664,7 +664,7 @@ func (s *HandlerTestSuite) TestBizSearch() {
 		tc := tc
 		s.T().Run(tc.name, func(t *testing.T) {
 			tc.before(t)
-			time.Sleep(1 * time.Second)
+			time.Sleep(3 * time.Second)
 			req, err := http.NewRequest(http.MethodPost,
 				"/search/list", iox.NewJSONReader(tc.req))
 			req.Header.Set("content-type", "application/json")
