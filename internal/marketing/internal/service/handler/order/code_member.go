@@ -41,40 +41,42 @@ func NewCodeMemberHandler(repo repository.MarketingRepository, memberEventProduc
 }
 
 func (h *CodeMemberHandler) Handle(ctx context.Context, info OrderInfo) error {
+
 	codes := make([]domain.RedemptionCode, 0, len(info.Items))
 	for _, item := range info.Items {
 		for i := int64(0); i < item.SKU.Quantity; i++ {
 			codes = append(codes, domain.RedemptionCode{
-				OwnerID:      info.Order.BuyerID,
-				OrderID:      info.Order.ID,
-				SPUID:        item.SPU.ID,
-				SPUCategory1: item.SPU.Category1,
-				SKUAttrs:     item.SKU.Attrs,
-				Code:         h.redemptionCodeGenerator(info.Order.BuyerID),
-				Status:       domain.RedemptionCodeStatusUnused,
+				OwnerID: info.Order.BuyerID,
+				Biz:     "order",
+				BizId:   info.Order.ID,
+				Type:    item.SPU.Category1,
+				Attrs:   domain.CodeAttrs{SKU: domain.SKU{ID: item.SKU.ID, Attrs: item.SKU.Attrs}},
+				Code:    h.redemptionCodeGenerator(info.Order.BuyerID),
+				Status:  domain.RedemptionCodeStatusUnused,
 			})
 		}
 	}
 	log.Printf("member codes = %#v\n", codes)
-	_, err := h.repo.CreateRedemptionCodes(ctx, info.Order.ID, codes)
+	_, err := h.repo.CreateRedemptionCodes(ctx, codes)
 	return err
 }
 
 func (h *CodeMemberHandler) Redeem(ctx context.Context, info RedeemInfo) error {
 	type Attrs struct {
-		Days uint64 `json:"days,omitempty"`
+		Days uint64 `json:"days"`
 	}
 	var attrs Attrs
-	err := json.Unmarshal([]byte(info.Code.SKUAttrs), &attrs)
+	skuAttrs := info.Code.Attrs.SKU.Attrs
+	err := json.Unmarshal([]byte(skuAttrs), &attrs)
 	if err != nil {
-		return fmt.Errorf("解析会员兑换码属性失败: %w, codeID:%d, spuAttrs:%s", err, info.Code.ID, info.Code.SKUAttrs)
+		return fmt.Errorf("解析会员兑换码属性失败: %w, codeID:%d, skuAttrs:%s", err, info.Code.ID, skuAttrs)
 	}
 	memberEvent := event.MemberEvent{
 		Key:    fmt.Sprintf("code-member-%d", info.Code.ID),
 		Uid:    info.RedeemerID,
 		Days:   attrs.Days,
-		Biz:    "order",
-		BizId:  info.Code.OrderID,
+		Biz:    info.Code.Biz,
+		BizId:  info.Code.BizId,
 		Action: "兑换会员商品",
 	}
 	log.Printf("codeMember sendMemberEvent = %#v\n", memberEvent)

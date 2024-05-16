@@ -89,9 +89,9 @@ func (s *service) RedeemRedemptionCode(ctx context.Context, uid int64, code stri
 	if err != nil {
 		return err
 	}
-	redeemer, ok := s.redeemers[orderexe.SPUCategory(r.SPUCategory1)]
+	redeemer, ok := s.redeemers[orderexe.SPUCategory(r.Type)]
 	if !ok {
-		return fmt.Errorf("未知兑换码SPU类别1: %s", r.SPUCategory1)
+		return fmt.Errorf("未知兑换码SPU类别1: %s", r.Type)
 	}
 	return redeemer.Redeem(ctx, orderhdl.RedeemInfo{RedeemerID: uid, Code: r})
 }

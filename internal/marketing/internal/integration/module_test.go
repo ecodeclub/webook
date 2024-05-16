@@ -353,8 +353,9 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeOrderEvent() {
 				t.Helper()
 				codes, err := s.repo.FindRedemptionCodesByUID(context.Background(), evt.BuyerID, 0, 10)
 				require.NoError(t, err)
-				code := s.newMemberRedemptionCodeDomain(evt.BuyerID, int64(3))
-				code.SKUAttrs = `{"days":90}`
+				oid := int64(3)
+				code := s.newMemberRedemptionCodeDomain(evt.BuyerID, oid)
+				code.Attrs.SKU.Attrs = `{"days":90}`
 				code.Code = ""
 				s.assertRedemptionCodeEqual(t, []domain.RedemptionCode{code, code}, codes)
 			},
@@ -444,9 +445,10 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeOrderEvent() {
 				require.NoError(t, err)
 				oid := int64(4)
 				code90 := s.newMemberRedemptionCodeDomain(evt.BuyerID, oid)
-				code90.SKUAttrs = `{"days":90}`
+				code90.Attrs.SKU.Attrs = `{"days":90}`
 				code90.Code = ""
 				code30 := s.newMemberRedemptionCodeDomain(evt.BuyerID, oid)
+				code30.Attrs.SKU.ID = 5
 				code30.Code = ""
 				s.assertRedemptionCodeEqual(t, []domain.RedemptionCode{code90, code90, code30}, codes)
 			},
@@ -563,7 +565,7 @@ func (s *ModuleTestSuite) TestHandler_RedeemRedemptionCode() {
 				oid := int64(101)
 				code := s.newMemberRedemptionCodeDomain(testID, oid)
 				code.Code = req.Code
-				ids, err := s.repo.CreateRedemptionCodes(context.Background(), oid, []domain.RedemptionCode{
+				ids, err := s.repo.CreateRedemptionCodes(context.Background(), []domain.RedemptionCode{
 					code,
 				})
 				require.NoError(t, err)
@@ -575,8 +577,8 @@ func (s *ModuleTestSuite) TestHandler_RedeemRedemptionCode() {
 					Key:    fmt.Sprintf("code-member-%d", code.ID),
 					Uid:    code.OwnerID,
 					Days:   30,
-					Biz:    "order",
-					BizId:  code.OrderID,
+					Biz:    code.Biz,
+					BizId:  code.BizId,
 					Action: "兑换会员商品",
 				}
 			},
@@ -627,9 +629,9 @@ func (s *ModuleTestSuite) TestHandler_RedeemRedemptionCode() {
 				t.Helper()
 				oid := int64(102)
 				code := s.newMemberRedemptionCodeDomain(8922391, oid)
-				code.SKUAttrs = `{"days":60}`
+				code.Attrs.SKU.Attrs = `{"days":60}`
 				code.Code = req.Code
-				ids, err := s.repo.CreateRedemptionCodes(context.Background(), oid, []domain.RedemptionCode{
+				ids, err := s.repo.CreateRedemptionCodes(context.Background(), []domain.RedemptionCode{
 					code,
 				})
 				require.NoError(t, err)
@@ -637,12 +639,13 @@ func (s *ModuleTestSuite) TestHandler_RedeemRedemptionCode() {
 				return code
 			},
 			newEvtFunc: func(code domain.RedemptionCode) event.MemberEvent {
+				oid := int64(102)
 				return event.MemberEvent{
 					Key:    fmt.Sprintf("code-member-%d", code.ID),
 					Uid:    testID,
 					Days:   60,
 					Biz:    "order",
-					BizId:  code.OrderID,
+					BizId:  oid,
 					Action: "兑换会员商品",
 				}
 			},
@@ -692,9 +695,11 @@ func (s *ModuleTestSuite) TestHandler_RedeemRedemptionCode() {
 				t.Helper()
 				oid := int64(103)
 				code := s.newMemberRedemptionCodeDomain(7622391, oid)
-				code.SKUAttrs = `{"days":90}`
+				code.Attrs = domain.CodeAttrs{
+					SKU: domain.SKU{ID: 12, Attrs: `{"days":90}`},
+				}
 				code.Code = req.Code
-				ids, err := s.repo.CreateRedemptionCodes(context.Background(), oid, []domain.RedemptionCode{
+				ids, err := s.repo.CreateRedemptionCodes(context.Background(), []domain.RedemptionCode{
 					code,
 				})
 				require.NoError(t, err)
@@ -821,7 +826,7 @@ func (s *ModuleTestSuite) TestHandler_ListRedemptionCode() {
 		status := domain.RedemptionCodeStatus(uint8(id)%2 + 1)
 		code := s.newMemberRedemptionCodeDomain(testID, id)
 		code.Status = status
-		_, err := s.repo.CreateRedemptionCodes(context.Background(), id, []domain.RedemptionCode{code})
+		_, err := s.repo.CreateRedemptionCodes(context.Background(), []domain.RedemptionCode{code})
 		require.NoError(t, err)
 	}
 
@@ -909,7 +914,7 @@ func (s *ModuleTestSuite) TestService_RedeemRedemptionCode() {
 
 	oid := int64(101001)
 	code := s.newMemberRedemptionCodeDomain(testID, oid)
-	ids, err := s.repo.CreateRedemptionCodes(context.Background(), oid, []domain.RedemptionCode{
+	ids, err := s.repo.CreateRedemptionCodes(context.Background(), []domain.RedemptionCode{
 		code,
 	})
 	require.NoError(t, err)
@@ -966,12 +971,14 @@ func (s *ModuleTestSuite) TestService_RedeemRedemptionCode() {
 
 func (s *ModuleTestSuite) newMemberRedemptionCodeDomain(ownerID int64, oid int64) domain.RedemptionCode {
 	return domain.RedemptionCode{
-		OwnerID:      ownerID,
-		OrderID:      oid,
-		SPUID:        2,
-		SPUCategory1: "member",
-		SKUAttrs:     `{"days":30}`,
-		Code:         fmt.Sprintf("redemption-code-member-%d", oid),
-		Status:       domain.RedemptionCodeStatusUnused,
+		OwnerID: ownerID,
+		Biz:     "order",
+		BizId:   oid,
+		Type:    "member",
+		Attrs: domain.CodeAttrs{
+			SKU: domain.SKU{ID: 4, Attrs: `{"days":30}`},
+		},
+		Code:   fmt.Sprintf("redemption-code-member-%d", oid),
+		Status: domain.RedemptionCodeStatusUnused,
 	}
 }

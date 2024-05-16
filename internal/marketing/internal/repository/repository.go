@@ -30,7 +30,7 @@ var (
 )
 
 type MarketingRepository interface {
-	CreateRedemptionCodes(ctx context.Context, oid int64, codes []domain.RedemptionCode) ([]int64, error)
+	CreateRedemptionCodes(ctx context.Context, codes []domain.RedemptionCode) ([]int64, error)
 	FindRedemptionCode(ctx context.Context, code string) (domain.RedemptionCode, error)
 	SetUnusedRedemptionCodeStatusUsed(ctx context.Context, uid int64, code string) (domain.RedemptionCode, error)
 	TotalRedemptionCodes(ctx context.Context, uid int64) (int64, error)
@@ -47,10 +47,10 @@ func NewRepository(d dao.MarketingDAO) MarketingRepository {
 	}
 }
 
-func (m *marketingRepository) CreateRedemptionCodes(ctx context.Context, oid int64, codes []domain.RedemptionCode) ([]int64, error) {
+func (m *marketingRepository) CreateRedemptionCodes(ctx context.Context, codes []domain.RedemptionCode) ([]int64, error) {
 	entities := m.toEntities(codes)
 	log.Printf("entities: %#v\n", entities)
-	return m.dao.CreateRedemptionCodes(ctx, oid, entities)
+	return m.dao.CreateRedemptionCodes(ctx, entities)
 }
 
 func (m *marketingRepository) FindRedemptionCode(ctx context.Context, code string) (domain.RedemptionCode, error) {
@@ -83,17 +83,18 @@ func (m *marketingRepository) FindRedemptionCodesByUID(ctx context.Context, uid 
 
 func (m *marketingRepository) toDomain(codes []dao.RedemptionCode) []domain.RedemptionCode {
 	return slice.Map(codes, func(idx int, src dao.RedemptionCode) domain.RedemptionCode {
+
 		return domain.RedemptionCode{
-			ID:           src.Id,
-			OwnerID:      src.OwnerId,
-			OrderID:      src.OrderId,
-			SPUID:        src.SPUID,
-			SPUCategory1: src.SPUCategory1,
-			SKUAttrs:     src.SKUAttrs.String,
-			Code:         src.Code,
-			Status:       domain.RedemptionCodeStatus(src.Status),
-			Ctime:        src.Ctime,
-			Utime:        src.Utime,
+			ID:      src.Id,
+			OwnerID: src.OwnerId,
+			Biz:     src.Biz,
+			BizId:   src.BizId,
+			Type:    src.Type,
+			Attrs:   src.Attrs.Val,
+			Code:    src.Code,
+			Status:  domain.RedemptionCodeStatus(src.Status),
+			Ctime:   src.Ctime,
+			Utime:   src.Utime,
 		}
 	})
 }
@@ -101,13 +102,13 @@ func (m *marketingRepository) toDomain(codes []dao.RedemptionCode) []domain.Rede
 func (m *marketingRepository) toEntities(codes []domain.RedemptionCode) []dao.RedemptionCode {
 	return slice.Map(codes, func(idx int, src domain.RedemptionCode) dao.RedemptionCode {
 		return dao.RedemptionCode{
-			OwnerId:      src.OwnerID,
-			OrderId:      src.OrderID,
-			SPUID:        src.SPUID,
-			SPUCategory1: src.SPUCategory1,
-			SKUAttrs:     sqlx.NewNullString(src.SKUAttrs),
-			Code:         src.Code,
-			Status:       src.Status.ToUint8(),
+			OwnerId: src.OwnerID,
+			Biz:     src.Biz,
+			BizId:   src.BizId,
+			Type:    src.Type,
+			Attrs:   sqlx.JsonColumn[domain.CodeAttrs]{Val: src.Attrs, Valid: true},
+			Code:    src.Code,
+			Status:  src.Status.ToUint8(),
 		}
 	})
 }

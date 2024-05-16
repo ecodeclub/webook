@@ -16,12 +16,12 @@ package dao
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"fmt"
 	"time"
 
 	"github.com/ecodeclub/ekit/slice"
+	"github.com/ecodeclub/ekit/sqlx"
 	"github.com/ecodeclub/webook/internal/marketing/internal/domain"
 	"github.com/ego-component/egorm"
 	"github.com/go-sql-driver/mysql"
@@ -34,7 +34,7 @@ var (
 )
 
 type MarketingDAO interface {
-	CreateRedemptionCodes(ctx context.Context, oid int64, code []RedemptionCode) ([]int64, error)
+	CreateRedemptionCodes(ctx context.Context, codes []RedemptionCode) ([]int64, error)
 	FindRedemptionCodeByCode(ctx context.Context, code string) (RedemptionCode, error)
 	SetUnusedRedemptionCodeStatusUsed(ctx context.Context, uid int64, code string) (RedemptionCode, error)
 	CountRedemptionCodes(ctx context.Context, uid int64) (int64, error)
@@ -49,17 +49,21 @@ func NewGORMMarketingDAO(db *egorm.Component) MarketingDAO {
 	return &gormMarketingDAO{db: db}
 }
 
-func (g *gormMarketingDAO) CreateRedemptionCodes(ctx context.Context, oid int64, codes []RedemptionCode) ([]int64, error) {
+func (g *gormMarketingDAO) CreateRedemptionCodes(ctx context.Context, codes []RedemptionCode) ([]int64, error) {
 	now := time.Now().UnixMilli()
+	var biz string
+	var bizId int64
 	for i := range codes {
 		codes[i].Ctime, codes[i].Utime = now, now
+		biz, bizId = codes[i].Biz, codes[i].BizId
 	}
 	err := g.db.WithContext(ctx).Transaction(func(tx *egorm.Component) error {
 		if err := tx.Create(&codes).Error; err != nil {
 			return fmt.Errorf("创建兑换码主记录失败: %w", err)
 		}
 		var l GenerateLog
-		l.OrderId = oid
+		l.Biz = biz
+		l.BizId = bizId
 		l.CodeCount = int64(len(codes))
 		l.Ctime = now
 		l.Utime = now
@@ -67,7 +71,7 @@ func (g *gormMarketingDAO) CreateRedemptionCodes(ctx context.Context, oid int64,
 	})
 	if err != nil {
 		if g.isMySQLUniqueIndexError(err) {
-			return g.getRedemptionCodeIDsByOrderID(ctx, oid)
+			return g.getRedemptionCodeIDsByBizID(ctx, bizId)
 		}
 		return nil, err
 	}
@@ -87,10 +91,10 @@ func (g *gormMarketingDAO) isMySQLUniqueIndexError(err error) bool {
 	return false
 }
 
-func (g *gormMarketingDAO) getRedemptionCodeIDsByOrderID(ctx context.Context, oid int64) ([]int64, error) {
+func (g *gormMarketingDAO) getRedemptionCodeIDsByBizID(ctx context.Context, bizId int64) ([]int64, error) {
 	var res []int64
 	err := g.db.WithContext(ctx).Model(&RedemptionCode{}).
-		Select("id").Find(&res, "order_id", oid).Error
+		Select("id").Find(&res, "biz_id", bizId).Error
 	return res, err
 }
 
@@ -126,7 +130,6 @@ func (g *gormMarketingDAO) SetUnusedRedemptionCodeStatusUsed(ctx context.Context
 			RId:        c.Id,
 			RedeemerId: uid,
 			Code:       code,
-			OwnerId:    c.OwnerId,
 			Ctime:      now,
 			Utime:      now,
 		}
@@ -159,22 +162,23 @@ func (g *gormMarketingDAO) FindRedemptionCodesByUID(ctx context.Context, uid int
 }
 
 type RedemptionCode struct {
-	Id           int64          `gorm:"primaryKey;autoIncrement;comment:兑换码自增ID"`
-	OwnerId      int64          `gorm:"not null;index:idx_owner_id;comment:所有者ID"`
-	OrderId      int64          `gorm:"not null;index:idx_order_id;comment:订单自增ID"`
-	SPUID        int64          `gorm:"column:spu_id;not null;index:idx_spu_id;comment:订单项对应的SPU自增ID"`
-	SPUCategory1 string         `gorm:"column:spu_category_1;type:varchar(255);not null;comment:订单项对应的SPU的类型, 仅内部使用member/project"`
-	SKUAttrs     sql.NullString `gorm:"comment:商品销售属性,JSON格式"`
-	Code         string         `gorm:"type:varchar(255);not null;uniqueIndex:uniq_code;comment:兑换码"`
-	Status       uint8          `gorm:"type:tinyint unsigned;not null;default:1;comment:使用状态 1=未使用 2=已使用"`
-	Ctime        int64
-	Utime        int64
+	Id      int64                             `gorm:"primaryKey;autoIncrement;comment:兑换码自增ID"`
+	OwnerId int64                             `gorm:"not null;index:idx_owner_id;comment:所有者ID"`
+	Biz     string                            `gorm:"type:varchar(255);not null;index:idx_biz;comment:业务名,admin/order等"`
+	BizId   int64                             `gorm:"not null;index:idx_biz_id;comment:业务唯一ID, order_id等"`
+	Type    string                            `gorm:"not null;index:idx_type;comment:兑换码类型与SPU的Category1对应,member/project/interview等"`
+	Attrs   sqlx.JsonColumn[domain.CodeAttrs] `gorm:"type:varchar(512);not null;comment:商品销售属性,JSON格式,根据Type来解析Attrs"`
+	Code    string                            `gorm:"type:varchar(255);not null;uniqueIndex:uniq_code;comment:兑换码"`
+	Status  uint8                             `gorm:"type:tinyint unsigned;not null;default:1;comment:使用状态 1=未使用 2=已使用"`
+	Ctime   int64
+	Utime   int64
 }
 
 type GenerateLog struct {
-	Id        int64 `gorm:"primaryKey;autoIncrement;comment:兑换码兑换记录ID"`
-	OrderId   int64 `gorm:"not null;uniqueIndex:idx_order_id_code_count;comment:订单ID"`
-	CodeCount int64 `gorm:"not null;uniqueIndex:idx_order_id_code_count;comment:订单中包含的兑换码个数"`
+	Id        int64  `gorm:"primaryKey;autoIncrement;comment:兑换码兑换记录ID"`
+	Biz       string `gorm:"type:varchar(255);not null;uniqueIndex:uniq_biz_biz_id_code_count;comment:此次生成兑换码的业务名,admin/order等"`
+	BizId     int64  `gorm:"not null;uniqueIndex:uniq_biz_biz_id_code_count;comment:生成兑换码业务的唯一ID, order_id等"`
+	CodeCount int64  `gorm:"not null;uniqueIndex:uniq_biz_biz_id_code_count;comment:此次活动中生成兑换码个数"`
 	Ctime     int64
 	Utime     int64
 }
@@ -184,7 +188,6 @@ type RedeemLog struct {
 	RId        int64  `gorm:"not null;uniqueIndex:uniq_redemption_code_id;comment:兑换码记录自增ID"`
 	RedeemerId int64  `gorm:"not null;index:idx_redeemer_id;comment:兑换者ID"`
 	Code       string `gorm:"type:varchar(255);not null;uniqueIndex:uniq_code;comment:兑换码"`
-	OwnerId    int64  `gorm:"not null;index:idx_owner_id;comment:所有者ID"`
 	Ctime      int64
 	Utime      int64
 }
