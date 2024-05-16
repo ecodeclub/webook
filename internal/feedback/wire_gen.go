@@ -21,7 +21,10 @@ import (
 // Injectors from wire.go:
 
 func InitHandler(db *gorm.DB, q mq.MQ) (*web.Handler, error) {
-	increaseCreditsEventProducer := initIncreaseCreditsEventProducer(q)
+	increaseCreditsEventProducer, err := event.NewIncreaseCreditsEventProducer(q)
+	if err != nil {
+		return nil, err
+	}
 	service := InitService(db, increaseCreditsEventProducer)
 	handler := web.NewHandler(service)
 	return handler, nil
@@ -47,14 +50,6 @@ func initFeedbackDAO(db *gorm.DB) dao.FeedbackDAO {
 		d = dao.NewFeedbackDAO(db)
 	})
 	return d
-}
-
-func initIncreaseCreditsEventProducer(q mq.MQ) event.IncreaseCreditsEventProducer {
-	producer, err := event.NewIncreaseCreditsEventProducer(q)
-	if err != nil {
-		panic(err)
-	}
-	return producer
 }
 
 type Handler = web.Handler

@@ -16,11 +16,10 @@ package producer
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 
 	"github.com/ecodeclub/mq-api"
 	"github.com/ecodeclub/webook/internal/marketing/internal/event"
+	"github.com/ecodeclub/webook/internal/pkg/mqx"
 )
 
 //go:generate mockgen -source=./permission_event_producer.go -package=evtmocks -destination=../mocks/permission.mock.go -typed PermissionEventProducer
@@ -28,28 +27,6 @@ type PermissionEventProducer interface {
 	Produce(ctx context.Context, evt event.PermissionEvent) error
 }
 
-type permissionEventProducer struct {
-	producer mq.Producer
-}
-
 func NewPermissionEventProducer(q mq.MQ) (PermissionEventProducer, error) {
-	producer, err := q.Producer(event.PermissionEventName)
-	if err != nil {
-		return nil, err
-	}
-	return &permissionEventProducer{
-		producer: producer,
-	}, nil
-}
-
-func (s *permissionEventProducer) Produce(ctx context.Context, evt event.PermissionEvent) error {
-	data, err := json.Marshal(&evt)
-	if err != nil {
-		return fmt.Errorf("序列化失败: %w", err)
-	}
-	_, err = s.producer.Produce(ctx, &mq.Message{
-		Key:   []byte(evt.Key),
-		Value: data,
-	})
-	return err
+	return mqx.NewGeneralProducer[event.PermissionEvent](q, event.PermissionEventName)
 }

@@ -27,7 +27,7 @@ func InitHandler(weSvc service.OAuth2Service, memberSvc service2.Service, creato
 	userCache := cache.NewUserECache(ecacheCache)
 	userRepository := repository.NewCachedUserRepository(userDAO, userCache)
 	mq := testioc.InitMQ()
-	registrationEventProducer := InitRegistrationEventProducer(mq)
+	registrationEventProducer := initRegistrationEventProducer(mq)
 	userService := service.NewUserService(userRepository, registrationEventProducer)
 	handler := web.NewHandler(weSvc, userService, memberSvc, creators)
 	return handler
@@ -35,6 +35,6 @@ func InitHandler(weSvc service.OAuth2Service, memberSvc service2.Service, creato
 
 // wire.go:
 
-func InitRegistrationEventProducer(q mq.MQ) *event.RegistrationEventProducer {
+func initRegistrationEventProducer(q mq.MQ) event.RegistrationEventProducer {
 	return nil
 }

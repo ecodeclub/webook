@@ -16,10 +16,9 @@ package event
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 
 	"github.com/ecodeclub/mq-api"
+	"github.com/ecodeclub/webook/internal/pkg/mqx"
 )
 
 //go:generate mockgen -source=./producer.go -package=evtmocks -destination=./mocks/producer.mock.go -typed OrderEventProducer
@@ -27,27 +26,6 @@ type OrderEventProducer interface {
 	Produce(ctx context.Context, evt OrderEvent) error
 }
 
-type orderEventProducer struct {
-	producer mq.Producer
-}
-
 func NewOrderEventProducer(q mq.MQ) (OrderEventProducer, error) {
-	p, err := q.Producer(orderEventName)
-	if err != nil {
-		return nil, err
-	}
-	return &orderEventProducer{
-		p,
-	}, nil
-}
-
-func (s *orderEventProducer) Produce(ctx context.Context, evt OrderEvent) error {
-	data, err := json.Marshal(&evt)
-	if err != nil {
-		return fmt.Errorf("序列化失败: %w", err)
-	}
-	_, err = s.producer.Produce(ctx, &mq.Message{
-		Value: data,
-	})
-	return err
+	return mqx.NewGeneralProducer[OrderEvent](q, orderEventName)
 }

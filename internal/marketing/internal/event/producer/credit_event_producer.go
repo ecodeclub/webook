@@ -16,11 +16,10 @@ package producer
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 
 	"github.com/ecodeclub/mq-api"
 	"github.com/ecodeclub/webook/internal/marketing/internal/event"
+	"github.com/ecodeclub/webook/internal/pkg/mqx"
 )
 
 //go:generate mockgen -source=./credit_event_producer.go -package=evtmocks -destination=../mocks/credit.mock.go -typed CreditEventProducer
@@ -28,28 +27,6 @@ type CreditEventProducer interface {
 	Produce(ctx context.Context, evt event.CreditIncreaseEvent) error
 }
 
-type creditEventProducer struct {
-	producer mq.Producer
-}
-
 func NewCreditEventProducer(q mq.MQ) (CreditEventProducer, error) {
-	producer, err := q.Producer(event.PermissionEventName)
-	if err != nil {
-		return nil, err
-	}
-	return &creditEventProducer{
-		producer: producer,
-	}, nil
-}
-
-func (s *creditEventProducer) Produce(ctx context.Context, evt event.CreditIncreaseEvent) error {
-	data, err := json.Marshal(&evt)
-	if err != nil {
-		return fmt.Errorf("序列化失败: %w", err)
-	}
-	_, err = s.producer.Produce(ctx, &mq.Message{
-		Key:   []byte(evt.Key),
-		Value: data,
-	})
-	return err
+	return mqx.NewGeneralProducer[event.CreditIncreaseEvent](q, event.PermissionEventName)
 }

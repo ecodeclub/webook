@@ -16,11 +16,10 @@ package producer
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 
 	"github.com/ecodeclub/mq-api"
 	"github.com/ecodeclub/webook/internal/marketing/internal/event"
+	"github.com/ecodeclub/webook/internal/pkg/mqx"
 )
 
 //go:generate mockgen -source=./member_event_producer.go -package=evtmocks -destination=../mocks/member.mock.go -typed MemberEventProducer
@@ -28,28 +27,6 @@ type MemberEventProducer interface {
 	Produce(ctx context.Context, evt event.MemberEvent) error
 }
 
-type memberEventProducer struct {
-	producer mq.Producer
-}
-
 func NewMemberEventProducer(q mq.MQ) (MemberEventProducer, error) {
-	producer, err := q.Producer(event.MemberUpdateEventName)
-	if err != nil {
-		return nil, err
-	}
-	return &memberEventProducer{
-		producer: producer,
-	}, nil
-}
-
-func (s *memberEventProducer) Produce(ctx context.Context, evt event.MemberEvent) error {
-	data, err := json.Marshal(&evt)
-	if err != nil {
-		return fmt.Errorf("序列化失败: %w", err)
-	}
-	_, err = s.producer.Produce(ctx, &mq.Message{
-		Key:   []byte(evt.Key),
-		Value: data,
-	})
-	return err
+	return mqx.NewGeneralProducer[event.MemberEvent](q, event.MemberUpdateEventName)
 }

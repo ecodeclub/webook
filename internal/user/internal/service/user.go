@@ -40,11 +40,11 @@ type UserService interface {
 
 type userService struct {
 	repo     repository.UserRepository
-	producer *event.RegistrationEventProducer
+	producer event.RegistrationEventProducer
 	logger   *elog.Component
 }
 
-func NewUserService(repo repository.UserRepository, p *event.RegistrationEventProducer) UserService {
+func NewUserService(repo repository.UserRepository, p event.RegistrationEventProducer) UserService {
 	return &userService{
 		repo:     repo,
 		producer: p,
