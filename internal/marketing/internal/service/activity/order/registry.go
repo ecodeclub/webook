@@ -19,25 +19,25 @@ import (
 )
 
 type HandlerRegistry struct {
-	orderHandlers map[SPUCategory]map[SPUType]order.OrderHandler
+	orderHandlers map[SPUCategory]map[SPUCategory]order.OrderHandler
 }
 
 func NewOrderHandlerRegistry() *HandlerRegistry {
 	return &HandlerRegistry{
-		orderHandlers: make(map[SPUCategory]map[SPUType]order.OrderHandler),
+		orderHandlers: make(map[SPUCategory]map[SPUCategory]order.OrderHandler),
 	}
 }
 
-func (r *HandlerRegistry) Register(category SPUCategory, typ SPUType, h order.OrderHandler) {
-	if r.orderHandlers[category] == nil {
-		r.orderHandlers[category] = make(map[SPUType]order.OrderHandler)
+func (r *HandlerRegistry) Register(category0 SPUCategory, category1 SPUCategory, h order.OrderHandler) {
+	if r.orderHandlers[category0] == nil {
+		r.orderHandlers[category0] = make(map[SPUCategory]order.OrderHandler)
 	}
-	r.orderHandlers[category][typ] = h
+	r.orderHandlers[category0][category1] = h
 }
 
-func (r *HandlerRegistry) Get(category SPUCategory, typ SPUType) (order.OrderHandler, bool) {
-	if handlersByType, ok := r.orderHandlers[category]; ok {
-		h, ok := handlersByType[typ]
+func (r *HandlerRegistry) Get(category0 SPUCategory, category1 SPUCategory) (order.OrderHandler, bool) {
+	if handlersByType, ok := r.orderHandlers[category0]; ok {
+		h, ok := handlersByType[category1]
 		return h, ok
 	}
 	return nil, false

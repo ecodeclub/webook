@@ -54,13 +54,13 @@ func (p *productRepository) FindSPUBySN(ctx context.Context, sn string) (domain.
 
 func (p *productRepository) toDomainSPU(spu dao.SPU, skus []dao.SKU) domain.SPU {
 	return domain.SPU{
-		ID:       spu.Id,
-		SN:       spu.SN,
-		Name:     spu.Name,
-		Desc:     spu.Description,
-		Category: spu.Category,
-		Type:     spu.Type,
-		Status:   domain.Status(spu.Status),
+		ID:        spu.Id,
+		SN:        spu.SN,
+		Name:      spu.Name,
+		Desc:      spu.Description,
+		Category0: spu.Category0,
+		Category1: spu.Category1,
+		Status:    domain.Status(spu.Status),
 		SKUs: slice.Map(skus, func(idx int, src dao.SKU) domain.SKU {
 			return p.toDomainSKU(src)
 		}),

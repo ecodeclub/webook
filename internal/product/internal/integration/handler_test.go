@@ -107,8 +107,8 @@ func (s *ProductModuleTestSuite) TestHandler_RetrieveSKUDetail() {
 			before: func(t *testing.T) {
 				t.Helper()
 				spu := dao.SPU{
-					Category:    "product",
-					Type:        "member",
+					Category0:   "product",
+					Category1:   "member",
 					SN:          "SPU001",
 					Name:        "会员服务",
 					Description: "提供不同期限的会员服务",
@@ -194,8 +194,8 @@ func (s *ProductModuleTestSuite) TestHandler_RetrieveSKUDetailFailed() {
 			before: func(t *testing.T) {
 				t.Helper()
 				spu := dao.SPU{
-					Category:    "product",
-					Type:        "member001",
+					Category0:   "product",
+					Category1:   "member001",
 					SN:          "SPU002",
 					Name:        "会员服务",
 					Description: "提供不同期限的会员服务",
@@ -235,8 +235,8 @@ func (s *ProductModuleTestSuite) TestHandler_RetrieveSKUDetailFailed() {
 			before: func(t *testing.T) {
 				t.Helper()
 				spu := dao.SPU{
-					Category:    "product",
-					Type:        "member002",
+					Category0:   "product",
+					Category1:   "member002",
 					SN:          "SPU004",
 					Name:        "会员服务",
 					Description: "提供不同期限的会员服务",
@@ -307,8 +307,8 @@ func (s *ProductModuleTestSuite) TestHandler_RetrieveSPUDetail() {
 				t.Helper()
 
 				spu := dao.SPU{
-					Category:    "product",
-					Type:        "member",
+					Category0:   "product",
+					Category1:   "member",
 					SN:          "SPU102",
 					Name:        "会员服务-2",
 					Description: "提供不同期限的会员服务-2",
@@ -425,8 +425,8 @@ func (s *ProductModuleTestSuite) TestHandler_RetrieveSPUDetailFailed() {
 			before: func(t *testing.T) {
 				t.Helper()
 				spu := dao.SPU{
-					Category:    "product",
-					Type:        "member003",
+					Category0:   "product",
+					Category1:   "member003",
 					SN:          "SPU103",
 					Name:        "会员服务-3",
 					Description: "提供不同期限的会员服务-3",
@@ -466,8 +466,8 @@ func (s *ProductModuleTestSuite) TestHandler_RetrieveSPUDetailFailed() {
 			before: func(t *testing.T) {
 				t.Helper()
 				spu := dao.SPU{
-					Category:    "product",
-					Type:        "member005",
+					Category0:   "product",
+					Category1:   "member005",
 					SN:          "SPU104",
 					Name:        "会员服务-4",
 					Description: "提供不同期限的会员服务-4",
@@ -535,8 +535,8 @@ func (s *ProductModuleTestSuite) TestService_FindSPUByID() {
 			getSPUID: func(t *testing.T) int64 {
 				t.Helper()
 				spu := dao.SPU{
-					Category:    "product",
-					Type:        "member006",
+					Category0:   "product",
+					Category1:   "member006",
 					SN:          "SPU1102",
 					Name:        "会员服务-2",
 					Description: "提供不同期限的会员服务-2",
@@ -578,12 +578,12 @@ func (s *ProductModuleTestSuite) TestService_FindSPUByID() {
 				return id
 			},
 			SPU: domain.SPU{
-				SN:       "SPU1102",
-				Name:     "会员服务-2",
-				Category: "product",
-				Type:     "member006",
-				Desc:     "提供不同期限的会员服务-2",
-				Status:   domain.StatusOnShelf,
+				SN:        "SPU1102",
+				Name:      "会员服务-2",
+				Category0: "product",
+				Category1: "member006",
+				Desc:      "提供不同期限的会员服务-2",
+				Status:    domain.StatusOnShelf,
 				SKUs: []domain.SKU{
 					{
 						SN:         "SKU1102",

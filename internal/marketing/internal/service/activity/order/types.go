@@ -16,6 +16,5 @@ package order
 
 type (
 	SPUCategory     string
-	SPUType         string
-	CategoryTypeSet map[SPUCategory]map[SPUType]struct{}
+	CategoryTypeSet map[SPUCategory]map[SPUCategory]struct{}
 )

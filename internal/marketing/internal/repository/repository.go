@@ -84,16 +84,16 @@ func (m *marketingRepository) FindRedemptionCodesByUID(ctx context.Context, uid 
 func (m *marketingRepository) toDomain(codes []dao.RedemptionCode) []domain.RedemptionCode {
 	return slice.Map(codes, func(idx int, src dao.RedemptionCode) domain.RedemptionCode {
 		return domain.RedemptionCode{
-			ID:       src.Id,
-			OwnerID:  src.OwnerId,
-			OrderID:  src.OrderId,
-			SPUID:    src.SPUID,
-			SPUType:  src.SPUType,
-			SKUAttrs: src.SKUAttrs.String,
-			Code:     src.Code,
-			Status:   domain.RedemptionCodeStatus(src.Status),
-			Ctime:    src.Ctime,
-			Utime:    src.Utime,
+			ID:           src.Id,
+			OwnerID:      src.OwnerId,
+			OrderID:      src.OrderId,
+			SPUID:        src.SPUID,
+			SPUCategory1: src.SPUCategory1,
+			SKUAttrs:     src.SKUAttrs.String,
+			Code:         src.Code,
+			Status:       domain.RedemptionCodeStatus(src.Status),
+			Ctime:        src.Ctime,
+			Utime:        src.Utime,
 		}
 	})
 }
@@ -101,13 +101,13 @@ func (m *marketingRepository) toDomain(codes []dao.RedemptionCode) []domain.Rede
 func (m *marketingRepository) toEntities(codes []domain.RedemptionCode) []dao.RedemptionCode {
 	return slice.Map(codes, func(idx int, src domain.RedemptionCode) dao.RedemptionCode {
 		return dao.RedemptionCode{
-			OwnerId:  src.OwnerID,
-			OrderId:  src.OrderID,
-			SPUID:    src.SPUID,
-			SPUType:  src.SPUType,
-			SKUAttrs: sqlx.NewNullString(src.SKUAttrs),
-			Code:     src.Code,
-			Status:   src.Status.ToUint8(),
+			OwnerId:      src.OwnerID,
+			OrderId:      src.OrderID,
+			SPUID:        src.SPUID,
+			SPUCategory1: src.SPUCategory1,
+			SKUAttrs:     sqlx.NewNullString(src.SKUAttrs),
+			Code:         src.Code,
+			Status:       src.Status.ToUint8(),
 		}
 	})
 }

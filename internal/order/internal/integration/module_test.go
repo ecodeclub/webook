@@ -146,12 +146,12 @@ func (s *OrderModuleTestSuite) TestHandler_PreviewOrder() {
 					Status:   product.StatusOnShelf,
 				}, nil)
 				mockProductSvc.EXPECT().FindSPUByID(gomock.Any(), spuId).Return(product.SPU{
-					ID:       spuId,
-					SN:       "SPU-SKU100",
-					Name:     "SPU-商品SKU100",
-					Desc:     "SPU-商品SKU100",
-					Category: "code",
-					Type:     "member",
+					ID:        spuId,
+					SN:        "SPU-SKU100",
+					Name:      "SPU-商品SKU100",
+					Desc:      "SPU-商品SKU100",
+					Category0: "code",
+					Category1: "member",
 				}, nil)
 				ppm := &product.Module{Svc: mockProductSvc}
 
@@ -377,12 +377,12 @@ func (s *OrderModuleTestSuite) TestHandler_PreviewOrderFailed() {
 					Status:   product.StatusOnShelf,
 				}, nil)
 				mockProductSvc.EXPECT().FindSPUByID(gomock.Any(), spuId).Return(product.SPU{
-					ID:       spuId,
-					SN:       "SPU-SKU100",
-					Name:     "SPU-商品SKU100",
-					Desc:     "SPU-商品SKU100",
-					Category: "product",
-					Type:     "member",
+					ID:        spuId,
+					SN:        "SPU-SKU100",
+					Name:      "SPU-商品SKU100",
+					Desc:      "SPU-商品SKU100",
+					Category0: "product",
+					Category1: "member",
 				}, nil)
 				ppm := &product.Module{Svc: mockProductSvc}
 
@@ -489,12 +489,12 @@ func (s *OrderModuleTestSuite) TestHandler_CreateOrder() {
 					Status:   product.StatusOnShelf,
 				}, nil)
 				mockProductSvc.EXPECT().FindSPUByID(gomock.Any(), spuId).Return(product.SPU{
-					ID:       spuId,
-					SN:       "SPU-SKU101",
-					Name:     "SPU-商品SKU101",
-					Desc:     "SPU-商品SKU101",
-					Category: "code",
-					Type:     "member",
+					ID:        spuId,
+					SN:        "SPU-SKU101",
+					Name:      "SPU-商品SKU101",
+					Desc:      "SPU-商品SKU101",
+					Category0: "code",
+					Category1: "member",
 				}, nil)
 				ppm := &product.Module{Svc: mockProductSvc}
 
@@ -585,12 +585,12 @@ func (s *OrderModuleTestSuite) TestHandler_CreateOrder() {
 					Status:   product.StatusOnShelf,
 				}, nil)
 				mockProductSvc.EXPECT().FindSPUByID(gomock.Any(), spuId).Return(product.SPU{
-					ID:       spuId,
-					SN:       "SPU-SKU101",
-					Name:     "SPU-商品SKU101",
-					Desc:     "SPU-商品SKU101",
-					Category: "code",
-					Type:     "member",
+					ID:        spuId,
+					SN:        "SPU-SKU101",
+					Name:      "SPU-商品SKU101",
+					Desc:      "SPU-商品SKU101",
+					Category0: "code",
+					Category1: "member",
 				}, nil)
 				ppm := &product.Module{Svc: mockProductSvc}
 
@@ -884,12 +884,12 @@ func (s *OrderModuleTestSuite) TestHandler_CreateOrderFailed() {
 					Status:   product.StatusOnShelf,
 				}, nil)
 				mockProductSvc.EXPECT().FindSPUByID(gomock.Any(), spuId).Return(product.SPU{
-					ID:       spuId,
-					SN:       "SPU-SKU101",
-					Name:     "SPU-商品SKU101",
-					Desc:     "SPU-商品SKU101",
-					Category: "code",
-					Type:     "member",
+					ID:        spuId,
+					SN:        "SPU-SKU101",
+					Name:      "SPU-商品SKU101",
+					Desc:      "SPU-商品SKU101",
+					Category0: "code",
+					Category1: "member",
 				}, nil).AnyTimes()
 				ppm := &product.Module{Svc: mockProductSvc}
 
@@ -968,12 +968,12 @@ func (s *OrderModuleTestSuite) createOrderFailedHandler(t *testing.T, ctrl *gomo
 	}, nil)
 	ppm := &product.Module{Svc: mockProductSvc}
 	mockProductSvc.EXPECT().FindSPUByID(gomock.Any(), spuId).Return(product.SPU{
-		ID:       spuId,
-		SN:       "SPU-SKU101",
-		Name:     "SPU-商品SKU101",
-		Desc:     "SPU-商品SKU101",
-		Category: "code",
-		Type:     "member",
+		ID:        spuId,
+		SN:        "SPU-SKU101",
+		Name:      "SPU-商品SKU101",
+		Desc:      "SPU-商品SKU101",
+		Category0: "code",
+		Category1: "member",
 	}, nil).AnyTimes()
 
 	cm := &credit.Module{Svc: creditmocks.NewMockService(ctrl)}
@@ -1143,8 +1143,8 @@ func (s *OrderModuleTestSuite) newOrderItemDAO(oid, id int64) dao.OrderItem {
 	return dao.OrderItem{
 		OrderId:          oid,
 		SPUId:            id,
-		SPUCategory:      "code",
-		SPUType:          "member",
+		SPUCategory0:     "code",
+		SPUCategory1:     "member",
 		SKUId:            id,
 		SKUSN:            fmt.Sprintf("SKUSN-%d", id),
 		SKUImage:         fmt.Sprintf("SKUImage-%d", id),

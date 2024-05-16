@@ -153,9 +153,9 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeOrderEvent() {
 						Items: []order.Item{
 							{
 								SPU: order.SPU{
-									ID:       1,
-									Category: "product",
-									Type:     "member",
+									ID:        1,
+									Category0: "product",
+									Category1: "member",
 								},
 								SKU: order.SKU{
 									ID:            1,
@@ -182,9 +182,9 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeOrderEvent() {
 				BuyerID: 123456,
 				SPUs: []event.SPU{
 					{
-						ID:       1,
-						Category: "product",
-						Type:     "member",
+						ID:        1,
+						Category0: "product",
+						Category1: "member",
 					},
 				},
 			},
@@ -232,9 +232,9 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeOrderEvent() {
 						Items: []order.Item{
 							{
 								SPU: order.SPU{
-									ID:       1,
-									Category: "product",
-									Type:     "member",
+									ID:        1,
+									Category0: "product",
+									Category1: "member",
 								},
 								SKU: order.SKU{
 									ID:            2,
@@ -247,9 +247,9 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeOrderEvent() {
 							},
 							{
 								SPU: order.SPU{
-									ID:       1,
-									Category: "product",
-									Type:     "member",
+									ID:        1,
+									Category0: "product",
+									Category1: "member",
 								},
 								SKU: order.SKU{
 									ID:            3,
@@ -276,14 +276,14 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeOrderEvent() {
 				BuyerID: 123456,
 				SPUs: []event.SPU{
 					{
-						ID:       1,
-						Category: "product",
-						Type:     "member",
+						ID:        1,
+						Category0: "product",
+						Category1: "member",
 					},
 					{
-						ID:       1,
-						Category: "product",
-						Type:     "member",
+						ID:        1,
+						Category0: "product",
+						Category1: "member",
 					},
 				},
 			},
@@ -318,9 +318,9 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeOrderEvent() {
 						Items: []order.Item{
 							{
 								SPU: order.SPU{
-									ID:       2,
-									Category: "code",
-									Type:     "member",
+									ID:        2,
+									Category0: "code",
+									Category1: "member",
 								},
 								SKU: order.SKU{
 									ID:            4,
@@ -342,9 +342,9 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeOrderEvent() {
 				BuyerID: 1234568,
 				SPUs: []event.SPU{
 					{
-						ID:       2,
-						Category: "code",
-						Type:     "member",
+						ID:        2,
+						Category0: "code",
+						Category1: "member",
 					},
 				},
 			},
@@ -387,9 +387,9 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeOrderEvent() {
 						Items: []order.Item{
 							{
 								SPU: order.SPU{
-									ID:       2,
-									Category: "code",
-									Type:     "member",
+									ID:        2,
+									Category0: "code",
+									Category1: "member",
 								},
 								SKU: order.SKU{
 									ID:            4,
@@ -402,9 +402,9 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeOrderEvent() {
 							},
 							{
 								SPU: order.SPU{
-									ID:       2,
-									Category: "code",
-									Type:     "member",
+									ID:        2,
+									Category0: "code",
+									Category1: "member",
 								},
 								SKU: order.SKU{
 									ID:            5,
@@ -426,14 +426,14 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeOrderEvent() {
 				BuyerID: 1234569,
 				SPUs: []event.SPU{
 					{
-						ID:       2,
-						Category: "code",
-						Type:     "member",
+						ID:        2,
+						Category0: "code",
+						Category1: "member",
 					},
 					{
-						ID:       2,
-						Category: "code",
-						Type:     "member",
+						ID:        2,
+						Category0: "code",
+						Category1: "member",
 					},
 				},
 			},
@@ -477,9 +477,9 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeOrderEvent() {
 				BuyerID: 123457,
 				SPUs: []event.SPU{
 					{
-						ID:       10,
-						Category: "other",
-						Type:     "other",
+						ID:        10,
+						Category0: "other",
+						Category1: "other",
 					},
 				},
 			},
@@ -966,12 +966,12 @@ func (s *ModuleTestSuite) TestService_RedeemRedemptionCode() {
 
 func (s *ModuleTestSuite) newMemberRedemptionCodeDomain(ownerID int64, oid int64) domain.RedemptionCode {
 	return domain.RedemptionCode{
-		OwnerID:  ownerID,
-		OrderID:  oid,
-		SPUID:    2,
-		SPUType:  "member",
-		SKUAttrs: `{"days":30}`,
-		Code:     fmt.Sprintf("redemption-code-member-%d", oid),
-		Status:   domain.RedemptionCodeStatusUnused,
+		OwnerID:      ownerID,
+		OrderID:      oid,
+		SPUID:        2,
+		SPUCategory1: "member",
+		SKUAttrs:     `{"days":30}`,
+		Code:         fmt.Sprintf("redemption-code-member-%d", oid),
+		Status:       domain.RedemptionCodeStatusUnused,
 	}
 }

@@ -37,21 +37,21 @@ type OrderEvent struct {
 }
 
 type SPU struct {
-	ID       int64  `json:"id"`
-	Category string `json:"category"`
-	Type     string `json:"type"`
+	ID        int64  `json:"id"`
+	Category0 string `json:"category0"`
+	Category1 string `json:"category1"`
 }
 
 func (s SPU) IsProductCategory() bool {
-	return s.Category == "product"
+	return s.Category0 == "product"
 }
 
 func (s SPU) IsCodeCategory() bool {
-	return s.Category == "code"
+	return s.Category0 == "code"
 }
 
 func (s SPU) IsMemberProduct() bool {
-	return s.IsProductCategory() && s.Type == "member"
+	return s.IsProductCategory() && s.Category1 == "member"
 }
 
 type CreditIncreaseEvent struct {
