@@ -26,14 +26,23 @@ func (r RedemptionCodeStatus) ToUint8() uint8 {
 }
 
 type RedemptionCode struct {
-	ID           int64
-	OwnerID      int64
-	OrderID      int64
-	SPUID        int64
-	SPUCategory1 string
-	SKUAttrs     string
-	Code         string
-	Status       RedemptionCodeStatus
-	Ctime        int64
-	Utime        int64
+	ID      int64
+	OwnerID int64
+	Biz     string
+	BizId   int64
+	Type    string
+	Attrs   CodeAttrs
+	Code    string
+	Status  RedemptionCodeStatus
+	Ctime   int64
+	Utime   int64
+}
+
+type CodeAttrs struct {
+	SKU SKU `json:"sku,omitempty"`
+}
+
+type SKU struct {
+	ID    int64  `json:"id,omitempty"`
+	Attrs string `json:"attrs,omitempty"`
 }
