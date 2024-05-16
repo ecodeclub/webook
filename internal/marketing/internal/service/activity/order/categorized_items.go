@@ -19,28 +19,28 @@ import (
 )
 
 type CategorizedItems struct {
-	items           map[SPUCategory]map[SPUType][]order.Item
+	items           map[SPUCategory]map[SPUCategory][]order.Item
 	categoryTypeSet CategoryTypeSet
 }
 
 func NewCategorizedItems() *CategorizedItems {
 	return &CategorizedItems{
-		items:           make(map[SPUCategory]map[SPUType][]order.Item),
+		items:           make(map[SPUCategory]map[SPUCategory][]order.Item),
 		categoryTypeSet: make(CategoryTypeSet),
 	}
 }
 
-func (c *CategorizedItems) AddItem(category SPUCategory, typ SPUType, item order.Item) {
-	if c.items[category] == nil {
-		c.items[category] = make(map[SPUType][]order.Item)
-		c.categoryTypeSet[category] = make(map[SPUType]struct{})
+func (c *CategorizedItems) AddItem(category0 SPUCategory, category1 SPUCategory, item order.Item) {
+	if c.items[category0] == nil {
+		c.items[category0] = make(map[SPUCategory][]order.Item)
+		c.categoryTypeSet[category0] = make(map[SPUCategory]struct{})
 	}
-	c.items[category][typ] = append(c.items[category][typ], item)
-	c.categoryTypeSet[category][typ] = struct{}{}
+	c.items[category0][category1] = append(c.items[category0][category1], item)
+	c.categoryTypeSet[category0][category1] = struct{}{}
 }
 
-func (c *CategorizedItems) GetItems(category SPUCategory, typ SPUType) []order.Item {
-	return c.items[category][typ]
+func (c *CategorizedItems) GetItems(category0 SPUCategory, category1 SPUCategory) []order.Item {
+	return c.items[category0][category1]
 }
 
 func (c *CategorizedItems) CategoriesAndTypes() CategoryTypeSet {

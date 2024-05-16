@@ -46,18 +46,18 @@ func (s *ActivityExecutor) Execute(ctx context.Context, act domain.OrderComplete
 
 	categorizedItems := NewCategorizedItems()
 	for _, item := range o.Items {
-		categorizedItems.AddItem(SPUCategory(item.SPU.Category), SPUType(item.SPU.Type), item)
+		categorizedItems.AddItem(SPUCategory(item.SPU.Category0), SPUCategory(item.SPU.Category1), item)
 	}
 
-	for category, types := range categorizedItems.CategoriesAndTypes() {
-		for itemType := range types {
-			items := categorizedItems.GetItems(category, itemType)
-			h, ok := s.handlerRegistry.Get(category, itemType)
+	for category0, category1Set := range categorizedItems.CategoriesAndTypes() {
+		for category1 := range category1Set {
+			items := categorizedItems.GetItems(category0, category1)
+			h, ok := s.handlerRegistry.Get(category0, category1)
 			if !ok {
-				return fmt.Errorf("未知 %s 类别 %s 类型订单处理器", category, itemType)
+				return fmt.Errorf("未知 %s 类别0 %s 类别1订单处理器", category0, category1)
 			}
 			if er := h.Handle(ctx, order2.OrderInfo{Order: o, Items: items}); er != nil {
-				return fmt.Errorf("处理 %s 类别 %s 类型商品失败: %w", category, itemType, er)
+				return fmt.Errorf("处理 %s 类别0 %s 类别1商品失败: %w", category0, category1, er)
 			}
 		}
 	}

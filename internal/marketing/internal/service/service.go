@@ -47,7 +47,7 @@ type service struct {
 	permissionEventProducer producer.PermissionEventProducer
 
 	orderActivityExecutor *orderexe.ActivityExecutor
-	redeemers             map[orderexe.SPUType]orderhdl.RedeemerHandler
+	redeemers             map[orderexe.SPUCategory]orderhdl.RedeemerHandler
 }
 
 func NewService(
@@ -67,7 +67,7 @@ func NewService(
 	codeMemberHandler := orderhdl.NewCodeMemberHandler(repo, memberEventProducer, creditEventProducer, redemptionCodeGenerator)
 	orderRegistry.Register("code", "member", codeMemberHandler)
 
-	redeemerRegistry := make(map[orderexe.SPUType]orderhdl.RedeemerHandler)
+	redeemerRegistry := make(map[orderexe.SPUCategory]orderhdl.RedeemerHandler)
 	redeemerRegistry["member"] = codeMemberHandler
 
 	return &service{
@@ -89,9 +89,9 @@ func (s *service) RedeemRedemptionCode(ctx context.Context, uid int64, code stri
 	if err != nil {
 		return err
 	}
-	redeemer, ok := s.redeemers[orderexe.SPUType(r.SPUType)]
+	redeemer, ok := s.redeemers[orderexe.SPUCategory(r.SPUCategory1)]
 	if !ok {
-		return fmt.Errorf("未知兑换码SPU类型: %s", r.SPUType)
+		return fmt.Errorf("未知兑换码SPU类别1: %s", r.SPUCategory1)
 	}
 	return redeemer.Redeem(ctx, orderhdl.RedeemInfo{RedeemerID: uid, Code: r})
 }

@@ -159,16 +159,16 @@ func (g *gormMarketingDAO) FindRedemptionCodesByUID(ctx context.Context, uid int
 }
 
 type RedemptionCode struct {
-	Id       int64          `gorm:"primaryKey;autoIncrement;comment:兑换码自增ID"`
-	OwnerId  int64          `gorm:"not null;index:idx_owner_id;comment:所有者ID"`
-	OrderId  int64          `gorm:"not null;index:idx_order_id;comment:订单自增ID"`
-	SPUID    int64          `gorm:"column:spu_id;not null;index:idx_spu_id;comment:订单项对应的SPU自增ID"`
-	SPUType  string         `gorm:"column:spu_type;type:varchar(255);not null;comment:订单项对应的SPU的类型, 仅内部使用member/project"`
-	SKUAttrs sql.NullString `gorm:"comment:商品销售属性,JSON格式"`
-	Code     string         `gorm:"type:varchar(255);not null;uniqueIndex:uniq_code;comment:兑换码"`
-	Status   uint8          `gorm:"type:tinyint unsigned;not null;default:1;comment:使用状态 1=未使用 2=已使用"`
-	Ctime    int64
-	Utime    int64
+	Id           int64          `gorm:"primaryKey;autoIncrement;comment:兑换码自增ID"`
+	OwnerId      int64          `gorm:"not null;index:idx_owner_id;comment:所有者ID"`
+	OrderId      int64          `gorm:"not null;index:idx_order_id;comment:订单自增ID"`
+	SPUID        int64          `gorm:"column:spu_id;not null;index:idx_spu_id;comment:订单项对应的SPU自增ID"`
+	SPUCategory1 string         `gorm:"column:spu_category_1;type:varchar(255);not null;comment:订单项对应的SPU的类型, 仅内部使用member/project"`
+	SKUAttrs     sql.NullString `gorm:"comment:商品销售属性,JSON格式"`
+	Code         string         `gorm:"type:varchar(255);not null;uniqueIndex:uniq_code;comment:兑换码"`
+	Status       uint8          `gorm:"type:tinyint unsigned;not null;default:1;comment:使用状态 1=未使用 2=已使用"`
+	Ctime        int64
+	Utime        int64
 }
 
 type GenerateLog struct {

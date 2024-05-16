@@ -80,8 +80,8 @@ func (d *ProductGORMDAO) CreateSKU(ctx context.Context, sku SKU) (int64, error) 
 
 type SPU struct {
 	Id          int64  `gorm:"primaryKey;autoIncrement;comment:商品SPU自增ID"`
-	Category    string `gorm:"type:varchar(255);not null;uniqueIndex:uniq_category_type;comment:商品SPU类别,系统内部使用product/code"`
-	Type        string `gorm:"type:varchar(255);not null;uniqueIndex:uniq_category_type;comment:商品SPU类型,系统内部使用member/project"`
+	Category0   string `gorm:"type:varchar(255);not null;uniqueIndex:uniq_category0_category1;comment:商品SPU类别0,系统内部使用product/code"`
+	Category1   string `gorm:"type:varchar(255);not null;uniqueIndex:uniq_category0_category1;comment:商品SPU类别1,系统内部使用member/project"`
 	SN          string `gorm:"column:sn;type:varchar(255);not null;uniqueIndex:uniq_product_spu_sn;comment:商品SPU序列号"`
 	Name        string `gorm:"type:varchar(255);not null;comment:商品名称"`
 	Description string `gorm:"not null; comment:商品描述"`

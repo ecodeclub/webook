@@ -45,13 +45,13 @@ func (h *CodeMemberHandler) Handle(ctx context.Context, info OrderInfo) error {
 	for _, item := range info.Items {
 		for i := int64(0); i < item.SKU.Quantity; i++ {
 			codes = append(codes, domain.RedemptionCode{
-				OwnerID:  info.Order.BuyerID,
-				OrderID:  info.Order.ID,
-				SPUID:    item.SPU.ID,
-				SPUType:  item.SPU.Type,
-				SKUAttrs: item.SKU.Attrs,
-				Code:     h.redemptionCodeGenerator(info.Order.BuyerID),
-				Status:   domain.RedemptionCodeStatusUnused,
+				OwnerID:      info.Order.BuyerID,
+				OrderID:      info.Order.ID,
+				SPUID:        item.SPU.ID,
+				SPUCategory1: item.SPU.Category1,
+				SKUAttrs:     item.SKU.Attrs,
+				Code:         h.redemptionCodeGenerator(info.Order.BuyerID),
+				Status:       domain.RedemptionCodeStatusUnused,
 			})
 		}
 	}

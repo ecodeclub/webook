@@ -38,14 +38,14 @@ const (
 )
 
 type SPU struct {
-	ID       int64
-	SN       string
-	Name     string
-	Desc     string
-	Category string
-	Type     string
-	SKUs     []SKU
-	Status   Status
+	ID        int64
+	SN        string
+	Name      string
+	Desc      string
+	Category0 string
+	Category1 string
+	SKUs      []SKU
+	Status    Status
 }
 
 type SKU struct {
