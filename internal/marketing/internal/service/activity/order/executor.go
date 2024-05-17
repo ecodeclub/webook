@@ -41,10 +41,15 @@ func NewOrderActivityExecutor(
 
 	registry := NewHandlerRegistry()
 	registry.RegisterOrderHandler("product", "member", handler.NewProductMemberHandler(memberEventProducer, creditEventProducer))
+	registry.RegisterOrderHandler("product", "project", handler.NewProductProjectHandler(permissionEventProducer, creditEventProducer))
 
 	codeMemberHandler := handler.NewCodeMemberHandler(repo, memberEventProducer, creditEventProducer, redemptionCodeGenerator)
 	registry.RegisterOrderHandler("code", "member", codeMemberHandler)
 	registry.RegisterRedeemerHandler("member", codeMemberHandler)
+
+	codeProjectHandler := handler.NewCodeProjectHandler(repo, permissionEventProducer, creditEventProducer, redemptionCodeGenerator)
+	registry.RegisterOrderHandler("code", "project", codeProjectHandler)
+	registry.RegisterRedeemerHandler("project", codeProjectHandler)
 
 	return &ActivityExecutor{
 		orderSvc:        orderSvc,
@@ -68,10 +73,10 @@ func (s *ActivityExecutor) Execute(ctx context.Context, act domain.OrderComplete
 			items := categorizedItems.GetItems(category0, category1)
 			h, ok := s.handlerRegistry.GetOrderHandler(category0, category1)
 			if !ok {
-				return fmt.Errorf("未知 %s 类别0 %s 类别1订单处理器", category0, category1)
+				return fmt.Errorf("未知category0=%s, category1=%s订单处理器", category0, category1)
 			}
 			if er := h.Handle(ctx, handler.OrderInfo{Order: o, Items: items}); er != nil {
-				return fmt.Errorf("处理 %s 类别0 %s 类别1商品失败: %w", category0, category1, er)
+				return fmt.Errorf("处理category0=%s, category1=%s商品失败: %w", category0, category1, er)
 			}
 		}
 	}

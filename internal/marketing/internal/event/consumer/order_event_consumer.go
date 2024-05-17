@@ -70,7 +70,7 @@ func (c *OrderEventConsumer) Consume(ctx context.Context) error {
 	}
 
 	for _, spu := range evt.SPUs {
-		if !spu.IsMemberProduct() && !spu.IsCodeCategory() {
+		if !spu.IsMemberProduct() && !spu.IsProjectProduct() && !spu.IsCodeCategory() {
 			return nil
 		}
 	}
