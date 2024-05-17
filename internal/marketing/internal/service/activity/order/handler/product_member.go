@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package order
+package handler
 
 import (
 	"context"
@@ -52,7 +52,7 @@ func (h *ProductMemberHandler) Handle(ctx context.Context, info OrderInfo) error
 		Key:    info.Order.SN,
 		Uid:    info.Order.BuyerID,
 		Days:   days,
-		Biz:    "order",
+		Biz:    Biz,
 		BizId:  info.Order.ID,
 		Action: "购买会员商品",
 	})

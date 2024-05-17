@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package order
+package handler
 
 import (
 	"context"
@@ -39,3 +39,5 @@ type (
 		Redeem(ctx context.Context, info RedeemInfo) error
 	}
 )
+
+const Biz = "order"

@@ -15,30 +15,41 @@
 package order
 
 import (
-	"github.com/ecodeclub/webook/internal/marketing/internal/service/handler/order"
+	"github.com/ecodeclub/webook/internal/marketing/internal/service/activity/order/handler"
 )
 
 type HandlerRegistry struct {
-	orderHandlers map[SPUCategory]map[SPUCategory]order.OrderHandler
+	orderHandlers    map[SPUCategory]map[SPUCategory]handler.OrderHandler
+	redeemerHandlers map[SPUCategory]handler.RedeemerHandler
 }
 
-func NewOrderHandlerRegistry() *HandlerRegistry {
+func NewHandlerRegistry() *HandlerRegistry {
 	return &HandlerRegistry{
-		orderHandlers: make(map[SPUCategory]map[SPUCategory]order.OrderHandler),
+		orderHandlers:    make(map[SPUCategory]map[SPUCategory]handler.OrderHandler),
+		redeemerHandlers: make(map[SPUCategory]handler.RedeemerHandler),
 	}
 }
 
-func (r *HandlerRegistry) Register(category0 SPUCategory, category1 SPUCategory, h order.OrderHandler) {
+func (r *HandlerRegistry) RegisterOrderHandler(category0 SPUCategory, category1 SPUCategory, h handler.OrderHandler) {
 	if r.orderHandlers[category0] == nil {
-		r.orderHandlers[category0] = make(map[SPUCategory]order.OrderHandler)
+		r.orderHandlers[category0] = make(map[SPUCategory]handler.OrderHandler)
 	}
 	r.orderHandlers[category0][category1] = h
 }
 
-func (r *HandlerRegistry) Get(category0 SPUCategory, category1 SPUCategory) (order.OrderHandler, bool) {
-	if handlersByType, ok := r.orderHandlers[category0]; ok {
-		h, ok := handlersByType[category1]
+func (r *HandlerRegistry) GetOrderHandler(category0 SPUCategory, category1 SPUCategory) (handler.OrderHandler, bool) {
+	if category1Set, ok := r.orderHandlers[category0]; ok {
+		h, ok := category1Set[category1]
 		return h, ok
 	}
 	return nil, false
+}
+
+func (r *HandlerRegistry) RegisterRedeemerHandler(category1 SPUCategory, h handler.RedeemerHandler) {
+	r.redeemerHandlers[category1] = h
+}
+
+func (r *HandlerRegistry) GetRedeemerHandler(category1 SPUCategory) (handler.RedeemerHandler, bool) {
+	h, ok := r.redeemerHandlers[category1]
+	return h, ok
 }
