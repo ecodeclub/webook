@@ -53,6 +53,7 @@ func (r *permissionRepository) toEntity(p domain.PersonalPermission) dao.Persona
 		UID:   p.UID,
 		Biz:   p.Biz,
 		BizId: p.BizID,
+		Desc:  p.Desc,
 	}
 }
 
@@ -71,5 +72,6 @@ func (r *permissionRepository) toDomain(p dao.PersonalPermission) domain.Persona
 		UID:   p.UID,
 		Biz:   p.Biz,
 		BizID: p.BizId,
+		Desc:  p.Desc,
 	}
 }

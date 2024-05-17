@@ -24,8 +24,9 @@ const (
 
 type PermissionEvent struct {
 	UID    int64   `json:"uid"`
-	Biz    string  `json:"biz"`
+	Biz    string  `json:"biz"` // project,interview
 	BizIDs []int64 `json:"biz_ids"`
+	Action string  `json:"action"` // 购买项目商品, 兑换项目商品
 }
 
 func (p PermissionEvent) toDomain() []domain.PersonalPermission {
@@ -35,6 +36,7 @@ func (p PermissionEvent) toDomain() []domain.PersonalPermission {
 			UID:   p.UID,
 			Biz:   p.Biz,
 			BizID: id,
+			Desc:  p.Action,
 		})
 	}
 	return r

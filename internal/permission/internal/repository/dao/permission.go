@@ -39,7 +39,8 @@ func (g *gormPermissionDAO) CreatePersonalPermission(ctx context.Context, ps []P
 	now := time.Now().UnixMilli()
 	return g.db.WithContext(ctx).Transaction(func(tx *egorm.Component) error {
 		for _, p := range ps {
-			if err := tx.Where(p).Attrs(PersonalPermission{Ctime: now, Utime: now}).FirstOrCreate(&p).Error; err != nil {
+			if err := tx.Where(PersonalPermission{UID: p.UID, Biz: p.Biz, BizId: p.BizId}).
+				Attrs(PersonalPermission{Desc: p.Desc, Ctime: now, Utime: now}).FirstOrCreate(&p).Error; err != nil {
 				return err
 			}
 		}
@@ -66,6 +67,7 @@ type PersonalPermission struct {
 	UID   int64  `gorm:"not null;uniqueIndex:uniq_uid_biz_biz_id;comment:用户ID"`
 	Biz   string `gorm:"type:varchar(255);not null;uniqueIndex:uniq_uid_biz_biz_id;comment:业务名称, project"`
 	BizId int64  `gorm:"not null;uniqueIndex:uniq_uid_biz_biz_id;comment:业务实体ID"`
+	Desc  string `gorm:"type:varchar(256);not null;comment:权限描述"`
 	Ctime int64
 	Utime int64
 }

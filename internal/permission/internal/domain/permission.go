@@ -18,4 +18,5 @@ type PersonalPermission struct {
 	UID   int64
 	Biz   string
 	BizID int64
+	Desc  string
 }

@@ -98,6 +98,7 @@ func (s *ModuleTestSuite) TestConsumer_ConsumePermissionEvent() {
 				UID:    testID,
 				Biz:    "project",
 				BizIDs: []int64{1, 2, 2, 1},
+				Action: "购买项目商品",
 			},
 			errRequireFunc: require.NoError,
 			after: func(t *testing.T, evt event.PermissionEvent) {
@@ -110,11 +111,13 @@ func (s *ModuleTestSuite) TestConsumer_ConsumePermissionEvent() {
 						UID:   testID,
 						Biz:   "project",
 						BizID: 1,
+						Desc:  "购买项目商品",
 					},
 					{
 						UID:   testID,
 						Biz:   "project",
 						BizID: 2,
+						Desc:  "购买项目商品",
 					},
 				}, permissions)
 			},
@@ -129,11 +132,13 @@ func (s *ModuleTestSuite) TestConsumer_ConsumePermissionEvent() {
 						UID:   uid,
 						Biz:   "interview",
 						BizID: 10,
+						Desc:  "兑换面试商品",
 					},
 					{
 						UID:   uid,
 						Biz:   "interview",
 						BizID: 12,
+						Desc:  "兑换面试商品",
 					},
 				})
 				require.NoError(t, err)
@@ -156,6 +161,7 @@ func (s *ModuleTestSuite) TestConsumer_ConsumePermissionEvent() {
 				UID:    22971,
 				Biz:    "interview",
 				BizIDs: []int64{12, 10, 10, 10, 10},
+				Action: "购买面试商品",
 			},
 			errRequireFunc: require.NoError,
 			after: func(t *testing.T, evt event.PermissionEvent) {
@@ -168,11 +174,13 @@ func (s *ModuleTestSuite) TestConsumer_ConsumePermissionEvent() {
 						UID:   uid,
 						Biz:   "interview",
 						BizID: 12,
+						Desc:  "兑换面试商品",
 					},
 					{
 						UID:   uid,
 						Biz:   "interview",
 						BizID: 10,
+						Desc:  "兑换面试商品",
 					},
 				}, permissions)
 			},
@@ -187,6 +195,7 @@ func (s *ModuleTestSuite) TestConsumer_ConsumePermissionEvent() {
 						UID:   uid,
 						Biz:   "interview",
 						BizID: 25,
+						Desc:  "购买面试商品",
 					},
 				})
 				require.NoError(t, err)
@@ -209,6 +218,7 @@ func (s *ModuleTestSuite) TestConsumer_ConsumePermissionEvent() {
 				UID:    33977,
 				Biz:    "interview",
 				BizIDs: []int64{29, 25},
+				Action: "兑换面试商品",
 			},
 			errRequireFunc: require.NoError,
 			after: func(t *testing.T, evt event.PermissionEvent) {
@@ -221,11 +231,13 @@ func (s *ModuleTestSuite) TestConsumer_ConsumePermissionEvent() {
 						UID:   uid,
 						Biz:   "interview",
 						BizID: 29,
+						Desc:  "兑换面试商品",
 					},
 					{
 						UID:   uid,
 						Biz:   "interview",
 						BizID: 25,
+						Desc:  "购买面试商品",
 					},
 				}, permissions)
 			},
@@ -237,6 +249,8 @@ func (s *ModuleTestSuite) TestConsumer_ConsumePermissionEvent() {
 		t.Run(tc.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
+
+			tc.before(t)
 
 			consumer := tc.newConsumerFunc(t, ctrl, tc.evt)
 
@@ -278,6 +292,7 @@ func (s *ModuleTestSuite) TestService_HasPersonalPermission() {
 						UID:   testID,
 						Biz:   "ai",
 						BizID: 47,
+						Desc:  "购买AI面试",
 					},
 				})
 				require.NoError(t, err)
@@ -290,6 +305,7 @@ func (s *ModuleTestSuite) TestService_HasPersonalPermission() {
 				UID:   testID,
 				Biz:   "ai",
 				BizID: 47,
+				Desc:  "购买AI面试",
 			},
 			wantResult: true,
 			wantErr:    nil,
@@ -305,6 +321,7 @@ func (s *ModuleTestSuite) TestService_HasPersonalPermission() {
 				UID:   testID,
 				Biz:   "NoPermission",
 				BizID: 1,
+				Desc:  "NoPermission",
 			},
 			wantResult: false,
 			wantErr:    nil,
@@ -345,16 +362,19 @@ func (s *ModuleTestSuite) TestService_FindPersonalPermissions() {
 						UID:   uid,
 						Biz:   "music",
 						BizID: 52,
+						Desc:  "购买music",
 					},
 					{
 						UID:   uid,
 						Biz:   "music",
 						BizID: 57,
+						Desc:  "购买music",
 					},
 					{
 						UID:   uid,
 						Biz:   "book",
 						BizID: 52,
+						Desc:  "兑换book",
 					},
 				})
 				require.NoError(t, err)
@@ -370,11 +390,13 @@ func (s *ModuleTestSuite) TestService_FindPersonalPermissions() {
 						UID:   79080127,
 						Biz:   "music",
 						BizID: 52,
+						Desc:  "购买music",
 					},
 					{
 						UID:   79080127,
 						Biz:   "music",
 						BizID: 57,
+						Desc:  "购买music",
 					},
 				},
 				"book": {
@@ -382,6 +404,7 @@ func (s *ModuleTestSuite) TestService_FindPersonalPermissions() {
 						UID:   79080127,
 						Biz:   "book",
 						BizID: 52,
+						Desc:  "兑换book",
 					},
 				},
 			},
