@@ -35,3 +35,10 @@ type RedemptionCode struct {
 	Status uint8  `json:"status"`
 	Utime  int64  `json:"utime"`
 }
+
+type GenerateRedemptionCodeReq struct {
+	Biz   string `json:"biz"`    // admin
+	BizId int64  `json:"biz_id"` // 时间戳
+	SKUSN string `json:"sku_sn"` // 某个商品 —— 7天会员,面试项目,毕业季大礼包
+	Count int    `json:"count"`  // 生成的个数
+}
