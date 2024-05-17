@@ -23,17 +23,17 @@ const (
 )
 
 type PermissionEvent struct {
-	UID    int64   `json:"uid"`
+	Uid    int64   `json:"uid"`
 	Biz    string  `json:"biz"` // project,interview
-	BizIDs []int64 `json:"biz_ids"`
+	BizIds []int64 `json:"biz_ids"`
 	Action string  `json:"action"` // 购买项目商品, 兑换项目商品
 }
 
 func (p PermissionEvent) toDomain() []domain.PersonalPermission {
-	r := make([]domain.PersonalPermission, 0, len(p.BizIDs))
-	for _, id := range p.BizIDs {
+	r := make([]domain.PersonalPermission, 0, len(p.BizIds))
+	for _, id := range p.BizIds {
 		r = append(r, domain.PersonalPermission{
-			UID:   p.UID,
+			Uid:   p.Uid,
 			Biz:   p.Biz,
 			BizID: id,
 			Desc:  p.Action,

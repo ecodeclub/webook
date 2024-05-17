@@ -95,9 +95,9 @@ func (s *ModuleTestSuite) TestConsumer_ConsumePermissionEvent() {
 				return c
 			},
 			evt: event.PermissionEvent{
-				UID:    testID,
+				Uid:    testID,
 				Biz:    "project",
-				BizIDs: []int64{1, 2, 2, 1},
+				BizIds: []int64{1, 2, 2, 1},
 				Action: "购买项目商品",
 			},
 			errRequireFunc: require.NoError,
@@ -108,13 +108,13 @@ func (s *ModuleTestSuite) TestConsumer_ConsumePermissionEvent() {
 
 				require.ElementsMatch(t, []domain.PersonalPermission{
 					{
-						UID:   testID,
+						Uid:   testID,
 						Biz:   "project",
 						BizID: 1,
 						Desc:  "购买项目商品",
 					},
 					{
-						UID:   testID,
+						Uid:   testID,
 						Biz:   "project",
 						BizID: 2,
 						Desc:  "购买项目商品",
@@ -129,13 +129,13 @@ func (s *ModuleTestSuite) TestConsumer_ConsumePermissionEvent() {
 				uid := int64(22971)
 				err := s.repo.CreatePersonalPermission(context.Background(), []domain.PersonalPermission{
 					{
-						UID:   uid,
+						Uid:   uid,
 						Biz:   "interview",
 						BizID: 10,
 						Desc:  "兑换面试商品",
 					},
 					{
-						UID:   uid,
+						Uid:   uid,
 						Biz:   "interview",
 						BizID: 12,
 						Desc:  "兑换面试商品",
@@ -158,9 +158,9 @@ func (s *ModuleTestSuite) TestConsumer_ConsumePermissionEvent() {
 				return c
 			},
 			evt: event.PermissionEvent{
-				UID:    22971,
+				Uid:    22971,
 				Biz:    "interview",
-				BizIDs: []int64{12, 10, 10, 10, 10},
+				BizIds: []int64{12, 10, 10, 10, 10},
 				Action: "购买面试商品",
 			},
 			errRequireFunc: require.NoError,
@@ -171,13 +171,13 @@ func (s *ModuleTestSuite) TestConsumer_ConsumePermissionEvent() {
 				require.NoError(t, err)
 				require.ElementsMatch(t, []domain.PersonalPermission{
 					{
-						UID:   uid,
+						Uid:   uid,
 						Biz:   "interview",
 						BizID: 12,
 						Desc:  "兑换面试商品",
 					},
 					{
-						UID:   uid,
+						Uid:   uid,
 						Biz:   "interview",
 						BizID: 10,
 						Desc:  "兑换面试商品",
@@ -192,7 +192,7 @@ func (s *ModuleTestSuite) TestConsumer_ConsumePermissionEvent() {
 				uid := int64(33977)
 				err := s.repo.CreatePersonalPermission(context.Background(), []domain.PersonalPermission{
 					{
-						UID:   uid,
+						Uid:   uid,
 						Biz:   "interview",
 						BizID: 25,
 						Desc:  "购买面试商品",
@@ -215,9 +215,9 @@ func (s *ModuleTestSuite) TestConsumer_ConsumePermissionEvent() {
 				return c
 			},
 			evt: event.PermissionEvent{
-				UID:    33977,
+				Uid:    33977,
 				Biz:    "interview",
-				BizIDs: []int64{29, 25},
+				BizIds: []int64{29, 25},
 				Action: "兑换面试商品",
 			},
 			errRequireFunc: require.NoError,
@@ -228,13 +228,13 @@ func (s *ModuleTestSuite) TestConsumer_ConsumePermissionEvent() {
 				require.NoError(t, err)
 				require.ElementsMatch(t, []domain.PersonalPermission{
 					{
-						UID:   uid,
+						Uid:   uid,
 						Biz:   "interview",
 						BizID: 29,
 						Desc:  "兑换面试商品",
 					},
 					{
-						UID:   uid,
+						Uid:   uid,
 						Biz:   "interview",
 						BizID: 25,
 						Desc:  "购买面试商品",
@@ -289,7 +289,7 @@ func (s *ModuleTestSuite) TestService_HasPersonalPermission() {
 				t.Helper()
 				var err = s.repo.CreatePersonalPermission(context.Background(), []domain.PersonalPermission{
 					{
-						UID:   testID,
+						Uid:   testID,
 						Biz:   "ai",
 						BizID: 47,
 						Desc:  "购买AI面试",
@@ -302,7 +302,7 @@ func (s *ModuleTestSuite) TestService_HasPersonalPermission() {
 				return service.NewPermissionService(s.repo)
 			},
 			req: domain.PersonalPermission{
-				UID:   testID,
+				Uid:   testID,
 				Biz:   "ai",
 				BizID: 47,
 				Desc:  "购买AI面试",
@@ -318,7 +318,7 @@ func (s *ModuleTestSuite) TestService_HasPersonalPermission() {
 				return service.NewPermissionService(s.repo)
 			},
 			req: domain.PersonalPermission{
-				UID:   testID,
+				Uid:   testID,
 				Biz:   "NoPermission",
 				BizID: 1,
 				Desc:  "NoPermission",
@@ -359,19 +359,19 @@ func (s *ModuleTestSuite) TestService_FindPersonalPermissions() {
 				uid := int64(79080127)
 				var err = s.repo.CreatePersonalPermission(context.Background(), []domain.PersonalPermission{
 					{
-						UID:   uid,
+						Uid:   uid,
 						Biz:   "music",
 						BizID: 52,
 						Desc:  "购买music",
 					},
 					{
-						UID:   uid,
+						Uid:   uid,
 						Biz:   "music",
 						BizID: 57,
 						Desc:  "购买music",
 					},
 					{
-						UID:   uid,
+						Uid:   uid,
 						Biz:   "book",
 						BizID: 52,
 						Desc:  "兑换book",
@@ -387,13 +387,13 @@ func (s *ModuleTestSuite) TestService_FindPersonalPermissions() {
 			wantResult: map[string][]domain.PersonalPermission{
 				"music": {
 					{
-						UID:   79080127,
+						Uid:   79080127,
 						Biz:   "music",
 						BizID: 52,
 						Desc:  "购买music",
 					},
 					{
-						UID:   79080127,
+						Uid:   79080127,
 						Biz:   "music",
 						BizID: 57,
 						Desc:  "购买music",
@@ -401,7 +401,7 @@ func (s *ModuleTestSuite) TestService_FindPersonalPermissions() {
 				},
 				"book": {
 					{
-						UID:   79080127,
+						Uid:   79080127,
 						Biz:   "book",
 						BizID: 52,
 						Desc:  "兑换book",

@@ -54,6 +54,10 @@ func (s SPU) IsMemberProduct() bool {
 	return s.IsProductCategory() && s.Category1 == "member"
 }
 
+func (s SPU) IsProjectProduct() bool {
+	return s.IsProductCategory() && s.Category1 == "project"
+}
+
 type CreditIncreaseEvent struct {
 	Key    string `json:"key"`
 	Uid    int64  `json:"uid"`    // 用户A       用户C
@@ -64,9 +68,8 @@ type CreditIncreaseEvent struct {
 }
 
 type PermissionEvent struct {
-	// todo: 权限模块
-	Key   string `json:"key"`
-	Uid   int64  `json:"uid"`
-	Biz   string `json:"biz"`
-	BizId int64  `json:"biz_id"`
+	Uid    int64   `json:"uid"`
+	Biz    string  `json:"biz"` // project,interview
+	BizIds []int64 `json:"biz_ids"`
+	Action string  `json:"action"` // 购买项目商品, 兑换项目商品
 }

@@ -50,7 +50,7 @@ func (r *permissionRepository) HasPersonalPermission(ctx context.Context, perm d
 
 func (r *permissionRepository) toEntity(p domain.PersonalPermission) dao.PersonalPermission {
 	return dao.PersonalPermission{
-		UID:   p.UID,
+		Uid:   p.Uid,
 		Biz:   p.Biz,
 		BizId: p.BizID,
 		Desc:  p.Desc,
@@ -69,7 +69,7 @@ func (r *permissionRepository) FindPersonalPermissions(ctx context.Context, uid 
 
 func (r *permissionRepository) toDomain(p dao.PersonalPermission) domain.PersonalPermission {
 	return domain.PersonalPermission{
-		UID:   p.UID,
+		Uid:   p.Uid,
 		Biz:   p.Biz,
 		BizID: p.BizId,
 		Desc:  p.Desc,

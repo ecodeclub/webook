@@ -39,7 +39,7 @@ func NewCodeMemberHandler(repo repository.MarketingRepository, memberEventProduc
 }
 
 func (h *CodeMemberHandler) Handle(ctx context.Context, info OrderInfo) error {
-	log.Printf("member code hanle + ")
+	log.Printf("member code handle + ")
 	return h.baseCodeOrderHandler.Handle(ctx, info)
 }
 

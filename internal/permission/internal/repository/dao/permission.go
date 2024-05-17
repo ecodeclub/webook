@@ -39,7 +39,7 @@ func (g *gormPermissionDAO) CreatePersonalPermission(ctx context.Context, ps []P
 	now := time.Now().UnixMilli()
 	return g.db.WithContext(ctx).Transaction(func(tx *egorm.Component) error {
 		for _, p := range ps {
-			if err := tx.Where(PersonalPermission{UID: p.UID, Biz: p.Biz, BizId: p.BizId}).
+			if err := tx.Where(PersonalPermission{Uid: p.Uid, Biz: p.Biz, BizId: p.BizId}).
 				Attrs(PersonalPermission{Desc: p.Desc, Ctime: now, Utime: now}).FirstOrCreate(&p).Error; err != nil {
 				return err
 			}
@@ -51,7 +51,7 @@ func (g *gormPermissionDAO) CreatePersonalPermission(ctx context.Context, ps []P
 func (g *gormPermissionDAO) CountPersonalPermission(ctx context.Context, p PersonalPermission) (int64, error) {
 	var count int64
 	result := g.db.WithContext(ctx).Model(&PersonalPermission{}).
-		Where("uid = ? AND biz = ? AND biz_id = ?", p.UID, p.Biz, p.BizId).Count(&count)
+		Where("uid = ? AND biz = ? AND biz_id = ?", p.Uid, p.Biz, p.BizId).Count(&count)
 	return count, result.Error
 }
 
@@ -64,7 +64,7 @@ func (g *gormPermissionDAO) FindPersonalPermissions(ctx context.Context, uid int
 
 type PersonalPermission struct {
 	Id    int64  `gorm:"primaryKey;autoIncrement;comment:个人权限自增ID"`
-	UID   int64  `gorm:"not null;uniqueIndex:uniq_uid_biz_biz_id;comment:用户ID"`
+	Uid   int64  `gorm:"not null;uniqueIndex:uniq_uid_biz_biz_id;comment:用户ID"`
 	Biz   string `gorm:"type:varchar(255);not null;uniqueIndex:uniq_uid_biz_biz_id;comment:业务名称, project"`
 	BizId int64  `gorm:"not null;uniqueIndex:uniq_uid_biz_biz_id;comment:业务实体ID"`
 	Desc  string `gorm:"type:varchar(256);not null;comment:权限描述"`
