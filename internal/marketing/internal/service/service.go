@@ -22,7 +22,6 @@ import (
 	"github.com/ecodeclub/webook/internal/marketing/internal/event/producer"
 	"github.com/ecodeclub/webook/internal/marketing/internal/repository"
 	orderexe "github.com/ecodeclub/webook/internal/marketing/internal/service/activity/order"
-	orderhdl "github.com/ecodeclub/webook/internal/marketing/internal/service/handler/order"
 	"github.com/ecodeclub/webook/internal/order"
 	"github.com/ecodeclub/webook/internal/product"
 	"golang.org/x/sync/errgroup"
@@ -42,12 +41,9 @@ type Service interface {
 type service struct {
 	repo repository.MarketingRepository
 
-	productSvc              product.Service
-	eventKeyGenerator       func() string
-	permissionEventProducer producer.PermissionEventProducer
-
+	productSvc            product.Service
+	eventKeyGenerator     func() string
 	orderActivityExecutor *orderexe.ActivityExecutor
-	redeemers             map[orderexe.SPUCategory]orderhdl.RedeemerHandler
 }
 
 func NewService(
@@ -61,22 +57,11 @@ func NewService(
 	permissionEventProducer producer.PermissionEventProducer,
 ) Service {
 
-	orderRegistry := orderexe.NewOrderHandlerRegistry()
-	orderRegistry.Register("product", "member", orderhdl.NewProductMemberHandler(memberEventProducer, creditEventProducer))
-
-	codeMemberHandler := orderhdl.NewCodeMemberHandler(repo, memberEventProducer, creditEventProducer, redemptionCodeGenerator)
-	orderRegistry.Register("code", "member", codeMemberHandler)
-
-	redeemerRegistry := make(map[orderexe.SPUCategory]orderhdl.RedeemerHandler)
-	redeemerRegistry["member"] = codeMemberHandler
-
 	return &service{
-		repo:                    repo,
-		productSvc:              productSvc,
-		eventKeyGenerator:       eventKeyGenerator,
-		permissionEventProducer: permissionEventProducer,
-		orderActivityExecutor:   orderexe.NewOrderActivityExecutor(orderSvc, orderRegistry),
-		redeemers:               redeemerRegistry,
+		repo:                  repo,
+		productSvc:            productSvc,
+		eventKeyGenerator:     eventKeyGenerator,
+		orderActivityExecutor: orderexe.NewOrderActivityExecutor(repo, orderSvc, redemptionCodeGenerator, memberEventProducer, creditEventProducer, permissionEventProducer),
 	}
 }
 
@@ -89,11 +74,10 @@ func (s *service) RedeemRedemptionCode(ctx context.Context, uid int64, code stri
 	if err != nil {
 		return err
 	}
-	redeemer, ok := s.redeemers[orderexe.SPUCategory(r.Type)]
-	if !ok {
-		return fmt.Errorf("未知兑换码SPU类别1: %s", r.Type)
+	if r.Biz == "order" {
+		return s.orderActivityExecutor.Redeem(ctx, uid, r)
 	}
-	return redeemer.Redeem(ctx, orderhdl.RedeemInfo{RedeemerID: uid, Code: r})
+	return fmt.Errorf("未知兑换码活动: biz=%s", r.Biz)
 }
 
 func (s *service) ListRedemptionCodes(ctx context.Context, uid int64, offset, list int) ([]domain.RedemptionCode, int64, error) {

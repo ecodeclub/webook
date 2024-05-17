@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package order
+package handler
 
 import (
 	"context"
@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/ecodeclub/webook/internal/marketing/internal/domain"
 	"github.com/ecodeclub/webook/internal/marketing/internal/event"
 	"github.com/ecodeclub/webook/internal/marketing/internal/event/producer"
 	"github.com/ecodeclub/webook/internal/marketing/internal/repository"
@@ -30,35 +29,18 @@ var _ OrderHandler = (*CodeMemberHandler)(nil)
 var _ RedeemerHandler = (*CodeMemberHandler)(nil)
 
 type CodeMemberHandler struct {
-	repo                    repository.MarketingRepository
-	memberEventProducer     producer.MemberEventProducer
-	creditEventProducer     producer.CreditEventProducer
-	redemptionCodeGenerator func(id int64) string
+	baseCodeOrderHandler
+	memberEventProducer producer.MemberEventProducer
+	creditEventProducer producer.CreditEventProducer
 }
 
 func NewCodeMemberHandler(repo repository.MarketingRepository, memberEventProducer producer.MemberEventProducer, creditEventProducer producer.CreditEventProducer, redemptionCodeGenerator func(id int64) string) *CodeMemberHandler {
-	return &CodeMemberHandler{repo: repo, memberEventProducer: memberEventProducer, creditEventProducer: creditEventProducer, redemptionCodeGenerator: redemptionCodeGenerator}
+	return &CodeMemberHandler{baseCodeOrderHandler: baseCodeOrderHandler{repo: repo, redemptionCodeGenerator: redemptionCodeGenerator}, memberEventProducer: memberEventProducer, creditEventProducer: creditEventProducer}
 }
 
 func (h *CodeMemberHandler) Handle(ctx context.Context, info OrderInfo) error {
-
-	codes := make([]domain.RedemptionCode, 0, len(info.Items))
-	for _, item := range info.Items {
-		for i := int64(0); i < item.SKU.Quantity; i++ {
-			codes = append(codes, domain.RedemptionCode{
-				OwnerID: info.Order.BuyerID,
-				Biz:     "order",
-				BizId:   info.Order.ID,
-				Type:    item.SPU.Category1,
-				Attrs:   domain.CodeAttrs{SKU: domain.SKU{ID: item.SKU.ID, Attrs: item.SKU.Attrs}},
-				Code:    h.redemptionCodeGenerator(info.Order.BuyerID),
-				Status:  domain.RedemptionCodeStatusUnused,
-			})
-		}
-	}
-	log.Printf("member codes = %#v\n", codes)
-	_, err := h.repo.CreateRedemptionCodes(ctx, codes)
-	return err
+	log.Printf("member code hanle + ")
+	return h.baseCodeOrderHandler.Handle(ctx, info)
 }
 
 func (h *CodeMemberHandler) Redeem(ctx context.Context, info RedeemInfo) error {

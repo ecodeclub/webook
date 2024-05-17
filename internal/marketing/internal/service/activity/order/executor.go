@@ -19,7 +19,9 @@ import (
 	"fmt"
 
 	"github.com/ecodeclub/webook/internal/marketing/internal/domain"
-	order2 "github.com/ecodeclub/webook/internal/marketing/internal/service/handler/order"
+	"github.com/ecodeclub/webook/internal/marketing/internal/event/producer"
+	"github.com/ecodeclub/webook/internal/marketing/internal/repository"
+	"github.com/ecodeclub/webook/internal/marketing/internal/service/activity/order/handler"
 	"github.com/ecodeclub/webook/internal/order"
 )
 
@@ -29,12 +31,24 @@ type ActivityExecutor struct {
 }
 
 func NewOrderActivityExecutor(
+	repo repository.MarketingRepository,
 	orderSvc order.Service,
-	handlerRegistry *HandlerRegistry,
+	redemptionCodeGenerator func(id int64) string,
+	memberEventProducer producer.MemberEventProducer,
+	creditEventProducer producer.CreditEventProducer,
+	permissionEventProducer producer.PermissionEventProducer,
 ) *ActivityExecutor {
+
+	registry := NewHandlerRegistry()
+	registry.RegisterOrderHandler("product", "member", handler.NewProductMemberHandler(memberEventProducer, creditEventProducer))
+
+	codeMemberHandler := handler.NewCodeMemberHandler(repo, memberEventProducer, creditEventProducer, redemptionCodeGenerator)
+	registry.RegisterOrderHandler("code", "member", codeMemberHandler)
+	registry.RegisterRedeemerHandler("member", codeMemberHandler)
+
 	return &ActivityExecutor{
 		orderSvc:        orderSvc,
-		handlerRegistry: handlerRegistry,
+		handlerRegistry: registry,
 	}
 }
 
@@ -52,14 +66,22 @@ func (s *ActivityExecutor) Execute(ctx context.Context, act domain.OrderComplete
 	for category0, category1Set := range categorizedItems.CategoriesAndTypes() {
 		for category1 := range category1Set {
 			items := categorizedItems.GetItems(category0, category1)
-			h, ok := s.handlerRegistry.Get(category0, category1)
+			h, ok := s.handlerRegistry.GetOrderHandler(category0, category1)
 			if !ok {
 				return fmt.Errorf("未知 %s 类别0 %s 类别1订单处理器", category0, category1)
 			}
-			if er := h.Handle(ctx, order2.OrderInfo{Order: o, Items: items}); er != nil {
+			if er := h.Handle(ctx, handler.OrderInfo{Order: o, Items: items}); er != nil {
 				return fmt.Errorf("处理 %s 类别0 %s 类别1商品失败: %w", category0, category1, er)
 			}
 		}
 	}
 	return nil
+}
+
+func (s *ActivityExecutor) Redeem(ctx context.Context, redeemerID int64, r domain.RedemptionCode) error {
+	h, ok := s.handlerRegistry.GetRedeemerHandler(SPUCategory(r.Type))
+	if !ok {
+		return fmt.Errorf("未知兑换处理器: category1=%s", SPUCategory(r.Type))
+	}
+	return h.Redeem(ctx, handler.RedeemInfo{RedeemerID: redeemerID, Code: r})
 }
