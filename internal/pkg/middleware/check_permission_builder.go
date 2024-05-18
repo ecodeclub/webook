@@ -16,7 +16,10 @@ package middleware
 
 import (
 	"net/http"
+	"strconv"
+	"strings"
 
+	"github.com/ecodeclub/ekit/slice"
 	"github.com/ecodeclub/ginx"
 	"github.com/ecodeclub/ginx/session"
 	"github.com/ecodeclub/webook/internal/permission"
@@ -31,9 +34,10 @@ type CheckPermissionMiddlewareBuilder[Req any] struct {
 	sp     session.Provider
 }
 
-func NewCheckPermissionMiddlewareBuilder[Req any](svc permission.Service) *CheckPermissionMiddlewareBuilder[Req] {
+func NewCheckPermissionMiddlewareBuilder[Req any](svc permission.Service, req Req) *CheckPermissionMiddlewareBuilder[Req] {
 	return &CheckPermissionMiddlewareBuilder[Req]{
 		svc:    svc,
+		req:    req,
 		logger: elog.DefaultLogger,
 	}
 }
@@ -51,30 +55,48 @@ func (c *CheckPermissionMiddlewareBuilder[Req]) Build(biz string) gin.HandlerFun
 			return
 		}
 
-		// 1. 从session中获取resourceSet
+		// 1. 从session中获取 resources
+		claims := sess.Claims()
+		resourceStr, _ := claims.Get(biz).AsString() // map["project"]"101,103,102"
+		resources := strings.Split(resourceStr, ",") // [101,103,102]
+
 		// 2. 获取当前请求者uid
-		// 3. 获取当前资源的id, resource_id
-		// 4. resource_id是否在resourceSet中, 快路径
-		// 5. 如果不在,实时查询permission模块
-		ok, err := c.svc.HasPersonalPermission(ctx.Request.Context(), permission.PersonalPermission{
-			Uid:   0,   // 当前 请求者的UID
-			Biz:   biz, // project
-			BizID: 0,   // 当前 访问资源的ID, project_id
+		// TODO: 如何在中间件中获取Uid
+		uid := int64(0)
+
+		// 3. 获取当前待访问资源的id
+		// TODO: 如何获取待访问资源的id, 以project为例, project_id,请求通常为POST id通常在body中
+		// 先读出来?在放进去? 这也是引入范型参数req的原因
+		rid := int64(0)
+		// err = ctx.Bind(c.req)
+		// if err != nil {
+		// }
+
+		// 4. resource_id 是否在 resources 中, 快路径
+		_, ok := slice.Find(resources, func(src string) bool {
+			i, _ := strconv.ParseInt(src, 10, 64)
+			return i == rid
+		})
+		if ok {
+			return
+		}
+
+		// 5. 如果不在,实时查询permission模块,并将验证通过的 resource_id 放入 resources 中
+		ok, err = c.svc.HasPersonalPermission(ctx.Request.Context(), permission.PersonalPermission{
+			Uid:   uid,
+			Biz:   biz,
+			BizID: rid,
 		})
 		if err != nil || !ok {
 			gctx.AbortWithStatus(http.StatusForbidden)
 			c.logger.Debug("用户无权限", elog.FieldErr(err))
 			return
 		}
-		// 6.验证通过, 将 resource_id 放入 resourceSet中,然后更新Session
-		// TODO: 如何在中间件中获取Uid
-		// TODO: 如何获取待访问资源的BizId, 以project为例, project_id,
-		//
-		claims := sess.Claims()
+		resources = append(resources, strconv.FormatInt(rid, 10))
 
-		// 在原有jwt数据中添加会员截止日期
+		// 6.更新Session
 		jwtData := claims.Data
-		jwtData[biz] = "1,2,3,3,4"
+		jwtData[biz] = strings.Join(resources, ",")
 		claims.Data = jwtData
 		err = c.sp.UpdateClaims(gctx, claims)
 		if err != nil {
