@@ -61,8 +61,7 @@ func (c *CheckPermissionMiddlewareBuilder[Req]) Build(biz string) gin.HandlerFun
 		resources := strings.Split(resourceStr, ",") // [101,103,102]
 
 		// 2. 获取当前请求者uid
-		// TODO: 如何在中间件中获取Uid
-		uid := int64(0)
+		uid := claims.Uid // todo: 确保此中间件在添加uid的中间件后面
 
 		// 3. 获取当前待访问资源的id
 		// TODO: 如何获取待访问资源的id, 以project为例, project_id,请求通常为POST id通常在body中
