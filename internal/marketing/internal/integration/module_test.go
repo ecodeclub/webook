@@ -23,6 +23,7 @@ import (
 	"net/http"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/ecodeclub/ekit/iox"
 	"github.com/ecodeclub/ginx/session"
@@ -38,6 +39,7 @@ import (
 	"github.com/ecodeclub/webook/internal/order"
 	ordermocks "github.com/ecodeclub/webook/internal/order/mocks"
 	"github.com/ecodeclub/webook/internal/pkg/sequencenumber"
+	"github.com/ecodeclub/webook/internal/product"
 	productmocks "github.com/ecodeclub/webook/internal/product/mocks"
 	"github.com/ecodeclub/webook/internal/test"
 	testioc "github.com/ecodeclub/webook/internal/test/ioc"
@@ -89,6 +91,19 @@ func (s *ModuleTestSuite) TearDownTest() {
 }
 
 func (s *ModuleTestSuite) newGinServer(handler *web.Handler) *egin.Component {
+	econf.Set("server", map[string]any{"contextTimeout": "1s"})
+	server := egin.Load("server").Build()
+	server.Use(func(ctx *gin.Context) {
+		ctx.Set("_session", session.NewMemorySession(session.Claims{
+			Uid: testID,
+		}))
+	})
+
+	handler.PrivateRoutes(server.Engine)
+	return server
+}
+
+func (s *ModuleTestSuite) newAdminGinServer(handler *web.AdminHandler) *egin.Component {
 	econf.Set("server", map[string]any{"contextTimeout": "1s"})
 	server := egin.Load("server").Build()
 	server.Use(func(ctx *gin.Context) {
@@ -842,18 +857,18 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeOrderEvent() {
 	}
 }
 
-func (s *ModuleTestSuite) assertRedemptionCodeEqual(t *testing.T, expected []domain.RedemptionCode, codes []domain.RedemptionCode) {
-	for i, c := range codes {
+func (s *ModuleTestSuite) assertRedemptionCodeEqual(t *testing.T, expected []domain.RedemptionCode, actual []domain.RedemptionCode) {
+	for i, c := range actual {
 		assert.NotZero(t, c.ID)
 		assert.NotZero(t, c.Code)
 		assert.NotZero(t, c.Ctime)
 		assert.NotZero(t, c.Utime)
-		codes[i].ID = 0
-		codes[i].Code = ""
-		codes[i].Ctime = 0
-		codes[i].Utime = 0
+		actual[i].ID = 0
+		actual[i].Code = ""
+		actual[i].Ctime = 0
+		actual[i].Utime = 0
 	}
-	assert.Equal(t, expected, codes)
+	assert.Equal(t, expected, actual)
 }
 
 func (s *ModuleTestSuite) newOrderEventMessage(t *testing.T, evt event.OrderEvent) *mq.Message {
@@ -1478,4 +1493,113 @@ func (s *ModuleTestSuite) newProjectRedemptionCodeDomain(ownerID int64, oid int6
 		Code:   fmt.Sprintf("redemption-code-project-%d", oid),
 		Status: domain.RedemptionCodeStatusUnused,
 	}
+}
+
+func (s *ModuleTestSuite) TestAdminHandler_GenerateRedemptionCode() {
+	t := s.T()
+
+	testCases := []struct {
+		name            string
+		newAdminHandler func(t *testing.T, ctrl *gomock.Controller, req web.GenerateRedemptionCodeReq) *web.AdminHandler
+		req             web.GenerateRedemptionCodeReq
+		after           func(t *testing.T, req web.GenerateRedemptionCodeReq)
+
+		wantCode int
+		wantResp test.Result[any]
+	}{
+		{
+			name: "生成多个兑换码",
+			newAdminHandler: func(t *testing.T, ctrl *gomock.Controller, req web.GenerateRedemptionCodeReq) *web.AdminHandler {
+				t.Helper()
+
+				mockProductSvc := productmocks.NewMockService(ctrl)
+				skuId := int64(3001)
+				spuId := int64(3002)
+				sku := product.SKU{
+					ID:       skuId,
+					SPUID:    spuId,
+					SN:       "sku-sn-30001",
+					Name:     fmt.Sprintf("sku-name-%d", skuId),
+					Desc:     fmt.Sprintf("sku-desc-%d", skuId),
+					Price:    1990,
+					Stock:    9999,
+					SaleType: product.SaleTypeUnlimited,
+					Attrs:    fmt.Sprintf("sku-attrs-%d", skuId),
+					Image:    fmt.Sprintf("sku-image-%d", skuId),
+					Status:   product.StatusOnShelf,
+				}
+				mockProductSvc.EXPECT().FindSKUBySN(gomock.Any(), req.SKUSN).Return(sku, nil)
+				spu := product.SPU{
+					ID:        spuId,
+					SN:        fmt.Sprintf("spu-sn-%d", spuId),
+					Name:      fmt.Sprintf("spu-name-%d", spuId),
+					Desc:      fmt.Sprintf("spu-desc-%d", spuId),
+					Category0: fmt.Sprintf("spu-category0-%d", spuId),
+					Category1: fmt.Sprintf("spu-category1-%d", spuId),
+					SKUs:      []product.SKU{sku},
+					Status:    product.StatusOnShelf,
+				}
+				mockProductSvc.EXPECT().FindSPUByID(gomock.Any(), sku.SPUID).Return(spu, nil)
+
+				return web.NewAdminHandler(service.NewAdminService(s.repo), mockProductSvc, s.getRedemptionCodeGenerator(sequencenumber.NewGenerator()))
+			},
+			req: web.GenerateRedemptionCodeReq{
+				Biz:   "admin",
+				BizId: time.Now().UnixMilli(),
+				SKUSN: "sku-sn-30001",
+				Count: 3,
+			},
+			after: func(t *testing.T, req web.GenerateRedemptionCodeReq) {
+				t.Helper()
+
+				codes, err := s.repo.FindRedemptionCodesByUID(context.Background(), 0, 0, req.Count)
+				require.NoError(t, err)
+				skuId := int64(3001)
+				spuId := int64(3002)
+				code := domain.RedemptionCode{
+					OwnerID: 0,
+					Biz:     req.Biz,
+					BizId:   req.BizId,
+					Type:    fmt.Sprintf("spu-category1-%d", spuId),
+					Attrs: domain.CodeAttrs{
+						SKU: domain.SKU{
+							ID:    skuId,
+							Attrs: fmt.Sprintf("sku-attrs-%d", skuId),
+						},
+					},
+					Status: domain.RedemptionCodeStatusUnused,
+				}
+				expected := make([]domain.RedemptionCode, 0, req.Count)
+				for i := 0; i < req.Count; i++ {
+					expected = append(expected, code)
+				}
+				s.assertRedemptionCodeEqual(t, expected, codes)
+			},
+			wantCode: 200,
+			wantResp: test.Result[any]{
+				Msg: "OK",
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			req, err := http.NewRequest(http.MethodPost,
+				"/code/gen", iox.NewJSONReader(tc.req))
+			req.Header.Set("content-type", "application/json")
+			require.NoError(t, err)
+			recorder := test.NewJSONResponseRecorder[any]()
+			server := s.newAdminGinServer(tc.newAdminHandler(t, ctrl, tc.req))
+			server.ServeHTTP(recorder, req)
+			require.Equal(t, tc.wantCode, recorder.Code)
+			require.Equal(t, tc.wantResp, recorder.MustScan())
+			tc.after(t, tc.req)
+		})
+
+	}
+
 }

@@ -28,10 +28,12 @@ import (
 func InitModule(db *gorm.DB, q mq.MQ, om *order.Module, pm *product.Module) (*Module, error) {
 	marketingDAO := dao.NewGORMMarketingDAO(db)
 	marketingRepository := repository.NewRepository(marketingDAO)
-	serviceService := om.Svc
-	service2 := pm.Svc
+	redemptionCodeAdminService := service.NewAdminService(marketingRepository)
+	serviceService := pm.Svc
 	generator := sequencenumber.NewGenerator()
 	v := redemptionCodeGenerator(generator)
+	adminHandler := web.NewAdminHandler(redemptionCodeAdminService, serviceService, v)
+	service2 := om.Svc
 	v2 := eventKeyGenerator()
 	memberEventProducer, err := producer.NewMemberEventProducer(q)
 	if err != nil {
@@ -45,14 +47,14 @@ func InitModule(db *gorm.DB, q mq.MQ, om *order.Module, pm *product.Module) (*Mo
 	if err != nil {
 		return nil, err
 	}
-	service3 := service.NewService(marketingRepository, serviceService, service2, v, v2, memberEventProducer, creditEventProducer, permissionEventProducer)
+	service3 := service.NewService(marketingRepository, service2, serviceService, v, v2, memberEventProducer, creditEventProducer, permissionEventProducer)
 	handler := web.NewHandler(service3)
 	orderEventConsumer, err := newOrderEventConsumer(service3, q)
 	if err != nil {
 		return nil, err
 	}
 	module := &Module{
-		Svc:           service3,
+		AdminHdl:      adminHandler,
 		Hdl:           handler,
 		orderConsumer: orderEventConsumer,
 	}
@@ -62,8 +64,9 @@ func InitModule(db *gorm.DB, q mq.MQ, om *order.Module, pm *product.Module) (*Mo
 // wire.go:
 
 type (
-	Service = service.Service
-	Handler = web.Handler
+	Service      = service.Service
+	Handler      = web.Handler
+	AdminHandler = web.AdminHandler
 )
 
 func newOrderEventConsumer(svc service.Service, q mq.MQ) (*consumer.OrderEventConsumer, error) {
