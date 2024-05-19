@@ -18,3 +18,7 @@ type OrderCompletedActivity struct {
 	OrderSN string
 	BuyerID int64
 }
+
+type UserRegistrationActivity struct {
+	Uid int64
+}

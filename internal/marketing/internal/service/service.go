@@ -22,6 +22,7 @@ import (
 	"github.com/ecodeclub/webook/internal/marketing/internal/event/producer"
 	"github.com/ecodeclub/webook/internal/marketing/internal/repository"
 	orderexe "github.com/ecodeclub/webook/internal/marketing/internal/service/activity/order"
+	"github.com/ecodeclub/webook/internal/marketing/internal/service/activity/user"
 	"github.com/ecodeclub/webook/internal/order"
 	"github.com/ecodeclub/webook/internal/product"
 	"golang.org/x/sync/errgroup"
@@ -34,6 +35,7 @@ var (
 
 type Service interface {
 	ExecuteOrderCompletedActivity(ctx context.Context, act domain.OrderCompletedActivity) error
+	ExecuteUserRegistrationActivity(ctx context.Context, act domain.UserRegistrationActivity) error
 	RedeemRedemptionCode(ctx context.Context, uid int64, code string) error
 	ListRedemptionCodes(ctx context.Context, uid int64, offset, list int) ([]domain.RedemptionCode, int64, error)
 }
@@ -44,6 +46,7 @@ type service struct {
 	productSvc            product.Service
 	eventKeyGenerator     func() string
 	orderActivityExecutor *orderexe.ActivityExecutor
+	userActivityExecutor  *user.ActivityExecutor
 }
 
 func NewService(
@@ -62,11 +65,16 @@ func NewService(
 		productSvc:            productSvc,
 		eventKeyGenerator:     eventKeyGenerator,
 		orderActivityExecutor: orderexe.NewOrderActivityExecutor(repo, orderSvc, redemptionCodeGenerator, memberEventProducer, creditEventProducer, permissionEventProducer),
+		userActivityExecutor:  user.NewActivityExecutor(memberEventProducer, creditEventProducer),
 	}
 }
 
 func (s *service) ExecuteOrderCompletedActivity(ctx context.Context, act domain.OrderCompletedActivity) error {
 	return s.orderActivityExecutor.Execute(ctx, act)
+}
+
+func (s *service) ExecuteUserRegistrationActivity(ctx context.Context, act domain.UserRegistrationActivity) error {
+	return s.userActivityExecutor.Execute(ctx, act)
 }
 
 func (s *service) RedeemRedemptionCode(ctx context.Context, uid int64, code string) error {

@@ -12,20 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package event
+package consumer
 
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"time"
 
 	"github.com/ecodeclub/mq-api"
-	"github.com/ecodeclub/webook/internal/member/internal/domain"
-	"github.com/ecodeclub/webook/internal/member/internal/service"
+	"github.com/ecodeclub/webook/internal/marketing/internal/domain"
+	"github.com/ecodeclub/webook/internal/marketing/internal/event"
+	"github.com/ecodeclub/webook/internal/marketing/internal/service"
 	"github.com/gotomicro/ego/core/elog"
-	"github.com/lithammer/shortuuid/v4"
 )
 
 type RegistrationEventConsumer struct {
@@ -35,10 +34,9 @@ type RegistrationEventConsumer struct {
 	logger    *elog.Component
 }
 
-func NewRegistrationEventConsumer(svc service.Service,
-	q mq.MQ) (*RegistrationEventConsumer, error) {
-	const groupID = "member_user_registration"
-	consumer, err := q.Consumer(userRegistrationEvents, groupID)
+func NewRegistrationEventConsumer(svc service.Service, q mq.MQ) (*RegistrationEventConsumer, error) {
+	const groupID = "marketing-user"
+	consumer, err := q.Consumer(event.UserRegistrationEventName, groupID)
 	if err != nil {
 		return nil, err
 	}
@@ -67,41 +65,10 @@ func (c *RegistrationEventConsumer) Consume(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("获取消息失败: %w", err)
 	}
-
-	var evt RegistrationEvent
+	var evt event.RegistrationEvent
 	err = json.Unmarshal(msg.Value, &evt)
 	if err != nil {
 		return fmt.Errorf("解析消息失败: %w", err)
 	}
-
-	_, err = c.svc.GetMembershipInfo(ctx, evt.Uid)
-	if err == nil {
-		return fmt.Errorf("用户已有会员主记录")
-	}
-
-	err = c.svc.ActivateMembership(ctx, domain.Member{
-		Uid: evt.Uid,
-		Records: []domain.MemberRecord{
-			{
-				Key:   shortuuid.New(),
-				Biz:   "user",
-				BizId: evt.Uid,
-				Desc:  "注册福利",
-				Days:  uint64(time.Until(c.endAtDate) / (24 * time.Hour)),
-			},
-		},
-	})
-
-	if errors.Is(err, service.ErrDuplicatedMemberRecord) {
-		c.logger.Warn("重复消费",
-			elog.FieldErr(err),
-			elog.Any("MemberEvent", evt),
-		)
-		// 重复消费时,吞掉错误
-		return nil
-	}
-	if err != nil {
-		c.logger.Error("创建会员相关记录失败", elog.Any("RegistrationEvent", evt))
-	}
-	return err
+	return c.svc.ExecuteUserRegistrationActivity(ctx, domain.UserRegistrationActivity{Uid: evt.Uid})
 }
