@@ -21,9 +21,10 @@ import (
 	"github.com/ecodeclub/webook/internal/permission/internal/repository"
 )
 
+//go:generate mockgen -source=service.go -package=permissionmocks -destination=../../mocks/permission.mock.go -typed Service
 type Service interface {
 	CreatePersonalPermission(ctx context.Context, ps []domain.PersonalPermission) error
-	HasPersonalPermission(ctx context.Context, p domain.PersonalPermission) (bool, error)
+	HasPermission(ctx context.Context, p domain.PersonalPermission) (bool, error)
 	FindPersonalPermissions(ctx context.Context, uid int64) (map[string][]domain.PersonalPermission, error)
 }
 
@@ -39,7 +40,7 @@ func (s *permissionService) CreatePersonalPermission(ctx context.Context, ps []d
 	return s.repo.CreatePersonalPermission(ctx, ps)
 }
 
-func (s *permissionService) HasPersonalPermission(ctx context.Context, p domain.PersonalPermission) (bool, error) {
+func (s *permissionService) HasPermission(ctx context.Context, p domain.PersonalPermission) (bool, error) {
 	return s.repo.HasPersonalPermission(ctx, p)
 }
 
