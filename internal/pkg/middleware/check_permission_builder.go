@@ -15,6 +15,8 @@
 package middleware
 
 import (
+	"errors"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -25,24 +27,23 @@ import (
 	"github.com/ecodeclub/webook/internal/permission"
 	"github.com/gin-gonic/gin"
 	"github.com/gotomicro/ego/core/elog"
+	"github.com/redis/go-redis/v9"
 )
 
-type CheckPermissionMiddlewareBuilder[Req any] struct {
+type CheckPermissionMiddlewareBuilder struct {
 	svc    permission.Service
-	req    Req
 	logger *elog.Component
 	sp     session.Provider
 }
 
-func NewCheckPermissionMiddlewareBuilder[Req any](svc permission.Service, req Req) *CheckPermissionMiddlewareBuilder[Req] {
-	return &CheckPermissionMiddlewareBuilder[Req]{
+func NewCheckPermissionMiddlewareBuilder(svc permission.Service) *CheckPermissionMiddlewareBuilder {
+	return &CheckPermissionMiddlewareBuilder{
 		svc:    svc,
-		req:    req,
 		logger: elog.DefaultLogger,
 	}
 }
 
-func (c *CheckPermissionMiddlewareBuilder[Req]) Build(biz string) gin.HandlerFunc {
+func (c *CheckPermissionMiddlewareBuilder) Build() gin.HandlerFunc {
 	if c.sp == nil {
 		c.sp = session.DefaultProvider()
 	}
@@ -55,51 +56,60 @@ func (c *CheckPermissionMiddlewareBuilder[Req]) Build(biz string) gin.HandlerFun
 			return
 		}
 
-		// 1. 从session中获取 resources
-		claims := sess.Claims()
-		resourceStr, _ := claims.Get(biz).AsString() // map["project"]"101,103,102"
-		resources := strings.Split(resourceStr, ",") // [101,103,102]
+		// 获取资源列表
+		resourceName := ctx.GetHeader("X-Biz")
+		if len(resourceName) == 0 {
+			gctx.AbortWithStatus(http.StatusForbidden)
+			c.logger.Debug("biz非法", elog.FieldErr(err))
+			return
+		}
+		resourceStr, err := sess.Get(ctx.Request.Context(), resourceName).AsString()
+		if err != nil && !errors.Is(err, redis.Nil) {
+			gctx.AbortWithStatus(http.StatusForbidden)
+			c.logger.Debug("biz非法", elog.FieldErr(err))
+			return
+		}
+		var resources []string
+		if len(resourceStr) > 0 {
+			resources = strings.Split(resourceStr, ",")
+		}
 
-		// 2. 获取当前请求者uid
-		uid := claims.Uid // todo: 确保此中间件在添加uid的中间件后面
+		// 获取资源Id
+		resourceIdStr := ctx.GetHeader("X-Biz-ID")
+		resourceId, err := strconv.ParseInt(resourceIdStr, 10, 64)
+		if len(resourceIdStr) == 0 || err != nil {
+			gctx.AbortWithStatus(http.StatusForbidden)
+			c.logger.Debug("bizId非法", elog.FieldErr(errors.New("无法获取bizId")))
+			return
+		}
 
-		// 3. 获取当前待访问资源的id
-		// TODO: 如何获取待访问资源的id, 以project为例, project_id,请求通常为POST id通常在body中
-		// 先读出来?在放进去? 这也是引入范型参数req的原因
-		rid := int64(0)
-		// err = ctx.Bind(c.req)
-		// if err != nil {
-		// }
-
-		// 4. resource_id 是否在 resources 中, 快路径
+		// resourceId 是否在 resources 中, 快路径
+		log.Printf("resouces = %#v\n", resources)
 		_, ok := slice.Find(resources, func(src string) bool {
-			i, _ := strconv.ParseInt(src, 10, 64)
-			return i == rid
+			return src == resourceIdStr
 		})
 		if ok {
 			return
 		}
 
-		// 5. 如果不在,实时查询permission模块,并将验证通过的 resource_id 放入 resources 中
-		ok, err = c.svc.HasPersonalPermission(ctx.Request.Context(), permission.PersonalPermission{
+		// 如果不在,实时查询permission模块,并将验证通过的 resource_id 放入 resources 中
+		uid := sess.Claims().Uid
+		ok, err = c.svc.HasPermission(ctx.Request.Context(), permission.PersonalPermission{
 			Uid:   uid,
-			Biz:   biz,
-			BizID: rid,
+			Biz:   resourceName,
+			BizID: resourceId,
 		})
 		if err != nil || !ok {
 			gctx.AbortWithStatus(http.StatusForbidden)
 			c.logger.Debug("用户无权限", elog.FieldErr(err))
 			return
 		}
-		resources = append(resources, strconv.FormatInt(rid, 10))
+		resources = append(resources, resourceIdStr)
 
-		// 6.更新Session
-		jwtData := claims.Data
-		jwtData[biz] = strings.Join(resources, ",")
-		claims.Data = jwtData
-		err = c.sp.UpdateClaims(gctx, claims)
+		// 更新Session
+		err = sess.Set(ctx.Request.Context(), resourceName, strings.Join(resources, ","))
 		if err != nil {
-			elog.Error("重新生成 token 失败", elog.Int64("uid", claims.Uid), elog.FieldErr(err))
+			elog.Error("更新Session失败", elog.Int64("uid", uid), elog.FieldErr(err))
 			gctx.AbortWithStatus(http.StatusForbidden)
 			return
 		}
