@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/ecodeclub/ekit/slice"
 	"github.com/ecodeclub/ginx"
 	"github.com/ecodeclub/ginx/session"
 	"github.com/ecodeclub/webook/internal/marketing/internal/domain"
@@ -43,6 +44,7 @@ func NewAdminHandler(svc service.RedemptionCodeAdminService, productSvc product.
 func (h *AdminHandler) PrivateRoutes(server *gin.Engine) {
 	g := server.Group("/code")
 	g.POST("/gen", ginx.BS[GenerateRedemptionCodeReq](h.GenerateRedemptionCode))
+	g.POST("/list", ginx.BS[ListRedemptionCodesReq](h.ListRedemptionCodes))
 }
 
 func (h *AdminHandler) GenerateRedemptionCode(ctx *ginx.Context, req GenerateRedemptionCodeReq, sess session.Session) (ginx.Result, error) {
@@ -88,4 +90,28 @@ func (h *AdminHandler) generateCode(req GenerateRedemptionCodeReq, spu product.S
 		Code:   h.redemptionCodeGenerator(req.BizId),
 		Status: domain.RedemptionCodeStatusUnused,
 	}
+}
+
+func (h *AdminHandler) ListRedemptionCodes(ctx *ginx.Context, req ListRedemptionCodesReq, _ session.Session) (ginx.Result, error) {
+	codes, total, err := h.svc.ListRedemptionCodes(ctx.Request.Context(), req.Offset, req.Limit)
+	if err != nil {
+		return systemErrorResult, fmt.Errorf("获取兑换码失败: %w", err)
+	}
+	return ginx.Result{
+		Data: ListRedemptionCodesResp{
+			Total: total,
+			Codes: slice.Map(codes, func(idx int, src domain.RedemptionCode) RedemptionCode {
+				return RedemptionCode{
+					Code: src.Code,
+					Type: src.Type,
+					SKU: SKU{
+						SN:   src.Attrs.SKU.SN,
+						Name: src.Attrs.SKU.Name,
+					},
+					Status: src.Status.ToUint8(),
+					Utime:  src.Utime,
+				}
+			}),
+		},
+	}, nil
 }

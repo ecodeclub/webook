@@ -1634,3 +1634,87 @@ func (s *ModuleTestSuite) TestAdminHandler_GenerateRedemptionCode() {
 	}
 
 }
+
+func (s *ModuleTestSuite) TestAdminHandler_ListRedemptionCode() {
+	t := s.T()
+
+	s.TearDownTest()
+
+	total := 100
+	for idx := 0; idx < total; idx++ {
+		id := int64(3000 + idx)
+		status := domain.RedemptionCodeStatus(uint8(id)%2 + 1)
+		code := s.newProjectRedemptionCodeDomain(0, id, id)
+		code.Status = status
+		_, err := s.repo.CreateRedemptionCodes(context.Background(), []domain.RedemptionCode{code})
+		require.NoError(t, err)
+	}
+
+	testCases := []struct {
+		name           string
+		newHandlerFunc func(t *testing.T, ctrl *gomock.Controller) *web.AdminHandler
+		req            web.ListRedemptionCodesReq
+
+		wantCode int
+		wantResp test.Result[web.ListRedemptionCodesResp]
+	}{
+		{
+			name: "获取成功",
+			newHandlerFunc: func(t *testing.T, ctrl *gomock.Controller) *web.AdminHandler {
+				t.Helper()
+
+				redemptionCodeGenerator := s.getRedemptionCodeGenerator(sequencenumber.NewGenerator())
+				svc := service.NewAdminService(s.repo)
+				return web.NewAdminHandler(svc, nil, redemptionCodeGenerator)
+			},
+			req: web.ListRedemptionCodesReq{
+				Limit:  2,
+				Offset: 0,
+			},
+			wantCode: 200,
+			wantResp: test.Result[web.ListRedemptionCodesResp]{
+				Data: web.ListRedemptionCodesResp{
+					Total: int64(total),
+					Codes: []web.RedemptionCode{
+						{
+							Code: "redemption-code-project-3099",
+							Type: "project",
+							SKU: web.SKU{
+								SN:   fmt.Sprintf("sku-sn-%d", 3099),
+								Name: fmt.Sprintf("sku-name-%d", 3099),
+							},
+							Status: domain.RedemptionCodeStatusUsed.ToUint8(),
+						},
+						{
+							Code: "redemption-code-project-3098",
+							Type: "project",
+							SKU: web.SKU{
+								SN:   fmt.Sprintf("sku-sn-%d", 3098),
+								Name: fmt.Sprintf("sku-name-%d", 3098),
+							},
+							Status: domain.RedemptionCodeStatusUnused.ToUint8(),
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			req, err := http.NewRequest(http.MethodPost,
+				"/code/list", iox.NewJSONReader(tc.req))
+			req.Header.Set("content-type", "application/json")
+			require.NoError(t, err)
+			recorder := test.NewJSONResponseRecorder[web.ListRedemptionCodesResp]()
+			server := s.newAdminGinServer(tc.newHandlerFunc(t, ctrl))
+			server.ServeHTTP(recorder, req)
+			require.Equal(t, tc.wantCode, recorder.Code)
+			s.assertListRedemptionCodesRespEqual(t, tc.wantResp.Data, recorder.MustScan().Data)
+		})
+	}
+}
