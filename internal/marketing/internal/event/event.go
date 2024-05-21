@@ -75,6 +75,6 @@ type PermissionEvent struct {
 	Action string  `json:"action"` // 购买项目商品, 兑换项目商品
 }
 
-type RegistrationEvent struct {
+type UserRegistrationEvent struct {
 	Uid int64 `json:"uid"`
 }

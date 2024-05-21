@@ -18,7 +18,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"time"
 
 	"github.com/ecodeclub/mq-api"
 	"github.com/ecodeclub/webook/internal/marketing/internal/domain"
@@ -27,29 +26,27 @@ import (
 	"github.com/gotomicro/ego/core/elog"
 )
 
-type RegistrationEventConsumer struct {
-	svc       service.Service
-	consumer  mq.Consumer
-	endAtDate time.Time
-	logger    *elog.Component
+type UserRegistrationEventConsumer struct {
+	svc      service.Service
+	consumer mq.Consumer
+	logger   *elog.Component
 }
 
-func NewRegistrationEventConsumer(svc service.Service, q mq.MQ) (*RegistrationEventConsumer, error) {
+func NewUserRegistrationEventConsumer(svc service.Service, q mq.MQ) (*UserRegistrationEventConsumer, error) {
 	const groupID = "marketing-user"
 	consumer, err := q.Consumer(event.UserRegistrationEventName, groupID)
 	if err != nil {
 		return nil, err
 	}
-	return &RegistrationEventConsumer{
-		svc:       svc,
-		consumer:  consumer,
-		endAtDate: time.Date(2024, 6, 30, 23, 59, 59, 0, time.UTC),
-		logger:    elog.DefaultLogger,
+	return &UserRegistrationEventConsumer{
+		svc:      svc,
+		consumer: consumer,
+		logger:   elog.DefaultLogger,
 	}, nil
 }
 
 // Start 后面要考虑借助 ctx 来优雅退出
-func (c *RegistrationEventConsumer) Start(ctx context.Context) {
+func (c *UserRegistrationEventConsumer) Start(ctx context.Context) {
 	go func() {
 		for {
 			er := c.Consume(ctx)
@@ -60,12 +57,12 @@ func (c *RegistrationEventConsumer) Start(ctx context.Context) {
 	}()
 }
 
-func (c *RegistrationEventConsumer) Consume(ctx context.Context) error {
+func (c *UserRegistrationEventConsumer) Consume(ctx context.Context) error {
 	msg, err := c.consumer.Consume(ctx)
 	if err != nil {
 		return fmt.Errorf("获取消息失败: %w", err)
 	}
-	var evt event.RegistrationEvent
+	var evt event.UserRegistrationEvent
 	err = json.Unmarshal(msg.Value, &evt)
 	if err != nil {
 		return fmt.Errorf("解析消息失败: %w", err)

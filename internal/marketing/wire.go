@@ -58,6 +58,7 @@ func InitModule(db *egorm.Component, q mq.MQ, om *order.Module, pm *product.Modu
 		service.NewAdminService,
 		web.NewAdminHandler,
 		newOrderEventConsumer,
+		newUserEventConsumer,
 		wire.Struct(new(Module), "*"),
 	)
 	return nil, nil
@@ -65,6 +66,14 @@ func InitModule(db *egorm.Component, q mq.MQ, om *order.Module, pm *product.Modu
 
 func newOrderEventConsumer(svc service.Service, q mq.MQ) (*consumer.OrderEventConsumer, error) {
 	res, err := consumer.NewOrderEventConsumer(svc, q)
+	if err == nil {
+		res.Start(context.Background())
+	}
+	return res, err
+}
+
+func newUserEventConsumer(svc service.Service, q mq.MQ) (*consumer.UserRegistrationEventConsumer, error) {
+	res, err := consumer.NewUserRegistrationEventConsumer(svc, q)
 	if err == nil {
 		res.Start(context.Background())
 	}

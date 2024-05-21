@@ -20,4 +20,5 @@ type Module struct {
 	AdminHdl      *AdminHandler
 	Hdl           *Handler
 	orderConsumer *consumer.OrderEventConsumer
+	userConsumer  *consumer.UserRegistrationEventConsumer
 }

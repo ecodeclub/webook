@@ -27,7 +27,6 @@ import (
 type ActivityExecutor struct {
 	memberEventProducer producer.MemberEventProducer
 	creditEventProducer producer.CreditEventProducer
-	endAtDate           time.Time
 }
 
 func NewActivityExecutor(
@@ -37,15 +36,18 @@ func NewActivityExecutor(
 	return &ActivityExecutor{
 		memberEventProducer: memberEventProducer,
 		creditEventProducer: creditEventProducer,
-		endAtDate:           time.Date(2024, 6, 30, 23, 59, 59, 0, time.UTC),
 	}
 }
 
 func (s *ActivityExecutor) Execute(ctx context.Context, act domain.UserRegistrationActivity) error {
+	endAtDate := time.Date(2024, 6, 30, 23, 59, 59, 0, time.UTC)
+	if endAtDate.Before(time.Now()) {
+		return nil
+	}
 	return s.memberEventProducer.Produce(ctx, event.MemberEvent{
 		Key:    fmt.Sprintf("user-registration-%d", act.Uid),
 		Uid:    act.Uid,
-		Days:   uint64(time.Until(s.endAtDate) / (24 * time.Hour)),
+		Days:   uint64(time.Until(endAtDate) / (24 * time.Hour)),
 		Biz:    "user",
 		BizId:  act.Uid,
 		Action: "注册福利",

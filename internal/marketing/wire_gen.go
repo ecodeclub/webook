@@ -53,10 +53,15 @@ func InitModule(db *gorm.DB, q mq.MQ, om *order.Module, pm *product.Module) (*Mo
 	if err != nil {
 		return nil, err
 	}
+	userRegistrationEventConsumer, err := newUserEventConsumer(service3, q)
+	if err != nil {
+		return nil, err
+	}
 	module := &Module{
 		AdminHdl:      adminHandler,
 		Hdl:           handler,
 		orderConsumer: orderEventConsumer,
+		userConsumer:  userRegistrationEventConsumer,
 	}
 	return module, nil
 }
@@ -71,6 +76,14 @@ type (
 
 func newOrderEventConsumer(svc service.Service, q mq.MQ) (*consumer.OrderEventConsumer, error) {
 	res, err := consumer.NewOrderEventConsumer(svc, q)
+	if err == nil {
+		res.Start(context.Background())
+	}
+	return res, err
+}
+
+func newUserEventConsumer(svc service.Service, q mq.MQ) (*consumer.UserRegistrationEventConsumer, error) {
+	res, err := consumer.NewUserRegistrationEventConsumer(svc, q)
 	if err == nil {
 		res.Start(context.Background())
 	}
