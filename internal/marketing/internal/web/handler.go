@@ -68,7 +68,12 @@ func (h *Handler) ListRedemptionCodes(ctx *ginx.Context, req ListRedemptionCodes
 			Total: total,
 			Codes: slice.Map(codes, func(idx int, src domain.RedemptionCode) RedemptionCode {
 				return RedemptionCode{
-					Code:   src.Code,
+					Code: src.Code,
+					Type: src.Type,
+					SKU: SKU{
+						SN:   src.Attrs.SKU.SN,
+						Name: src.Attrs.SKU.Name,
+					},
 					Status: src.Status.ToUint8(),
 					Utime:  src.Utime,
 				}

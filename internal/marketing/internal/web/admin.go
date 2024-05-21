@@ -81,6 +81,8 @@ func (h *AdminHandler) generateCode(req GenerateRedemptionCodeReq, spu product.S
 		Type:    spu.Category1,
 		Attrs: domain.CodeAttrs{SKU: domain.SKU{
 			ID:    sku.ID,
+			SN:    sku.SN,
+			Name:  sku.Name,
 			Attrs: sku.Attrs,
 		}},
 		Code:   h.redemptionCodeGenerator(req.BizId),

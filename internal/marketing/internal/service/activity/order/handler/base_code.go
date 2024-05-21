@@ -37,9 +37,16 @@ func (b *baseCodeOrderHandler) Handle(ctx context.Context, info OrderInfo) error
 				Biz:     "order",
 				BizId:   info.Order.ID,
 				Type:    item.SPU.Category1,
-				Attrs:   domain.CodeAttrs{SKU: domain.SKU{ID: item.SKU.ID, Attrs: item.SKU.Attrs}},
-				Code:    b.redemptionCodeGenerator(info.Order.BuyerID),
-				Status:  domain.RedemptionCodeStatusUnused,
+				Attrs: domain.CodeAttrs{
+					SKU: domain.SKU{
+						ID:    item.SKU.ID,
+						SN:    item.SKU.SN,
+						Name:  item.SKU.Name,
+						Attrs: item.SKU.Attrs,
+					},
+				},
+				Code:   b.redemptionCodeGenerator(info.Order.BuyerID),
+				Status: domain.RedemptionCodeStatusUnused,
 			})
 		}
 	}
