@@ -19,10 +19,12 @@ import (
 
 	"github.com/ecodeclub/webook/internal/marketing/internal/domain"
 	"github.com/ecodeclub/webook/internal/marketing/internal/repository"
+	"golang.org/x/sync/errgroup"
 )
 
 type RedemptionCodeAdminService interface {
 	GenerateRedemptionCodes(ctx context.Context, codes []domain.RedemptionCode) error
+	ListRedemptionCodes(ctx context.Context, offset, list int) ([]domain.RedemptionCode, int64, error)
 }
 
 type adminService struct {
@@ -36,4 +38,26 @@ func NewAdminService(repo repository.MarketingRepository) RedemptionCodeAdminSer
 func (a *adminService) GenerateRedemptionCodes(ctx context.Context, codes []domain.RedemptionCode) error {
 	_, err := a.repo.CreateRedemptionCodes(ctx, codes)
 	return err
+}
+
+func (a *adminService) ListRedemptionCodes(ctx context.Context, offset, list int) ([]domain.RedemptionCode, int64, error) {
+	var (
+		eg    errgroup.Group
+		codes []domain.RedemptionCode
+		total int64
+	)
+	uid := int64(0) // 管理员默认为0
+	eg.Go(func() error {
+		var err error
+		codes, err = a.repo.FindRedemptionCodesByUID(ctx, uid, offset, list)
+		return err
+	})
+
+	eg.Go(func() error {
+		var err error
+		total, err = a.repo.TotalRedemptionCodes(ctx, uid)
+		return err
+	})
+
+	return codes, total, eg.Wait()
 }
