@@ -17,6 +17,7 @@ import (
 	"github.com/ecodeclub/webook/internal/member"
 	"github.com/ecodeclub/webook/internal/order"
 	"github.com/ecodeclub/webook/internal/payment"
+	"github.com/ecodeclub/webook/internal/permission"
 	"github.com/ecodeclub/webook/internal/pkg/middleware"
 	"github.com/ecodeclub/webook/internal/product"
 	"github.com/ecodeclub/webook/internal/project"
@@ -39,6 +40,12 @@ func InitApp() (*App, error) {
 	}
 	service := module.Svc
 	checkMembershipMiddlewareBuilder := middleware.NewCheckMembershipMiddlewareBuilder(service)
+	permissionModule, err := permission.InitModule(db, mq)
+	if err != nil {
+		return nil, err
+	}
+	serviceService := permissionModule.Svc
+	checkPermissionMiddlewareBuilder := middleware.NewCheckPermissionMiddlewareBuilder(serviceService)
 	interactiveModule, err := interactive.InitModule(db, mq)
 	if err != nil {
 		return nil, err
@@ -51,7 +58,7 @@ func InitApp() (*App, error) {
 	handler := baguwenModule.Hdl
 	questionSetHandler := baguwenModule.QsHdl
 	webHandler := label.InitHandler(db)
-	handler2 := InitUserHandler(db, cache, mq, module)
+	handler2 := InitUserHandler(db, cache, mq, module, permissionModule)
 	config := InitCosConfig()
 	handler3 := cos.InitHandler(config)
 	casesModule, err := cases.InitModule(db, interactiveModule, mq)
@@ -98,7 +105,7 @@ func InitApp() (*App, error) {
 	}
 	handler12 := marketingModule.Hdl
 	handler13 := interactiveModule.Hdl
-	component := initGinxServer(provider, checkMembershipMiddlewareBuilder, handler, questionSetHandler, webHandler, handler2, handler3, handler4, handler5, handler6, handler7, handler8, handler9, handler10, handler11, handler12, handler13)
+	component := initGinxServer(provider, checkMembershipMiddlewareBuilder, checkPermissionMiddlewareBuilder, handler, questionSetHandler, webHandler, handler2, handler3, handler4, handler5, handler6, handler7, handler8, handler9, handler10, handler11, handler12, handler13)
 	adminHandler := projectModule.AdminHdl
 	webAdminHandler := marketingModule.AdminHdl
 	adminServer := InitAdminServer(adminHandler, webAdminHandler)

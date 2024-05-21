@@ -20,6 +20,7 @@ import (
 	"github.com/ecodeclub/ecache"
 	"github.com/ecodeclub/mq-api"
 	"github.com/ecodeclub/webook/internal/member"
+	"github.com/ecodeclub/webook/internal/permission"
 	"github.com/ecodeclub/webook/internal/user/internal/event"
 	"github.com/ecodeclub/webook/internal/user/internal/repository"
 	"github.com/ecodeclub/webook/internal/user/internal/repository/cache"
@@ -40,10 +41,11 @@ var ProviderSet = wire.NewSet(web.NewHandler,
 	repository.NewCachedUserRepository)
 
 func InitHandler(db *egorm.Component, cache ecache.Cache,
-	q mq.MQ, creators []string, memberSvc *member.Module) *Handler {
+	q mq.MQ, creators []string, memberSvc *member.Module, permissionSvc *permission.Module) *Handler {
 	wire.Build(
 		ProviderSet,
 		wire.FieldsOf(new(*member.Module), "Svc"),
+		wire.FieldsOf(new(*permission.Module), "Svc"),
 	)
 	return new(Handler)
 }

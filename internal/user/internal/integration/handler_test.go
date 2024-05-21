@@ -23,6 +23,7 @@ import (
 
 	"github.com/ecodeclub/webook/internal/member"
 	membermocks "github.com/ecodeclub/webook/internal/member/mocks"
+	"github.com/ecodeclub/webook/internal/permission"
 	"go.uber.org/mock/gomock"
 
 	"github.com/ecodeclub/ekit/iox"
@@ -63,7 +64,7 @@ func (s *HandleTestSuite) SetupSuite() {
 			EndAt: 1234,
 		}, nil
 	}).AnyTimes()
-	hdl := startup.InitHandler(nil, memSvc, nil)
+	hdl := startup.InitHandler(nil, &member.Module{Svc: memSvc}, &permission.Module{}, nil)
 	server.Use(func(ctx *gin.Context) {
 		ctx.Set("_session", session.NewMemorySession(session.Claims{
 			Uid: 123,

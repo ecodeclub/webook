@@ -19,6 +19,7 @@ package startup
 import (
 	"github.com/ecodeclub/mq-api"
 	"github.com/ecodeclub/webook/internal/member"
+	"github.com/ecodeclub/webook/internal/permission"
 	testioc "github.com/ecodeclub/webook/internal/test/ioc"
 	"github.com/ecodeclub/webook/internal/user"
 	"github.com/ecodeclub/webook/internal/user/internal/event"
@@ -30,9 +31,11 @@ import (
 	"github.com/google/wire"
 )
 
-func InitHandler(weSvc service.OAuth2Service, memberSvc member.Service, creators []string) *user.Handler {
+func InitHandler(weSvc service.OAuth2Service, mem *member.Module, perm *permission.Module, creators []string) *user.Handler {
 	wire.Build(web.NewHandler,
 		testioc.BaseSet,
+		wire.FieldsOf(new(*member.Module), "Svc"),
+		wire.FieldsOf(new(*permission.Module), "Svc"),
 		initRegistrationEventProducer,
 		service.NewUserService,
 		dao.NewGORMUserDAO,
