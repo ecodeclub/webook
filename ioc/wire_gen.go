@@ -100,7 +100,8 @@ func InitApp() (*App, error) {
 	handler13 := interactiveModule.Hdl
 	component := initGinxServer(provider, checkMembershipMiddlewareBuilder, handler, questionSetHandler, webHandler, handler2, handler3, handler4, handler5, handler6, handler7, handler8, handler9, handler10, handler11, handler12, handler13)
 	adminHandler := projectModule.AdminHdl
-	adminServer := InitAdminServer(adminHandler)
+	webAdminHandler := marketingModule.AdminHdl
+	adminServer := InitAdminServer(adminHandler, webAdminHandler)
 	closeTimeoutOrdersJob := orderModule.CloseTimeoutOrdersJob
 	closeTimeoutLockedCreditsJob := creditModule.CloseTimeoutLockedCreditsJob
 	syncWechatOrderJob := paymentModule.SyncWechatOrderJob

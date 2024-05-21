@@ -67,7 +67,7 @@ func InitApp() (*App, error) {
 		recon.InitModule,
 		wire.FieldsOf(new(*recon.Module), "SyncPaymentAndOrderJob"),
 		marketing.InitModule,
-		wire.FieldsOf(new(*marketing.Module), "Hdl"),
+		wire.FieldsOf(new(*marketing.Module), "AdminHdl", "Hdl"),
 		interactive.InitModule,
 		wire.FieldsOf(new(*interactive.Module), "Hdl"),
 

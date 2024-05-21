@@ -36,8 +36,9 @@ import (
 )
 
 type (
-	Service = service.Service
-	Handler = web.Handler
+	Service      = service.Service
+	Handler      = web.Handler
+	AdminHandler = web.AdminHandler
 )
 
 func InitModule(db *egorm.Component, q mq.MQ, om *order.Module, pm *product.Module) (*Module, error) {
@@ -54,7 +55,8 @@ func InitModule(db *egorm.Component, q mq.MQ, om *order.Module, pm *product.Modu
 		producer.NewPermissionEventProducer,
 		service.NewService,
 		web.NewHandler,
-
+		service.NewAdminService,
+		web.NewAdminHandler,
 		newOrderEventConsumer,
 		wire.Struct(new(Module), "*"),
 	)

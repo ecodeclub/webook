@@ -333,7 +333,7 @@ func (s *ModuleTestSuite) TestService_HasPersonalPermission() {
 		t.Run(tc.name, func(t *testing.T) {
 			tc.before(t)
 			svc := tc.newSvcFunc(t)
-			actualResult, err := svc.HasPersonalPermission(context.Background(), tc.req)
+			actualResult, err := svc.HasPermission(context.Background(), tc.req)
 			require.Equal(t, tc.wantResult, actualResult)
 			require.Equal(t, tc.wantErr, err)
 		})

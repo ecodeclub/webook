@@ -21,6 +21,7 @@ import (
 	"github.com/ecodeclub/ginx"
 	"github.com/ecodeclub/ginx/session"
 	"github.com/ecodeclub/webook-private/nonsense"
+	"github.com/ecodeclub/webook/internal/marketing"
 	"github.com/ecodeclub/webook/internal/project"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -30,7 +31,8 @@ import (
 
 type AdminServer *egin.Component
 
-func InitAdminServer(prj *project.AdminHandler) AdminServer {
+func InitAdminServer(prj *project.AdminHandler,
+	mark *marketing.AdminHandler) AdminServer {
 	res := egin.Load("admin").Build()
 	res.Use(cors.New(cors.Config{
 		ExposeHeaders:    []string{"X-Refresh-Token", "X-Access-Token"},
@@ -54,6 +56,7 @@ func InitAdminServer(prj *project.AdminHandler) AdminServer {
 	res.Use(session.CheckLoginMiddleware())
 	res.Use(AdminPermission())
 	prj.PrivateRoutes(res.Engine)
+	mark.PrivateRoutes(res.Engine)
 	return res
 }
 

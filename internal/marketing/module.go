@@ -17,7 +17,7 @@ package marketing
 import "github.com/ecodeclub/webook/internal/marketing/internal/event/consumer"
 
 type Module struct {
-	Svc           Service
+	AdminHdl      *AdminHandler
 	Hdl           *Handler
 	orderConsumer *consumer.OrderEventConsumer
 }
