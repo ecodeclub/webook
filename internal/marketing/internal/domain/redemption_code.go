@@ -44,5 +44,7 @@ type CodeAttrs struct {
 
 type SKU struct {
 	ID    int64  `json:"id,omitempty"`
+	SN    string `json:"sn,omitempty"`
+	Name  string `json:"name,omitempty"`
 	Attrs string `json:"attrs,omitempty"`
 }

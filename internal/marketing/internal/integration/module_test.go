@@ -339,7 +339,8 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeOrderEvent() {
 								},
 								SKU: order.SKU{
 									ID:            4,
-									SN:            "sku-sn-code-member-4",
+									SN:            "sku-sn-4",
+									Name:          "sku-name-4",
 									Attrs:         `{"days":90}`,
 									OriginalPrice: 990,
 									RealPrice:     990,
@@ -369,7 +370,8 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeOrderEvent() {
 				codes, err := s.repo.FindRedemptionCodesByUID(context.Background(), evt.BuyerID, 0, 10)
 				require.NoError(t, err)
 				oid := int64(3)
-				code := s.newMemberRedemptionCodeDomain(evt.BuyerID, oid)
+				skuId := int64(4)
+				code := s.newMemberRedemptionCodeDomain(evt.BuyerID, oid, skuId)
 				code.Attrs.SKU.Attrs = `{"days":90}`
 				code.Code = ""
 				s.assertRedemptionCodeEqual(t, []domain.RedemptionCode{code, code}, codes)
@@ -409,7 +411,8 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeOrderEvent() {
 								},
 								SKU: order.SKU{
 									ID:            4,
-									SN:            "sku-sn-code-member-4",
+									SN:            "sku-sn-4",
+									Name:          "sku-name-4",
 									Attrs:         `{"days":90}`,
 									OriginalPrice: 990,
 									RealPrice:     990,
@@ -424,7 +427,8 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeOrderEvent() {
 								},
 								SKU: order.SKU{
 									ID:            5,
-									SN:            "sku-sn-code-member-5",
+									SN:            "sku-sn-5",
+									Name:          "sku-name-5",
 									Attrs:         `{"days":30}`,
 									OriginalPrice: 330,
 									RealPrice:     330,
@@ -459,11 +463,12 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeOrderEvent() {
 				codes, err := s.repo.FindRedemptionCodesByUID(context.Background(), evt.BuyerID, 0, 10)
 				require.NoError(t, err)
 				oid := int64(4)
-				code90 := s.newMemberRedemptionCodeDomain(evt.BuyerID, oid)
+				skuId := int64(4)
+				code90 := s.newMemberRedemptionCodeDomain(evt.BuyerID, oid, skuId)
 				code90.Attrs.SKU.Attrs = `{"days":90}`
 				code90.Code = ""
-				code30 := s.newMemberRedemptionCodeDomain(evt.BuyerID, oid)
-				code30.Attrs.SKU.ID = 5
+				skuId = int64(5)
+				code30 := s.newMemberRedemptionCodeDomain(evt.BuyerID, oid, skuId)
 				code30.Code = ""
 				s.assertRedemptionCodeEqual(t, []domain.RedemptionCode{code90, code90, code30}, codes)
 			},
@@ -672,7 +677,8 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeOrderEvent() {
 								},
 								SKU: order.SKU{
 									ID:            14,
-									SN:            "sku-sn-code-project-14",
+									SN:            "sku-sn-14",
+									Name:          "sku-name-14",
 									Attrs:         "",
 									OriginalPrice: 990,
 									RealPrice:     990,
@@ -702,8 +708,8 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeOrderEvent() {
 				codes, err := s.repo.FindRedemptionCodesByUID(context.Background(), evt.BuyerID, 0, 10)
 				require.NoError(t, err)
 				oid := int64(103)
-				code := s.newProjectRedemptionCodeDomain(evt.BuyerID, oid)
-				code.Attrs.SKU.ID = 14
+				skuId := int64(14)
+				code := s.newProjectRedemptionCodeDomain(evt.BuyerID, oid, skuId)
 				code.Code = ""
 				s.assertRedemptionCodeEqual(t, []domain.RedemptionCode{code, code}, codes)
 			},
@@ -742,7 +748,8 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeOrderEvent() {
 								},
 								SKU: order.SKU{
 									ID:            14,
-									SN:            "sku-sn-code-project-14",
+									SN:            "sku-sn-14",
+									Name:          "sku-name-14",
 									Attrs:         "",
 									OriginalPrice: 990,
 									RealPrice:     990,
@@ -757,7 +764,8 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeOrderEvent() {
 								},
 								SKU: order.SKU{
 									ID:            15,
-									SN:            "sku-sn-code-project-15",
+									SN:            "sku-sn-15",
+									Name:          "sku-name-15",
 									Attrs:         "",
 									OriginalPrice: 990,
 									RealPrice:     990,
@@ -787,12 +795,11 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeOrderEvent() {
 				codes, err := s.repo.FindRedemptionCodesByUID(context.Background(), evt.BuyerID, 0, 10)
 				require.NoError(t, err)
 				oid := int64(104)
-				code14 := s.newProjectRedemptionCodeDomain(evt.BuyerID, oid)
-				code14.Attrs.SKU.ID = 14
+				skuId := int64(14)
+				code14 := s.newProjectRedemptionCodeDomain(evt.BuyerID, oid, skuId)
 				code14.Code = ""
-
-				code15 := s.newProjectRedemptionCodeDomain(evt.BuyerID, oid)
-				code15.Attrs.SKU.ID = 15
+				skuId = int64(15)
+				code15 := s.newProjectRedemptionCodeDomain(evt.BuyerID, oid, skuId)
 				code15.Code = ""
 				s.assertRedemptionCodeEqual(t, []domain.RedemptionCode{code14, code14, code15}, codes)
 			},
@@ -915,7 +922,8 @@ func (s *ModuleTestSuite) TestHandler_RedeemRedemptionCode() {
 			before: func(t *testing.T, req web.RedeemRedemptionCodeReq) domain.RedemptionCode {
 				t.Helper()
 				oid := int64(1101)
-				code := s.newMemberRedemptionCodeDomain(testID, oid)
+				skuId := int64(4)
+				code := s.newMemberRedemptionCodeDomain(testID, oid, skuId)
 				code.Code = req.Code
 				ids, err := s.repo.CreateRedemptionCodes(context.Background(), []domain.RedemptionCode{
 					code,
@@ -984,7 +992,8 @@ func (s *ModuleTestSuite) TestHandler_RedeemRedemptionCode() {
 			before: func(t *testing.T, req web.RedeemRedemptionCodeReq) domain.RedemptionCode {
 				t.Helper()
 				oid := int64(1102)
-				code := s.newMemberRedemptionCodeDomain(8922391, oid)
+				skuId := int64(4)
+				code := s.newMemberRedemptionCodeDomain(8922391, oid, skuId)
 				code.Attrs.SKU.Attrs = `{"days":60}`
 				code.Code = req.Code
 				ids, err := s.repo.CreateRedemptionCodes(context.Background(), []domain.RedemptionCode{
@@ -1056,7 +1065,8 @@ func (s *ModuleTestSuite) TestHandler_RedeemRedemptionCode() {
 			before: func(t *testing.T, req web.RedeemRedemptionCodeReq) domain.RedemptionCode {
 				t.Helper()
 				oid := int64(2101)
-				code := s.newProjectRedemptionCodeDomain(testID, oid)
+				skuId := int64(14)
+				code := s.newProjectRedemptionCodeDomain(testID, oid, skuId)
 				code.Code = req.Code
 				ids, err := s.repo.CreateRedemptionCodes(context.Background(), []domain.RedemptionCode{
 					code,
@@ -1123,7 +1133,8 @@ func (s *ModuleTestSuite) TestHandler_RedeemRedemptionCode() {
 			before: func(t *testing.T, req web.RedeemRedemptionCodeReq) domain.RedemptionCode {
 				t.Helper()
 				oid := int64(2102)
-				code := s.newProjectRedemptionCodeDomain(45672928, oid)
+				skuId := int64(14)
+				code := s.newProjectRedemptionCodeDomain(45672928, oid, skuId)
 				code.Code = req.Code
 				ids, err := s.repo.CreateRedemptionCodes(context.Background(), []domain.RedemptionCode{
 					code,
@@ -1191,10 +1202,9 @@ func (s *ModuleTestSuite) TestHandler_RedeemRedemptionCode() {
 			before: func(t *testing.T, req web.RedeemRedemptionCodeReq) domain.RedemptionCode {
 				t.Helper()
 				oid := int64(1103)
-				code := s.newMemberRedemptionCodeDomain(7622391, oid)
-				code.Attrs = domain.CodeAttrs{
-					SKU: domain.SKU{ID: 12, Attrs: `{"days":90}`},
-				}
+				skuId := int64(12)
+				code := s.newMemberRedemptionCodeDomain(7622391, oid, skuId)
+				code.Attrs.SKU.Attrs = `{"days":90}`
 				code.Code = req.Code
 				ids, err := s.repo.CreateRedemptionCodes(context.Background(), []domain.RedemptionCode{
 					code,
@@ -1322,7 +1332,7 @@ func (s *ModuleTestSuite) TestHandler_ListRedemptionCode() {
 	for idx := 0; idx < total; idx++ {
 		id := int64(2000 + idx)
 		status := domain.RedemptionCodeStatus(uint8(id)%2 + 1)
-		code := s.newMemberRedemptionCodeDomain(testID, id)
+		code := s.newMemberRedemptionCodeDomain(testID, id, id)
 		code.Status = status
 		_, err := s.repo.CreateRedemptionCodes(context.Background(), []domain.RedemptionCode{code})
 		require.NoError(t, err)
@@ -1355,11 +1365,21 @@ func (s *ModuleTestSuite) TestHandler_ListRedemptionCode() {
 					Total: int64(total),
 					Codes: []web.RedemptionCode{
 						{
-							Code:   "redemption-code-member-2099",
+							Code: "redemption-code-member-2099",
+							Type: "member",
+							SKU: web.SKU{
+								SN:   fmt.Sprintf("sku-sn-%d", 2099),
+								Name: fmt.Sprintf("sku-name-%d", 2099),
+							},
 							Status: domain.RedemptionCodeStatusUsed.ToUint8(),
 						},
 						{
-							Code:   "redemption-code-member-2098",
+							Code: "redemption-code-member-2098",
+							Type: "member",
+							SKU: web.SKU{
+								SN:   fmt.Sprintf("sku-sn-%d", 2098),
+								Name: fmt.Sprintf("sku-name-%d", 2098),
+							},
 							Status: domain.RedemptionCodeStatusUnused.ToUint8(),
 						},
 					},
@@ -1411,7 +1431,8 @@ func (s *ModuleTestSuite) TestService_RedeemRedemptionCode() {
 	t := s.T()
 
 	oid := int64(101001)
-	code := s.newMemberRedemptionCodeDomain(testID, oid)
+	skuId := int64(4)
+	code := s.newMemberRedemptionCodeDomain(testID, oid, skuId)
 	ids, err := s.repo.CreateRedemptionCodes(context.Background(), []domain.RedemptionCode{
 		code,
 	})
@@ -1467,28 +1488,36 @@ func (s *ModuleTestSuite) TestService_RedeemRedemptionCode() {
 	require.NotEqual(t, c.Utime, c.Ctime)
 }
 
-func (s *ModuleTestSuite) newMemberRedemptionCodeDomain(ownerID int64, oid int64) domain.RedemptionCode {
+func (s *ModuleTestSuite) newMemberRedemptionCodeDomain(ownerID int64, oid, skuId int64) domain.RedemptionCode {
 	return domain.RedemptionCode{
 		OwnerID: ownerID,
 		Biz:     "order",
 		BizId:   oid,
 		Type:    "member",
 		Attrs: domain.CodeAttrs{
-			SKU: domain.SKU{ID: 4, Attrs: `{"days":30}`},
+			SKU: domain.SKU{
+				ID:    skuId,
+				SN:    fmt.Sprintf("sku-sn-%d", skuId),
+				Name:  fmt.Sprintf("sku-name-%d", skuId),
+				Attrs: `{"days":30}`},
 		},
 		Code:   fmt.Sprintf("redemption-code-member-%d", oid),
 		Status: domain.RedemptionCodeStatusUnused,
 	}
 }
 
-func (s *ModuleTestSuite) newProjectRedemptionCodeDomain(ownerID int64, oid int64) domain.RedemptionCode {
+func (s *ModuleTestSuite) newProjectRedemptionCodeDomain(ownerID int64, oid, skuId int64) domain.RedemptionCode {
 	return domain.RedemptionCode{
 		OwnerID: ownerID,
 		Biz:     "order",
 		BizId:   oid,
 		Type:    "project",
 		Attrs: domain.CodeAttrs{
-			SKU: domain.SKU{ID: 14},
+			SKU: domain.SKU{
+				ID:   skuId,
+				SN:   fmt.Sprintf("sku-sn-%d", skuId),
+				Name: fmt.Sprintf("sku-name-%d", skuId),
+			},
 		},
 		Code:   fmt.Sprintf("redemption-code-project-%d", oid),
 		Status: domain.RedemptionCodeStatusUnused,
@@ -1513,8 +1542,8 @@ func (s *ModuleTestSuite) TestAdminHandler_GenerateRedemptionCode() {
 				t.Helper()
 
 				mockProductSvc := productmocks.NewMockService(ctrl)
-				skuId := int64(3001)
-				spuId := int64(3002)
+				skuId := int64(30001)
+				spuId := int64(30002)
 				sku := product.SKU{
 					ID:       skuId,
 					SPUID:    spuId,
@@ -1554,8 +1583,8 @@ func (s *ModuleTestSuite) TestAdminHandler_GenerateRedemptionCode() {
 
 				codes, err := s.repo.FindRedemptionCodesByUID(context.Background(), 0, 0, req.Count)
 				require.NoError(t, err)
-				skuId := int64(3001)
-				spuId := int64(3002)
+				skuId := int64(30001)
+				spuId := int64(30002)
 				code := domain.RedemptionCode{
 					OwnerID: 0,
 					Biz:     req.Biz,
@@ -1564,6 +1593,8 @@ func (s *ModuleTestSuite) TestAdminHandler_GenerateRedemptionCode() {
 					Attrs: domain.CodeAttrs{
 						SKU: domain.SKU{
 							ID:    skuId,
+							SN:    fmt.Sprintf("sku-sn-%d", skuId),
+							Name:  fmt.Sprintf("sku-name-%d", skuId),
 							Attrs: fmt.Sprintf("sku-attrs-%d", skuId),
 						},
 					},
