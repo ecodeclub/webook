@@ -14,12 +14,6 @@
 
 package event
 
-const userRegistrationEvents = "user_registration_events"
-
-type RegistrationEvent struct {
-	Uid int64 `json:"uid"`
-}
-
 const memberUpdateEvents = "member_update_events"
 
 type MemberEvent struct {

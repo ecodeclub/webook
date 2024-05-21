@@ -899,6 +899,83 @@ func (s *ModuleTestSuite) newPermissionEventMessage(t *testing.T, evt event.Perm
 	return &mq.Message{Value: marshal}
 }
 
+func (s *ModuleTestSuite) TestConsumer_ConsumeUserRegistrationEvent() {
+	t := s.T()
+
+	testCases := []struct {
+		name           string
+		newMQFunc      func(t *testing.T, ctrl *gomock.Controller, evt event.UserRegistrationEvent) mq.MQ
+		newSvcFunc     func(t *testing.T, ctrl *gomock.Controller, evt event.UserRegistrationEvent, q mq.MQ) service.Service
+		evt            event.UserRegistrationEvent
+		errRequireFunc require.ErrorAssertionFunc
+	}{
+		{
+			name: "消费注册消息成功_发送福利_开通会员",
+			newMQFunc: func(t *testing.T, ctrl *gomock.Controller, evt event.UserRegistrationEvent) mq.MQ {
+				t.Helper()
+
+				mockMQ := mocks.NewMockMQ(ctrl)
+				mockConsumer := mocks.NewMockConsumer(ctrl)
+				mockConsumer.EXPECT().Consume(gomock.Any()).Return(s.newUserRegistrationEventMessage(t, evt), nil).Times(2)
+
+				mockProducer := mocks.NewMockProducer(ctrl)
+				endAtDate := time.Date(2024, 6, 30, 23, 59, 59, 0, time.UTC)
+				memberEvent := s.newMemberEventMessage(t, event.MemberEvent{
+					Key:    fmt.Sprintf("user-registration-%d", evt.Uid),
+					Uid:    evt.Uid,
+					Days:   uint64(time.Until(endAtDate) / (24 * time.Hour)),
+					Biz:    "user",
+					BizId:  evt.Uid,
+					Action: "注册福利",
+				})
+				mockProducer.EXPECT().Produce(gomock.Any(), memberEvent).Return(&mq.ProducerResult{}, nil).Times(2)
+
+				mockMQ.EXPECT().Consumer(gomock.Any(), gomock.Any()).Return(mockConsumer, nil)
+				mockMQ.EXPECT().Producer(event.MemberUpdateEventName).Return(mockProducer, nil)
+				return mockMQ
+			},
+			newSvcFunc: func(t *testing.T, ctrl *gomock.Controller, evt event.UserRegistrationEvent, q mq.MQ) service.Service {
+				t.Helper()
+
+				memberEventProducer, err := producer.NewMemberEventProducer(q)
+				require.NoError(t, err)
+
+				return service.NewService(nil, nil, nil, nil, nil, memberEventProducer, nil, nil)
+			},
+			evt: event.UserRegistrationEvent{
+				Uid: testID,
+			},
+			errRequireFunc: require.NoError,
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			q := tc.newMQFunc(t, ctrl, tc.evt)
+			svc := tc.newSvcFunc(t, ctrl, tc.evt, q)
+			c, err := consumer.NewUserRegistrationEventConsumer(svc, q)
+			require.NoError(t, err)
+
+			err = c.Consume(context.Background())
+			tc.errRequireFunc(t, err)
+
+			err = c.Consume(context.Background())
+			tc.errRequireFunc(t, err)
+
+		})
+	}
+}
+
+func (s *ModuleTestSuite) newUserRegistrationEventMessage(t *testing.T, evt event.UserRegistrationEvent) *mq.Message {
+	marshal, err := json.Marshal(evt)
+	require.NoError(t, err)
+	return &mq.Message{Value: marshal}
+}
+
 func (s *ModuleTestSuite) TestHandler_RedeemRedemptionCode() {
 	t := s.T()
 

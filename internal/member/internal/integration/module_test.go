@@ -66,119 +66,6 @@ func (s *ModuleTestSuite) TearDownTest() {
 	require.NoError(s.T(), err)
 }
 
-func (s *ModuleTestSuite) TestConsumer_ConsumeRegistrationEvent() {
-	t := s.T()
-	producer, er := s.mq.Producer("user_registration_events")
-	require.NoError(t, er)
-
-	testCases := []struct {
-		name   string
-		before func(t *testing.T, producer mq.Producer, message *mq.Message)
-		after  func(t *testing.T, uid int64)
-
-		evt            event.RegistrationEvent
-		errRequireFunc require.ErrorAssertionFunc
-	}{
-		{
-			name: "开会员成功_新用户注册",
-			before: func(t *testing.T, producer mq.Producer, message *mq.Message) {
-				_, err := producer.Produce(context.Background(), message)
-				require.NoError(t, err)
-				// 模拟重试
-				_, err = producer.Produce(context.Background(), message)
-				require.NoError(t, err)
-			},
-			after: func(t *testing.T, uid int64) {
-				t.Helper()
-
-				info, err := s.svc.GetMembershipInfo(context.Background(), uid)
-				require.NoError(t, err)
-
-				nowDate := time.Now().UTC()
-				startAt := time.Date(nowDate.Year(), nowDate.Month(), nowDate.Day(), 23, 59, 59, 0, time.UTC).UnixMilli()
-				endAt := time.Date(2024, 6, 30, 23, 59, 59, 0, time.UTC).UnixMilli()
-
-				require.Equal(t, endAt, info.EndAt)
-
-				require.True(t, startAt <= info.EndAt, fmt.Sprintf("n = %d, e = %d\n", startAt, info.EndAt))
-				for i := range info.Records {
-					require.NotZero(t, info.Records[i].Key)
-					info.Records[i].Key = ""
-				}
-				require.Equal(t, []domain.MemberRecord{
-					{
-						Biz:   "user",
-						BizId: uid,
-						Desc:  "注册福利",
-						Days:  uint64(time.Duration(info.EndAt-startAt) * time.Millisecond / (time.Hour * 24)),
-					},
-				}, info.Records)
-			},
-			evt: event.RegistrationEvent{
-				Uid: 1991,
-			},
-			errRequireFunc: require.NoError,
-		},
-
-		// 开会员失败_新用户注册_优惠已到期, 无法测到,通过代码审查来补充
-		{
-			name: "开会员失败_用户已注册",
-			before: func(t *testing.T, producer mq.Producer, message *mq.Message) {
-				t.Helper()
-
-				nowDate := time.Now().UTC()
-				startAt := time.Date(nowDate.Year(), nowDate.Month(), nowDate.Day(), 23, 59, 59, 0, time.UTC).UnixMilli()
-				endAt := time.Date(2024, 6, 30, 23, 59, 59, 0, time.UTC).UnixMilli()
-
-				err := s.svc.ActivateMembership(context.Background(), domain.Member{
-					Uid: 1993,
-					Records: []domain.MemberRecord{
-						{
-							Key:   "member-key-1993",
-							Biz:   "user",
-							BizId: 1993,
-							Desc:  "注册福利",
-							Days:  uint64(time.Duration(endAt-startAt) * time.Millisecond / (time.Hour * 24)),
-						},
-					},
-				})
-				require.NoError(t, err)
-
-				_, err = producer.Produce(context.Background(), message)
-				require.NoError(t, err)
-
-				// 模拟重试
-				_, err = producer.Produce(context.Background(), message)
-				require.NoError(t, err)
-			},
-			after: func(t *testing.T, uid int64) {},
-			evt: event.RegistrationEvent{
-				Uid: 1991,
-			},
-			errRequireFunc: require.Error,
-		},
-	}
-
-	consumer, err := event.NewRegistrationEventConsumer(s.svc, s.mq)
-	require.NoError(t, err)
-
-	for _, tc := range testCases {
-		tc := tc
-		t.Run(tc.name, func(t *testing.T) {
-			message := s.newRegistrationEventMessage(t, tc.evt)
-			tc.before(t, producer, message)
-
-			err = consumer.Consume(context.Background())
-			tc.errRequireFunc(t, err)
-
-			err = consumer.Consume(context.Background())
-			require.Error(t, err)
-
-			tc.after(t, tc.evt.Uid)
-		})
-	}
-}
-
 func (s *ModuleTestSuite) TestConsumer_ConsumeMemberEvent() {
 	t := s.T()
 
@@ -391,12 +278,6 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeMemberEvent() {
 			tc.after(t, tc.evt.Uid)
 		})
 	}
-}
-
-func (s *ModuleTestSuite) newRegistrationEventMessage(t *testing.T, evt event.RegistrationEvent) *mq.Message {
-	marshal, err := json.Marshal(evt)
-	require.NoError(t, err)
-	return &mq.Message{Value: marshal}
 }
 
 func (s *ModuleTestSuite) newMemberEventMessage(t *testing.T, evt event.MemberEvent) *mq.Message {

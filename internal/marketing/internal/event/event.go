@@ -15,10 +15,11 @@
 package event
 
 const (
-	MemberUpdateEventName = "member_update_events"
-	OrderEventName        = "order_events"
-	CreditEventName       = "credit_increase_events"
-	PermissionEventName   = "permission_events"
+	MemberUpdateEventName     = "member_update_events"
+	OrderEventName            = "order_events"
+	CreditEventName           = "credit_increase_events"
+	PermissionEventName       = "permission_events"
+	UserRegistrationEventName = "user_registration_events"
 )
 
 type MemberEvent struct {
@@ -72,4 +73,8 @@ type PermissionEvent struct {
 	Biz    string  `json:"biz"` // project,interview
 	BizIds []int64 `json:"biz_ids"`
 	Action string  `json:"action"` // 购买项目商品, 兑换项目商品
+}
+
+type UserRegistrationEvent struct {
+	Uid int64 `json:"uid"`
 }
