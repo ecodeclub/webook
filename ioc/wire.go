@@ -27,6 +27,7 @@ import (
 	"github.com/ecodeclub/webook/internal/member"
 	"github.com/ecodeclub/webook/internal/order"
 	"github.com/ecodeclub/webook/internal/payment"
+	"github.com/ecodeclub/webook/internal/permission"
 	"github.com/ecodeclub/webook/internal/pkg/middleware"
 	"github.com/ecodeclub/webook/internal/product"
 	"github.com/ecodeclub/webook/internal/project"
@@ -70,7 +71,9 @@ func InitApp() (*App, error) {
 		wire.FieldsOf(new(*marketing.Module), "AdminHdl", "Hdl"),
 		interactive.InitModule,
 		wire.FieldsOf(new(*interactive.Module), "Hdl"),
-
+		permission.InitModule,
+		wire.FieldsOf(new(*permission.Module), "Svc"),
+		middleware.NewCheckPermissionMiddlewareBuilder,
 		initCronJobs,
 		// 这两个顺序不要换
 		initGinxServer,

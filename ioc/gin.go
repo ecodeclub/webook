@@ -52,6 +52,7 @@ import (
 
 func initGinxServer(sp session.Provider,
 	checkMembershipMiddleware *middleware.CheckMembershipMiddlewareBuilder,
+	checkPermissionMiddleware *middleware.CheckPermissionMiddlewareBuilder,
 	qh *baguwen.Handler,
 	qsh *baguwen.QuestionSetHandler,
 	lhdl *label.Handler,
@@ -107,10 +108,15 @@ func initGinxServer(sp session.Provider,
 	skillHdl.PrivateRoutes(res.Engine)
 	pHdl.PrivateRoutes(res.Engine)
 	orderHdl.PrivateRoutes(res.Engine)
-	prjHdl.PrivateRoutes(res.Engine)
+
 	creditHdl.PrivateRoutes(res.Engine)
 	marketingHdl.PrivateRoutes(res.Engine)
 	intrHdl.PrivateRoutes(res.Engine)
+
+	// 权限校验
+	res.Use(checkPermissionMiddleware.Build())
+	prjHdl.PrivateRoutes(res.Engine)
+
 	// 会员校验
 	res.Use(checkMembershipMiddleware.Build())
 	qh.MemberRoutes(res.Engine)

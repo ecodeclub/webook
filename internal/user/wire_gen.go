@@ -10,6 +10,7 @@ import (
 	"github.com/ecodeclub/ecache"
 	"github.com/ecodeclub/mq-api"
 	"github.com/ecodeclub/webook/internal/member"
+	"github.com/ecodeclub/webook/internal/permission"
 	"github.com/ecodeclub/webook/internal/user/internal/event"
 	"github.com/ecodeclub/webook/internal/user/internal/repository"
 	"github.com/ecodeclub/webook/internal/user/internal/repository/cache"
@@ -24,7 +25,7 @@ import (
 
 // Injectors from wire.go:
 
-func InitHandler(db *gorm.DB, cache2 ecache.Cache, q mq.MQ, creators []string, memberSvc *member.Module) *web.Handler {
+func InitHandler(db *gorm.DB, cache2 ecache.Cache, q mq.MQ, creators []string, memberSvc *member.Module, permissionSvc *permission.Module) *web.Handler {
 	oAuth2Service := initWechatService()
 	userDAO := initDAO(db)
 	userCache := cache.NewUserECache(cache2)
@@ -32,7 +33,8 @@ func InitHandler(db *gorm.DB, cache2 ecache.Cache, q mq.MQ, creators []string, m
 	registrationEventProducer := initRegistrationEventProducer(q)
 	userService := service.NewUserService(userRepository, registrationEventProducer)
 	serviceService := memberSvc.Svc
-	handler := web.NewHandler(oAuth2Service, userService, serviceService, creators)
+	service2 := permissionSvc.Svc
+	handler := web.NewHandler(oAuth2Service, userService, serviceService, service2, creators)
 	return handler
 }
 
