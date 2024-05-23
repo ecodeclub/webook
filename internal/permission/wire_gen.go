@@ -7,6 +7,7 @@
 package permission
 
 import (
+	"context"
 	"sync"
 
 	"github.com/ecodeclub/mq-api"
@@ -24,10 +25,7 @@ func InitModule(db *gorm.DB, q mq.MQ) (*Module, error) {
 	daoPermissionDAO := initDAO(db)
 	permissionRepository := repository.NewPermissionRepository(daoPermissionDAO)
 	serviceService := service.NewPermissionService(permissionRepository)
-	permissionEventConsumer, err := event.NewPermissionEventConsumer(serviceService, q)
-	if err != nil {
-		return nil, err
-	}
+	permissionEventConsumer := initConsumer(serviceService, q)
 	module := &Module{
 		Svc: serviceService,
 		c:   permissionEventConsumer,
@@ -38,9 +36,18 @@ func InitModule(db *gorm.DB, q mq.MQ) (*Module, error) {
 // wire.go:
 
 type (
-	Service            = service.Service
-	PersonalPermission = domain.PersonalPermission
+	Service    = service.Service
+	Permission = domain.Permission
 )
+
+func initConsumer(svc service.Service, mq2 mq.MQ) *event.PermissionEventConsumer {
+	res, err := event.NewPermissionEventConsumer(svc, mq2)
+	if err != nil {
+		panic(err)
+	}
+	res.Start(context.Background())
+	return res
+}
 
 var (
 	once          = &sync.Once{}

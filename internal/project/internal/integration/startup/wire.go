@@ -18,12 +18,13 @@ package startup
 
 import (
 	"github.com/ecodeclub/webook/internal/interactive"
+	"github.com/ecodeclub/webook/internal/permission"
 	"github.com/ecodeclub/webook/internal/project"
 	testioc "github.com/ecodeclub/webook/internal/test/ioc"
 	"github.com/google/wire"
 )
 
-func InitModule(intrModule *interactive.Module) (*project.Module, error) {
+func InitModule(intrModule *interactive.Module, permModule *permission.Module) (*project.Module, error) {
 	wire.Build(project.InitModule, testioc.InitDB, testioc.InitMQ)
 	return new(project.Module), nil
 }

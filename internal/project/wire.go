@@ -19,6 +19,8 @@ package project
 import (
 	"sync"
 
+	"github.com/ecodeclub/webook/internal/permission"
+
 	"github.com/ecodeclub/webook/internal/interactive"
 
 	"github.com/ecodeclub/mq-api"
@@ -34,6 +36,7 @@ import (
 
 func InitModule(db *egorm.Component,
 	intrModule *interactive.Module,
+	permModule *permission.Module,
 	q mq.MQ) (*Module, error) {
 	wire.Build(
 		initSyncToSearchEventProducer,
@@ -49,6 +52,7 @@ func InitModule(db *egorm.Component,
 		service.NewService,
 		web.NewHandler,
 		wire.FieldsOf(new(*interactive.Module), "Svc"),
+		wire.FieldsOf(new(*permission.Module), "Svc"),
 		wire.Struct(new(Module), "*"))
 	return &Module{}, nil
 }

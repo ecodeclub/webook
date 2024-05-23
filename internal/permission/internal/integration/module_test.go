@@ -106,7 +106,7 @@ func (s *ModuleTestSuite) TestConsumer_ConsumePermissionEvent() {
 				permissions, err := s.repo.FindPersonalPermissions(context.Background(), testID)
 				require.NoError(t, err)
 
-				require.ElementsMatch(t, []domain.PersonalPermission{
+				require.ElementsMatch(t, []domain.Permission{
 					{
 						Uid:   testID,
 						Biz:   "project",
@@ -127,7 +127,7 @@ func (s *ModuleTestSuite) TestConsumer_ConsumePermissionEvent() {
 			before: func(t *testing.T) {
 				t.Helper()
 				uid := int64(22971)
-				err := s.repo.CreatePersonalPermission(context.Background(), []domain.PersonalPermission{
+				err := s.repo.CreatePersonalPermission(context.Background(), []domain.Permission{
 					{
 						Uid:   uid,
 						Biz:   "interview",
@@ -169,7 +169,7 @@ func (s *ModuleTestSuite) TestConsumer_ConsumePermissionEvent() {
 				uid := int64(22971)
 				permissions, err := s.repo.FindPersonalPermissions(context.Background(), uid)
 				require.NoError(t, err)
-				require.ElementsMatch(t, []domain.PersonalPermission{
+				require.ElementsMatch(t, []domain.Permission{
 					{
 						Uid:   uid,
 						Biz:   "interview",
@@ -190,7 +190,7 @@ func (s *ModuleTestSuite) TestConsumer_ConsumePermissionEvent() {
 			before: func(t *testing.T) {
 				t.Helper()
 				uid := int64(33977)
-				err := s.repo.CreatePersonalPermission(context.Background(), []domain.PersonalPermission{
+				err := s.repo.CreatePersonalPermission(context.Background(), []domain.Permission{
 					{
 						Uid:   uid,
 						Biz:   "interview",
@@ -226,7 +226,7 @@ func (s *ModuleTestSuite) TestConsumer_ConsumePermissionEvent() {
 				uid := int64(33977)
 				permissions, err := s.repo.FindPersonalPermissions(context.Background(), uid)
 				require.NoError(t, err)
-				require.ElementsMatch(t, []domain.PersonalPermission{
+				require.ElementsMatch(t, []domain.Permission{
 					{
 						Uid:   uid,
 						Biz:   "interview",
@@ -278,7 +278,7 @@ func (s *ModuleTestSuite) TestService_HasPersonalPermission() {
 		name       string
 		before     func(t *testing.T)
 		newSvcFunc func(t *testing.T) service.Service
-		req        domain.PersonalPermission
+		req        domain.Permission
 
 		wantResult bool
 		wantErr    error
@@ -287,7 +287,7 @@ func (s *ModuleTestSuite) TestService_HasPersonalPermission() {
 			name: "检查用户权限_有权限",
 			before: func(t *testing.T) {
 				t.Helper()
-				var err = s.repo.CreatePersonalPermission(context.Background(), []domain.PersonalPermission{
+				var err = s.repo.CreatePersonalPermission(context.Background(), []domain.Permission{
 					{
 						Uid:   testID,
 						Biz:   "ai",
@@ -301,7 +301,7 @@ func (s *ModuleTestSuite) TestService_HasPersonalPermission() {
 				t.Helper()
 				return service.NewPermissionService(s.repo)
 			},
-			req: domain.PersonalPermission{
+			req: domain.Permission{
 				Uid:   testID,
 				Biz:   "ai",
 				BizID: 47,
@@ -317,7 +317,7 @@ func (s *ModuleTestSuite) TestService_HasPersonalPermission() {
 				t.Helper()
 				return service.NewPermissionService(s.repo)
 			},
-			req: domain.PersonalPermission{
+			req: domain.Permission{
 				Uid:   testID,
 				Biz:   "NoPermission",
 				BizID: 1,
@@ -349,7 +349,7 @@ func (s *ModuleTestSuite) TestService_FindPersonalPermissions() {
 		newSvcFunc func(t *testing.T) service.Service
 		uid        int64
 
-		wantResult map[string][]domain.PersonalPermission
+		wantResult map[string][]domain.Permission
 		wantErr    error
 	}{
 		{
@@ -357,7 +357,7 @@ func (s *ModuleTestSuite) TestService_FindPersonalPermissions() {
 			before: func(t *testing.T) {
 				t.Helper()
 				uid := int64(79080127)
-				var err = s.repo.CreatePersonalPermission(context.Background(), []domain.PersonalPermission{
+				var err = s.repo.CreatePersonalPermission(context.Background(), []domain.Permission{
 					{
 						Uid:   uid,
 						Biz:   "music",
@@ -384,7 +384,7 @@ func (s *ModuleTestSuite) TestService_FindPersonalPermissions() {
 				return service.NewPermissionService(s.repo)
 			},
 			uid: 79080127,
-			wantResult: map[string][]domain.PersonalPermission{
+			wantResult: map[string][]domain.Permission{
 				"music": {
 					{
 						Uid:   79080127,
@@ -418,7 +418,7 @@ func (s *ModuleTestSuite) TestService_FindPersonalPermissions() {
 				return service.NewPermissionService(s.repo)
 			},
 			uid:        2179832,
-			wantResult: map[string][]domain.PersonalPermission{},
+			wantResult: map[string][]domain.Permission{},
 			wantErr:    nil,
 		},
 	}

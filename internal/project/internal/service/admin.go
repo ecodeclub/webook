@@ -18,6 +18,8 @@ import (
 	"context"
 	"time"
 
+	"github.com/lithammer/shortuuid/v4"
+
 	"github.com/ecodeclub/webook/internal/project/internal/event"
 	"github.com/gotomicro/ego/core/elog"
 
@@ -108,6 +110,8 @@ func (svc *projectAdminService) IntroductionSave(ctx context.Context, pid int64,
 
 func (svc *projectAdminService) Publish(ctx context.Context, prj domain.Project) (int64, error) {
 	prj.Status = domain.ProjectStatusPublished
+	sn := shortuuid.New()
+	prj.SN = sn
 	id, err := svc.adminRepo.Sync(ctx, prj)
 	if err == nil {
 		// 同步数据，这边后续读写分离之后，可能会有问题
@@ -157,6 +161,8 @@ func (svc *projectAdminService) List(ctx context.Context, offset int, limit int)
 
 func (svc *projectAdminService) Save(ctx context.Context,
 	prj domain.Project) (int64, error) {
+	sn := shortuuid.New()
+	prj.SN = sn
 	prj.Status = domain.ProjectStatusUnpublished
 	return svc.adminRepo.Save(ctx, prj)
 }

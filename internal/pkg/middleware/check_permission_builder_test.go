@@ -120,7 +120,7 @@ func TestCheckPermission(t *testing.T) {
 
 				mockPermissionSvc := permissionmocks.NewMockService(ctrl)
 
-				mockPermissionSvc.EXPECT().HasPermission(gomock.Any(), permission.PersonalPermission{
+				mockPermissionSvc.EXPECT().HasPermission(gomock.Any(), permission.Permission{
 					Uid:   uid,
 					Biz:   biz,
 					BizID: bizId,
@@ -175,7 +175,7 @@ func TestCheckPermission(t *testing.T) {
 
 				mockPermissionSvc := permissionmocks.NewMockService(ctrl)
 
-				mockPermissionSvc.EXPECT().HasPermission(gomock.Any(), permission.PersonalPermission{
+				mockPermissionSvc.EXPECT().HasPermission(gomock.Any(), permission.Permission{
 					Uid:   uid,
 					Biz:   biz,
 					BizID: bizId,
@@ -337,7 +337,7 @@ func TestCheckPermission(t *testing.T) {
 				bizId := int64(107)
 
 				mockPermissionSvc := permissionmocks.NewMockService(ctrl)
-				mockPermissionSvc.EXPECT().HasPermission(gomock.Any(), permission.PersonalPermission{
+				mockPermissionSvc.EXPECT().HasPermission(gomock.Any(), permission.Permission{
 					Uid:   uid,
 					Biz:   biz,
 					BizID: bizId,
@@ -390,7 +390,7 @@ func TestCheckPermission(t *testing.T) {
 
 				mockPermissionSvc := permissionmocks.NewMockService(ctrl)
 
-				mockPermissionSvc.EXPECT().HasPermission(gomock.Any(), permission.PersonalPermission{
+				mockPermissionSvc.EXPECT().HasPermission(gomock.Any(), permission.Permission{
 					Uid:   uid,
 					Biz:   biz,
 					BizID: bizId,
@@ -444,7 +444,7 @@ func TestCheckPermission(t *testing.T) {
 
 				mockPermissionSvc := permissionmocks.NewMockService(ctrl)
 
-				mockPermissionSvc.EXPECT().HasPermission(gomock.Any(), permission.PersonalPermission{
+				mockPermissionSvc.EXPECT().HasPermission(gomock.Any(), permission.Permission{
 					Uid:   uid,
 					Biz:   biz,
 					BizID: bizId,

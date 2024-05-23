@@ -22,6 +22,9 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/ecodeclub/webook/internal/permission"
+	permissionmocks "github.com/ecodeclub/webook/internal/permission/mocks"
+
 	"github.com/ecodeclub/ginx/session"
 	"github.com/ecodeclub/webook/internal/interactive"
 	intrmocks "github.com/ecodeclub/webook/internal/interactive/mocks"
@@ -47,10 +50,11 @@ import (
 
 type ProjectTestSuite struct {
 	suite.Suite
-	hdl    *project.Handler
-	server *egin.Component
-	db     *egorm.Component
-	prjDAO dao.ProjectDAO
+	hdl     *project.Handler
+	server  *egin.Component
+	db      *egorm.Component
+	prjDAO  dao.ProjectDAO
+	permSvc *permissionmocks.MockService
 }
 
 func (s *ProjectTestSuite) SetupSuite() {
@@ -82,7 +86,13 @@ func (s *ProjectTestSuite) SetupSuite() {
 		}
 		return res, nil
 	}).AnyTimes()
-	m, err := startup.InitModule(intrModule)
+
+	permSvc := permissionmocks.NewMockService(ctrl)
+	permModule := &permission.Module{
+		Svc: permSvc,
+	}
+	s.permSvc = permSvc
+	m, err := startup.InitModule(intrModule, permModule)
 	require.NoError(s.T(), err)
 	s.hdl = m.Hdl
 
@@ -137,6 +147,7 @@ func (s *ProjectTestSuite) TestProjectList() {
 				Data: []web.Project{
 					{
 						Id:     9,
+						SN:     "SN9",
 						Title:  "标题9",
 						Status: domain.ProjectStatusPublished.ToUint8(),
 						Labels: []string{"标签9"},
@@ -152,6 +163,7 @@ func (s *ProjectTestSuite) TestProjectList() {
 					},
 					{
 						Id:     7,
+						SN:     "SN7",
 						Title:  "标题7",
 						Status: domain.ProjectStatusPublished.ToUint8(),
 						Labels: []string{"标签7"},
@@ -179,6 +191,7 @@ func (s *ProjectTestSuite) TestProjectList() {
 				Data: []web.Project{
 					{
 						Id:     1,
+						SN:     "SN1",
 						Title:  "标题1",
 						Status: domain.ProjectStatusPublished.ToUint8(),
 						Labels: []string{"标签1"},
@@ -213,26 +226,20 @@ func (s *ProjectTestSuite) TestProjectList() {
 }
 
 func (s *ProjectTestSuite) TestProjectDetail() {
-	// 插入各种数据
-	prj := s.mockProject(1)
-	err := s.db.Create(&prj).Error
-	require.NoError(s.T(), err)
-	// 难点
-	diff := s.mockDiff(1, 1)
-	err = s.db.Create(&diff).Error
-	require.NoError(s.T(), err)
-	// 简历
-	rsm := s.mockRsm(1, 1)
-	err = s.db.Create(&rsm).Error
-	require.NoError(s.T(), err)
-	// 项目介绍
-	intr := s.mockIntr(1, 1)
-	err = s.db.Create(&intr).Error
-	require.NoError(s.T(), err)
+	s.insertWholeProject(1)
+	s.insertWholeProject(3)
 
-	que := s.mockQue(1, 1)
-	err = s.db.Create(&que).Error
-	require.NoError(s.T(), err)
+	s.permSvc.EXPECT().HasPermission(gomock.Any(), permission.Permission{
+		Biz:   "project",
+		BizID: 1,
+		Uid:   123,
+	}).Return(true, nil)
+
+	s.permSvc.EXPECT().HasPermission(gomock.Any(), permission.Permission{
+		Biz:   "project",
+		BizID: 3,
+		Uid:   123,
+	}).Return(false, nil)
 
 	testCases := []struct {
 		name string
@@ -242,17 +249,19 @@ func (s *ProjectTestSuite) TestProjectDetail() {
 		wantResp test.Result[web.Project]
 	}{
 		{
-			name:     "获取成功",
+			name:     "有权限",
 			req:      web.IdReq{Id: 1},
 			wantCode: 200,
 			wantResp: test.Result[web.Project]{
 				Data: web.Project{
-					Id:     1,
-					Title:  "标题1",
-					Status: domain.ProjectStatusPublished.ToUint8(),
-					Labels: []string{"标签1"},
-					Desc:   "描述1",
-					Utime:  1,
+					Id:        1,
+					SN:        "SN1",
+					Title:     "标题1",
+					Status:    domain.ProjectStatusPublished.ToUint8(),
+					Labels:    []string{"标签1"},
+					Desc:      "描述1",
+					Utime:     1,
+					Permitted: true,
 					Interactive: web.Interactive{
 						ViewCnt:    2,
 						LikeCnt:    3,
@@ -262,43 +271,66 @@ func (s *ProjectTestSuite) TestProjectDetail() {
 					},
 					Difficulties: []web.Difficulty{
 						{
-							Id:       1,
-							Title:    "标题1",
+							Id:       11,
+							Title:    "标题11",
 							Status:   domain.ProjectStatusPublished.ToUint8(),
-							Content:  "内容1",
-							Analysis: "分析1",
-							Utime:    1,
+							Content:  "内容11",
+							Analysis: "分析11",
+							Utime:    11,
 						},
 					},
 					Resumes: []web.Resume{
 						{
-							Id:       1,
+							Id:       11,
 							Role:     domain.RoleManager.ToUint8(),
-							Content:  "内容1",
-							Analysis: "分析1",
+							Content:  "内容11",
+							Analysis: "分析11",
 							Status:   domain.ResumeStatusPublished.ToUint8(),
-							Utime:    1,
+							Utime:    11,
 						},
 					},
 					Introductions: []web.Introduction{
 						{
-							Id:       1,
+							Id:       11,
 							Role:     domain.RoleManager.ToUint8(),
-							Content:  "内容1",
-							Analysis: "分析1",
+							Content:  "内容11",
+							Analysis: "分析11",
 							Status:   domain.ResumeStatusPublished.ToUint8(),
-							Utime:    1,
+							Utime:    11,
 						},
 					},
 					Questions: []web.Question{
 						{
-							Id:       1,
-							Analysis: "分析1",
-							Answer:   "回答1",
-							Title:    "标题1",
+							Id:       11,
+							Analysis: "分析11",
+							Answer:   "回答11",
+							Title:    "标题11",
 							Status:   domain.ResumeStatusPublished.ToUint8(),
-							Utime:    1,
+							Utime:    11,
 						},
+					},
+				},
+			},
+		},
+		{
+			name:     "无权限",
+			req:      web.IdReq{Id: 3},
+			wantCode: 200,
+			wantResp: test.Result[web.Project]{
+				Data: web.Project{
+					Id:     3,
+					SN:     "SN3",
+					Title:  "标题3",
+					Status: domain.ProjectStatusPublished.ToUint8(),
+					Labels: []string{"标签3"},
+					Desc:   "描述3",
+					Utime:  3,
+					Interactive: web.Interactive{
+						ViewCnt:    4,
+						LikeCnt:    5,
+						CollectCnt: 6,
+						Liked:      true,
+						Collected:  false,
 					},
 				},
 			},
@@ -321,9 +353,33 @@ func (s *ProjectTestSuite) TestProjectDetail() {
 
 }
 
+func (s *ProjectTestSuite) insertWholeProject(id int64) {
+	// 插入各种数据
+	prj := s.mockProject(id)
+	err := s.db.Create(&prj).Error
+	require.NoError(s.T(), err)
+	// 难点
+	diff := s.mockDiff(id, id*10+1)
+	err = s.db.Create(&diff).Error
+	require.NoError(s.T(), err)
+	// 简历
+	rsm := s.mockRsm(id, id*10+1)
+	err = s.db.Create(&rsm).Error
+	require.NoError(s.T(), err)
+	// 项目介绍
+	intr := s.mockIntr(id, id*10+1)
+	err = s.db.Create(&intr).Error
+	require.NoError(s.T(), err)
+
+	que := s.mockQue(id, id*10+1)
+	err = s.db.Create(&que).Error
+	require.NoError(s.T(), err)
+}
+
 func (s *ProjectTestSuite) mockProject(id int64) dao.PubProject {
 	return dao.PubProject{
 		Id:     id,
+		SN:     fmt.Sprintf("SN%d", id),
 		Title:  fmt.Sprintf("标题%d", id),
 		Status: uint8(id%2 + 1),
 		Labels: sqlx.JsonColumn[[]string]{Val: []string{fmt.Sprintf("标签%d", id)}, Valid: true},

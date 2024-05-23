@@ -19,6 +19,7 @@ import (
 	"github.com/ecodeclub/ginx"
 	"github.com/ecodeclub/ginx/session"
 	"github.com/ecodeclub/webook/internal/interactive"
+	"github.com/ecodeclub/webook/internal/permission"
 	"github.com/ecodeclub/webook/internal/project/internal/domain"
 	"github.com/ecodeclub/webook/internal/project/internal/service"
 	"github.com/gin-gonic/gin"
@@ -30,13 +31,17 @@ import (
 type Handler struct {
 	svc     service.Service
 	intrSvc interactive.Service
+	permSvc permission.Service
 	logger  *elog.Component
 }
 
-func NewHandler(svc service.Service, intrSvc interactive.Service) *Handler {
+func NewHandler(svc service.Service,
+	permSvc permission.Service,
+	intrSvc interactive.Service) *Handler {
 	return &Handler{
 		svc:     svc,
 		intrSvc: intrSvc,
+		permSvc: permSvc,
 		logger:  elog.DefaultLogger,
 	}
 }
@@ -80,9 +85,25 @@ func (h *Handler) Detail(ctx *ginx.Context, req IdReq, sess session.Session) (gi
 		detail domain.Project
 		intr   interactive.Interactive
 	)
+
+	uid := sess.Claims().Uid
+	perm, err := h.permSvc.HasPermission(ctx, permission.Permission{
+		Uid:   uid,
+		Biz:   domain.BizProject,
+		BizID: req.Id,
+	})
+	if err != nil {
+		return systemErrorResult, err
+	}
 	eg.Go(func() error {
 		var err error
-		detail, err = h.svc.Detail(ctx, req.Id)
+		// 如果有权限，就返回详情，
+		// 否则只是返回一个粗略情况
+		if perm {
+			detail, err = h.svc.Detail(ctx, req.Id)
+		} else {
+			detail, err = h.svc.Brief(ctx, req.Id)
+		}
 		return err
 	})
 	eg.Go(func() error {
@@ -90,12 +111,13 @@ func (h *Handler) Detail(ctx *ginx.Context, req IdReq, sess session.Session) (gi
 		intr, err = h.intrSvc.Get(ctx, domain.BizProject, req.Id, sess.Claims().Uid)
 		return err
 	})
-	err := eg.Wait()
+	err = eg.Wait()
 	if err != nil {
 		return systemErrorResult, err
 	}
+	prj := newProject(detail, intr)
+	prj.Permitted = perm
 	return ginx.Result{
-		Data: newProject(detail, intr),
+		Data: prj,
 	}, nil
-
 }

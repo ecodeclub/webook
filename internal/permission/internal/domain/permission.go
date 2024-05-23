@@ -14,7 +14,7 @@
 
 package domain
 
-type PersonalPermission struct {
+type Permission struct {
 	Uid   int64
 	Biz   string
 	BizID int64

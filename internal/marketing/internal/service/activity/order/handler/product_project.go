@@ -34,10 +34,16 @@ func NewProductProjectHandler(permissionEventProducer producer.PermissionEventPr
 
 func (h *ProductProjectHandler) Handle(ctx context.Context, info OrderInfo) error {
 	ids := make([]int64, 0, len(info.Items))
+	type Attrs struct {
+		ProjectId int64 `json:"projectId"`
+	}
 	for _, item := range info.Items {
-		for i := int64(0); i < item.SKU.Quantity; i++ {
-			ids = append(ids, item.SKU.ID)
+		var attrs Attrs
+		err := item.SKU.UnmarshalAttrs(&attrs)
+		if err != nil {
+			return err
 		}
+		ids = append(ids, attrs.ProjectId)
 	}
 	return h.permissionEventProducer.Produce(ctx, event.PermissionEvent{
 		Uid:    info.Order.BuyerID,

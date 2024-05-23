@@ -52,6 +52,7 @@ import (
 
 func initGinxServer(sp session.Provider,
 	checkMembershipMiddleware *middleware.CheckMembershipMiddlewareBuilder,
+	// 这个暂时用不上
 	checkPermissionMiddleware *middleware.CheckPermissionMiddlewareBuilder,
 	qh *baguwen.Handler,
 	qsh *baguwen.QuestionSetHandler,
@@ -114,7 +115,6 @@ func initGinxServer(sp session.Provider,
 	intrHdl.PrivateRoutes(res.Engine)
 
 	// 权限校验
-	res.Use(checkPermissionMiddleware.Build())
 	prjHdl.PrivateRoutes(res.Engine)
 
 	// 会员校验

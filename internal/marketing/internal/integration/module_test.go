@@ -475,7 +475,7 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeOrderEvent() {
 		},
 
 		{
-			name: "消费完成订单消息成功_通过项目商品开通项目权限_单订单项_多个数量",
+			name: "消费完成订单消息成功_通过项目商品开通项目权限_单订单项",
 			newMQFunc: func(t *testing.T, ctrl *gomock.Controller, evt event.OrderEvent) mq.MQ {
 				t.Helper()
 
@@ -487,7 +487,7 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeOrderEvent() {
 				permissionEvent := s.newPermissionEventMessage(t, event.PermissionEvent{
 					Uid:    evt.BuyerID,
 					Biz:    "project",
-					BizIds: []int64{10, 10},
+					BizIds: []int64{123},
 					Action: "购买项目商品",
 				})
 				mockProducer.EXPECT().Produce(gomock.Any(), permissionEvent).Return(&mq.ProducerResult{}, nil).Times(2)
@@ -520,7 +520,7 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeOrderEvent() {
 								SKU: order.SKU{
 									ID:            10,
 									SN:            "sku-sn-project-product-1",
-									Attrs:         "",
+									Attrs:         `{"projectId": 123}`,
 									OriginalPrice: 9900,
 									RealPrice:     9900,
 									Quantity:      2,
@@ -552,7 +552,7 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeOrderEvent() {
 			after:          func(t *testing.T, evt event.OrderEvent) {},
 		},
 		{
-			name: "消费完成订单消息成功_通过项目商品开通项目权限_多订单项_混合数量",
+			name: "消费完成订单消息成功_通过项目商品开通项目权限_多订单项",
 			newMQFunc: func(t *testing.T, ctrl *gomock.Controller, evt event.OrderEvent) mq.MQ {
 				t.Helper()
 
@@ -564,7 +564,7 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeOrderEvent() {
 				permissionEvent := s.newPermissionEventMessage(t, event.PermissionEvent{
 					Uid:    evt.BuyerID,
 					Biz:    "project",
-					BizIds: []int64{12, 12, 13},
+					BizIds: []int64{234, 345},
 					Action: "购买项目商品",
 				})
 				mockProducer.EXPECT().Produce(gomock.Any(), permissionEvent).Return(&mq.ProducerResult{}, nil).Times(2)
@@ -597,7 +597,7 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeOrderEvent() {
 								SKU: order.SKU{
 									ID:            12,
 									SN:            "sku-sn-project-product-2",
-									Attrs:         "",
+									Attrs:         `{"projectId": 234}`,
 									OriginalPrice: 9900,
 									RealPrice:     9900,
 									Quantity:      2,
@@ -612,7 +612,7 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeOrderEvent() {
 								SKU: order.SKU{
 									ID:            13,
 									SN:            "sku-sn-project-product-3",
-									Attrs:         "",
+									Attrs:         `{"projectId": 345}`,
 									OriginalPrice: 9900,
 									RealPrice:     9900,
 									Quantity:      1,

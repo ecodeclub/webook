@@ -23,9 +23,9 @@ import (
 )
 
 type PermissionRepository interface {
-	CreatePersonalPermission(ctx context.Context, ps []domain.PersonalPermission) error
-	HasPersonalPermission(ctx context.Context, p domain.PersonalPermission) (bool, error)
-	FindPersonalPermissions(ctx context.Context, uid int64) ([]domain.PersonalPermission, error)
+	CreatePersonalPermission(ctx context.Context, ps []domain.Permission) error
+	HasPersonalPermission(ctx context.Context, p domain.Permission) (bool, error)
+	FindPersonalPermissions(ctx context.Context, uid int64) ([]domain.Permission, error)
 }
 
 type permissionRepository struct {
@@ -36,19 +36,19 @@ func NewPermissionRepository(dao dao.PermissionDAO) PermissionRepository {
 	return &permissionRepository{dao: dao}
 }
 
-func (r *permissionRepository) CreatePersonalPermission(ctx context.Context, ps []domain.PersonalPermission) error {
-	entities := slice.Map(ps, func(idx int, src domain.PersonalPermission) dao.PersonalPermission {
+func (r *permissionRepository) CreatePersonalPermission(ctx context.Context, ps []domain.Permission) error {
+	entities := slice.Map(ps, func(idx int, src domain.Permission) dao.PersonalPermission {
 		return r.toEntity(src)
 	})
 	return r.dao.CreatePersonalPermission(ctx, entities)
 }
 
-func (r *permissionRepository) HasPersonalPermission(ctx context.Context, perm domain.PersonalPermission) (bool, error) {
+func (r *permissionRepository) HasPersonalPermission(ctx context.Context, perm domain.Permission) (bool, error) {
 	count, err := r.dao.CountPersonalPermission(ctx, r.toEntity(perm))
 	return count > 0, err
 }
 
-func (r *permissionRepository) toEntity(p domain.PersonalPermission) dao.PersonalPermission {
+func (r *permissionRepository) toEntity(p domain.Permission) dao.PersonalPermission {
 	return dao.PersonalPermission{
 		Uid:   p.Uid,
 		Biz:   p.Biz,
@@ -57,18 +57,18 @@ func (r *permissionRepository) toEntity(p domain.PersonalPermission) dao.Persona
 	}
 }
 
-func (r *permissionRepository) FindPersonalPermissions(ctx context.Context, uid int64) ([]domain.PersonalPermission, error) {
+func (r *permissionRepository) FindPersonalPermissions(ctx context.Context, uid int64) ([]domain.Permission, error) {
 	ps, err := r.dao.FindPersonalPermissions(ctx, uid)
 	if err != nil {
 		return nil, err
 	}
-	return slice.Map(ps, func(idx int, src dao.PersonalPermission) domain.PersonalPermission {
+	return slice.Map(ps, func(idx int, src dao.PersonalPermission) domain.Permission {
 		return r.toDomain(src)
 	}), err
 }
 
-func (r *permissionRepository) toDomain(p dao.PersonalPermission) domain.PersonalPermission {
-	return domain.PersonalPermission{
+func (r *permissionRepository) toDomain(p dao.PersonalPermission) domain.Permission {
+	return domain.Permission{
 		Uid:   p.Uid,
 		Biz:   p.Biz,
 		BizID: p.BizId,

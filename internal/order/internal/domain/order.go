@@ -14,6 +14,8 @@
 
 package domain
 
+import "encoding/json"
+
 type OrderStatus uint8
 
 func (s OrderStatus) ToUint8() uint8 {
@@ -74,4 +76,9 @@ type SKU struct {
 	OriginalPrice int64
 	RealPrice     int64
 	Quantity      int64
+}
+
+// UnmarshalAttrs 传入一个指针
+func (s SKU) UnmarshalAttrs(val any) error {
+	return json.Unmarshal([]byte(s.Attrs), val)
 }

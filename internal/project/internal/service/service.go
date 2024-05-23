@@ -29,6 +29,8 @@ import (
 type Service interface {
 	List(ctx context.Context, offset int, limit int) ([]domain.Project, error)
 	Detail(ctx context.Context, id int64) (domain.Project, error)
+	// Brief 获得 project 本身的内容
+	Brief(ctx context.Context, id int64) (domain.Project, error)
 }
 
 var _ Service = &service{}
@@ -37,6 +39,10 @@ type service struct {
 	repo     repository.Repository
 	producer event.InteractiveEventProducer
 	logger   *elog.Component
+}
+
+func (s *service) Brief(ctx context.Context, id int64) (domain.Project, error) {
+	return s.repo.Brief(ctx, id)
 }
 
 func (s *service) Detail(ctx context.Context, id int64) (domain.Project, error) {
