@@ -165,7 +165,7 @@ func (h *Handler) Callback(ctx *ginx.Context, req WechatCallback) (ginx.Result, 
 		return systemErrorResult, err
 	}
 	for biz, permissions := range permissionGroup {
-		bizIds := slice.Map(permissions, func(idx int, src permission.PersonalPermission) string {
+		bizIds := slice.Map(permissions, func(idx int, src permission.Permission) string {
 			return strconv.FormatInt(src.BizID, 10)
 		})
 		perms[biz] = strings.Join(bizIds, ",")

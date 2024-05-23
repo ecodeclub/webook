@@ -30,6 +30,7 @@ type Page struct {
 
 type Project struct {
 	Id            int64          `json:"id,omitempty"`
+	SN            string         `json:"sn,omitempty"`
 	Title         string         `json:"title,omitempty"`
 	Status        uint8          `json:"status,omitempty"`
 	Desc          string         `json:"desc,omitempty"`
@@ -40,12 +41,14 @@ type Project struct {
 	Questions     []Question     `json:"questions,omitempty"`
 	Introductions []Introduction `json:"introductions,omitempty"`
 	Interactive   Interactive    `json:"interactive,omitempty"`
+	Permitted     bool           `json:"permitted"`
 }
 
 func newProject(p domain.Project, intr interactive.Interactive) Project {
 	return Project{
 		Id:     p.Id,
 		Title:  p.Title,
+		SN:     p.SN,
 		Status: p.Status.ToUint8(),
 		Desc:   p.Desc,
 		Labels: p.Labels,
@@ -70,6 +73,7 @@ func (p Project) toDomain() domain.Project {
 	return domain.Project{
 		Id:     p.Id,
 		Title:  p.Title,
+		SN:     p.SN,
 		Status: domain.ProjectStatus(p.Status),
 		Desc:   p.Desc,
 		Labels: p.Labels,

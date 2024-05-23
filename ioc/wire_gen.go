@@ -92,7 +92,7 @@ func InitApp() (*App, error) {
 		return nil, err
 	}
 	handler8 := orderModule.Hdl
-	projectModule, err := project.InitModule(db, interactiveModule, mq)
+	projectModule, err := project.InitModule(db, interactiveModule, permissionModule, mq)
 	if err != nil {
 		return nil, err
 	}

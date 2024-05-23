@@ -29,10 +29,10 @@ type PermissionEvent struct {
 	Action string  `json:"action"` // 购买项目商品, 兑换项目商品
 }
 
-func (p PermissionEvent) toDomain() []domain.PersonalPermission {
-	r := make([]domain.PersonalPermission, 0, len(p.BizIds))
+func (p PermissionEvent) toDomain() []domain.Permission {
+	r := make([]domain.Permission, 0, len(p.BizIds))
 	for _, id := range p.BizIds {
-		r = append(r, domain.PersonalPermission{
+		r = append(r, domain.Permission{
 			Uid:   p.Uid,
 			Biz:   p.Biz,
 			BizID: id,

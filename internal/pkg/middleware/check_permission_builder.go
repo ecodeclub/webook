@@ -94,7 +94,7 @@ func (c *CheckPermissionMiddlewareBuilder) Build() gin.HandlerFunc {
 
 		// 如果不在,实时查询permission模块,并将验证通过的 resource_id 放入 resources 中
 		uid := sess.Claims().Uid
-		ok, err = c.svc.HasPermission(ctx.Request.Context(), permission.PersonalPermission{
+		ok, err = c.svc.HasPermission(ctx.Request.Context(), permission.Permission{
 			Uid:   uid,
 			Biz:   resourceName,
 			BizID: resourceId,

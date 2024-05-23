@@ -23,9 +23,9 @@ import (
 
 //go:generate mockgen -source=service.go -package=permissionmocks -destination=../../mocks/permission.mock.go -typed Service
 type Service interface {
-	CreatePersonalPermission(ctx context.Context, ps []domain.PersonalPermission) error
-	HasPermission(ctx context.Context, p domain.PersonalPermission) (bool, error)
-	FindPersonalPermissions(ctx context.Context, uid int64) (map[string][]domain.PersonalPermission, error)
+	CreatePersonalPermission(ctx context.Context, ps []domain.Permission) error
+	HasPermission(ctx context.Context, p domain.Permission) (bool, error)
+	FindPersonalPermissions(ctx context.Context, uid int64) (map[string][]domain.Permission, error)
 }
 
 type permissionService struct {
@@ -36,20 +36,20 @@ func NewPermissionService(repo repository.PermissionRepository) Service {
 	return &permissionService{repo: repo}
 }
 
-func (s *permissionService) CreatePersonalPermission(ctx context.Context, ps []domain.PersonalPermission) error {
+func (s *permissionService) CreatePersonalPermission(ctx context.Context, ps []domain.Permission) error {
 	return s.repo.CreatePersonalPermission(ctx, ps)
 }
 
-func (s *permissionService) HasPermission(ctx context.Context, p domain.PersonalPermission) (bool, error) {
+func (s *permissionService) HasPermission(ctx context.Context, p domain.Permission) (bool, error) {
 	return s.repo.HasPersonalPermission(ctx, p)
 }
 
-func (s *permissionService) FindPersonalPermissions(ctx context.Context, uid int64) (map[string][]domain.PersonalPermission, error) {
+func (s *permissionService) FindPersonalPermissions(ctx context.Context, uid int64) (map[string][]domain.Permission, error) {
 	ps, err := s.repo.FindPersonalPermissions(ctx, uid)
 	if err != nil {
 		return nil, err
 	}
-	res := make(map[string][]domain.PersonalPermission)
+	res := make(map[string][]domain.Permission)
 	for _, p := range ps {
 		res[p.Biz] = append(res[p.Biz], p)
 	}

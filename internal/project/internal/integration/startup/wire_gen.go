@@ -8,16 +8,17 @@ package startup
 
 import (
 	"github.com/ecodeclub/webook/internal/interactive"
+	"github.com/ecodeclub/webook/internal/permission"
 	"github.com/ecodeclub/webook/internal/project"
 	testioc "github.com/ecodeclub/webook/internal/test/ioc"
 )
 
 // Injectors from wire.go:
 
-func InitModule(intrModule *interactive.Module) (*project.Module, error) {
+func InitModule(intrModule *interactive.Module, permModule *permission.Module) (*project.Module, error) {
 	db := testioc.InitDB()
 	mq := testioc.InitMQ()
-	module, err := project.InitModule(db, intrModule, mq)
+	module, err := project.InitModule(db, intrModule, permModule, mq)
 	if err != nil {
 		return nil, err
 	}

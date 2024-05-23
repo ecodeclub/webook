@@ -11,6 +11,7 @@ import (
 
 	"github.com/ecodeclub/mq-api"
 	"github.com/ecodeclub/webook/internal/interactive"
+	"github.com/ecodeclub/webook/internal/permission"
 	"github.com/ecodeclub/webook/internal/project/internal/event"
 	"github.com/ecodeclub/webook/internal/project/internal/repository"
 	"github.com/ecodeclub/webook/internal/project/internal/repository/dao"
@@ -22,7 +23,7 @@ import (
 
 // Injectors from wire.go:
 
-func InitModule(db *gorm.DB, intrModule *interactive.Module, q mq.MQ) (*Module, error) {
+func InitModule(db *gorm.DB, intrModule *interactive.Module, permModule *permission.Module, q mq.MQ) (*Module, error) {
 	projectAdminDAO := initAdminDAO(db)
 	projectAdminRepository := repository.NewProjectAdminRepository(projectAdminDAO)
 	producer := initSyncToSearchEventProducer(q)
@@ -36,8 +37,9 @@ func InitModule(db *gorm.DB, intrModule *interactive.Module, q mq.MQ) (*Module, 
 		return nil, err
 	}
 	serviceService := service.NewService(repositoryRepository, interactiveEventProducer)
-	interactiveService := intrModule.Svc
-	handler := web.NewHandler(serviceService, interactiveService)
+	service2 := permModule.Svc
+	service3 := intrModule.Svc
+	handler := web.NewHandler(serviceService, service2, service3)
 	module := &Module{
 		AdminHdl: adminHandler,
 		Hdl:      handler,

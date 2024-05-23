@@ -17,6 +17,7 @@
 package permission
 
 import (
+	"context"
 	"sync"
 
 	"github.com/ecodeclub/mq-api"
@@ -31,8 +32,8 @@ import (
 )
 
 type (
-	Service            = service.Service
-	PersonalPermission = domain.PersonalPermission
+	Service    = service.Service
+	Permission = domain.Permission
 )
 
 func InitModule(db *egorm.Component, q mq.MQ) (*Module, error) {
@@ -40,10 +41,19 @@ func InitModule(db *egorm.Component, q mq.MQ) (*Module, error) {
 		initDAO,
 		repository.NewPermissionRepository,
 		service.NewPermissionService,
-		event.NewPermissionEventConsumer,
+		initConsumer,
 		wire.Struct(new(Module), "*"),
 	)
 	return nil, nil
+}
+
+func initConsumer(svc service.Service, mq mq.MQ) *event.PermissionEventConsumer {
+	res, err := event.NewPermissionEventConsumer(svc, mq)
+	if err != nil {
+		panic(err)
+	}
+	res.Start(context.Background())
+	return res
 }
 
 var (

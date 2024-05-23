@@ -23,6 +23,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ecodeclub/webook/internal/permission"
+
 	"github.com/ecodeclub/webook/internal/interactive"
 	intrmocks "github.com/ecodeclub/webook/internal/interactive/mocks"
 	"go.uber.org/mock/gomock"
@@ -60,7 +62,8 @@ func (s *AdminProjectTestSuite) SetupSuite() {
 	intrModule := &interactive.Module{
 		Svc: intrSvc,
 	}
-	m, err := startup.InitModule(intrModule)
+	permModule := &permission.Module{}
+	m, err := startup.InitModule(intrModule, permModule)
 	require.NoError(s.T(), err)
 	s.hdl = m.AdminHdl
 
@@ -122,6 +125,8 @@ func (s *AdminProjectTestSuite) TestProjectSave() {
 				prj.Ctime = 0
 				assert.True(t, prj.Utime > 0)
 				prj.Utime = 0
+				assert.NotEmpty(t, prj.SN)
+				prj.SN = ""
 				assert.Equal(t, dao.Project{
 					Id:     1,
 					Title:  "项目1",
@@ -151,6 +156,7 @@ func (s *AdminProjectTestSuite) TestProjectSave() {
 				err := s.db.WithContext(ctx).Create(&dao.Project{
 					Id:     12,
 					Title:  "老的标题",
+					SN:     "old-SN",
 					Status: domain.ProjectStatusPublished.ToUint8(),
 					Labels: sqlx.JsonColumn[[]string]{
 						Val:   []string{"标签3", "标签1"},
@@ -174,6 +180,7 @@ func (s *AdminProjectTestSuite) TestProjectSave() {
 				assert.Equal(t, dao.Project{
 					Id:     12,
 					Title:  "项目1",
+					SN:     "old-SN",
 					Desc:   "这是测试项目1",
 					Status: domain.ProjectStatusUnpublished.ToUint8(),
 					Labels: sqlx.JsonColumn[[]string]{
@@ -186,6 +193,7 @@ func (s *AdminProjectTestSuite) TestProjectSave() {
 			req: web.Project{
 				Id:     12,
 				Title:  "项目1",
+				SN:     "new-SN",
 				Desc:   "这是测试项目1",
 				Labels: []string{"标签1"},
 			},
@@ -224,7 +232,7 @@ func (s *AdminProjectTestSuite) TestProjectPublish() {
 		wantResp test.Result[int64]
 	}{
 		{
-			name: "保存成功-新建",
+			name: "发表成功-新建",
 			before: func(t *testing.T) {
 
 			},
@@ -238,6 +246,8 @@ func (s *AdminProjectTestSuite) TestProjectPublish() {
 				prj.Ctime = 0
 				assert.True(t, prj.Utime > 0)
 				prj.Utime = 0
+				assert.NotEmpty(t, prj.SN)
+				prj.SN = ""
 				assert.Equal(t, dao.Project{
 					Id:     1,
 					Title:  "项目1",
@@ -255,6 +265,8 @@ func (s *AdminProjectTestSuite) TestProjectPublish() {
 				pubPrj.Ctime = 0
 				assert.True(t, pubPrj.Utime > 0)
 				pubPrj.Utime = 0
+				assert.NotEmpty(t, pubPrj.SN)
+				pubPrj.SN = ""
 				assert.Equal(t, dao.PubProject{
 					Id:     1,
 					Title:  "项目1",
@@ -284,6 +296,7 @@ func (s *AdminProjectTestSuite) TestProjectPublish() {
 				err := s.db.WithContext(ctx).Create(&dao.Project{
 					Id:     12,
 					Title:  "老的标题",
+					SN:     "old-SN",
 					Status: domain.ProjectStatusUnpublished.ToUint8(),
 					Labels: sqlx.JsonColumn[[]string]{
 						Val:   []string{"标签3", "标签1"},
@@ -299,6 +312,7 @@ func (s *AdminProjectTestSuite) TestProjectPublish() {
 				err = s.db.WithContext(ctx).Create(&dao.PubProject{
 					Id:     12,
 					Title:  "老的标题",
+					SN:     "old-SN",
 					Status: domain.ProjectStatusUnpublished.ToUint8(),
 					Labels: sqlx.JsonColumn[[]string]{
 						Val:   []string{"标签3", "标签1"},
@@ -322,6 +336,7 @@ func (s *AdminProjectTestSuite) TestProjectPublish() {
 				assert.Equal(t, dao.Project{
 					Id:     12,
 					Title:  "项目1",
+					SN:     "old-SN",
 					Desc:   "这是测试项目1",
 					Status: domain.ProjectStatusPublished.ToUint8(),
 					Labels: sqlx.JsonColumn[[]string]{
@@ -339,6 +354,7 @@ func (s *AdminProjectTestSuite) TestProjectPublish() {
 				assert.Equal(t, dao.PubProject{
 					Id:     12,
 					Title:  "项目1",
+					SN:     "old-SN",
 					Desc:   "这是测试项目1",
 					Status: domain.ProjectStatusPublished.ToUint8(),
 					Labels: sqlx.JsonColumn[[]string]{
@@ -351,6 +367,7 @@ func (s *AdminProjectTestSuite) TestProjectPublish() {
 			req: web.Project{
 				Id:     12,
 				Title:  "项目1",
+				SN:     "new-SN",
 				Desc:   "这是测试项目1",
 				Labels: []string{"标签1"},
 			},
@@ -406,6 +423,7 @@ func (s *AdminProjectTestSuite) TestProjectList() {
 						{
 							Id:     10,
 							Title:  "标题10",
+							SN:     "SN10",
 							Status: domain.ProjectStatusUnpublished.ToUint8(),
 							Labels: []string{"标签10"},
 							Desc:   "描述10",
@@ -414,6 +432,7 @@ func (s *AdminProjectTestSuite) TestProjectList() {
 						{
 							Id:     9,
 							Title:  "标题9",
+							SN:     "SN9",
 							Status: domain.ProjectStatusUnpublished.ToUint8(),
 							Labels: []string{"标签9"},
 							Desc:   "描述9",
@@ -436,6 +455,7 @@ func (s *AdminProjectTestSuite) TestProjectList() {
 					Projects: []web.Project{
 						{
 							Id:     1,
+							SN:     "SN1",
 							Title:  "标题1",
 							Status: domain.ProjectStatusUnpublished.ToUint8(),
 							Labels: []string{"标签1"},
@@ -500,6 +520,7 @@ func (s *AdminProjectTestSuite) TestProjectDetail() {
 				Data: web.Project{
 					Id:     1,
 					Title:  "标题1",
+					SN:     "SN1",
 					Status: domain.ProjectStatusUnpublished.ToUint8(),
 					Labels: []string{"标签1"},
 					Desc:   "描述1",
@@ -569,6 +590,7 @@ func (s *AdminProjectTestSuite) mockProject(id int64) dao.Project {
 	return dao.Project{
 		Id:     id,
 		Title:  fmt.Sprintf("标题%d", id),
+		SN:     fmt.Sprintf("SN%d", id),
 		Status: domain.ProjectStatusUnpublished.ToUint8(),
 		Labels: sqlx.JsonColumn[[]string]{Val: []string{fmt.Sprintf("标签%d", id)}, Valid: true},
 		Desc:   fmt.Sprintf("描述%d", id),

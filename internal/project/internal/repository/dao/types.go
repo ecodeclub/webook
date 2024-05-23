@@ -20,6 +20,7 @@ type Project struct {
 	Id     int64  `gorm:"primaryKey,autoIncrement"`
 	Title  string `gorm:"type:varchar(256)"`
 	Status uint8
+	SN     string                    `gorm:"column:sn;type:varchar(255)"`
 	Labels sqlx.JsonColumn[[]string] `gorm:"type:varchar(512)"`
 	Desc   string
 	Utime  int64

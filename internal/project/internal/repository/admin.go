@@ -222,6 +222,7 @@ func (repo *projectAdminRepository) rsmToEntity(r domain.Resume) dao.ProjectResu
 func (repo *projectAdminRepository) prjToEntity(prj domain.Project) dao.Project {
 	return dao.Project{
 		Id:     prj.Id,
+		SN:     prj.SN,
 		Title:  prj.Title,
 		Status: prj.Status.ToUint8(),
 		Labels: sqlx.JsonColumn[[]string]{Val: prj.Labels, Valid: true},
@@ -253,6 +254,7 @@ func (repo *projectAdminRepository) prjToDomain(prj dao.Project,
 ) domain.Project {
 	return domain.Project{
 		Id:     prj.Id,
+		SN:     prj.SN,
 		Title:  prj.Title,
 		Status: domain.ProjectStatus(prj.Status),
 		Labels: prj.Labels.Val,

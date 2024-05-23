@@ -40,7 +40,7 @@ func (m *MockService) EXPECT() *MockServiceMockRecorder {
 }
 
 // CreatePersonalPermission mocks base method.
-func (m *MockService) CreatePersonalPermission(ctx context.Context, ps []domain.PersonalPermission) error {
+func (m *MockService) CreatePersonalPermission(ctx context.Context, ps []domain.Permission) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreatePersonalPermission", ctx, ps)
 	ret0, _ := ret[0].(error)
@@ -66,22 +66,22 @@ func (c *ServiceCreatePersonalPermissionCall) Return(arg0 error) *ServiceCreateP
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *ServiceCreatePersonalPermissionCall) Do(f func(context.Context, []domain.PersonalPermission) error) *ServiceCreatePersonalPermissionCall {
+func (c *ServiceCreatePersonalPermissionCall) Do(f func(context.Context, []domain.Permission) error) *ServiceCreatePersonalPermissionCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *ServiceCreatePersonalPermissionCall) DoAndReturn(f func(context.Context, []domain.PersonalPermission) error) *ServiceCreatePersonalPermissionCall {
+func (c *ServiceCreatePersonalPermissionCall) DoAndReturn(f func(context.Context, []domain.Permission) error) *ServiceCreatePersonalPermissionCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // FindPersonalPermissions mocks base method.
-func (m *MockService) FindPersonalPermissions(ctx context.Context, uid int64) (map[string][]domain.PersonalPermission, error) {
+func (m *MockService) FindPersonalPermissions(ctx context.Context, uid int64) (map[string][]domain.Permission, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "FindPersonalPermissions", ctx, uid)
-	ret0, _ := ret[0].(map[string][]domain.PersonalPermission)
+	ret0, _ := ret[0].(map[string][]domain.Permission)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -99,25 +99,25 @@ type ServiceFindPersonalPermissionsCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *ServiceFindPersonalPermissionsCall) Return(arg0 map[string][]domain.PersonalPermission, arg1 error) *ServiceFindPersonalPermissionsCall {
+func (c *ServiceFindPersonalPermissionsCall) Return(arg0 map[string][]domain.Permission, arg1 error) *ServiceFindPersonalPermissionsCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *ServiceFindPersonalPermissionsCall) Do(f func(context.Context, int64) (map[string][]domain.PersonalPermission, error)) *ServiceFindPersonalPermissionsCall {
+func (c *ServiceFindPersonalPermissionsCall) Do(f func(context.Context, int64) (map[string][]domain.Permission, error)) *ServiceFindPersonalPermissionsCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *ServiceFindPersonalPermissionsCall) DoAndReturn(f func(context.Context, int64) (map[string][]domain.PersonalPermission, error)) *ServiceFindPersonalPermissionsCall {
+func (c *ServiceFindPersonalPermissionsCall) DoAndReturn(f func(context.Context, int64) (map[string][]domain.Permission, error)) *ServiceFindPersonalPermissionsCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // HasPermission mocks base method.
-func (m *MockService) HasPermission(ctx context.Context, p domain.PersonalPermission) (bool, error) {
+func (m *MockService) HasPermission(ctx context.Context, p domain.Permission) (bool, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "HasPermission", ctx, p)
 	ret0, _ := ret[0].(bool)
@@ -144,13 +144,13 @@ func (c *ServiceHasPermissionCall) Return(arg0 bool, arg1 error) *ServiceHasPerm
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *ServiceHasPermissionCall) Do(f func(context.Context, domain.PersonalPermission) (bool, error)) *ServiceHasPermissionCall {
+func (c *ServiceHasPermissionCall) Do(f func(context.Context, domain.Permission) (bool, error)) *ServiceHasPermissionCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *ServiceHasPermissionCall) DoAndReturn(f func(context.Context, domain.PersonalPermission) (bool, error)) *ServiceHasPermissionCall {
+func (c *ServiceHasPermissionCall) DoAndReturn(f func(context.Context, domain.Permission) (bool, error)) *ServiceHasPermissionCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

@@ -22,6 +22,7 @@ const (
 
 type Project struct {
 	Id     int64
+	SN     string
 	Title  string
 	Status ProjectStatus
 	Desc   string

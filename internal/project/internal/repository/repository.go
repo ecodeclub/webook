@@ -28,12 +28,18 @@ import (
 type Repository interface {
 	List(ctx context.Context, offset int, limit int) ([]domain.Project, error)
 	Detail(ctx context.Context, id int64) (domain.Project, error)
+	Brief(ctx context.Context, id int64) (domain.Project, error)
 }
 
 var _ Repository = &CachedRepository{}
 
 type CachedRepository struct {
 	dao dao.ProjectDAO
+}
+
+func (repo *CachedRepository) Brief(ctx context.Context, id int64) (domain.Project, error) { //TODO implement me
+	prj, err := repo.dao.GetById(ctx, id)
+	return repo.prjToDomain(prj, nil, nil, nil, nil), err
 }
 
 func (repo *CachedRepository) Detail(ctx context.Context, id int64) (domain.Project, error) { //TODO implement me
@@ -93,6 +99,7 @@ func (repo *CachedRepository) prjToDomain(prj dao.PubProject,
 ) domain.Project {
 	return domain.Project{
 		Id:     prj.Id,
+		SN:     prj.SN,
 		Title:  prj.Title,
 		Status: domain.ProjectStatus(prj.Status),
 		Labels: prj.Labels.Val,
