@@ -29,7 +29,6 @@ import (
 	permissionmocks "github.com/ecodeclub/webook/internal/permission/mocks"
 	sessmocks "github.com/ecodeclub/webook/internal/test/mocks"
 	"github.com/gin-gonic/gin"
-	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -64,11 +63,11 @@ func TestCheckPermission(t *testing.T) {
 			},
 			mock: func(ctrl *gomock.Controller) (permission.Service, session.Provider) {
 
-				biz := "project"
+				perm := "permission"
 				mockProvider := sessmocks.NewMockProvider(ctrl)
 				mockSession := sessmocks.NewMockSession(ctrl)
 
-				mockSession.EXPECT().Get(gomock.Any(), biz).Return(ekit.AnyValue{Val: "103,101,102"})
+				mockSession.EXPECT().Get(gomock.Any(), perm).Return(ekit.AnyValue{Val: map[string]string{"project": "103,101,102"}})
 
 				mockProvider.EXPECT().Get(gomock.Any()).Return(mockSession, nil)
 
@@ -98,13 +97,14 @@ func TestCheckPermission(t *testing.T) {
 			mock: func(ctrl *gomock.Controller) (permission.Service, session.Provider) {
 
 				uid := int64(2666)
+				perm := "permission"
 				biz := "project"
 				bizId := int64(105)
 
 				mockProvider := sessmocks.NewMockProvider(ctrl)
 				mockSession := sessmocks.NewMockSession(ctrl)
 
-				mockSession.EXPECT().Get(gomock.Any(), biz).Return(ekit.AnyValue{Val: "103,101,102"})
+				mockSession.EXPECT().Get(gomock.Any(), perm).Return(ekit.AnyValue{Val: map[string]string{biz: "103,101,102"}})
 
 				claims := session.Claims{
 					Uid:  uid,
@@ -114,7 +114,7 @@ func TestCheckPermission(t *testing.T) {
 					},
 				}
 				mockSession.EXPECT().Claims().Return(claims)
-				mockSession.EXPECT().Set(gomock.Any(), biz, "103,101,102,105").Return(nil)
+				mockSession.EXPECT().Set(gomock.Any(), perm, map[string]string{biz: "103,101,102,105"}).Return(nil)
 
 				mockProvider.EXPECT().Get(gomock.Any()).Return(mockSession, nil)
 
@@ -152,13 +152,14 @@ func TestCheckPermission(t *testing.T) {
 			mock: func(ctrl *gomock.Controller) (permission.Service, session.Provider) {
 
 				uid := int64(2666)
+				perm := "permission"
 				biz := "project"
 				bizId := int64(106)
 
 				mockProvider := sessmocks.NewMockProvider(ctrl)
 				mockSession := sessmocks.NewMockSession(ctrl)
 
-				mockSession.EXPECT().Get(gomock.Any(), biz).Return(ekit.AnyValue{Err: fmt.Errorf("%w", redis.Nil)})
+				mockSession.EXPECT().Get(gomock.Any(), perm).Return(ekit.AnyValue{Val: map[string]string{}})
 
 				claims := session.Claims{
 					Uid:  uid,
@@ -168,7 +169,7 @@ func TestCheckPermission(t *testing.T) {
 					},
 				}
 				mockSession.EXPECT().Claims().Return(claims)
-				mockSession.EXPECT().Set(gomock.Any(), biz, "106").Return(nil)
+				mockSession.EXPECT().Set(gomock.Any(), perm, map[string]string{biz: "106"}).Return(nil)
 
 				mockProvider.EXPECT().Get(gomock.Any()).Return(mockSession, nil)
 
@@ -270,7 +271,7 @@ func TestCheckPermission(t *testing.T) {
 				mockProvider := sessmocks.NewMockProvider(ctrl)
 				mockSession := sessmocks.NewMockSession(ctrl)
 
-				mockSession.EXPECT().Get(gomock.Any(), gomock.Any()).Return(ekit.AnyValue{Val: ""})
+				mockSession.EXPECT().Get(gomock.Any(), "permission").Return(ekit.AnyValue{Val: map[string]string{}})
 
 				mockProvider.EXPECT().Get(gomock.Any()).Return(mockSession, nil)
 
@@ -302,7 +303,7 @@ func TestCheckPermission(t *testing.T) {
 				mockProvider := sessmocks.NewMockProvider(ctrl)
 				mockSession := sessmocks.NewMockSession(ctrl)
 
-				mockSession.EXPECT().Get(gomock.Any(), gomock.Any()).Return(ekit.AnyValue{Val: ""})
+				mockSession.EXPECT().Get(gomock.Any(), gomock.Any()).Return(ekit.AnyValue{Val: map[string]string{}})
 
 				mockProvider.EXPECT().Get(gomock.Any()).Return(mockSession, nil)
 
@@ -345,7 +346,7 @@ func TestCheckPermission(t *testing.T) {
 				mockProvider := sessmocks.NewMockProvider(ctrl)
 				mockSession := sessmocks.NewMockSession(ctrl)
 
-				mockSession.EXPECT().Get(gomock.Any(), biz).Return(ekit.AnyValue{Err: fmt.Errorf("%w", redis.Nil)})
+				mockSession.EXPECT().Get(gomock.Any(), "permission").Return(ekit.AnyValue{Val: map[string]string{}})
 
 				claims := session.Claims{
 					Uid:  uid,
@@ -398,7 +399,7 @@ func TestCheckPermission(t *testing.T) {
 				mockProvider := sessmocks.NewMockProvider(ctrl)
 				mockSession := sessmocks.NewMockSession(ctrl)
 
-				mockSession.EXPECT().Get(gomock.Any(), biz).Return(ekit.AnyValue{Err: fmt.Errorf("%w", redis.Nil)})
+				mockSession.EXPECT().Get(gomock.Any(), "permission").Return(ekit.AnyValue{Val: map[string]string{}})
 
 				claims := session.Claims{
 					Uid:  uid,
@@ -438,6 +439,7 @@ func TestCheckPermission(t *testing.T) {
 
 				uid := int64(2666)
 				biz := "project"
+				perm := "permission"
 				bizId := int64(109)
 
 				mockPermissionSvc := permissionmocks.NewMockService(ctrl)
@@ -451,7 +453,7 @@ func TestCheckPermission(t *testing.T) {
 				mockProvider := sessmocks.NewMockProvider(ctrl)
 				mockSession := sessmocks.NewMockSession(ctrl)
 
-				mockSession.EXPECT().Get(gomock.Any(), biz).Return(ekit.AnyValue{Err: fmt.Errorf("%w", redis.Nil)})
+				mockSession.EXPECT().Get(gomock.Any(), perm).Return(ekit.AnyValue{Val: map[string]string{}})
 
 				claims := session.Claims{
 					Uid:  uid,
@@ -461,7 +463,7 @@ func TestCheckPermission(t *testing.T) {
 					},
 				}
 				mockSession.EXPECT().Claims().Return(claims)
-				mockSession.EXPECT().Set(gomock.Any(), biz, "109").Return(errors.New("mock: 设置session出错"))
+				mockSession.EXPECT().Set(gomock.Any(), perm, map[string]string{biz: "109"}).Return(errors.New("mock: 设置session出错"))
 
 				mockProvider.EXPECT().Get(gomock.Any()).Return(mockSession, nil)
 

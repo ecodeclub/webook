@@ -16,7 +16,6 @@ package middleware
 
 import (
 	"errors"
-	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -27,7 +26,6 @@ import (
 	"github.com/ecodeclub/webook/internal/permission"
 	"github.com/gin-gonic/gin"
 	"github.com/gotomicro/ego/core/elog"
-	"github.com/redis/go-redis/v9"
 )
 
 type CheckPermissionMiddlewareBuilder struct {
@@ -63,14 +61,17 @@ func (c *CheckPermissionMiddlewareBuilder) Build() gin.HandlerFunc {
 			c.logger.Debug("biz非法", elog.FieldErr(err))
 			return
 		}
-		resourceStr, err := sess.Get(ctx.Request.Context(), resourceName).AsString()
-		if err != nil && !errors.Is(err, redis.Nil) {
+		permissionKey := "permission"
+		permissionVal := sess.Get(ctx.Request.Context(), permissionKey)
+		if permissionVal.Err != nil {
 			gctx.AbortWithStatus(http.StatusForbidden)
-			c.logger.Debug("biz非法", elog.FieldErr(err))
+			c.logger.Debug("获取权限列表失败", elog.FieldErr(err))
 			return
 		}
+		permissionLists := permissionVal.Val.(map[string]string)
+		resourceStr, ok := permissionLists[resourceName]
 		var resources []string
-		if len(resourceStr) > 0 {
+		if ok && len(resourceStr) > 0 {
 			resources = strings.Split(resourceStr, ",")
 		}
 
@@ -84,8 +85,7 @@ func (c *CheckPermissionMiddlewareBuilder) Build() gin.HandlerFunc {
 		}
 
 		// resourceId 是否在 resources 中, 快路径
-		log.Printf("resouces = %#v\n", resources)
-		_, ok := slice.Find(resources, func(src string) bool {
+		_, ok = slice.Find(resources, func(src string) bool {
 			return src == resourceIdStr
 		})
 		if ok {
@@ -107,7 +107,8 @@ func (c *CheckPermissionMiddlewareBuilder) Build() gin.HandlerFunc {
 		resources = append(resources, resourceIdStr)
 
 		// 更新Session
-		err = sess.Set(ctx.Request.Context(), resourceName, strings.Join(resources, ","))
+		permissionLists[resourceName] = strings.Join(resources, ",")
+		err = sess.Set(ctx.Request.Context(), permissionKey, permissionLists)
 		if err != nil {
 			elog.Error("更新Session失败", elog.Int64("uid", uid), elog.FieldErr(err))
 			gctx.AbortWithStatus(http.StatusForbidden)

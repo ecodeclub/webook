@@ -159,7 +159,7 @@ func (h *Handler) Callback(ctx *ginx.Context, req WechatCallback) (ginx.Result, 
 	memberDDL := h.getMemberDDL(ctx.Request.Context(), user.Id)
 	jwtData["memberDDL"] = strconv.FormatInt(memberDDL, 10)
 
-	sessData := make(map[string]any)
+	perms := make(map[string]string)
 	permissionGroup, err := h.permissionSvc.FindPersonalPermissions(ctx, user.Id)
 	if err != nil {
 		return systemErrorResult, err
@@ -168,9 +168,9 @@ func (h *Handler) Callback(ctx *ginx.Context, req WechatCallback) (ginx.Result, 
 		bizIds := slice.Map(permissions, func(idx int, src permission.PersonalPermission) string {
 			return strconv.FormatInt(src.BizID, 10)
 		})
-		sessData[biz] = strings.Join(bizIds, ",")
+		perms[biz] = strings.Join(bizIds, ",")
 	}
-
+	sessData := map[string]any{"permission": perms}
 	_, err = session.NewSessionBuilder(ctx, user.Id).SetJwtData(jwtData).SetSessData(sessData).Build()
 	if err != nil {
 		return systemErrorResult, err
