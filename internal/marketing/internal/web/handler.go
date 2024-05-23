@@ -17,6 +17,7 @@ package web
 import (
 	"errors"
 	"fmt"
+	"log"
 
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/ecodeclub/ginx"
@@ -40,6 +41,9 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g := server.Group("/code")
 	g.POST("/redeem", ginx.BS[RedeemRedemptionCodeReq](h.RedeemRedemptionCode))
 	g.POST("/list", ginx.BS[ListRedemptionCodesReq](h.ListRedemptionCodes))
+
+	i := server.Group("/invitation-code")
+	i.POST("/gen", ginx.S(h.GenerateInvitationCode))
 }
 
 func (h *Handler) PublicRoutes(_ *gin.Engine) {}
@@ -80,4 +84,19 @@ func (h *Handler) ListRedemptionCodes(ctx *ginx.Context, req ListRedemptionCodes
 			}),
 		},
 	}, nil
+}
+
+func (h *Handler) GenerateInvitationCode(ctx *ginx.Context, sess session.Session) (ginx.Result, error) {
+	log.Printf("G invoked!\n")
+	code, err := h.svc.GenerateInvitationCode(ctx, sess.Claims().Uid)
+	if err != nil {
+		log.Printf("G invoked! 2\n")
+		return systemErrorResult, fmt.Errorf("生成邀请码失败: %w", err)
+	}
+	return ginx.Result{Data: h.invitationLink(code)}, nil
+}
+
+func (h *Handler) invitationLink(code domain.InvitationCode) string {
+	url := "https://meoying.com/"
+	return fmt.Sprintf("%s?code=%s", url, code.Code)
 }

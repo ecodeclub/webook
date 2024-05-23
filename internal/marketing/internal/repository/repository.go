@@ -21,6 +21,7 @@ import (
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/ecodeclub/ekit/sqlx"
 	"github.com/ecodeclub/webook/internal/marketing/internal/domain"
+	"github.com/ecodeclub/webook/internal/marketing/internal/repository/cache"
 	"github.com/ecodeclub/webook/internal/marketing/internal/repository/dao"
 )
 
@@ -35,15 +36,21 @@ type MarketingRepository interface {
 	SetUnusedRedemptionCodeStatusUsed(ctx context.Context, uid int64, code string) (domain.RedemptionCode, error)
 	TotalRedemptionCodes(ctx context.Context, uid int64) (int64, error)
 	FindRedemptionCodesByUID(ctx context.Context, uid int64, offset, limit int) ([]domain.RedemptionCode, error)
+
+	CreateInvitationCode(ctx context.Context, i domain.InvitationCode) (int64, error)
+	FindInvitationCodesByUID(ctx context.Context, uid int64) ([]domain.InvitationCode, error)
+	FindInvitationCodeByCode(ctx context.Context, code string) (domain.InvitationCode, error)
 }
 
 type marketingRepository struct {
-	dao dao.MarketingDAO
+	dao   dao.MarketingDAO
+	cache cache.InvitationCodeCache
 }
 
-func NewRepository(d dao.MarketingDAO) MarketingRepository {
+func NewRepository(d dao.MarketingDAO, c cache.InvitationCodeCache) MarketingRepository {
 	return &marketingRepository{
-		dao: d,
+		dao:   d,
+		cache: c,
 	}
 }
 
@@ -111,4 +118,19 @@ func (m *marketingRepository) toEntities(codes []domain.RedemptionCode) []dao.Re
 			Status:  src.Status.ToUint8(),
 		}
 	})
+}
+
+func (m *marketingRepository) CreateInvitationCode(ctx context.Context, i domain.InvitationCode) (int64, error) {
+	// TODO implement me
+	panic("implement me")
+}
+
+func (m *marketingRepository) FindInvitationCodesByUID(ctx context.Context, uid int64) ([]domain.InvitationCode, error) {
+	// TODO implement me
+	panic("implement me")
+}
+
+func (m *marketingRepository) FindInvitationCodeByCode(ctx context.Context, code string) (domain.InvitationCode, error) {
+	// TODO implement me
+	panic("implement me")
 }
