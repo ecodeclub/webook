@@ -24,6 +24,14 @@
 
 > 这里比较蛋疼的是 401 和 403 的语义。所以我也没什么好纠结的，只是做一个简单的区分
 
+## 商品SPU类别说明
+- category0表示SPU顶级类别,可选值有product表示商品,code表示兑换码
+- category1表示SPU次级类别,可选值有member/project等
+
+两者组合语义如下:
+- category0=product, category1=member 表示会员商品
+- category0=code, category1=project 表示项目兑换码
+
 ## 错误码
 - user - 01
 - question - 02
