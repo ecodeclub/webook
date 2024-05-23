@@ -32,6 +32,10 @@
 - category0=product, category1=member 表示会员商品
 - category0=code, category1=project 表示项目兑换码
 
+## 营销模块说明
+
+1. 营销模块中兑换码相关业务为了保持独立,没有采用商品模块中的业务术语. 比如兑换码本事就蕴含了商品SPU类别category0=code这个含义,兑换码的type的值也就是商品SPU类别category1的值.
+
 ## 错误码
 - user - 01
 - question - 02
