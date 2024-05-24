@@ -17,6 +17,6 @@ package cache
 import "context"
 
 type InvitationCodeCache interface {
-	GetInvitationCode(ctx context.Context, uid int64) (int64, error)
+	GetInvitationCode(ctx context.Context, uid int64) (string, error)
 	SetInvitationCode(ctx context.Context, uid int64, code string) error
 }

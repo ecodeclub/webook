@@ -30,15 +30,15 @@ type InvitationCodeECache struct {
 func NewInvitationCodeECache(ec ecache.Cache, expiration time.Duration) InvitationCodeCache {
 	return &InvitationCodeECache{
 		ec: &ecache.NamespaceCache{
-			Namespace: "marketing:invitation-code",
+			Namespace: "marketing:invitation-code:",
 			C:         ec,
 		},
 		expiration: expiration,
 	}
 }
 
-func (q *InvitationCodeECache) GetInvitationCode(ctx context.Context, uid int64) (int64, error) {
-	return q.ec.Get(ctx, q.codeKey(uid)).AsInt64()
+func (q *InvitationCodeECache) GetInvitationCode(ctx context.Context, uid int64) (string, error) {
+	return q.ec.Get(ctx, q.codeKey(uid)).AsString()
 }
 
 func (q *InvitationCodeECache) SetInvitationCode(ctx context.Context, uid int64, code string) error {

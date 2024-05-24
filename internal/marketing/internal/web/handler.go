@@ -17,7 +17,6 @@ package web
 import (
 	"errors"
 	"fmt"
-	"log"
 
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/ecodeclub/ginx"
@@ -87,10 +86,8 @@ func (h *Handler) ListRedemptionCodes(ctx *ginx.Context, req ListRedemptionCodes
 }
 
 func (h *Handler) GenerateInvitationCode(ctx *ginx.Context, sess session.Session) (ginx.Result, error) {
-	log.Printf("G invoked!\n")
 	code, err := h.svc.GenerateInvitationCode(ctx, sess.Claims().Uid)
 	if err != nil {
-		log.Printf("G invoked! 2\n")
 		return systemErrorResult, fmt.Errorf("生成邀请码失败: %w", err)
 	}
 	return ginx.Result{Data: h.invitationLink(code)}, nil

@@ -113,6 +113,12 @@ func (s *service) ListRedemptionCodes(ctx context.Context, uid int64, offset, li
 }
 
 func (s *service) GenerateInvitationCode(ctx context.Context, uid int64) (domain.InvitationCode, error) {
-	// TODO implement me
-	panic("implement me")
+	c, err := s.repo.CreateInvitationCode(ctx, domain.InvitationCode{
+		Uid:  uid,
+		Code: s.invitationCodeGenerator(uid),
+	})
+	if err != nil {
+		return domain.InvitationCode{}, err
+	}
+	return c, nil
 }

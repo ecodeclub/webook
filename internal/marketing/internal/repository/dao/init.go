@@ -17,5 +17,5 @@ package dao
 import "github.com/ego-component/egorm"
 
 func InitTables(db *egorm.Component) error {
-	return db.AutoMigrate(&RedemptionCode{}, &RedeemLog{}, &GenerateLog{}, &RedeemLog{})
+	return db.AutoMigrate(&RedemptionCode{}, &RedeemLog{}, &GenerateLog{}, &InvitationCode{}, &InvitationRecord{})
 }

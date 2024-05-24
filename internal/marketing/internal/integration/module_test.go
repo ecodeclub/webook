@@ -80,6 +80,10 @@ func (s *ModuleTestSuite) TearDownSuite() {
 	s.NoError(err)
 	err = s.db.Exec("DROP TABLE `generate_logs`").Error
 	s.NoError(err)
+	err = s.db.Exec("DROP TABLE `invitation_codes`").Error
+	s.NoError(err)
+	err = s.db.Exec("DROP TABLE `invitation_records`").Error
+	s.NoError(err)
 }
 
 func (s *ModuleTestSuite) TearDownTest() {
@@ -88,6 +92,10 @@ func (s *ModuleTestSuite) TearDownTest() {
 	err = s.db.Exec("TRUNCATE TABLE `redeem_logs`").Error
 	s.NoError(err)
 	err = s.db.Exec("TRUNCATE TABLE `generate_logs`").Error
+	s.NoError(err)
+	err = s.db.Exec("TRUNCATE TABLE `invitation_codes`").Error
+	s.NoError(err)
+	err = s.db.Exec("TRUNCATE TABLE `invitation_records`").Error
 	s.NoError(err)
 }
 
@@ -1512,79 +1520,127 @@ func (s *ModuleTestSuite) assertListRedemptionCodesRespEqual(t *testing.T, expec
 
 func (s *ModuleTestSuite) TestHandler_GenerateInvitationCode() {
 	t := s.T()
-	t.Skip()
 
+	baseURL := "https://meoying.com/"
 	testCases := []struct {
 		name string
 
-		before         func(t *testing.T)
-		newHandlerFunc func(t *testing.T, ctrl *gomock.Controller) *web.Handler
-
-		wantCode int
-		wantResp test.Result[any]
+		before         func(t *testing.T) repository.MarketingRepository
+		newHandlerFunc func(t *testing.T, repo repository.MarketingRepository) *web.Handler
+		wantCode       int
+		wantResp       test.Result[any]
 	}{
 		{
-			name:   "首次生成邀请码",
-			before: func(t *testing.T) {},
-			newHandlerFunc: func(t *testing.T, ctrl *gomock.Controller) *web.Handler {
+			name: "首次生成邀请码",
+			before: func(t *testing.T) repository.MarketingRepository {
+				codeCache := cache.NewInvitationCodeECache(testioc.InitCache(), time.Minute*10)
+				repo := repository.NewRepository(dao.NewGORMMarketingDAO(s.db), codeCache)
+				return repo
+			},
+			newHandlerFunc: func(t *testing.T, repo repository.MarketingRepository) *web.Handler {
+				t.Helper()
 				codeGenerator := func(id int64) string {
 					return fmt.Sprintf("invitation-code-1-%d", id)
 				}
-				codeCache := cache.NewInvitationCodeECache(testioc.InitCache(), time.Minute*10)
-				repo := repository.NewRepository(dao.NewGORMMarketingDAO(s.db), codeCache)
 				svc := service.NewService(repo, nil, nil, codeGenerator, nil, nil, nil, nil)
 				return web.NewHandler(svc)
 			},
 			wantCode: 200,
 			wantResp: test.Result[any]{
-				Data: fmt.Sprintf("?code=invitation-code-1-%d", testID),
+				Data: fmt.Sprintf("%s?code=invitation-code-1-%d", baseURL, testID),
 			},
 		},
 		{
 			name: "一定时间内多次生成返回相同邀请码",
-			before: func(t *testing.T) {
+			before: func(t *testing.T) repository.MarketingRepository {
 				t.Helper()
+
+				codeCache := cache.NewInvitationCodeECache(testioc.InitCache(), time.Minute*10)
+				repo := repository.NewRepository(dao.NewGORMMarketingDAO(s.db), codeCache)
+
 				c := fmt.Sprintf("invitation-code-2-%d", testID)
-				_, err := s.repo.CreateInvitationCode(context.Background(), domain.InvitationCode{
+				_, err := repo.CreateInvitationCode(context.Background(), domain.InvitationCode{
 					Uid:  testID,
 					Code: c,
 				})
 				require.NoError(t, err)
+
+				expectedCode, err := codeCache.GetInvitationCode(context.Background(), testID)
+				require.NoError(t, err)
+				require.Equal(t, expectedCode, c)
+
+				return repo
 			},
-			newHandlerFunc: func(t *testing.T, ctrl *gomock.Controller) *web.Handler {
+			newHandlerFunc: func(t *testing.T, repo repository.MarketingRepository) *web.Handler {
+				t.Helper()
 				codeGenerator := func(id int64) string {
 					return fmt.Sprintf("invitation-code-3-%d", id)
 				}
-				codeCache := cache.NewInvitationCodeECache(testioc.InitCache(), time.Millisecond)
-				repo := repository.NewRepository(dao.NewGORMMarketingDAO(s.db), codeCache)
 				svc := service.NewService(repo, nil, nil, codeGenerator, nil, nil, nil, nil)
 				return web.NewHandler(svc)
 			},
 			wantCode: 200,
 			wantResp: test.Result[any]{
-				Data: fmt.Sprintf("?code=invitation-code-2-%d", testID),
+				Data: fmt.Sprintf("%s?code=invitation-code-2-%d", baseURL, testID),
+			},
+		},
+		{
+			name: "一定时间后再次生成返回新的邀请码",
+			before: func(t *testing.T) repository.MarketingRepository {
+				t.Helper()
+
+				duration := 100 * time.Millisecond
+				codeCache := cache.NewInvitationCodeECache(testioc.InitCache(), duration)
+				repo := repository.NewRepository(dao.NewGORMMarketingDAO(s.db), codeCache)
+
+				c := fmt.Sprintf("invitation-code-4-%d", testID)
+				_, err := repo.CreateInvitationCode(context.Background(), domain.InvitationCode{
+					Uid:  testID,
+					Code: c,
+				})
+				require.NoError(t, err)
+
+				expectedCode, err := codeCache.GetInvitationCode(context.Background(), testID)
+				require.NoError(t, err)
+				require.Equal(t, expectedCode, c)
+
+				time.Sleep(duration)
+
+				return repo
+			},
+			newHandlerFunc: func(t *testing.T, repo repository.MarketingRepository) *web.Handler {
+				t.Helper()
+				codeGenerator := func(id int64) string {
+					return fmt.Sprintf("invitation-code-5-%d", id)
+				}
+				svc := service.NewService(repo, nil, nil, codeGenerator, nil, nil, nil, nil)
+				return web.NewHandler(svc)
+			},
+			wantCode: 200,
+			wantResp: test.Result[any]{
+				Data: fmt.Sprintf("%s?code=invitation-code-5-%d", baseURL, testID),
 			},
 		},
 	}
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			ctrl := gomock.NewController(t)
-			defer ctrl.Finish()
-
 			req, err := http.NewRequest(http.MethodPost,
 				"/invitation-code/gen", nil)
 			req.Header.Set("content-type", "application/json")
 			require.NoError(t, err)
 			recorder := test.NewJSONResponseRecorder[any]()
-			tc.before(t)
-			server := s.newGinServer(tc.newHandlerFunc(t, ctrl))
+			repo := tc.before(t)
+			server := s.newGinServer(tc.newHandlerFunc(t, repo))
 			server.ServeHTTP(recorder, req)
 			require.Equal(t, tc.wantCode, recorder.Code)
 			require.Equal(t, tc.wantResp, recorder.MustScan())
+
+			c := testioc.InitCache()
+			_, err = c.Delete(context.Background(), fmt.Sprintf("marketing:invitation-code:user:%d", testID))
+			require.NoError(t, err)
 		})
 	}
-
 }
 
 func (s *ModuleTestSuite) TestService_RedeemRedemptionCode() {
