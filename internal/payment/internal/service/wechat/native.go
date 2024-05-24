@@ -63,7 +63,7 @@ func NewNativePaymentService(svc NativeAPIService, appid, mchid string) *NativeP
 		l:         elog.DefaultLogger,
 		appID:     appid,
 		mchID:     mchid,
-		notifyURL: "https://wechat.meoying.com/api/interview/pay/callback",
+		notifyURL: "http://wechat.meoying.com/api/interview/pay/callback",
 		nativeCallBackTypeToPaymentStatus: map[string]domain.PaymentStatus{
 			"SUCCESS":    domain.PaymentStatusPaidSuccess, // 支付成功
 			"PAYERROR":   domain.PaymentStatusPaidFailed,  // 支付失败(其他原因，如银行返回失败)
