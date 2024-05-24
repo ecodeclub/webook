@@ -12,10 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package dao
+package cache
 
-import "github.com/ego-component/egorm"
+import "context"
 
-func InitTables(db *egorm.Component) error {
-	return db.AutoMigrate(&RedemptionCode{}, &RedeemLog{}, &GenerateLog{}, &InvitationCode{}, &InvitationRecord{})
+type InvitationCodeCache interface {
+	GetInvitationCode(ctx context.Context, uid int64) (string, error)
+	SetInvitationCode(ctx context.Context, uid int64, code string) error
 }

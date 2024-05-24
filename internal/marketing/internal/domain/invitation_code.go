@@ -12,10 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package dao
+package domain
 
-import "github.com/ego-component/egorm"
+type InvitationCode struct {
+	Uid  int64
+	Code string
+}
 
-func InitTables(db *egorm.Component) error {
-	return db.AutoMigrate(&RedemptionCode{}, &RedeemLog{}, &GenerateLog{}, &InvitationCode{}, &InvitationRecord{})
+type InvitationRecordAttrs struct {
+	Credits int64 `json:"credits"`
 }

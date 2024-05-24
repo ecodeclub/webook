@@ -19,5 +19,6 @@ const (
 )
 
 type RegistrationEvent struct {
-	Uid int64 `json:"uid,omitempty"`
+	Uid         int64  `json:"uid,omitempty"`
+	InviterCode string `json:"inviterCode,omitempty"`
 }

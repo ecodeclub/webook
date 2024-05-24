@@ -39,6 +39,9 @@ type MarketingDAO interface {
 	SetUnusedRedemptionCodeStatusUsed(ctx context.Context, uid int64, code string) (RedemptionCode, error)
 	CountRedemptionCodes(ctx context.Context, uid int64) (int64, error)
 	FindRedemptionCodesByUID(ctx context.Context, uid int64, offset int, limit int) ([]RedemptionCode, error)
+	CreateInvitationCode(ctx context.Context, i InvitationCode) (int64, error)
+	FindInvitationCodeByCode(ctx context.Context, code string) (InvitationCode, error)
+	FindInvitationCodesByUID(ctx context.Context, uid int64) ([]InvitationCode, error)
 }
 
 type gormMarketingDAO struct {
@@ -161,6 +164,25 @@ func (g *gormMarketingDAO) FindRedemptionCodesByUID(ctx context.Context, uid int
 	return res, err
 }
 
+func (g *gormMarketingDAO) CreateInvitationCode(ctx context.Context, i InvitationCode) (int64, error) {
+	now := time.Now().UnixMilli()
+	i.Ctime, i.Utime = now, now
+	err := g.db.WithContext(ctx).Create(&i).Error
+	return i.Id, err
+}
+
+func (g *gormMarketingDAO) FindInvitationCodeByCode(ctx context.Context, code string) (InvitationCode, error) {
+	var ic InvitationCode
+	err := g.db.WithContext(ctx).First(&ic, "code = ?", code).Error
+	return ic, err
+}
+
+func (g *gormMarketingDAO) FindInvitationCodesByUID(ctx context.Context, uid int64) ([]InvitationCode, error) {
+	var res []InvitationCode
+	err := g.db.WithContext(ctx).Order("Utime DESC, id ASC").Find(&res, "owner_id = ?", uid).Error
+	return res, err
+}
+
 type RedemptionCode struct {
 	Id      int64                             `gorm:"primaryKey;autoIncrement;comment:兑换码自增ID"`
 	OwnerId int64                             `gorm:"not null;index:idx_owner_id;comment:所有者ID"`
@@ -190,4 +212,22 @@ type RedeemLog struct {
 	Code       string `gorm:"type:varchar(255);not null;uniqueIndex:uniq_code;comment:兑换码"`
 	Ctime      int64
 	Utime      int64
+}
+
+type InvitationCode struct {
+	Id      int64  `gorm:"primaryKey;autoIncrement;comment:邀请码自增ID"`
+	OwnerId int64  `gorm:"not null;index:idx_owner_id;comment:所有者ID"`
+	Code    string `gorm:"type:varchar(255);not null;uniqueIndex:uniq_invitation_code;comment:邀请码"`
+	Ctime   int64
+	Utime   int64
+}
+
+type InvitationRecord struct {
+	Id        int64                                         `gorm:"primaryKey;autoIncrement;comment:邀请记录自增ID"`
+	InviterId int64                                         `gorm:"not null;index:idx_inviter_id;comment:邀请者ID"`
+	InviteeId int64                                         `gorm:"not null;index:idx_invitee_id;comment:被邀请者ID"`
+	Code      string                                        `gorm:"type:varchar(255);not null;uniqueIndex:uniq_invitation_code;comment:邀请码"`
+	Attrs     sqlx.JsonColumn[domain.InvitationRecordAttrs] `gorm:"type:varchar(512);not null;comment:邀请记录的其他属性Attrs"`
+	Ctime     int64
+	Utime     int64
 }
