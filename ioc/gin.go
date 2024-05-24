@@ -18,7 +18,16 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/ecodeclub/webook/internal/interactive"
+
+	"github.com/ecodeclub/webook/internal/credit"
+	"github.com/ecodeclub/webook/internal/marketing"
+	"github.com/ecodeclub/webook/internal/payment"
+	"github.com/ecodeclub/webook/internal/project"
+
 	"github.com/ecodeclub/webook/internal/feedback"
+	"github.com/ecodeclub/webook/internal/order"
+	"github.com/ecodeclub/webook/internal/product"
 
 	"github.com/ecodeclub/webook/internal/pkg/middleware"
 	"github.com/ecodeclub/webook/internal/skill"
@@ -43,6 +52,8 @@ import (
 
 func initGinxServer(sp session.Provider,
 	checkMembershipMiddleware *middleware.CheckMembershipMiddlewareBuilder,
+	// 这个暂时用不上
+	checkPermissionMiddleware *middleware.CheckPermissionMiddlewareBuilder,
 	qh *baguwen.Handler,
 	qsh *baguwen.QuestionSetHandler,
 	lhdl *label.Handler,
@@ -51,6 +62,13 @@ func initGinxServer(sp session.Provider,
 	caseHdl *cases.Handler,
 	skillHdl *skill.Handler,
 	fbHdl *feedback.Handler,
+	pHdl *product.Handler,
+	orderHdl *order.Handler,
+	prjHdl *project.Handler,
+	creditHdl *credit.Handler,
+	paymentHdl *payment.Handler,
+	marketingHdl *marketing.Handler,
+	intrHdl *interactive.Handler,
 ) *egin.Component {
 	session.SetDefaultProvider(sp)
 	res := egin.Load("web").Build()
@@ -79,6 +97,7 @@ func initGinxServer(sp session.Provider,
 	cosHdl.PublicRoutes(res.Engine)
 	caseHdl.PublicRoutes(res.Engine)
 	skillHdl.PublicRoutes(res.Engine)
+	paymentHdl.PublicRoutes(res.Engine)
 	// 登录校验
 	res.Use(session.CheckLoginMiddleware())
 	user.PrivateRoutes(res.Engine)
@@ -88,10 +107,19 @@ func initGinxServer(sp session.Provider,
 	cosHdl.PrivateRoutes(res.Engine)
 	caseHdl.PrivateRoutes(res.Engine)
 	skillHdl.PrivateRoutes(res.Engine)
+	pHdl.PrivateRoutes(res.Engine)
+	orderHdl.PrivateRoutes(res.Engine)
+
+	creditHdl.PrivateRoutes(res.Engine)
+	marketingHdl.PrivateRoutes(res.Engine)
+	intrHdl.PrivateRoutes(res.Engine)
+
+	// 权限校验
+	prjHdl.PrivateRoutes(res.Engine)
+
 	// 会员校验
 	res.Use(checkMembershipMiddleware.Build())
 	qh.MemberRoutes(res.Engine)
-	qsh.MemberRoutes(res.Engine)
 	caseHdl.MemberRoutes(res.Engine)
 	fbHdl.MemberRoutes(res.Engine)
 	return res

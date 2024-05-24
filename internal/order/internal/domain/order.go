@@ -14,35 +14,71 @@
 
 package domain
 
+import "encoding/json"
+
+type OrderStatus uint8
+
+func (s OrderStatus) ToUint8() uint8 {
+	return uint8(s)
+}
+
 const (
-	OrderStatusUnpaid    = iota + 1 // 未支付
-	OrderStatusCompleted            // 已完成(已支付)
-	OrderStatusCanceled             // 已取消
-	OrderStatusExpired              // 已超时
+	// StatusInit 初始化状态，对用户是不可见的
+	StatusInit          OrderStatus = 1
+	StatusProcessing    OrderStatus = 2
+	StatusSuccess       OrderStatus = 3
+	StatusFailed        OrderStatus = 4
+	StatusCanceled      OrderStatus = 5
+	StatusTimeoutClosed OrderStatus = 6
 )
 
 type Order struct {
-	ID                 int64
-	SN                 string
-	BuyerID            int64
-	PaymentID          int64
-	PaymentSN          string
-	OriginalTotalPrice int64
-	RealTotalPrice     int64
-	ClosedAt           int64
-	Status             int64
-	Items              []OrderItem
-	Ctime              int64
-	Utime              int64
+	ID               int64
+	SN               string
+	BuyerID          int64
+	Payment          Payment
+	OriginalTotalAmt int64
+	RealTotalAmt     int64
+	Status           OrderStatus
+	Items            []OrderItem
+	Ctime            int64
+	Utime            int64
+}
+
+type Payment struct {
+	ID int64
+	SN string
 }
 
 type OrderItem struct {
-	OrderID          int64
-	SPUID            int64
-	SKUID            int64
-	SKUName          string
-	SKUDescription   string
-	SKUOriginalPrice int64
-	SKURealPrice     int64
-	Quantity         int64
+	SPU SPU
+	SKU SKU
+}
+
+type Category struct {
+	Name string
+	Desc string
+}
+
+type SPU struct {
+	ID        int64
+	Category0 string
+	Category1 string
+}
+
+type SKU struct {
+	ID            int64
+	SN            string
+	Image         string
+	Attrs         string
+	Name          string
+	Description   string
+	OriginalPrice int64
+	RealPrice     int64
+	Quantity      int64
+}
+
+// UnmarshalAttrs 传入一个指针
+func (s SKU) UnmarshalAttrs(val any) error {
+	return json.Unmarshal([]byte(s.Attrs), val)
 }

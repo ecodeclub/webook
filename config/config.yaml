@@ -19,8 +19,21 @@ kafka:
   network: tcp
   addresses:
     - kafka:9092
-  topics:
-    - name: payment_successful
-      partitions: 2
-    - name: user_registration_events
-      partitions: 2
+
+cron:
+# 超时关闭订单
+  closeTimeoutOrder:
+    enableSeconds: true          # 是否使用秒作解析器，默认否
+    spec: "* * * * *"           # 每分钟执行一次
+# 超时释放积分
+  unlockTimeoutCredit:
+    enableSeconds: true          # 是否使用秒作解析器，默认否
+    spec: "* * * * *"           # 每分钟执行一次
+# 微信订单对账
+  syncWechatOrder:
+    enableSeconds: true          # 是否使用秒作解析器，默认否
+    spec: "* * * * *"           # 每分钟执行一次
+# 独立对账
+  syncPaymentAndOrder:
+    enableSeconds: true          # 是否使用秒作解析器，默认否
+    spec: "* * * * *"           # 每分钟执行一次

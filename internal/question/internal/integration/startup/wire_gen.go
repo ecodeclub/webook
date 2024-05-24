@@ -7,31 +7,51 @@
 package startup
 
 import (
+	"github.com/ecodeclub/webook/internal/interactive"
 	baguwen "github.com/ecodeclub/webook/internal/question"
+	"github.com/ecodeclub/webook/internal/question/internal/event"
+	"github.com/ecodeclub/webook/internal/question/internal/repository"
+	"github.com/ecodeclub/webook/internal/question/internal/repository/cache"
+	"github.com/ecodeclub/webook/internal/question/internal/service"
 	"github.com/ecodeclub/webook/internal/question/internal/web"
 	testioc "github.com/ecodeclub/webook/internal/test/ioc"
+	"github.com/google/wire"
 )
 
 // Injectors from wire.go:
 
-func InitHandler() (*web.Handler, error) {
+func InitHandler(p event.SyncDataToSearchEventProducer, intrModule *interactive.Module) (*web.Handler, error) {
 	db := testioc.InitDB()
-	cache := testioc.InitCache()
-	module, err := baguwen.InitModule(db, cache)
+	questionDAO := baguwen.InitQuestionDAO(db)
+	ecacheCache := testioc.InitCache()
+	questionCache := cache.NewQuestionECache(ecacheCache)
+	repositoryRepository := repository.NewCacheRepository(questionDAO, questionCache)
+	mq := testioc.InitMQ()
+	interactiveEventProducer, err := event.NewInteractiveEventProducer(mq)
 	if err != nil {
 		return nil, err
 	}
-	handler := module.Hdl
+	serviceService := service.NewService(repositoryRepository, p, interactiveEventProducer)
+	service2 := intrModule.Svc
+	handler := web.NewHandler(serviceService, service2)
 	return handler, nil
 }
 
-func InitQuestionSetHandler() (*web.QuestionSetHandler, error) {
+func InitQuestionSetHandler(p event.SyncDataToSearchEventProducer, intrModule *interactive.Module) (*web.QuestionSetHandler, error) {
 	db := testioc.InitDB()
-	cache := testioc.InitCache()
-	module, err := baguwen.InitModule(db, cache)
+	questionSetDAO := baguwen.InitQuestionSetDAO(db)
+	questionSetRepository := repository.NewQuestionSetRepository(questionSetDAO)
+	mq := testioc.InitMQ()
+	interactiveEventProducer, err := event.NewInteractiveEventProducer(mq)
 	if err != nil {
 		return nil, err
 	}
-	questionSetHandler := module.QsHdl
+	questionSetService := service.NewQuestionSetService(questionSetRepository, interactiveEventProducer, p)
+	serviceService := intrModule.Svc
+	questionSetHandler := web.NewQuestionSetHandler(questionSetService, serviceService)
 	return questionSetHandler, nil
 }
+
+// wire.go:
+
+var moduleSet = wire.NewSet(baguwen.InitQuestionDAO, cache.NewQuestionECache, repository.NewCacheRepository, service.NewService, web.NewHandler, baguwen.InitQuestionSetDAO, repository.NewQuestionSetRepository, service.NewQuestionSetService, web.NewQuestionSetHandler, wire.Struct(new(baguwen.Module), "*"))

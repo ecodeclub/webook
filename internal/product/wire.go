@@ -28,6 +28,20 @@ import (
 	"github.com/google/wire"
 )
 
+type (
+	Handler = web.Handler
+	Service = service.Service
+	SKU     = domain.SKU
+	SPU     = domain.SPU
+	Status  = domain.Status
+)
+
+const (
+	StatusOffShelf    = domain.StatusOffShelf
+	StatusOnShelf     = domain.StatusOnShelf
+	SaleTypeUnlimited = domain.SaleTypeUnlimited
+)
+
 var ServiceSet = wire.NewSet(
 	InitTablesOnce,
 	repository.NewProductRepository,
@@ -36,6 +50,11 @@ var ServiceSet = wire.NewSet(
 var HandlerSet = wire.NewSet(
 	InitService,
 	web.NewHandler)
+
+func InitModule(db *egorm.Component) (*Module, error) {
+	wire.Build(HandlerSet, wire.Struct(new(Module), "*"))
+	return new(Module), nil
+}
 
 func InitHandler(db *egorm.Component) *Handler {
 	wire.Build(HandlerSet)
@@ -55,11 +74,3 @@ func InitTablesOnce(db *egorm.Component) dao.ProductDAO {
 	})
 	return dao.NewProductGORMDAO(db)
 }
-
-type Handler = web.Handler
-
-type Service = service.Service
-
-type Product = domain.Product
-type SKU = domain.SKU
-type SPU = domain.SPU

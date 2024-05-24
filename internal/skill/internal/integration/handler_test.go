@@ -4,17 +4,22 @@ package integration
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
+	"sync"
 	"testing"
 	"time"
+
+	"github.com/ecodeclub/webook/internal/skill/internal/event"
 
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/ecodeclub/webook/internal/cases"
 	casemocks "github.com/ecodeclub/webook/internal/cases/mocks"
 	baguwen "github.com/ecodeclub/webook/internal/question"
 	quemocks "github.com/ecodeclub/webook/internal/question/mocks"
+	evemocks "github.com/ecodeclub/webook/internal/skill/internal/event/mocks"
 	"go.uber.org/mock/gomock"
 
 	"github.com/ecodeclub/ekit/iox"
@@ -38,9 +43,11 @@ const uid = 2061
 
 type HandlerTestSuite struct {
 	suite.Suite
-	server *egin.Component
-	db     *egorm.Component
-	dao    dao.SkillDAO
+	server   *egin.Component
+	db       *egorm.Component
+	dao      dao.SkillDAO
+	ctrl     *gomock.Controller
+	producer *evemocks.MockSyncEventProducer
 }
 
 func (s *HandlerTestSuite) TearDownTest() {
@@ -75,10 +82,12 @@ func (s *HandlerTestSuite) SetupSuite() {
 				}
 			}), nil
 		}).AnyTimes()
-
+	s.ctrl = ctrl
+	s.producer = evemocks.NewMockSyncEventProducer(s.ctrl)
 	handler, err := startup.InitHandler(
 		&baguwen.Module{Svc: queSvc},
 		&cases.Module{Svc: caseSvc},
+		s.producer,
 	)
 	require.NoError(s.T(), err)
 	econf.Set("server", map[string]any{"contextTimeout": "1s"})
@@ -109,7 +118,7 @@ func (s *HandlerTestSuite) TestSave() {
 		{
 			name: "新增",
 			before: func(t *testing.T) {
-
+				s.producer.EXPECT().Produce(gomock.Any(), gomock.Any()).Return(nil)
 			},
 			after: func(t *testing.T) {
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
@@ -179,6 +188,7 @@ func (s *HandlerTestSuite) TestSave() {
 		{
 			name: "更新",
 			before: func(t *testing.T) {
+				s.producer.EXPECT().Produce(gomock.Any(), gomock.Any()).Return(nil)
 				err := s.db.Create(&dao.Skill{
 					Id: 2,
 					Labels: sqlx.JsonColumn[[]string]{
@@ -279,6 +289,7 @@ func (s *HandlerTestSuite) TestSave() {
 		},
 	}
 	for _, tc := range testCases {
+		tc := tc
 		s.T().Run(tc.name, func(t *testing.T) {
 			tc.before(t)
 			req, err := http.NewRequest(http.MethodPost,
@@ -312,6 +323,7 @@ func (s *HandlerTestSuite) TestSaveRefs() {
 		{
 			name: "新建",
 			before: func(t *testing.T) {
+				s.producer.EXPECT().Produce(gomock.Any(), gomock.Any()).Return(nil)
 				err := s.db.Create(&dao.Skill{
 					Id: 1,
 				}).Error
@@ -496,6 +508,7 @@ func (s *HandlerTestSuite) TestSaveRefs() {
 		},
 	}
 	for _, tc := range testCases {
+		tc := tc
 		s.T().Run(tc.name, func(t *testing.T) {
 			tc.before(t)
 			req, err := http.NewRequest(http.MethodPost,
@@ -850,6 +863,7 @@ func (s *HandlerTestSuite) TestList() {
 		},
 	}
 	for _, tc := range testCases {
+		tc := tc
 		s.T().Run(tc.name, func(t *testing.T) {
 			req, err := http.NewRequest(http.MethodPost,
 				"/skill/list", iox.NewJSONReader(tc.req))
@@ -932,6 +946,7 @@ func (s *HandlerTestSuite) TestRefsByLevelIDs() {
 	}
 
 	for _, tc := range testCases {
+		tc := tc
 		s.T().Run(tc.name, func(t *testing.T) {
 			req, err := http.NewRequest(http.MethodPost,
 				"/skill/level-refs", iox.NewJSONReader(tc.req))
@@ -943,7 +958,182 @@ func (s *HandlerTestSuite) TestRefsByLevelIDs() {
 			assert.Equal(t, tc.wantResp, recorder.MustScan())
 		})
 	}
+}
+func (s *HandlerTestSuite) TestEvent() {
+	t := s.T()
+	mu := &sync.RWMutex{}
+	ans := make([]event.Skill, 0, 16)
+	s.producer.EXPECT().Produce(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, skillEvent event.SkillEvent) error {
+		var eve event.Skill
+		err := json.Unmarshal([]byte(skillEvent.Data), &eve)
+		if err != nil {
+			return err
+		}
+		mu.Lock()
+		ans = append(ans, eve)
+		mu.Unlock()
+		return nil
+	}).Times(2)
+	// 保存
+	saveReq := web.SaveReq{
+		Skill: web.Skill{
+			Labels: []string{"mysql"},
+			Name:   "mysql",
+			Desc:   "mysql_desc",
+			Basic: web.SkillLevel{
+				Desc: "mysql_desc",
+			},
+			Intermediate: web.SkillLevel{
+				Desc: "mysql_desc",
+			},
+			Advanced: web.SkillLevel{
+				Desc: "mysql_desc",
+			},
+		},
+	}
+	req, err := http.NewRequest(http.MethodPost,
+		"/skill/save", iox.NewJSONReader(saveReq))
+	req.Header.Set("content-type", "application/json")
+	require.NoError(t, err)
+	recorder := test.NewJSONResponseRecorder[int64]()
+	s.server.ServeHTTP(recorder, req)
+	require.Equal(t, 200, recorder.Code)
 
+	s.dao.Create(context.Background(), dao.Skill{
+		Id:   2,
+		Name: "test_name",
+		Desc: "test_desc",
+	}, []dao.SkillLevel{
+		{
+			Id:    4,
+			Sid:   2,
+			Level: "basic",
+			Desc:  "basic_desc",
+		},
+		{
+			Id:    5,
+			Sid:   2,
+			Level: "intermediate",
+			Desc:  "intermediate_desc",
+		},
+		{
+			Id:    6,
+			Sid:   2,
+			Level: "advanced",
+			Desc:  "advanced_desc",
+		},
+	})
+	// 保存ref
+	saveRefReq := web.SaveReq{
+		Skill: web.Skill{
+			ID: 2,
+			Basic: web.SkillLevel{
+				Id: 4,
+				Questions: []web.Question{
+					{Id: 12},
+					{Id: 23},
+				},
+			},
+			Intermediate: web.SkillLevel{
+				Id: 5,
+				Questions: []web.Question{
+					{Id: 34},
+				},
+				Cases: []web.Case{
+					{Id: 45},
+				},
+			},
+			Advanced: web.SkillLevel{
+				Id: 6,
+				Cases: []web.Case{
+					{Id: 67},
+				},
+			},
+		},
+	}
+	req2, err := http.NewRequest(http.MethodPost,
+		"/skill/save-refs", iox.NewJSONReader(saveRefReq))
+	req2.Header.Set("content-type", "application/json")
+	require.NoError(t, err)
+	recorder = test.NewJSONResponseRecorder[int64]()
+	s.server.ServeHTTP(recorder, req2)
+	require.Equal(t, 200, recorder.Code)
+	time.Sleep(1 * time.Second)
+	wantAns := []event.Skill{
+		{
+			Labels: []string{"mysql"},
+			Name:   "mysql",
+			Desc:   "mysql_desc",
+			Basic: event.SkillLevel{
+				Desc:      "mysql_desc",
+				Questions: []int64{},
+				Cases:     []int64{},
+			},
+			Intermediate: event.SkillLevel{
+				Desc:      "mysql_desc",
+				Questions: []int64{},
+				Cases:     []int64{},
+			},
+			Advanced: event.SkillLevel{
+				Desc:      "mysql_desc",
+				Questions: []int64{},
+				Cases:     []int64{},
+			},
+		},
+		{
+			Name: "test_name",
+			Desc: "test_desc",
+			Basic: event.SkillLevel{
+				Desc: "basic_desc",
+				Questions: []int64{
+					12,
+					23,
+				},
+				Cases: []int64{},
+			},
+			Intermediate: event.SkillLevel{
+				Desc: "intermediate_desc",
+				Questions: []int64{
+					34,
+				},
+				Cases: []int64{
+					45,
+				},
+			},
+			Advanced: event.SkillLevel{
+				Desc:      "advanced_desc",
+				Cases:     []int64{67},
+				Questions: []int64{},
+			},
+		},
+	}
+	for idx := range ans {
+		ans[idx] = s.formatSkill(ans[idx])
+	}
+	assert.Equal(t, wantAns, ans)
+}
+
+func (s *HandlerTestSuite) formatSkill(sk event.Skill) event.Skill {
+	require.True(s.T(), sk.ID != 0)
+	require.True(s.T(), sk.Utime != 0)
+	require.True(s.T(), sk.Ctime != 0)
+	sk.ID = 0
+	sk.Utime = 0
+	sk.Ctime = 0
+	sk.Advanced = s.formatSkillLevel(sk.Advanced)
+	sk.Basic = s.formatSkillLevel(sk.Basic)
+	sk.Intermediate = s.formatSkillLevel(sk.Intermediate)
+	return sk
+}
+
+func (s *HandlerTestSuite) formatSkillLevel(sk event.SkillLevel) event.SkillLevel {
+	require.True(s.T(), sk.ID != 0)
+	require.True(s.T(), sk.Utime != 0)
+	require.True(s.T(), sk.Ctime != 0)
+	sk.ID = 0
+	sk.Utime = 0
+	sk.Ctime = 0
+	return sk
 }
 
 func (s *HandlerTestSuite) assertSkill(wantSKill dao.Skill, actualSkill dao.Skill) {

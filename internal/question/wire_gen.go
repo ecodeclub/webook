@@ -10,6 +10,9 @@ import (
 	"sync"
 
 	"github.com/ecodeclub/ecache"
+	"github.com/ecodeclub/mq-api"
+	"github.com/ecodeclub/webook/internal/interactive"
+	"github.com/ecodeclub/webook/internal/question/internal/event"
 	"github.com/ecodeclub/webook/internal/question/internal/repository"
 	"github.com/ecodeclub/webook/internal/question/internal/repository/cache"
 	"github.com/ecodeclub/webook/internal/question/internal/repository/dao"
@@ -21,19 +24,25 @@ import (
 
 // Injectors from wire.go:
 
-func InitModule(db *gorm.DB, ec ecache.Cache) (*Module, error) {
+func InitModule(db *gorm.DB, intrModule *interactive.Module, ec ecache.Cache, q mq.MQ) (*Module, error) {
 	questionDAO := InitQuestionDAO(db)
 	questionCache := cache.NewQuestionECache(ec)
 	repositoryRepository := repository.NewCacheRepository(questionDAO, questionCache)
-	serviceService := service.NewService(repositoryRepository)
-	handler := web.NewHandler(serviceService)
-	questionSetDAO := InitQuestionSetDAO(db)
-	questionSetRepository := repository.NewQuestionSetRepository(questionSetDAO)
-	questionSetService := service.NewQuestionSetService(questionSetRepository)
-	questionSetHandler, err := web.NewQuestionSetHandler(questionSetService)
+	syncDataToSearchEventProducer, err := event.NewSyncEventProducer(q)
 	if err != nil {
 		return nil, err
 	}
+	interactiveEventProducer, err := event.NewInteractiveEventProducer(q)
+	if err != nil {
+		return nil, err
+	}
+	serviceService := service.NewService(repositoryRepository, syncDataToSearchEventProducer, interactiveEventProducer)
+	interactiveService := intrModule.Svc
+	handler := web.NewHandler(serviceService, interactiveService)
+	questionSetDAO := InitQuestionSetDAO(db)
+	questionSetRepository := repository.NewQuestionSetRepository(questionSetDAO)
+	questionSetService := service.NewQuestionSetService(questionSetRepository, interactiveEventProducer, syncDataToSearchEventProducer)
+	questionSetHandler := web.NewQuestionSetHandler(questionSetService, interactiveService)
 	module := &Module{
 		Svc:   serviceService,
 		Hdl:   handler,

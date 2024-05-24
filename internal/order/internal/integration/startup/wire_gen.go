@@ -17,9 +17,10 @@ import (
 
 // Injectors from wire.go:
 
-func InitHandler(paymentSvc payment.Service, productSvc product.Service, creditSvc credit.Service) (*web.Handler, error) {
-	db := testioc.InitDB()
+func InitHandler(pm *payment.Module, ppm *product.Module, cm *credit.Module) (*web.Handler, error) {
 	cache := testioc.InitCache()
-	handler := order.InitHandler(db, paymentSvc, productSvc, creditSvc, cache)
+	db := testioc.InitDB()
+	service := order.InitService(db)
+	handler := order.InitHandler(cache, service, pm, ppm, cm)
 	return handler, nil
 }

@@ -37,7 +37,7 @@ func InitModule(db *egorm.Component, q mq.MQ) (*Module, error) {
 	wire.Build(wire.Struct(
 		new(Module), "*"),
 		InitService,
-		initRegistrationConsumer,
+		initMemberConsumer,
 	)
 	return new(Module), nil
 }
@@ -57,8 +57,8 @@ func InitService(db *egorm.Component, q mq.MQ) Service {
 	return svc
 }
 
-func initRegistrationConsumer(svc service.Service, q mq.MQ) *event.RegistrationEventConsumer {
-	c, err := event.NewRegistrationEventConsumer(svc, q)
+func initMemberConsumer(svc service.Service, q mq.MQ) *event.MemberEventConsumer {
+	c, err := event.NewMemberEventConsumer(svc, q)
 	if err != nil {
 		panic(err)
 	}

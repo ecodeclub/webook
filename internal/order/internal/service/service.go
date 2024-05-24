@@ -16,23 +16,32 @@ package service
 
 import (
 	"context"
-	"fmt"
-	"time"
 
 	"github.com/ecodeclub/webook/internal/order/internal/domain"
 	"github.com/ecodeclub/webook/internal/order/internal/repository"
 	"golang.org/x/sync/errgroup"
 )
 
+//go:generate mockgen -source=./service.go -package=ordermocks -destination=../../mocks/order.mock.go -typed Service
 type Service interface {
+	// CreateOrder 创建订单 web调用
 	CreateOrder(ctx context.Context, order domain.Order) (domain.Order, error)
-	FindOrder(ctx context.Context, orderSN string, buyerID int64) (domain.Order, error)
-	UpdateOrder(ctx context.Context, order domain.Order) error
-	CompleteOrder(ctx context.Context, order domain.Order) error
-	ListOrders(ctx context.Context, offset, limit int, uid int64) ([]domain.Order, int64, error)
-	ListExpiredOrders(ctx context.Context, offset, limit int, ctime int64) ([]domain.Order, int64, error)
-	CloseExpiredOrders(ctx context.Context, orderIDs []int64) error
-	CancelOrder(ctx context.Context, order domain.Order) error
+	// UpdateUnpaidOrderPaymentInfo 更新未支付订单冗余支付ID及SN字段 web调用
+	UpdateUnpaidOrderPaymentInfo(ctx context.Context, uid, oid, pid int64, psn string) error
+	// FindUserVisibleOrderByUIDAndSN 查找订单 web调用
+	FindUserVisibleOrderByUIDAndSN(ctx context.Context, uid int64, orderSN string) (domain.Order, error)
+	// FindUserVisibleOrdersByUID 分页查找用户订单 web调用
+	FindUserVisibleOrdersByUID(ctx context.Context, uid int64, offset, limit int) ([]domain.Order, int64, error)
+	// CancelOrder 取消订单 web 调用
+	CancelOrder(ctx context.Context, uid, oid int64) error
+	// SucceedOrder 订单支付失败 event调用
+	SucceedOrder(ctx context.Context, uid int64, orderSN string) error
+	// FailOrder 订单支付失败 event调用
+	FailOrder(ctx context.Context, uid int64, orderSN string) error
+	// FindTimeoutOrders 查询过期订单 job调用
+	FindTimeoutOrders(ctx context.Context, offset, limit int, ctime int64) ([]domain.Order, int64, error)
+	// CloseTimeoutOrders 关闭过期订单 job调用
+	CloseTimeoutOrders(ctx context.Context, orderIDs []int64, ctime int64) error
 }
 
 func NewService(repo repository.OrderRepository) Service {
@@ -47,21 +56,47 @@ func (s *service) CreateOrder(ctx context.Context, order domain.Order) (domain.O
 	return s.repo.CreateOrder(ctx, order)
 }
 
-func (s *service) FindOrder(ctx context.Context, orderSN string, buyerID int64) (domain.Order, error) {
-	return s.repo.FindOrderBySNAndBuyerID(ctx, orderSN, buyerID)
+func (s *service) UpdateUnpaidOrderPaymentInfo(ctx context.Context, uid, oid, pid int64, psn string) error {
+	return s.repo.UpdateUnpaidOrderPaymentInfo(ctx, uid, oid, pid, psn)
 }
 
-func (s *service) UpdateOrder(ctx context.Context, order domain.Order) error {
-	return s.repo.UpdateOrder(ctx, order)
+func (s *service) FindUserVisibleOrderByUIDAndSN(ctx context.Context, buyerID int64, orderSN string) (domain.Order, error) {
+	return s.repo.FindUserVisibleOrderByUIDAndSN(ctx, buyerID, orderSN)
 }
 
-func (s *service) CompleteOrder(ctx context.Context, order domain.Order) error {
+func (s *service) FindUserVisibleOrdersByUID(ctx context.Context, uid int64, offset, limit int) ([]domain.Order, int64, error) {
+	var (
+		eg    errgroup.Group
+		os    []domain.Order
+		total int64
+	)
+	eg.Go(func() error {
+		var err error
+		os, err = s.repo.FindUserVisibleOrdersByUID(ctx, uid, offset, limit)
+		return err
+	})
+
+	eg.Go(func() error {
+		var err error
+		total, err = s.repo.TotalUserVisibleOrders(ctx, uid)
+		return err
+	})
+	return os, total, eg.Wait()
+}
+
+func (s *service) CancelOrder(ctx context.Context, uid, oid int64) error {
+	return s.repo.CancelOrder(ctx, uid, oid)
+}
+
+func (s *service) SucceedOrder(ctx context.Context, uid int64, orderSN string) error {
 	// 已收到用户付款,不管订单状态为什么一律标记为“已完成”
-	order.Status = domain.OrderStatusCompleted
-	return s.repo.UpdateOrder(ctx, order)
+	return s.repo.SucceedOrder(ctx, uid, orderSN)
+}
+func (s *service) FailOrder(ctx context.Context, uid int64, orderSN string) error {
+	return s.repo.FailOrder(ctx, uid, orderSN)
 }
 
-func (s *service) ListOrders(ctx context.Context, offset, limit int, uid int64) ([]domain.Order, int64, error) {
+func (s *service) FindTimeoutOrders(ctx context.Context, offset, limit int, ctime int64) ([]domain.Order, int64, error) {
 	var (
 		eg    errgroup.Group
 		os    []domain.Order
@@ -69,47 +104,18 @@ func (s *service) ListOrders(ctx context.Context, offset, limit int, uid int64) 
 	)
 	eg.Go(func() error {
 		var err error
-		os, err = s.repo.ListOrdersByUID(ctx, offset, limit, uid)
+		os, err = s.repo.FindTimeoutOrders(ctx, offset, limit, ctime)
 		return err
 	})
 
 	eg.Go(func() error {
 		var err error
-		total, err = s.repo.TotalOrders(ctx, uid)
+		total, err = s.repo.TotalTimeoutOrders(ctx, ctime)
 		return err
 	})
 	return os, total, eg.Wait()
 }
 
-func (s *service) ListExpiredOrders(ctx context.Context, offset, limit int, ctime int64) ([]domain.Order, int64, error) {
-	var (
-		eg    errgroup.Group
-		os    []domain.Order
-		total int64
-	)
-	eg.Go(func() error {
-		var err error
-		os, err = s.repo.ListExpiredOrders(ctx, offset, limit, ctime)
-		return err
-	})
-
-	eg.Go(func() error {
-		var err error
-		total, err = s.repo.TotalExpiredOrders(ctx, ctime)
-		return err
-	})
-	return os, total, eg.Wait()
-}
-
-func (s *service) CloseExpiredOrders(ctx context.Context, orderIDs []int64) error {
-	return s.repo.CloseExpiredOrders(ctx, orderIDs)
-}
-
-func (s *service) CancelOrder(ctx context.Context, order domain.Order) error {
-	if order.Status != domain.OrderStatusUnpaid {
-		return fmt.Errorf("订单状态非法")
-	}
-	order.Status = domain.OrderStatusCanceled
-	order.ClosedAt = time.Now().UnixMilli()
-	return s.repo.UpdateOrder(ctx, order)
+func (s *service) CloseTimeoutOrders(ctx context.Context, orderIDs []int64, ctime int64) error {
+	return s.repo.CloseTimeoutOrders(ctx, orderIDs, ctime)
 }

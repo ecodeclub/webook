@@ -39,58 +39,57 @@ func (m *MockService) EXPECT() *MockServiceMockRecorder {
 	return m.recorder
 }
 
-// CreateNewMembership mocks base method.
-func (m *MockService) CreateNewMembership(ctx context.Context, member domain.Member) (int64, error) {
+// ActivateMembership mocks base method.
+func (m *MockService) ActivateMembership(ctx context.Context, member domain.Member) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateNewMembership", ctx, member)
-	ret0, _ := ret[0].(int64)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	ret := m.ctrl.Call(m, "ActivateMembership", ctx, member)
+	ret0, _ := ret[0].(error)
+	return ret0
 }
 
-// CreateNewMembership indicates an expected call of CreateNewMembership.
-func (mr *MockServiceMockRecorder) CreateNewMembership(ctx, member any) *ServiceCreateNewMembershipCall {
+// ActivateMembership indicates an expected call of ActivateMembership.
+func (mr *MockServiceMockRecorder) ActivateMembership(ctx, member any) *ServiceActivateMembershipCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateNewMembership", reflect.TypeOf((*MockService)(nil).CreateNewMembership), ctx, member)
-	return &ServiceCreateNewMembershipCall{Call: call}
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ActivateMembership", reflect.TypeOf((*MockService)(nil).ActivateMembership), ctx, member)
+	return &ServiceActivateMembershipCall{Call: call}
 }
 
-// ServiceCreateNewMembershipCall wrap *gomock.Call
-type ServiceCreateNewMembershipCall struct {
+// ServiceActivateMembershipCall wrap *gomock.Call
+type ServiceActivateMembershipCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *ServiceCreateNewMembershipCall) Return(arg0 int64, arg1 error) *ServiceCreateNewMembershipCall {
-	c.Call = c.Call.Return(arg0, arg1)
+func (c *ServiceActivateMembershipCall) Return(arg0 error) *ServiceActivateMembershipCall {
+	c.Call = c.Call.Return(arg0)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *ServiceCreateNewMembershipCall) Do(f func(context.Context, domain.Member) (int64, error)) *ServiceCreateNewMembershipCall {
+func (c *ServiceActivateMembershipCall) Do(f func(context.Context, domain.Member) error) *ServiceActivateMembershipCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *ServiceCreateNewMembershipCall) DoAndReturn(f func(context.Context, domain.Member) (int64, error)) *ServiceCreateNewMembershipCall {
+func (c *ServiceActivateMembershipCall) DoAndReturn(f func(context.Context, domain.Member) error) *ServiceActivateMembershipCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // GetMembershipInfo mocks base method.
-func (m *MockService) GetMembershipInfo(ctx context.Context, userID int64) (domain.Member, error) {
+func (m *MockService) GetMembershipInfo(ctx context.Context, uid int64) (domain.Member, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetMembershipInfo", ctx, userID)
+	ret := m.ctrl.Call(m, "GetMembershipInfo", ctx, uid)
 	ret0, _ := ret[0].(domain.Member)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetMembershipInfo indicates an expected call of GetMembershipInfo.
-func (mr *MockServiceMockRecorder) GetMembershipInfo(ctx, userID any) *ServiceGetMembershipInfoCall {
+func (mr *MockServiceMockRecorder) GetMembershipInfo(ctx, uid any) *ServiceGetMembershipInfoCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMembershipInfo", reflect.TypeOf((*MockService)(nil).GetMembershipInfo), ctx, userID)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMembershipInfo", reflect.TypeOf((*MockService)(nil).GetMembershipInfo), ctx, uid)
 	return &ServiceGetMembershipInfoCall{Call: call}
 }
 

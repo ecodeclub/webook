@@ -17,22 +17,46 @@
 package startup
 
 import (
+	"github.com/ecodeclub/webook/internal/interactive"
 	baguwen "github.com/ecodeclub/webook/internal/question"
+	"github.com/ecodeclub/webook/internal/question/internal/event"
+	"github.com/ecodeclub/webook/internal/question/internal/repository"
+	"github.com/ecodeclub/webook/internal/question/internal/repository/cache"
+	"github.com/ecodeclub/webook/internal/question/internal/service"
 	"github.com/ecodeclub/webook/internal/question/internal/web"
 	testioc "github.com/ecodeclub/webook/internal/test/ioc"
 	"github.com/google/wire"
 )
 
-func InitHandler() (*web.Handler, error) {
-	wire.Build(testioc.BaseSet,
-		baguwen.InitModule,
-		wire.FieldsOf(new(*baguwen.Module), "Hdl"),
+func InitHandler(p event.SyncDataToSearchEventProducer,
+	intrModule *interactive.Module) (*web.Handler, error) {
+	wire.Build(
+		testioc.BaseSet,
+		moduleSet,
+		event.NewInteractiveEventProducer,
+		wire.FieldsOf(new(*interactive.Module), "Svc"),
 	)
 	return new(web.Handler), nil
 }
 
-func InitQuestionSetHandler() (*web.QuestionSetHandler, error) {
-	wire.Build(testioc.BaseSet, baguwen.InitModule,
-		wire.FieldsOf(new(*baguwen.Module), "QsHdl"))
+var moduleSet = wire.NewSet(baguwen.InitQuestionDAO,
+	cache.NewQuestionECache,
+	repository.NewCacheRepository,
+	service.NewService,
+	web.NewHandler,
+	baguwen.InitQuestionSetDAO,
+	repository.NewQuestionSetRepository,
+	service.NewQuestionSetService,
+	web.NewQuestionSetHandler,
+	wire.Struct(new(baguwen.Module), "*"),
+)
+
+func InitQuestionSetHandler(
+	p event.SyncDataToSearchEventProducer,
+	intrModule *interactive.Module,
+) (*web.QuestionSetHandler, error) {
+	wire.Build(testioc.BaseSet, moduleSet,
+		wire.FieldsOf(new(*interactive.Module), "Svc"),
+		event.NewInteractiveEventProducer)
 	return new(web.QuestionSetHandler), nil
 }

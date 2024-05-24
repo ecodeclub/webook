@@ -23,11 +23,23 @@ type CollectReq struct {
 type LikeReq struct {
 	Biz   string `json:"biz"`
 	BizId int64  `json:"bizId"`
+	// true => 点赞
+	// false => 取消点赞
+	Liked bool `json:"liked"`
+}
+type ViewReq struct {
+	Biz   string `json:"biz"`
+	BizId int64  `json:"bizId"`
 }
 
 type GetCntReq struct {
 	Biz   string `json:"biz"`
 	BizId int64  `json:"bizId"`
+}
+
+type BatchGetCntReq struct {
+	Biz    string  `json:"biz"`
+	BizIds []int64 `json:"bizIds"`
 }
 
 type GetCntResp struct {
@@ -38,4 +50,16 @@ type GetCntResp struct {
 	Collected bool `json:"collected"`
 	// 是否点赞过
 	Liked bool `json:"liked"`
+}
+
+type Interactive struct {
+	ID         int64 `json:"id"`
+	CollectCnt int   `json:"collectCnt"`
+	LikeCnt    int   `json:"likeCnt"`
+	ViewCnt    int   `json:"viewCnt"`
+	Liked      bool  `json:"liked"`
+	Collected  bool  `json:"collected"`
+}
+type BatatGetCntResp struct {
+	InteractiveMap map[int64]Interactive `json:"interactiveMap"`
 }

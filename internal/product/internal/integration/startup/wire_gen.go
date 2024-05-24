@@ -8,6 +8,7 @@ package startup
 
 import (
 	"github.com/ecodeclub/webook/internal/product"
+	"github.com/ecodeclub/webook/internal/product/internal/service"
 	"github.com/ecodeclub/webook/internal/product/internal/web"
 	testioc "github.com/ecodeclub/webook/internal/test/ioc"
 )
@@ -18,4 +19,10 @@ func InitHandler() (*web.Handler, error) {
 	db := testioc.InitDB()
 	handler := product.InitHandler(db)
 	return handler, nil
+}
+
+func InitService() service.Service {
+	db := testioc.InitDB()
+	serviceService := product.InitService(db)
+	return serviceService
 }

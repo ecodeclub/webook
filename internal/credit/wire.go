@@ -24,21 +24,30 @@ import (
 	"github.com/ecodeclub/mq-api"
 	"github.com/ecodeclub/webook/internal/credit/internal/domain"
 	"github.com/ecodeclub/webook/internal/credit/internal/event"
+	"github.com/ecodeclub/webook/internal/credit/internal/job"
 	"github.com/ecodeclub/webook/internal/credit/internal/repository"
 	"github.com/ecodeclub/webook/internal/credit/internal/repository/dao"
 	"github.com/ecodeclub/webook/internal/credit/internal/service"
+	"github.com/ecodeclub/webook/internal/credit/internal/web"
 	"github.com/ego-component/egorm"
 	"github.com/google/wire"
 )
 
-type Credit = domain.Credit
-type Service = service.Service
+type (
+	Credit                       = domain.Credit
+	CreditLog                    = domain.CreditLog
+	Service                      = service.Service
+	Handler                      = web.Handler
+	CloseTimeoutLockedCreditsJob = job.CloseTimeoutLockedCreditsJob
+)
 
 func InitModule(db *egorm.Component, q mq.MQ, e ecache.Cache) (*Module, error) {
 	wire.Build(wire.Struct(
 		new(Module), "*"),
 		InitService,
+		InitHandler,
 		initCreditConsumer,
+		initCloseTimeoutLockedCreditsJob,
 	)
 	return new(Module), nil
 }
@@ -58,6 +67,10 @@ func InitService(db *egorm.Component) Service {
 	return svc
 }
 
+func InitHandler(srv service.Service) *Handler {
+	return web.NewHandler(svc)
+}
+
 func initCreditConsumer(svc service.Service, q mq.MQ) *event.CreditIncreaseConsumer {
 	c, err := event.NewCreditIncreaseConsumer(svc, q)
 	if err != nil {
@@ -65,4 +78,11 @@ func initCreditConsumer(svc service.Service, q mq.MQ) *event.CreditIncreaseConsu
 	}
 	c.Start(context.Background())
 	return c
+}
+
+func initCloseTimeoutLockedCreditsJob(svc service.Service) *CloseTimeoutLockedCreditsJob {
+	minutes := int64(30)
+	seconds := int64(10)
+	limit := 100
+	return job.NewCloseTimeoutLockedCreditsJob(svc, minutes, seconds, limit)
 }

@@ -6,7 +6,7 @@ require (
 	github.com/ecodeclub/ecache v0.0.0-20240111145855-75679834beca
 	github.com/ecodeclub/ekit v0.0.9-0.20240331142359-871f65136a9b
 	github.com/ecodeclub/ginx v0.0.0-20240407090958-53f744f58112
-	github.com/ecodeclub/mq-api v0.0.0-20240406140940-b7e27bcf1d5f
+	github.com/ecodeclub/mq-api v0.0.0-20240508035004-fd7de3346cfe
 	github.com/ecodeclub/webook-private v0.0.0-20240328102016-f96c72f49853
 	github.com/ego-component/egorm v1.1.1
 	github.com/gin-contrib/cors v1.5.0
@@ -16,8 +16,8 @@ require (
 	github.com/google/wire v0.6.0
 	github.com/gotomicro/ego v1.1.19
 	github.com/lithammer/shortuuid/v4 v4.0.0
+	github.com/olivere/elastic/v7 v7.0.32
 	github.com/redis/go-redis/v9 v9.4.0
-	github.com/robfig/cron/v3 v3.0.1
 	github.com/stretchr/testify v1.9.0
 	github.com/tencentyun/qcloud-cos-sts-sdk v0.0.0-20231121073521-dd65d8941a16
 	github.com/wechatpay-apiv3/wechatpay-go v0.2.18
@@ -77,10 +77,12 @@ require (
 	github.com/jackc/pgx/v4 v4.16.0 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
+	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/klauspost/compress v1.17.7 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.7 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
+	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.1 // indirect
 	github.com/microsoft/go-mssqldb v1.1.0 // indirect
@@ -95,6 +97,7 @@ require (
 	github.com/prometheus/client_model v0.2.0 // indirect
 	github.com/prometheus/common v0.32.1 // indirect
 	github.com/prometheus/procfs v0.7.3 // indirect
+	github.com/robfig/cron/v3 v3.0.1 // indirect
 	github.com/savsgio/gotils v0.0.0-20230208104028-c358bd845dee // indirect
 	github.com/segmentio/kafka-go v0.4.44 // indirect
 	github.com/shirou/gopsutil/v3 v3.21.6 // indirect
@@ -119,6 +122,7 @@ require (
 	go.uber.org/zap v1.26.0 // indirect
 	golang.org/x/arch v0.7.0 // indirect
 	golang.org/x/crypto v0.22.0 // indirect
+	golang.org/x/exp v0.0.0-20231006140011-7918f672742d // indirect
 	golang.org/x/net v0.24.0 // indirect
 	golang.org/x/sys v0.19.0 // indirect
 	golang.org/x/text v0.14.0 // indirect

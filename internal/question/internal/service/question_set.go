@@ -16,6 +16,10 @@ package service
 
 import (
 	"context"
+	"time"
+
+	"github.com/ecodeclub/webook/internal/question/internal/event"
+	"github.com/gotomicro/ego/core/elog"
 
 	"github.com/ecodeclub/webook/internal/question/internal/domain"
 	"github.com/ecodeclub/webook/internal/question/internal/repository"
@@ -30,26 +34,63 @@ type QuestionSetService interface {
 }
 
 type questionSetService struct {
-	repo repository.QuestionSetRepository
+	repo         repository.QuestionSetRepository
+	producer     event.SyncDataToSearchEventProducer
+	intrProducer event.InteractiveEventProducer
+	logger       *elog.Component
+	syncTimeout  time.Duration
 }
 
-func NewQuestionSetService(repo repository.QuestionSetRepository) QuestionSetService {
-	return &questionSetService{repo: repo}
+func NewQuestionSetService(repo repository.QuestionSetRepository,
+	intrProducer event.InteractiveEventProducer,
+	producer event.SyncDataToSearchEventProducer) QuestionSetService {
+	return &questionSetService{
+		repo:         repo,
+		producer:     producer,
+		intrProducer: intrProducer,
+		logger:       elog.DefaultLogger,
+		syncTimeout:  10 * time.Second,
+	}
 }
 
 func (q *questionSetService) Save(ctx context.Context, set domain.QuestionSet) (int64, error) {
+	var id = set.Id
+	var err error
 	if set.Id > 0 {
-		return set.Id, q.repo.UpdateNonZero(ctx, set)
+		err = q.repo.UpdateNonZero(ctx, set)
+	} else {
+		id, err = q.repo.Create(ctx, set)
 	}
-	return q.repo.Create(ctx, set)
+	if err != nil {
+		return 0, err
+	}
+	q.syncQuestionSet(id)
+	return id, nil
 }
 
 func (q *questionSetService) UpdateQuestions(ctx context.Context, set domain.QuestionSet) error {
-	return q.repo.UpdateQuestions(ctx, set)
+	err := q.repo.UpdateQuestions(ctx, set)
+	if err != nil {
+		return err
+	}
+	q.syncQuestionSet(set.Id)
+	return nil
 }
 
 func (q *questionSetService) Detail(ctx context.Context, id int64) (domain.QuestionSet, error) {
-	return q.repo.GetByID(ctx, id)
+	qs, err := q.repo.GetByID(ctx, id)
+	if err == nil {
+		// 没有区分 B 端还是 C 端，但是这种计数不需要精确计算
+		go func() {
+			newCtx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+			defer cancel()
+			err1 := q.intrProducer.Produce(newCtx, event.NewViewCntEvent(id, domain.QuestionSetBiz))
+			if err1 != nil {
+				q.logger.Error("发送阅读计数消息到消息队列失败", elog.FieldErr(err1), elog.Int64("qsid", id))
+			}
+		}()
+	}
+	return qs, err
 }
 
 func (q *questionSetService) List(ctx context.Context, offset, limit int) ([]domain.QuestionSet, int64, error) {
@@ -70,4 +111,24 @@ func (q *questionSetService) List(ctx context.Context, offset, limit int) ([]dom
 		return err
 	})
 	return qs, total, eg.Wait()
+}
+
+func (q *questionSetService) syncQuestionSet(id int64) {
+	ctx, cancel := context.WithTimeout(context.Background(), q.syncTimeout)
+	defer cancel()
+	qSet, err := q.repo.GetByID(ctx, id)
+	if err != nil {
+		q.logger.Error("发送同步搜索信息",
+			elog.FieldErr(err),
+		)
+		return
+	}
+	evt := event.NewQuestionSetEvent(qSet)
+	err = q.producer.Produce(ctx, evt)
+	if err != nil {
+		q.logger.Error("发送同步搜索信息",
+			elog.FieldErr(err),
+			elog.Any("event", evt),
+		)
+	}
 }

@@ -1,0 +1,46 @@
+{
+  "mappings": {
+    "properties": {
+      "id": {
+        "type": "long"
+      },
+      "uid": {
+        "type": "long"
+      },
+      "labels": {
+        "type": "text"
+      },
+      "title": {
+        "type": "text"
+      },
+      "content": {
+        "type": "text"
+      },
+      "code_repo": {
+        "type": "keyword"
+      },
+      "keywords": {
+        "type": "text"
+      },
+      "shorthand": {
+        "type": "text"
+      },
+      "highlight": {
+        "type": "text"
+      },
+      "guidance": {
+        "type": "text"
+      },
+      "status": {
+        "type": "integer"
+      },
+      "ctime": {
+        "type": "long"
+      },
+      "utime": {
+        "type": "long"
+      }
+    }
+  }
+}
+

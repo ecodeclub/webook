@@ -21,6 +21,16 @@ import (
 
 // Injectors from wire.go:
 
+func InitModule(db *gorm.DB) (*Module, error) {
+	service := InitService(db)
+	handler := web.NewHandler(service)
+	module := &Module{
+		Hdl: handler,
+		Svc: service,
+	}
+	return module, nil
+}
+
 func InitHandler(db *gorm.DB) *web.Handler {
 	service := InitService(db)
 	handler := web.NewHandler(service)
@@ -35,6 +45,20 @@ func InitService(db *gorm.DB) service.Service {
 }
 
 // wire.go:
+
+type (
+	Handler = web.Handler
+	Service = service.Service
+	SKU     = domain.SKU
+	SPU     = domain.SPU
+	Status  = domain.Status
+)
+
+const (
+	StatusOffShelf    = domain.StatusOffShelf
+	StatusOnShelf     = domain.StatusOnShelf
+	SaleTypeUnlimited = domain.SaleTypeUnlimited
+)
 
 var ServiceSet = wire.NewSet(
 	InitTablesOnce, repository.NewProductRepository, service.NewService,
@@ -52,13 +76,3 @@ func InitTablesOnce(db *egorm.Component) dao.ProductDAO {
 	})
 	return dao.NewProductGORMDAO(db)
 }
-
-type Handler = web.Handler
-
-type Service = service.Service
-
-type Product = domain.Product
-
-type SKU = domain.SKU
-
-type SPU = domain.SPU

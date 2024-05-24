@@ -14,36 +14,55 @@
 
 package domain
 
-const (
-	StatusOffShelf = iota // 下架
-	StatusOnShelf         // 上架
-)
+type Status uint8
 
-type Product struct {
-	SPU SPU
-	SKU SKU
+func (s Status) ToUint8() uint8 {
+	return uint8(s)
 }
 
+const (
+	StatusOffShelf Status = 1 // 下架
+	StatusOnShelf  Status = 2 // 上架
+)
+
+type SaleType uint8
+
+func (s SaleType) ToUint8() uint8 {
+	return uint8(s)
+}
+
+const (
+	SaleTypeUnlimited SaleType = 1 // 无限期
+	SaleTypePromotion SaleType = 2 // 限时促销
+	SaleTypePresale   SaleType = 3 // 预售
+)
+
 type SPU struct {
-	ID     int64
-	SN     string
-	Name   string
-	Desc   string
-	Status int64
+	ID        int64
+	SN        string
+	Name      string
+	Desc      string
+	Category0 string
+	Category1 string
+	SKUs      []SKU
+	Status    Status
 }
 
 type SKU struct {
-	ID   int64
-	SN   string
-	Name string
-	Desc string
+	ID    int64
+	SPUID int64
+	SN    string
+	Name  string
+	Desc  string
 
 	Price      int64
 	Stock      int64
 	StockLimit int64
 
-	SaleType int64
+	SaleType SaleType
 	// SaleStart int64
 	// SaleEnd   int64
-	Status int64
+	Attrs  string
+	Image  string
+	Status Status
 }

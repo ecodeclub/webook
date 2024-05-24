@@ -8,7 +8,8 @@ package startup
 
 import (
 	"github.com/ecodeclub/mq-api"
-	service2 "github.com/ecodeclub/webook/internal/member"
+	"github.com/ecodeclub/webook/internal/member"
+	"github.com/ecodeclub/webook/internal/permission"
 	testioc "github.com/ecodeclub/webook/internal/test/ioc"
 	"github.com/ecodeclub/webook/internal/user/internal/event"
 	"github.com/ecodeclub/webook/internal/user/internal/repository"
@@ -20,21 +21,23 @@ import (
 
 // Injectors from wire.go:
 
-func InitHandler(weSvc service.OAuth2Service, memberSvc service2.Service, creators []string) *web.Handler {
+func InitHandler(weSvc service.OAuth2Service, mem *member.Module, perm *permission.Module, creators []string) *web.Handler {
 	db := testioc.InitDB()
 	userDAO := dao.NewGORMUserDAO(db)
 	ecacheCache := testioc.InitCache()
 	userCache := cache.NewUserECache(ecacheCache)
 	userRepository := repository.NewCachedUserRepository(userDAO, userCache)
 	mq := testioc.InitMQ()
-	registrationEventProducer := InitRegistrationEventProducer(mq)
+	registrationEventProducer := initRegistrationEventProducer(mq)
 	userService := service.NewUserService(userRepository, registrationEventProducer)
-	handler := web.NewHandler(weSvc, userService, memberSvc, creators)
+	serviceService := mem.Svc
+	service2 := perm.Svc
+	handler := web.NewHandler(weSvc, userService, serviceService, service2, creators)
 	return handler
 }
 
 // wire.go:
 
-func InitRegistrationEventProducer(q mq.MQ) *event.RegistrationEventProducer {
+func initRegistrationEventProducer(q mq.MQ) event.RegistrationEventProducer {
 	return nil
 }

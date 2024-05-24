@@ -20,6 +20,7 @@ import (
 	"github.com/ecodeclub/ecache"
 	"github.com/ecodeclub/mq-api"
 	"github.com/ecodeclub/webook/internal/member"
+	"github.com/ecodeclub/webook/internal/permission"
 	"github.com/ecodeclub/webook/internal/user/internal/event"
 	"github.com/ecodeclub/webook/internal/user/internal/repository"
 	"github.com/ecodeclub/webook/internal/user/internal/repository/cache"
@@ -33,22 +34,23 @@ import (
 
 var ProviderSet = wire.NewSet(web.NewHandler,
 	cache.NewUserECache,
-	InitDAO,
-	InitWechatService,
-	InitRegistrationEventProducer,
+	initDAO,
+	initWechatService,
+	initRegistrationEventProducer,
 	service.NewUserService,
 	repository.NewCachedUserRepository)
 
 func InitHandler(db *egorm.Component, cache ecache.Cache,
-	q mq.MQ, creators []string, memberSvc *member.Module) *Handler {
+	q mq.MQ, creators []string, memberSvc *member.Module, permissionSvc *permission.Module) *Handler {
 	wire.Build(
 		ProviderSet,
 		wire.FieldsOf(new(*member.Module), "Svc"),
+		wire.FieldsOf(new(*permission.Module), "Svc"),
 	)
 	return new(Handler)
 }
 
-func InitWechatService() service.OAuth2Service {
+func initWechatService() service.OAuth2Service {
 	type Config struct {
 		AppSecretID      string `yaml:"appSecretID"`
 		AppSecretKey     string `yaml:"appSecretKey"`
@@ -62,7 +64,7 @@ func InitWechatService() service.OAuth2Service {
 	return service.NewWechatService(cfg.AppSecretID, cfg.AppSecretKey, cfg.LoginRedirectURL)
 }
 
-func InitDAO(db *egorm.Component) dao.UserDAO {
+func initDAO(db *egorm.Component) dao.UserDAO {
 	err := dao.InitTables(db)
 	if err != nil {
 		panic(err)
@@ -70,12 +72,12 @@ func InitDAO(db *egorm.Component) dao.UserDAO {
 	return dao.NewGORMUserDAO(db)
 }
 
-func InitRegistrationEventProducer(q mq.MQ) *event.RegistrationEventProducer {
-	producer, err := q.Producer("user_registration_events")
+func initRegistrationEventProducer(q mq.MQ) event.RegistrationEventProducer {
+	producer, err := event.NewRegistrationEventProducer(q)
 	if err != nil {
 		panic(err)
 	}
-	return event.NewRegistrationEventProducer(producer)
+	return producer
 }
 
 // Handler 暴露出去给 ioc 使用

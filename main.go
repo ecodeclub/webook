@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/ecodeclub/webook/ioc"
 	"github.com/gotomicro/ego"
+	"github.com/gotomicro/ego/server/egin"
 )
 
 // export EGO_DEBUG=true
@@ -18,7 +19,7 @@ func main() {
 	err = egoApp.
 		// Invoker 在 Ego 里面，应该叫做初始化函数
 		Invoker().
-		Serve(app.Web).
+		Serve(app.Web, (*egin.Component)(app.Admin)).
 		Run()
 	panic(err)
 }

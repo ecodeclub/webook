@@ -2,6 +2,7 @@
   <configuration default="false" name="local" type="GoApplicationRunConfiguration" factoryName="Go Application">
     <module name="webook" />
     <working_directory value="$PROJECT_DIR$" />
+    <go_parameters value="--tags=mock" />
     <parameters value="--config=config/local.yaml" />
     <kind value="PACKAGE" />
     <package value="github.com/ecodeclub/webook" />

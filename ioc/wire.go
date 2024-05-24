@@ -19,11 +19,20 @@ package ioc
 import (
 	"github.com/ecodeclub/webook/internal/cases"
 	"github.com/ecodeclub/webook/internal/cos"
+	"github.com/ecodeclub/webook/internal/credit"
 	"github.com/ecodeclub/webook/internal/feedback"
+	"github.com/ecodeclub/webook/internal/interactive"
 	"github.com/ecodeclub/webook/internal/label"
+	"github.com/ecodeclub/webook/internal/marketing"
 	"github.com/ecodeclub/webook/internal/member"
+	"github.com/ecodeclub/webook/internal/order"
+	"github.com/ecodeclub/webook/internal/payment"
+	"github.com/ecodeclub/webook/internal/permission"
 	"github.com/ecodeclub/webook/internal/pkg/middleware"
+	"github.com/ecodeclub/webook/internal/product"
+	"github.com/ecodeclub/webook/internal/project"
 	baguwen "github.com/ecodeclub/webook/internal/question"
+	"github.com/ecodeclub/webook/internal/recon"
 	"github.com/ecodeclub/webook/internal/skill"
 	"github.com/google/wire"
 )
@@ -43,11 +52,32 @@ func InitApp() (*App, error) {
 		wire.FieldsOf(new(*cases.Module), "Hdl"),
 		skill.InitHandler,
 		feedback.InitHandler,
-		// 会员服务
 		member.InitModule,
 		wire.FieldsOf(new(*member.Module), "Svc"),
-		// 会员检查中间件
 		middleware.NewCheckMembershipMiddlewareBuilder,
-		initGinxServer)
+		product.InitModule,
+		wire.FieldsOf(new(*product.Module), "Hdl"),
+		order.InitModule,
+		wire.FieldsOf(new(*order.Module), "Hdl", "CloseTimeoutOrdersJob"),
+		payment.InitModule,
+		wire.FieldsOf(new(*payment.Module), "Hdl", "SyncWechatOrderJob"),
+		credit.InitModule,
+		wire.FieldsOf(new(*credit.Module), "Hdl", "CloseTimeoutLockedCreditsJob"),
+		project.InitModule,
+		wire.FieldsOf(new(*project.Module), "AdminHdl", "Hdl"),
+		recon.InitModule,
+		wire.FieldsOf(new(*recon.Module), "SyncPaymentAndOrderJob"),
+		marketing.InitModule,
+		wire.FieldsOf(new(*marketing.Module), "AdminHdl", "Hdl"),
+		interactive.InitModule,
+		wire.FieldsOf(new(*interactive.Module), "Hdl"),
+		permission.InitModule,
+		wire.FieldsOf(new(*permission.Module), "Svc"),
+		middleware.NewCheckPermissionMiddlewareBuilder,
+		initCronJobs,
+		// 这两个顺序不要换
+		initGinxServer,
+		InitAdminServer,
+	)
 	return new(App), nil
 }

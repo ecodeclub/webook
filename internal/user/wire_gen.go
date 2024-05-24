@@ -10,6 +10,7 @@ import (
 	"github.com/ecodeclub/ecache"
 	"github.com/ecodeclub/mq-api"
 	"github.com/ecodeclub/webook/internal/member"
+	"github.com/ecodeclub/webook/internal/permission"
 	"github.com/ecodeclub/webook/internal/user/internal/event"
 	"github.com/ecodeclub/webook/internal/user/internal/repository"
 	"github.com/ecodeclub/webook/internal/user/internal/repository/cache"
@@ -24,26 +25,27 @@ import (
 
 // Injectors from wire.go:
 
-func InitHandler(db *gorm.DB, cache2 ecache.Cache, q mq.MQ, creators []string, memberSvc *member.Module) *web.Handler {
-	oAuth2Service := InitWechatService()
-	userDAO := InitDAO(db)
+func InitHandler(db *gorm.DB, cache2 ecache.Cache, q mq.MQ, creators []string, memberSvc *member.Module, permissionSvc *permission.Module) *web.Handler {
+	oAuth2Service := initWechatService()
+	userDAO := initDAO(db)
 	userCache := cache.NewUserECache(cache2)
 	userRepository := repository.NewCachedUserRepository(userDAO, userCache)
-	registrationEventProducer := InitRegistrationEventProducer(q)
+	registrationEventProducer := initRegistrationEventProducer(q)
 	userService := service.NewUserService(userRepository, registrationEventProducer)
 	serviceService := memberSvc.Svc
-	handler := web.NewHandler(oAuth2Service, userService, serviceService, creators)
+	service2 := permissionSvc.Svc
+	handler := web.NewHandler(oAuth2Service, userService, serviceService, service2, creators)
 	return handler
 }
 
 // wire.go:
 
-var ProviderSet = wire.NewSet(web.NewHandler, cache.NewUserECache, InitDAO,
-	InitWechatService,
-	InitRegistrationEventProducer, service.NewUserService, repository.NewCachedUserRepository,
+var ProviderSet = wire.NewSet(web.NewHandler, cache.NewUserECache, initDAO,
+	initWechatService,
+	initRegistrationEventProducer, service.NewUserService, repository.NewCachedUserRepository,
 )
 
-func InitWechatService() service.OAuth2Service {
+func initWechatService() service.OAuth2Service {
 	type Config struct {
 		AppSecretID      string `yaml:"appSecretID"`
 		AppSecretKey     string `yaml:"appSecretKey"`
@@ -57,7 +59,7 @@ func InitWechatService() service.OAuth2Service {
 	return service.NewWechatService(cfg.AppSecretID, cfg.AppSecretKey, cfg.LoginRedirectURL)
 }
 
-func InitDAO(db *egorm.Component) dao.UserDAO {
+func initDAO(db *egorm.Component) dao.UserDAO {
 	err := dao.InitTables(db)
 	if err != nil {
 		panic(err)
@@ -65,12 +67,12 @@ func InitDAO(db *egorm.Component) dao.UserDAO {
 	return dao.NewGORMUserDAO(db)
 }
 
-func InitRegistrationEventProducer(q mq.MQ) *event.RegistrationEventProducer {
-	producer, err := q.Producer("user_registration_events")
+func initRegistrationEventProducer(q mq.MQ) event.RegistrationEventProducer {
+	producer, err := event.NewRegistrationEventProducer(q)
 	if err != nil {
 		panic(err)
 	}
-	return event.NewRegistrationEventProducer(producer)
+	return producer
 }
 
 // Handler 暴露出去给 ioc 使用

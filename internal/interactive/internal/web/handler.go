@@ -17,38 +17,48 @@ package web
 import (
 	"github.com/ecodeclub/ginx"
 	"github.com/ecodeclub/ginx/session"
+	"github.com/ecodeclub/webook/internal/interactive/internal/service"
 	"github.com/gin-gonic/gin"
 )
 
 var _ ginx.Handler = &Handler{}
 
 type Handler struct {
+	svc service.Service
+}
+
+func NewHandler(svc service.Service) *Handler {
+	return &Handler{
+		svc: svc,
+	}
 }
 
 // PrivateRoutes 这边我们直接让前端来控制 biz 和 biz_id，简化实现
 // 这算是一种反范式的设计和实现方式
 func (h *Handler) PrivateRoutes(server *gin.Engine) {
-	g := server.Group("/intr")
-	g.POST("/collect", ginx.BS[CollectReq](h.Collect))
-	g.POST("/like", ginx.BS[LikeReq](h.Like))
-	// 获得某个数据的点赞数据
-	g.POST("/cnt", ginx.BS[GetCntReq](h.GetCnt))
+	g := server.Group("/interactive")
+	g.POST("/collect/toggle", ginx.BS[CollectReq](h.Collect))
+	g.POST("/like/toggle", ginx.BS[LikeReq](h.Like))
 }
 
 func (h *Handler) PublicRoutes(server *gin.Engine) {
-	panic("implement me")
+
 }
 
 func (h *Handler) Collect(ctx *ginx.Context, req CollectReq, sess session.Session) (ginx.Result, error) {
-	return systemErrorResult, nil
-}
-
-func (h *Handler) GetCnt(ctx *ginx.Context, req GetCntReq, sess session.Session) (ginx.Result, error) {
-	return ginx.Result{
-		Data: &GetCntResp{},
-	}, nil
+	uid := sess.Claims().Uid
+	err := h.svc.CollectToggle(ctx.Request.Context(), req.Biz, req.BizId, uid)
+	if err != nil {
+		return systemErrorResult, err
+	}
+	return ginx.Result{}, nil
 }
 
 func (h *Handler) Like(ctx *ginx.Context, req LikeReq, sess session.Session) (ginx.Result, error) {
-	return ginx.Result{Msg: "OK"}, nil
+	uid := sess.Claims().Uid
+	err := h.svc.LikeToggle(ctx.Request.Context(), req.Biz, req.BizId, uid)
+	if err != nil {
+		return systemErrorResult, err
+	}
+	return ginx.Result{}, nil
 }

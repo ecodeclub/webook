@@ -8,19 +8,31 @@ package startup
 
 import (
 	"github.com/ecodeclub/webook/internal/cases"
+	"github.com/ecodeclub/webook/internal/cases/internal/event"
+	"github.com/ecodeclub/webook/internal/cases/internal/repository"
+	"github.com/ecodeclub/webook/internal/cases/internal/service"
 	"github.com/ecodeclub/webook/internal/cases/internal/web"
+	"github.com/ecodeclub/webook/internal/interactive"
 	testioc "github.com/ecodeclub/webook/internal/test/ioc"
 )
 
 // Injectors from wire.go:
 
-func InitHandler() (*web.Handler, error) {
+func InitModule(syncProducer event.SyncEventProducer, intrModule *interactive.Module) (*cases.Module, error) {
 	db := testioc.InitDB()
-	cache := testioc.InitCache()
-	module, err := cases.InitModule(db, cache)
+	caseDAO := cases.InitCaseDAO(db)
+	caseRepo := repository.NewCaseRepo(caseDAO)
+	mq := testioc.InitMQ()
+	interactiveEventProducer, err := event.NewInteractiveEventProducer(mq)
 	if err != nil {
 		return nil, err
 	}
-	handler := module.Hdl
-	return handler, nil
+	serviceService := service.NewService(caseRepo, interactiveEventProducer, syncProducer)
+	service2 := intrModule.Svc
+	handler := web.NewHandler(serviceService, service2)
+	module := &cases.Module{
+		Svc: serviceService,
+		Hdl: handler,
+	}
+	return module, nil
 }

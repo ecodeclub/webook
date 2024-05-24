@@ -17,37 +17,42 @@ package web
 import (
 	"context"
 	"strconv"
+	"strings"
 
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/ecodeclub/ginx"
 	"github.com/ecodeclub/ginx/session"
 	"github.com/ecodeclub/webook/internal/member"
+	"github.com/ecodeclub/webook/internal/permission"
 	"github.com/ecodeclub/webook/internal/user/internal/domain"
 	"github.com/ecodeclub/webook/internal/user/internal/errs"
 	"github.com/ecodeclub/webook/internal/user/internal/service"
 	"github.com/gin-gonic/gin"
 	"github.com/gotomicro/ego/core/elog"
+	"golang.org/x/sync/errgroup"
 )
 
 var _ ginx.Handler = &Handler{}
 
 type Handler struct {
-	weSvc     service.OAuth2Service
-	userSvc   service.UserService
-	memberSvc member.Service
+	weSvc         service.OAuth2Service
+	userSvc       service.UserService
+	memberSvc     member.Service
+	permissionSvc permission.Service
 	// 白名单
 	creators []string
 	logger   *elog.Component
 }
 
 func NewHandler(weSvc service.OAuth2Service,
-	userSvc service.UserService, memberSvc member.Service, creators []string) *Handler {
+	userSvc service.UserService, memberSvc member.Service, permissionSvc permission.Service, creators []string) *Handler {
 	return &Handler{
-		weSvc:     weSvc,
-		userSvc:   userSvc,
-		memberSvc: memberSvc,
-		creators:  creators,
-		logger:    elog.DefaultLogger,
+		weSvc:         weSvc,
+		userSvc:       userSvc,
+		memberSvc:     memberSvc,
+		permissionSvc: permissionSvc,
+		creators:      creators,
+		logger:        elog.DefaultLogger,
 	}
 }
 
@@ -87,7 +92,25 @@ func (h *Handler) RefreshAccessToken(ctx *ginx.Context) (ginx.Result, error) {
 }
 
 func (h *Handler) Profile(ctx *ginx.Context, sess session.Session) (ginx.Result, error) {
-	u, err := h.userSvc.Profile(ctx, sess.Claims().Uid)
+	var (
+		eg errgroup.Group
+		u  domain.User
+		m  member.Member
+	)
+	uid := sess.Claims().Uid
+	eg.Go(func() error {
+		var err error
+		u, err = h.userSvc.Profile(ctx, uid)
+		return err
+	})
+
+	eg.Go(func() error {
+		var err error
+		m, err = h.memberSvc.GetMembershipInfo(ctx, uid)
+		return err
+	})
+
+	err := eg.Wait()
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -95,8 +118,7 @@ func (h *Handler) Profile(ctx *ginx.Context, sess session.Session) (ginx.Result,
 	res.IsCreator = sess.Claims().
 		Get("creator").
 		StringOrDefault("") == "true"
-	res.MemberDDL, _ = sess.Claims().
-		Get("memberDDL").AsInt64()
+	res.MemberDDL = m.EndAt
 	return ginx.Result{
 		Data: res,
 	}, nil
@@ -137,7 +159,19 @@ func (h *Handler) Callback(ctx *ginx.Context, req WechatCallback) (ginx.Result, 
 	memberDDL := h.getMemberDDL(ctx.Request.Context(), user.Id)
 	jwtData["memberDDL"] = strconv.FormatInt(memberDDL, 10)
 
-	_, err = session.NewSessionBuilder(ctx, user.Id).SetJwtData(jwtData).Build()
+	perms := make(map[string]string)
+	permissionGroup, err := h.permissionSvc.FindPersonalPermissions(ctx, user.Id)
+	if err != nil {
+		return systemErrorResult, err
+	}
+	for biz, permissions := range permissionGroup {
+		bizIds := slice.Map(permissions, func(idx int, src permission.Permission) string {
+			return strconv.FormatInt(src.BizID, 10)
+		})
+		perms[biz] = strings.Join(bizIds, ",")
+	}
+	sessData := map[string]any{"permission": perms}
+	_, err = session.NewSessionBuilder(ctx, user.Id).SetJwtData(jwtData).SetSessData(sessData).Build()
 	if err != nil {
 		return systemErrorResult, err
 	}

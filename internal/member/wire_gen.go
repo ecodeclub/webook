@@ -24,10 +24,10 @@ import (
 
 func InitModule(db *gorm.DB, q mq.MQ) (*Module, error) {
 	service := InitService(db, q)
-	registrationEventConsumer := initRegistrationConsumer(service, q)
+	memberEventConsumer := initMemberConsumer(service, q)
 	module := &Module{
 		Svc: service,
-		c:   registrationEventConsumer,
+		cc:  memberEventConsumer,
 	}
 	return module, nil
 }
@@ -53,8 +53,8 @@ func InitService(db *egorm.Component, q mq.MQ) Service {
 	return svc
 }
 
-func initRegistrationConsumer(svc2 service.Service, q mq.MQ) *event.RegistrationEventConsumer {
-	c, err := event.NewRegistrationEventConsumer(svc2, q)
+func initMemberConsumer(svc2 service.Service, q mq.MQ) *event.MemberEventConsumer {
+	c, err := event.NewMemberEventConsumer(svc2, q)
 	if err != nil {
 		panic(err)
 	}

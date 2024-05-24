@@ -16,20 +16,18 @@ package web
 
 // PreviewOrderReq 预览订单请求
 type PreviewOrderReq struct {
-	ProductSKUSN string `json:"sn"`
-	Quantity     int64  `json:"quantity"`
+	SKUs []SKU `json:"skus"` // 商品信息
 }
 
 type PreviewOrderResp struct {
-	Credits  uint64    `json:"credits"`  // 积分总数
-	Payments []Payment `json:"payments"` // 支付通道
-	Products []Product `json:"products"` // 商品信息
-	Policy   string    `json:"policy"`   // 政策信息
+	Order   Order  `json:"order"`   // 预览oder, 包含支持的渠道, 和要购买的SKU
+	Credits uint64 `json:"credits"` // 积分总数
+	Policy  string `json:"policy"`  // 政策信息
 }
 
-type Product struct {
-	SPUSN         string `json:"spuSN"`
-	SKUSN         string `json:"skuSN"`
+type SKU struct {
+	SN            string `json:"sn"`
+	Image         string `json:"image"`
 	Name          string `json:"name"`
 	Desc          string `json:"desc"`
 	OriginalPrice int64  `json:"originalPrice"`
@@ -37,44 +35,40 @@ type Product struct {
 	Quantity      int64  `json:"quantity"`
 }
 
-type Payment struct {
+type SPU struct {
+	Category string `json:"category"`
+}
+
+type PaymentItem struct {
 	Type   int64 `json:"type"` // 1 积分, 2微信
 	Amount int64 `json:"amount,omitempty"`
 }
 
 // CreateOrderReq 创建订单请求
 type CreateOrderReq struct {
-	RequestID          string    `json:"requestID"`       // 请求去重,防止订单重复提交
-	Products           []Product `json:"products"`        // 商品信息
-	Payments           []Payment `json:"paymentChannels"` // 支付通道
-	OriginalTotalPrice int64     `json:"originalTotalPrice"`
-	RealTotalPrice     int64     `json:"realTotalPrice"`
+	RequestID    string        `json:"requestID"`    // 请求去重,防止订单重复提交
+	SKUs         []SKU         `json:"skus"`         // 商品信息
+	PaymentItems []PaymentItem `json:"paymentItems"` // 支付通道
 }
 
 type CreateOrderResp struct {
-	OrderSN       string `json:"orderSN"` // 前端用于轮训订单状态,然后根据状态/时间限制来跳转
+	SN            string `json:"sn"`
 	WechatCodeURL string `json:"wechatCodeURL,omitempty"`
 }
 
-// RetrieveOrderStatusReq 获取订单状态
-type RetrieveOrderStatusReq struct {
-	OrderSN string `json:"sn"`
+// OrderSNReq 继续支付订单、获取订单状态、获取订单详情、取消订单
+type OrderSNReq struct {
+	SN string `json:"sn"`
 }
 
+// RepayOrderResp 继续支付
+type RepayOrderResp struct {
+	WechatCodeURL string `json:"wechatCodeURL,omitempty"`
+}
+
+// RetrieveOrderStatusResp 获取订单状态
 type RetrieveOrderStatusResp struct {
-	OrderStatus int64 `json:"status"`
-}
-
-// CompleteOrderReq 完成订单
-type CompleteOrderReq struct {
-	OrderSN string `json:"sn"`
-	BuyerID int64  `json:"buyerId"`
-}
-
-// CloseTimeoutOrdersReq 关闭超时订单
-type CloseTimeoutOrdersReq struct {
-	Limit  int   `json:"limit,omitempty"`
-	Minute int64 `json:"minute"`
+	Status uint8 `json:"status"`
 }
 
 // ListOrdersReq 分页查询用户所有订单
@@ -88,38 +82,27 @@ type ListOrdersResp struct {
 	Orders []Order `json:"orders,omitempty"`
 }
 
-// RetrieveOrderDetailReq 获取订单详情
-type RetrieveOrderDetailReq struct {
-	OrderSN string `json:"sn"`
-}
-
 type RetrieveOrderDetailResp struct {
 	Order Order `json:"order"`
 }
 
 type Order struct {
-	SN                 string      `json:"sn"`
-	PaymentSN          string      `json:"paymentSn"`
-	OriginalTotalPrice int64       `json:"originalPrice"`
-	RealTotalPrice     int64       `json:"realPrice"`
-	Status             int64       `json:"status"`
-	Items              []OrderItem `json:"items"`
-	Payments           []Payment   `json:"payments"`
-	Ctime              int64       `json:"ctime"`
-	Utime              int64       `json:"utime"`
+	SN               string      `json:"sn"`
+	Payment          Payment     `json:"payment"`
+	OriginalTotalAmt int64       `json:"originalTotalAmt"`
+	RealTotalAmt     int64       `json:"realTotalAmt"`
+	Status           uint8       `json:"status"`
+	Items            []OrderItem `json:"items"`
+	Ctime            int64       `json:"ctime"`
+	Utime            int64       `json:"utime"`
+}
+
+type Payment struct {
+	SN    string        `json:"sn"`
+	Items []PaymentItem `json:"items,omitempty"`
 }
 
 type OrderItem struct {
-	SPUID            int64  `json:"spuId"`
-	SKUID            int64  `json:"skuId"`
-	SKUName          string `json:"skuName"`
-	SKUDescription   string `json:"skuDescription"`
-	SKUOriginalPrice int64  `json:"skuOriginalPrice"`
-	SKURealPrice     int64  `json:"skuRealPrice"`
-	Quantity         int64  `json:"quantity"`
-}
-
-// CancelOrderReq 取消订单
-type CancelOrderReq struct {
-	OrderSN string `json:"sn"`
+	SKU SKU `json:"sku"`
+	SPU SPU `json:"spu"`
 }
