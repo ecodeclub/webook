@@ -76,5 +76,6 @@ type PermissionEvent struct {
 }
 
 type UserRegistrationEvent struct {
-	Uid int64 `json:"uid"`
+	Uid         int64  `json:"uid,omitempty"`
+	InviterCode string `json:"inviterCode,omitempty"`
 }
