@@ -16,6 +16,7 @@ package handler
 
 import (
 	"context"
+	"fmt"
 	"log"
 
 	"github.com/ecodeclub/webook/internal/marketing/internal/event"
@@ -42,10 +43,18 @@ func (h *CodeProjectHandler) Handle(ctx context.Context, info OrderInfo) error {
 }
 
 func (h *CodeProjectHandler) Redeem(ctx context.Context, info RedeemInfo) error {
+	type Attrs struct {
+		ProjectId int64 `json:"projectId"`
+	}
+	var attrs Attrs
+	err := h.unmarshalAttrs(info.Code, &attrs)
+	if err != nil {
+		return fmt.Errorf("解析项目兑换码属性失败: %w, codeID:%d", err, info.Code.ID)
+	}
 	evt := event.PermissionEvent{
 		Uid:    info.RedeemerID,
 		Biz:    info.Code.Type,
-		BizIds: []int64{info.Code.Attrs.SKU.ID},
+		BizIds: []int64{attrs.ProjectId},
 		Action: "兑换项目商品",
 	}
 	log.Printf("codeProduct sendProjectEvent = %#v\n", evt)

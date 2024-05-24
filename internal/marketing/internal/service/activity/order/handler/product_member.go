@@ -16,7 +16,6 @@ package handler
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 
 	"github.com/ecodeclub/webook/internal/marketing/internal/event"
@@ -41,7 +40,7 @@ func (h *ProductMemberHandler) Handle(ctx context.Context, info OrderInfo) error
 	var days uint64
 	for _, item := range info.Items {
 		var attrs Attrs
-		err := json.Unmarshal([]byte(item.SKU.Attrs), &attrs)
+		err := item.SKU.UnmarshalAttrs(&attrs)
 		if err != nil {
 			return fmt.Errorf("解析会员商品属性失败: %w, oid: %d, skuid:%d, attrs: %s",
 				err, info.Order.ID, item.SKU.ID, item.SKU.Attrs)
