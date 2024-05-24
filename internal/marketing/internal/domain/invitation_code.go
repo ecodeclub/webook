@@ -19,6 +19,13 @@ type InvitationCode struct {
 	Code string
 }
 
+type InvitationRecord struct {
+	InviterId int64
+	InviteeId int64
+	Code      string
+	Attrs     InvitationRecordAttrs
+}
+
 type InvitationRecordAttrs struct {
-	Credits int64 `json:"credits"`
+	Credits uint64 `json:"credits"`
 }
