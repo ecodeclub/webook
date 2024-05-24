@@ -43,7 +43,7 @@ func (h *Handler) PrivateRoutes(_ *gin.Engine) {
 }
 
 func (h *Handler) PublicRoutes(server *gin.Engine) {
-	server.Any("/pay/callback", ginx.W(h.HandleWechatCallback))
+	server.Any("/api/interview/pay/callback", ginx.W(h.HandleWechatCallback))
 	// 测试环境专用
 	server.Any("/pay/mock_cb", ginx.B[payments.Transaction](h.MockWechatCallback))
 }
