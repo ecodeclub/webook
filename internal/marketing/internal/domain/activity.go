@@ -20,5 +20,6 @@ type OrderCompletedActivity struct {
 }
 
 type UserRegistrationActivity struct {
-	Uid int64
+	Uid         int64
+	InviterCode string
 }

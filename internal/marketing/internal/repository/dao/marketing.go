@@ -29,8 +29,9 @@ import (
 )
 
 var (
-	ErrRedemptionNotFound = gorm.ErrRecordNotFound
-	ErrRedemptionCodeUsed = errors.New("兑换码已使用")
+	ErrRedemptionNotFound        = gorm.ErrRecordNotFound
+	ErrRedemptionCodeUsed        = errors.New("兑换码已使用")
+	ErrDuplicateInvitationRecord = errors.New("邀请记录重复")
 )
 
 type MarketingDAO interface {
@@ -41,7 +42,8 @@ type MarketingDAO interface {
 	FindRedemptionCodesByUID(ctx context.Context, uid int64, offset int, limit int) ([]RedemptionCode, error)
 	CreateInvitationCode(ctx context.Context, i InvitationCode) (int64, error)
 	FindInvitationCodeByCode(ctx context.Context, code string) (InvitationCode, error)
-	FindInvitationCodesByUID(ctx context.Context, uid int64) ([]InvitationCode, error)
+	CreateInvitationRecord(ctx context.Context, ir InvitationRecord) (int64, error)
+	FindInvitationRecord(ctx context.Context, inviterId, inviteeId int64, code string) (InvitationRecord, error)
 }
 
 type gormMarketingDAO struct {
@@ -177,9 +179,17 @@ func (g *gormMarketingDAO) FindInvitationCodeByCode(ctx context.Context, code st
 	return ic, err
 }
 
-func (g *gormMarketingDAO) FindInvitationCodesByUID(ctx context.Context, uid int64) ([]InvitationCode, error) {
-	var res []InvitationCode
-	err := g.db.WithContext(ctx).Order("Utime DESC, id ASC").Find(&res, "owner_id = ?", uid).Error
+func (g *gormMarketingDAO) CreateInvitationRecord(ctx context.Context, ir InvitationRecord) (int64, error) {
+	now := time.Now().UnixMilli()
+	ir.Ctime, ir.Utime = now, now
+	err := g.db.WithContext(ctx).Attrs(InvitationRecord{InviterId: ir.InviterId, InviteeId: ir.InviteeId, Code: ir.Code}).
+		FirstOrCreate(&ir).Error
+	return ir.Id, err
+}
+
+func (g *gormMarketingDAO) FindInvitationRecord(ctx context.Context, inviterId, inviteeId int64, code string) (InvitationRecord, error) {
+	var res InvitationRecord
+	err := g.db.WithContext(ctx).First(&res, "inviter_id = ? AND invitee_id = ? AND code = ?", inviterId, inviteeId, code).Error
 	return res, err
 }
 
@@ -225,7 +235,7 @@ type InvitationCode struct {
 type InvitationRecord struct {
 	Id        int64                                         `gorm:"primaryKey;autoIncrement;comment:邀请记录自增ID"`
 	InviterId int64                                         `gorm:"not null;index:idx_inviter_id;comment:邀请者ID"`
-	InviteeId int64                                         `gorm:"not null;index:idx_invitee_id;comment:被邀请者ID"`
+	InviteeId int64                                         `gorm:"not null;uniqueIndex:uniq_invitee_id;comment:被邀请者ID"`
 	Code      string                                        `gorm:"type:varchar(255);not null;uniqueIndex:uniq_invitation_code;comment:邀请码"`
 	Attrs     sqlx.JsonColumn[domain.InvitationRecordAttrs] `gorm:"type:varchar(512);not null;comment:邀请记录的其他属性Attrs"`
 	Ctime     int64

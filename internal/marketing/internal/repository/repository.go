@@ -39,8 +39,9 @@ type MarketingRepository interface {
 	FindRedemptionCodesByUID(ctx context.Context, uid int64, offset, limit int) ([]domain.RedemptionCode, error)
 
 	CreateInvitationCode(ctx context.Context, i domain.InvitationCode) (domain.InvitationCode, error)
-	FindInvitationCodesByUID(ctx context.Context, uid int64) ([]domain.InvitationCode, error)
 	FindInvitationCodeByCode(ctx context.Context, code string) (domain.InvitationCode, error)
+	CreateInvitationRecord(ctx context.Context, record domain.InvitationRecord) (int64, error)
+	FindInvitationRecord(ctx context.Context, inviterId, inviteeId int64, code string) (domain.InvitationRecord, error)
 }
 
 type marketingRepository struct {
@@ -146,14 +147,12 @@ func (m *marketingRepository) toInvitationCodeEntity(i domain.InvitationCode) da
 	}
 }
 
-func (m *marketingRepository) FindInvitationCodesByUID(ctx context.Context, uid int64) ([]domain.InvitationCode, error) {
-	cs, err := m.dao.FindInvitationCodesByUID(ctx, uid)
+func (m *marketingRepository) FindInvitationCodeByCode(ctx context.Context, code string) (domain.InvitationCode, error) {
+	c, err := m.dao.FindInvitationCodeByCode(ctx, code)
 	if err != nil {
-		return nil, err
+		return domain.InvitationCode{}, err
 	}
-	return slice.Map(cs, func(idx int, src dao.InvitationCode) domain.InvitationCode {
-		return m.toInvitationCodeDomain(src)
-	}), nil
+	return m.toInvitationCodeDomain(c), nil
 }
 
 func (m *marketingRepository) toInvitationCodeDomain(i dao.InvitationCode) domain.InvitationCode {
@@ -163,10 +162,35 @@ func (m *marketingRepository) toInvitationCodeDomain(i dao.InvitationCode) domai
 	}
 }
 
-func (m *marketingRepository) FindInvitationCodeByCode(ctx context.Context, code string) (domain.InvitationCode, error) {
-	c, err := m.dao.FindInvitationCodeByCode(ctx, code)
-	if err != nil {
-		return domain.InvitationCode{}, err
+func (m *marketingRepository) CreateInvitationRecord(ctx context.Context, r domain.InvitationRecord) (int64, error) {
+	return m.dao.CreateInvitationRecord(ctx, m.toInvitationRecordEntity(r))
+}
+
+func (m *marketingRepository) toInvitationRecordEntity(r domain.InvitationRecord) dao.InvitationRecord {
+	return dao.InvitationRecord{
+		InviterId: r.InviterId,
+		InviteeId: r.InviteeId,
+		Code:      r.Code,
+		Attrs: sqlx.JsonColumn[domain.InvitationRecordAttrs]{
+			Val:   r.Attrs,
+			Valid: true,
+		},
 	}
-	return m.toInvitationCodeDomain(c), nil
+}
+
+func (m *marketingRepository) FindInvitationRecord(ctx context.Context, inviterId, inviteeId int64, code string) (domain.InvitationRecord, error) {
+	ir, err := m.dao.FindInvitationRecord(ctx, inviterId, inviteeId, code)
+	if err != nil {
+		return domain.InvitationRecord{}, err
+	}
+	return m.toInvitationRecordDomain(ir), nil
+}
+
+func (m *marketingRepository) toInvitationRecordDomain(ir dao.InvitationRecord) domain.InvitationRecord {
+	return domain.InvitationRecord{
+		InviterId: ir.InviterId,
+		InviteeId: ir.InviteeId,
+		Code:      ir.Code,
+		Attrs:     ir.Attrs.Val,
+	}
 }
