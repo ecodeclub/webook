@@ -17,7 +17,6 @@ package handler
 import (
 	"context"
 	"encoding/json"
-	"log"
 
 	"github.com/ecodeclub/webook/internal/marketing/internal/domain"
 	"github.com/ecodeclub/webook/internal/marketing/internal/repository"
@@ -51,7 +50,6 @@ func (b *baseCodeOrderHandler) Handle(ctx context.Context, info OrderInfo) error
 			})
 		}
 	}
-	log.Printf("base codes = %#v\n", codes)
 	_, err := b.repo.CreateRedemptionCodes(ctx, codes)
 	return err
 }

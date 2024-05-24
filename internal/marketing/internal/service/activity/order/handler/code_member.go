@@ -17,7 +17,6 @@ package handler
 import (
 	"context"
 	"fmt"
-	"log"
 
 	"github.com/ecodeclub/webook/internal/marketing/internal/event"
 	"github.com/ecodeclub/webook/internal/marketing/internal/event/producer"
@@ -38,7 +37,6 @@ func NewCodeMemberHandler(repo repository.MarketingRepository, memberEventProduc
 }
 
 func (h *CodeMemberHandler) Handle(ctx context.Context, info OrderInfo) error {
-	log.Printf("member code handle + ")
 	return h.baseCodeOrderHandler.Handle(ctx, info)
 }
 
@@ -59,6 +57,5 @@ func (h *CodeMemberHandler) Redeem(ctx context.Context, info RedeemInfo) error {
 		BizId:  info.Code.BizId,
 		Action: "兑换会员商品",
 	}
-	log.Printf("codeMember sendMemberEvent = %#v\n", memberEvent)
 	return h.memberEventProducer.Produce(ctx, memberEvent)
 }
