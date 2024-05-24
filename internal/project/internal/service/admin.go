@@ -110,8 +110,10 @@ func (svc *projectAdminService) IntroductionSave(ctx context.Context, pid int64,
 
 func (svc *projectAdminService) Publish(ctx context.Context, prj domain.Project) (int64, error) {
 	prj.Status = domain.ProjectStatusPublished
-	sn := shortuuid.New()
-	prj.SN = sn
+	if prj.Id == 0 {
+		sn := shortuuid.New()
+		prj.SN = sn
+	}
 	id, err := svc.adminRepo.Sync(ctx, prj)
 	if err == nil {
 		// 同步数据，这边后续读写分离之后，可能会有问题
