@@ -98,7 +98,7 @@ func (s *ActivityExecutor) awardInvitationBonus(ctx context.Context, act domain.
 		Uid:    c.Uid,
 		Amount: credits,
 		Biz:    "user",
-		BizId:  c.Uid,
+		BizId:  act.Uid,
 		Action: "邀请奖励",
 	})
 }

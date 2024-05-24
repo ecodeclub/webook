@@ -990,7 +990,7 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeUserRegistrationEvent() {
 					Uid:    inviterId,
 					Amount: 300,
 					Biz:    "user",
-					BizId:  inviterId,
+					BizId:  evt.Uid,
 					Action: "邀请奖励",
 				})
 				mockProducer.EXPECT().Produce(gomock.Any(), creditEvent).Return(&mq.ProducerResult{}, nil).Times(2)
