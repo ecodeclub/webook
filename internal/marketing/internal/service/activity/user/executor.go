@@ -23,14 +23,12 @@ import (
 	"github.com/ecodeclub/webook/internal/marketing/internal/event"
 	"github.com/ecodeclub/webook/internal/marketing/internal/event/producer"
 	"github.com/ecodeclub/webook/internal/marketing/internal/repository"
-	"github.com/gotomicro/ego/core/elog"
 )
 
 type ActivityExecutor struct {
 	repo                repository.MarketingRepository
 	memberEventProducer producer.MemberEventProducer
 	creditEventProducer producer.CreditEventProducer
-	logger              *elog.Component
 }
 
 func NewActivityExecutor(
@@ -42,7 +40,6 @@ func NewActivityExecutor(
 		repo:                repo,
 		memberEventProducer: memberEventProducer,
 		creditEventProducer: creditEventProducer,
-		logger:              elog.DefaultLogger,
 	}
 }
 

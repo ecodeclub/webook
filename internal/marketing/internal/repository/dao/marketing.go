@@ -29,9 +29,8 @@ import (
 )
 
 var (
-	ErrRedemptionNotFound        = gorm.ErrRecordNotFound
-	ErrRedemptionCodeUsed        = errors.New("兑换码已使用")
-	ErrDuplicateInvitationRecord = errors.New("邀请记录重复")
+	ErrRedemptionNotFound = gorm.ErrRecordNotFound
+	ErrRedemptionCodeUsed = errors.New("兑换码已使用")
 )
 
 type MarketingDAO interface {
