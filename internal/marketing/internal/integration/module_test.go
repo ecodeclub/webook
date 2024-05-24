@@ -679,7 +679,7 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeOrderEvent() {
 									ID:            14,
 									SN:            "sku-sn-14",
 									Name:          "sku-name-14",
-									Attrs:         "",
+									Attrs:         `{"projectId": 456}`,
 									OriginalPrice: 990,
 									RealPrice:     990,
 									Quantity:      2,
@@ -711,6 +711,7 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeOrderEvent() {
 				skuId := int64(14)
 				code := s.newProjectRedemptionCodeDomain(evt.BuyerID, oid, skuId)
 				code.Code = ""
+				code.Attrs.SKU.Attrs = `{"projectId": 456}`
 				s.assertRedemptionCodeEqual(t, []domain.RedemptionCode{code, code}, codes)
 			},
 		},
@@ -750,7 +751,7 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeOrderEvent() {
 									ID:            14,
 									SN:            "sku-sn-14",
 									Name:          "sku-name-14",
-									Attrs:         "",
+									Attrs:         `{"projectId": 456}`,
 									OriginalPrice: 990,
 									RealPrice:     990,
 									Quantity:      2,
@@ -766,7 +767,7 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeOrderEvent() {
 									ID:            15,
 									SN:            "sku-sn-15",
 									Name:          "sku-name-15",
-									Attrs:         "",
+									Attrs:         `{"projectId": 789}`,
 									OriginalPrice: 990,
 									RealPrice:     990,
 									Quantity:      1,
@@ -798,9 +799,11 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeOrderEvent() {
 				skuId := int64(14)
 				code14 := s.newProjectRedemptionCodeDomain(evt.BuyerID, oid, skuId)
 				code14.Code = ""
+				code14.Attrs.SKU.Attrs = `{"projectId": 456}`
 				skuId = int64(15)
 				code15 := s.newProjectRedemptionCodeDomain(evt.BuyerID, oid, skuId)
 				code15.Code = ""
+				code15.Attrs.SKU.Attrs = `{"projectId": 789}`
 				s.assertRedemptionCodeEqual(t, []domain.RedemptionCode{code14, code14, code15}, codes)
 			},
 		},
@@ -1145,6 +1148,7 @@ func (s *ModuleTestSuite) TestHandler_RedeemRedemptionCode() {
 				skuId := int64(14)
 				code := s.newProjectRedemptionCodeDomain(testID, oid, skuId)
 				code.Code = req.Code
+				code.Attrs.SKU.Attrs = `{"projectId": 456}`
 				ids, err := s.repo.CreateRedemptionCodes(context.Background(), []domain.RedemptionCode{
 					code,
 				})
@@ -1156,7 +1160,7 @@ func (s *ModuleTestSuite) TestHandler_RedeemRedemptionCode() {
 				return event.PermissionEvent{
 					Uid:    code.OwnerID,
 					Biz:    code.Type,
-					BizIds: []int64{code.Attrs.SKU.ID},
+					BizIds: []int64{456},
 					Action: "兑换项目商品",
 				}
 			},
@@ -1210,9 +1214,10 @@ func (s *ModuleTestSuite) TestHandler_RedeemRedemptionCode() {
 			before: func(t *testing.T, req web.RedeemRedemptionCodeReq) domain.RedemptionCode {
 				t.Helper()
 				oid := int64(2102)
-				skuId := int64(14)
+				skuId := int64(15)
 				code := s.newProjectRedemptionCodeDomain(45672928, oid, skuId)
 				code.Code = req.Code
+				code.Attrs.SKU.Attrs = `{"projectId": 789}`
 				ids, err := s.repo.CreateRedemptionCodes(context.Background(), []domain.RedemptionCode{
 					code,
 				})
@@ -1224,7 +1229,7 @@ func (s *ModuleTestSuite) TestHandler_RedeemRedemptionCode() {
 				return event.PermissionEvent{
 					Uid:    testID,
 					Biz:    code.Type,
-					BizIds: []int64{code.Attrs.SKU.ID},
+					BizIds: []int64{789},
 					Action: "兑换项目商品",
 				}
 			},

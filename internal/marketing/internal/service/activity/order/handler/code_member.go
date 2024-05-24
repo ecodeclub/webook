@@ -16,9 +16,7 @@ package handler
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"log"
 
 	"github.com/ecodeclub/webook/internal/marketing/internal/event"
 	"github.com/ecodeclub/webook/internal/marketing/internal/event/producer"
@@ -39,7 +37,6 @@ func NewCodeMemberHandler(repo repository.MarketingRepository, memberEventProduc
 }
 
 func (h *CodeMemberHandler) Handle(ctx context.Context, info OrderInfo) error {
-	log.Printf("member code handle + ")
 	return h.baseCodeOrderHandler.Handle(ctx, info)
 }
 
@@ -48,10 +45,9 @@ func (h *CodeMemberHandler) Redeem(ctx context.Context, info RedeemInfo) error {
 		Days uint64 `json:"days"`
 	}
 	var attrs Attrs
-	skuAttrs := info.Code.Attrs.SKU.Attrs
-	err := json.Unmarshal([]byte(skuAttrs), &attrs)
+	err := h.unmarshalAttrs(info.Code, &attrs)
 	if err != nil {
-		return fmt.Errorf("解析会员兑换码属性失败: %w, codeID:%d, skuAttrs:%s", err, info.Code.ID, skuAttrs)
+		return fmt.Errorf("解析会员兑换码属性失败: %w, codeID:%d", err, info.Code.ID)
 	}
 	memberEvent := event.MemberEvent{
 		Key:    fmt.Sprintf("code-member-%d", info.Code.ID),
@@ -61,6 +57,5 @@ func (h *CodeMemberHandler) Redeem(ctx context.Context, info RedeemInfo) error {
 		BizId:  info.Code.BizId,
 		Action: "兑换会员商品",
 	}
-	log.Printf("codeMember sendMemberEvent = %#v\n", memberEvent)
 	return h.memberEventProducer.Produce(ctx, memberEvent)
 }
