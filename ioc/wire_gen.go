@@ -46,6 +46,7 @@ func InitApp() (*App, error) {
 	}
 	serviceService := permissionModule.Svc
 	checkPermissionMiddlewareBuilder := middleware.NewCheckPermissionMiddlewareBuilder(serviceService)
+	builder := initRateLimiterBuilder(cmdable)
 	interactiveModule, err := interactive.InitModule(db, mq)
 	if err != nil {
 		return nil, err
@@ -105,7 +106,7 @@ func InitApp() (*App, error) {
 	}
 	handler12 := marketingModule.Hdl
 	handler13 := interactiveModule.Hdl
-	component := initGinxServer(provider, checkMembershipMiddlewareBuilder, checkPermissionMiddlewareBuilder, handler, questionSetHandler, webHandler, handler2, handler3, handler4, handler5, handler6, handler7, handler8, handler9, handler10, handler11, handler12, handler13)
+	component := initGinxServer(provider, checkMembershipMiddlewareBuilder, checkPermissionMiddlewareBuilder, builder, handler, questionSetHandler, webHandler, handler2, handler3, handler4, handler5, handler6, handler7, handler8, handler9, handler10, handler11, handler12, handler13)
 	adminHandler := projectModule.AdminHdl
 	webAdminHandler := marketingModule.AdminHdl
 	adminServer := InitAdminServer(adminHandler, webAdminHandler)

@@ -18,6 +18,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/ecodeclub/ginx/middlewares/ratelimit"
 	"github.com/ecodeclub/webook/internal/interactive"
 
 	"github.com/ecodeclub/webook/internal/credit"
@@ -54,6 +55,7 @@ func initGinxServer(sp session.Provider,
 	checkMembershipMiddleware *middleware.CheckMembershipMiddlewareBuilder,
 	// 这个暂时用不上
 	checkPermissionMiddleware *middleware.CheckPermissionMiddlewareBuilder,
+	ratelimiterMiddleware *ratelimit.Builder,
 	qh *baguwen.Handler,
 	qsh *baguwen.QuestionSetHandler,
 	lhdl *label.Handler,

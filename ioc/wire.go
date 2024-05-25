@@ -74,6 +74,7 @@ func InitApp() (*App, error) {
 		permission.InitModule,
 		wire.FieldsOf(new(*permission.Module), "Svc"),
 		middleware.NewCheckPermissionMiddlewareBuilder,
+		initRateLimiterBuilder,
 		initCronJobs,
 		// 这两个顺序不要换
 		initGinxServer,
