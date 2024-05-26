@@ -112,8 +112,7 @@ func (g *gormMarketingDAO) SetUnusedRedemptionCodeStatusUsed(ctx context.Context
 	now := time.Now().UnixMilli()
 	var c RedemptionCode
 	err := g.db.WithContext(ctx).Transaction(func(tx *egorm.Component) error {
-
-		updateResult := tx.Model(&c).Where("Code = ? AND Status = ?", code, domain.RedemptionCodeStatusUnused.ToUint8()).
+		updateResult := tx.Model(&c).Where("code = ? AND status = ?", code, domain.RedemptionCodeStatusUnused.ToUint8()).
 			Updates(map[string]any{
 				"Status": domain.RedemptionCodeStatusUsed.ToUint8(),
 				"Utime":  now,

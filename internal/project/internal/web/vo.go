@@ -42,17 +42,21 @@ type Project struct {
 	Introductions []Introduction `json:"introductions,omitempty"`
 	Interactive   Interactive    `json:"interactive,omitempty"`
 	Permitted     bool           `json:"permitted"`
+	CodeSPU       string         `json:"codeSPU"`
+	ProductSPU    string         `json:"productSPU"`
 }
 
 func newProject(p domain.Project, intr interactive.Interactive) Project {
 	return Project{
-		Id:     p.Id,
-		Title:  p.Title,
-		SN:     p.SN,
-		Status: p.Status.ToUint8(),
-		Desc:   p.Desc,
-		Labels: p.Labels,
-		Utime:  p.Utime,
+		Id:         p.Id,
+		Title:      p.Title,
+		SN:         p.SN,
+		Status:     p.Status.ToUint8(),
+		Desc:       p.Desc,
+		Labels:     p.Labels,
+		Utime:      p.Utime,
+		CodeSPU:    p.CodeSPU,
+		ProductSPU: p.ProductSPU,
 		Resumes: slice.Map(p.Resumes, func(idx int, src domain.Resume) Resume {
 			return newResume(src)
 		}),

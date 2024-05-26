@@ -98,13 +98,15 @@ func (repo *CachedRepository) prjToDomain(prj dao.PubProject,
 	intrs []dao.PubProjectIntroduction,
 ) domain.Project {
 	return domain.Project{
-		Id:     prj.Id,
-		SN:     prj.SN,
-		Title:  prj.Title,
-		Status: domain.ProjectStatus(prj.Status),
-		Labels: prj.Labels.Val,
-		Desc:   prj.Desc,
-		Utime:  prj.Utime,
+		Id:         prj.Id,
+		SN:         prj.SN,
+		Title:      prj.Title,
+		Status:     domain.ProjectStatus(prj.Status),
+		Labels:     prj.Labels.Val,
+		Desc:       prj.Desc,
+		Utime:      prj.Utime,
+		ProductSPU: prj.ProductSPU.String,
+		CodeSPU:    prj.CodeSPU.String,
 		Resumes: slice.Map(resumes, func(idx int, src dao.PubProjectResume) domain.Resume {
 			return repo.rsmToDomain(src)
 		}),

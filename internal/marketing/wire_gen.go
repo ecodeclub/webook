@@ -8,6 +8,7 @@ package marketing
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	"github.com/ecodeclub/ecache"
@@ -29,7 +30,7 @@ import (
 // Injectors from wire.go:
 
 func InitModule(db *gorm.DB, q mq.MQ, c ecache.Cache, om *order.Module, pm *product.Module) (*Module, error) {
-	marketingDAO := dao.NewGORMMarketingDAO(db)
+	marketingDAO := initDAO(db)
 	duration := invitationCodeExpiration()
 	invitationCodeCache := cache.NewInvitationCodeECache(c, duration)
 	marketingRepository := repository.NewRepository(marketingDAO, invitationCodeCache)
@@ -78,6 +79,18 @@ type (
 	Handler      = web.Handler
 	AdminHandler = web.AdminHandler
 )
+
+var initOnce sync.Once
+
+func initDAO(db *gorm.DB) dao.MarketingDAO {
+	initOnce.Do(func() {
+		err := dao.InitTables(db)
+		if err != nil {
+			panic(err)
+		}
+	})
+	return dao.NewGORMMarketingDAO(db)
+}
 
 func newOrderEventConsumer(svc service.Service, q mq.MQ) (*consumer.OrderEventConsumer, error) {
 	res, err := consumer.NewOrderEventConsumer(svc, q)

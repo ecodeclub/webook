@@ -18,7 +18,11 @@ package marketing
 
 import (
 	"context"
+	"sync"
+
 	"time"
+
+	"gorm.io/gorm"
 
 	"github.com/ecodeclub/ecache"
 	"github.com/ecodeclub/mq-api"
@@ -46,7 +50,7 @@ type (
 
 func InitModule(db *egorm.Component, q mq.MQ, c ecache.Cache, om *order.Module, pm *product.Module) (*Module, error) {
 	wire.Build(
-		dao.NewGORMMarketingDAO,
+		initDAO,
 		invitationCodeExpiration,
 		cache.NewInvitationCodeECache,
 		repository.NewRepository,
@@ -67,6 +71,18 @@ func InitModule(db *egorm.Component, q mq.MQ, c ecache.Cache, om *order.Module, 
 		wire.Struct(new(Module), "*"),
 	)
 	return nil, nil
+}
+
+var initOnce sync.Once
+
+func initDAO(db *gorm.DB) dao.MarketingDAO {
+	initOnce.Do(func() {
+		err := dao.InitTables(db)
+		if err != nil {
+			panic(err)
+		}
+	})
+	return dao.NewGORMMarketingDAO(db)
 }
 
 func newOrderEventConsumer(svc service.Service, q mq.MQ) (*consumer.OrderEventConsumer, error) {
