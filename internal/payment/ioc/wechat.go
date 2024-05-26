@@ -19,6 +19,7 @@ import (
 	"os"
 
 	"github.com/ecodeclub/webook/internal/payment/internal/service/wechat"
+	"github.com/gotomicro/ego/core/econf"
 	"github.com/wechatpay-apiv3/wechatpay-go/core"
 	"github.com/wechatpay-apiv3/wechatpay-go/core/auth/verifiers"
 	"github.com/wechatpay-apiv3/wechatpay-go/core/downloader"
@@ -53,7 +54,7 @@ func InitWechatClient(cfg WechatConfig) *core.Client {
 }
 
 func InitWechatNativeService(native wechat.NativeAPIService, cfg WechatConfig) *wechat.NativePaymentService {
-	return wechat.NewNativePaymentService(native, cfg.AppID, cfg.MchID)
+	return wechat.NewNativePaymentService(native, cfg.AppID, cfg.MchID, cfg.PaymentNotifyURL)
 }
 
 func InitNativeApiService(cli *core.Client) *native.NativeApiService {
@@ -75,12 +76,13 @@ func InitWechatNotifyHandler(cfg WechatConfig) *notify.Handler {
 
 func InitWechatConfig() WechatConfig {
 	return WechatConfig{
-		AppID:        os.Getenv("WEPAY_APP_ID"),
-		MchID:        os.Getenv("WEPAY_MCH_ID"),
-		MchKey:       os.Getenv("WEPAY_MCH_KEY"),
-		MchSerialNum: os.Getenv("WEPAY_MCH_SERIAL_NUM"),
-		CertPath:     "./config/cert/apiclient_cert.pem",
-		KeyPath:      "./config/cert/apiclient_key.pem",
+		AppID:            os.Getenv("WEPAY_APP_ID"),
+		MchID:            os.Getenv("WEPAY_MCH_ID"),
+		MchKey:           os.Getenv("WEPAY_MCH_KEY"),
+		MchSerialNum:     os.Getenv("WEPAY_MCH_SERIAL_NUM"),
+		CertPath:         "./config/cert/apiclient_cert.pem",
+		KeyPath:          "./config/cert/apiclient_key.pem",
+		PaymentNotifyURL: econf.GetString("wechat.paymentNotifyURL"),
 	}
 }
 
@@ -93,4 +95,6 @@ type WechatConfig struct {
 	// 证书
 	CertPath string
 	KeyPath  string
+
+	PaymentNotifyURL string
 }

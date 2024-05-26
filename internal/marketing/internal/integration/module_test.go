@@ -33,6 +33,7 @@ import (
 	"github.com/ecodeclub/webook/internal/marketing/internal/event/consumer"
 	"github.com/ecodeclub/webook/internal/marketing/internal/event/producer"
 	"github.com/ecodeclub/webook/internal/marketing/internal/repository"
+	"github.com/ecodeclub/webook/internal/marketing/internal/repository/cache"
 	"github.com/ecodeclub/webook/internal/marketing/internal/repository/dao"
 	"github.com/ecodeclub/webook/internal/marketing/internal/service"
 	"github.com/ecodeclub/webook/internal/marketing/internal/web"
@@ -69,7 +70,7 @@ type ModuleTestSuite struct {
 func (s *ModuleTestSuite) SetupSuite() {
 	s.db = testioc.InitDB()
 	s.NoError(dao.InitTables(s.db))
-	s.repo = repository.NewRepository(dao.NewGORMMarketingDAO(s.db))
+	s.repo = repository.NewRepository(dao.NewGORMMarketingDAO(s.db), nil)
 }
 
 func (s *ModuleTestSuite) TearDownSuite() {
@@ -79,6 +80,10 @@ func (s *ModuleTestSuite) TearDownSuite() {
 	s.NoError(err)
 	err = s.db.Exec("DROP TABLE `generate_logs`").Error
 	s.NoError(err)
+	err = s.db.Exec("DROP TABLE `invitation_codes`").Error
+	s.NoError(err)
+	err = s.db.Exec("DROP TABLE `invitation_records`").Error
+	s.NoError(err)
 }
 
 func (s *ModuleTestSuite) TearDownTest() {
@@ -87,6 +92,10 @@ func (s *ModuleTestSuite) TearDownTest() {
 	err = s.db.Exec("TRUNCATE TABLE `redeem_logs`").Error
 	s.NoError(err)
 	err = s.db.Exec("TRUNCATE TABLE `generate_logs`").Error
+	s.NoError(err)
+	err = s.db.Exec("TRUNCATE TABLE `invitation_codes`").Error
+	s.NoError(err)
+	err = s.db.Exec("TRUNCATE TABLE `invitation_records`").Error
 	s.NoError(err)
 }
 
@@ -911,9 +920,10 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeUserRegistrationEvent() {
 		newSvcFunc     func(t *testing.T, ctrl *gomock.Controller, evt event.UserRegistrationEvent, q mq.MQ) service.Service
 		evt            event.UserRegistrationEvent
 		errRequireFunc require.ErrorAssertionFunc
+		after          func(t *testing.T, evt event.UserRegistrationEvent)
 	}{
 		{
-			name: "消费注册消息成功_发送福利_开通会员",
+			name: "消费注册消息成功_为注册者开通会员",
 			newMQFunc: func(t *testing.T, ctrl *gomock.Controller, evt event.UserRegistrationEvent) mq.MQ {
 				t.Helper()
 
@@ -943,12 +953,97 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeUserRegistrationEvent() {
 				memberEventProducer, err := producer.NewMemberEventProducer(q)
 				require.NoError(t, err)
 
-				return service.NewService(nil, nil, nil, nil, nil, memberEventProducer, nil, nil)
+				repo := repository.NewRepository(dao.NewGORMMarketingDAO(s.db), cache.NewInvitationCodeECache(testioc.InitCache(), time.Minute*10))
+
+				return service.NewService(repo, nil, nil, nil, nil, memberEventProducer, nil, nil)
 			},
 			evt: event.UserRegistrationEvent{
 				Uid: testID,
 			},
 			errRequireFunc: require.NoError,
+			after:          func(t *testing.T, evt event.UserRegistrationEvent) {},
+		},
+		{
+			name: "消费注册消息成功_为注册者开通会员_为邀请者增加积分",
+			newMQFunc: func(t *testing.T, ctrl *gomock.Controller, evt event.UserRegistrationEvent) mq.MQ {
+				t.Helper()
+
+				mockMQ := mocks.NewMockMQ(ctrl)
+				mockConsumer := mocks.NewMockConsumer(ctrl)
+				mockConsumer.EXPECT().Consume(gomock.Any()).Return(s.newUserRegistrationEventMessage(t, evt), nil).Times(2)
+
+				mockProducer := mocks.NewMockProducer(ctrl)
+				endAtDate := time.Date(2024, 6, 30, 23, 59, 59, 0, time.UTC)
+				memberEvent := s.newMemberEventMessage(t, event.MemberEvent{
+					Key:    fmt.Sprintf("user-registration-%d", evt.Uid),
+					Uid:    evt.Uid,
+					Days:   uint64(time.Until(endAtDate) / (24 * time.Hour)),
+					Biz:    "user",
+					BizId:  evt.Uid,
+					Action: "注册福利",
+				})
+				mockProducer.EXPECT().Produce(gomock.Any(), memberEvent).Return(&mq.ProducerResult{}, nil).Times(2)
+
+				inviterId := int64(345691)
+				creditEvent := s.newCreditEventMessage(t, event.CreditIncreaseEvent{
+					Key:    fmt.Sprintf("inviteeId-%d", evt.Uid),
+					Uid:    inviterId,
+					Amount: 300,
+					Biz:    "user",
+					BizId:  evt.Uid,
+					Action: "邀请奖励",
+				})
+				mockProducer.EXPECT().Produce(gomock.Any(), creditEvent).Return(&mq.ProducerResult{}, nil).Times(2)
+
+				mockMQ.EXPECT().Consumer(gomock.Any(), gomock.Any()).Return(mockConsumer, nil)
+				mockMQ.EXPECT().Producer(event.MemberUpdateEventName).Return(mockProducer, nil)
+				mockMQ.EXPECT().Producer(event.CreditEventName).Return(mockProducer, nil)
+				return mockMQ
+			},
+			newSvcFunc: func(t *testing.T, ctrl *gomock.Controller, evt event.UserRegistrationEvent, q mq.MQ) service.Service {
+				t.Helper()
+
+				memberEventProducer, err := producer.NewMemberEventProducer(q)
+				require.NoError(t, err)
+
+				creditEventProducer, err := producer.NewCreditEventProducer(q)
+				require.NoError(t, err)
+
+				repo := repository.NewRepository(dao.NewGORMMarketingDAO(s.db), cache.NewInvitationCodeECache(testioc.InitCache(), time.Minute*10))
+
+				expectedCode := domain.InvitationCode{
+					Uid:  345691,
+					Code: evt.InviterCode,
+				}
+				_, err = repo.CreateInvitationCode(context.Background(), expectedCode)
+				require.NoError(t, err)
+
+				return service.NewService(repo, nil, nil, nil, nil, memberEventProducer, creditEventProducer, nil)
+			},
+			evt: event.UserRegistrationEvent{
+				Uid:         testID,
+				InviterCode: "registration-invitation-code-345691",
+			},
+			errRequireFunc: require.NoError,
+			after: func(t *testing.T, evt event.UserRegistrationEvent) {
+				t.Helper()
+				repo := repository.NewRepository(dao.NewGORMMarketingDAO(s.db), cache.NewInvitationCodeECache(testioc.InitCache(), time.Minute*10))
+				inviterId := int64(345691)
+
+				c := testioc.InitCache()
+				_, err := c.Delete(context.Background(), fmt.Sprintf("marketing:invitation-code:user:%d", inviterId))
+				require.NoError(t, err)
+
+				record, err := repo.FindInvitationRecord(context.Background(), inviterId, testID, evt.InviterCode)
+				require.NoError(t, err)
+
+				require.Equal(t, domain.InvitationRecord{
+					InviterId: inviterId,
+					InviteeId: testID,
+					Code:      evt.InviterCode,
+					Attrs:     domain.InvitationRecordAttrs{Credits: 300},
+				}, record)
+			},
 		},
 	}
 
@@ -969,11 +1064,22 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeUserRegistrationEvent() {
 			err = c.Consume(context.Background())
 			tc.errRequireFunc(t, err)
 
+			if err != nil {
+				return
+			}
+
+			tc.after(t, tc.evt)
 		})
 	}
 }
 
 func (s *ModuleTestSuite) newUserRegistrationEventMessage(t *testing.T, evt event.UserRegistrationEvent) *mq.Message {
+	marshal, err := json.Marshal(evt)
+	require.NoError(t, err)
+	return &mq.Message{Value: marshal}
+}
+
+func (s *ModuleTestSuite) newCreditEventMessage(t *testing.T, evt event.CreditIncreaseEvent) *mq.Message {
 	marshal, err := json.Marshal(evt)
 	require.NoError(t, err)
 	return &mq.Message{Value: marshal}
@@ -1408,8 +1514,6 @@ func (s *ModuleTestSuite) TestHandler_RedeemRedemptionCode() {
 func (s *ModuleTestSuite) TestHandler_ListRedemptionCode() {
 	t := s.T()
 
-	s.TearDownTest()
-
 	total := 100
 	for idx := 0; idx < total; idx++ {
 		id := int64(2000 + idx)
@@ -1507,6 +1611,131 @@ func (s *ModuleTestSuite) assertListRedemptionCodesRespEqual(t *testing.T, expec
 		actual.Codes[i].Utime = 0
 	}
 	assert.Equal(t, expected.Codes, actual.Codes)
+}
+
+func (s *ModuleTestSuite) TestHandler_GenerateInvitationCode() {
+	t := s.T()
+
+	baseURL := "https://meoying.com/"
+	testCases := []struct {
+		name string
+
+		before         func(t *testing.T) repository.MarketingRepository
+		newHandlerFunc func(t *testing.T, repo repository.MarketingRepository) *web.Handler
+		wantCode       int
+		wantResp       test.Result[any]
+	}{
+		{
+			name: "首次生成邀请码",
+			before: func(t *testing.T) repository.MarketingRepository {
+				codeCache := cache.NewInvitationCodeECache(testioc.InitCache(), time.Minute*10)
+				repo := repository.NewRepository(dao.NewGORMMarketingDAO(s.db), codeCache)
+				return repo
+			},
+			newHandlerFunc: func(t *testing.T, repo repository.MarketingRepository) *web.Handler {
+				t.Helper()
+				codeGenerator := func(id int64) string {
+					return fmt.Sprintf("invitation-code-1-%d", id)
+				}
+				svc := service.NewService(repo, nil, nil, codeGenerator, nil, nil, nil, nil)
+				return web.NewHandler(svc)
+			},
+			wantCode: 200,
+			wantResp: test.Result[any]{
+				Data: fmt.Sprintf("%s?code=invitation-code-1-%d", baseURL, testID),
+			},
+		},
+		{
+			name: "一定时间内多次生成返回相同邀请码",
+			before: func(t *testing.T) repository.MarketingRepository {
+				t.Helper()
+
+				codeCache := cache.NewInvitationCodeECache(testioc.InitCache(), time.Minute*10)
+				repo := repository.NewRepository(dao.NewGORMMarketingDAO(s.db), codeCache)
+
+				c := fmt.Sprintf("invitation-code-2-%d", testID)
+				_, err := repo.CreateInvitationCode(context.Background(), domain.InvitationCode{
+					Uid:  testID,
+					Code: c,
+				})
+				require.NoError(t, err)
+
+				expectedCode, err := codeCache.GetInvitationCode(context.Background(), testID)
+				require.NoError(t, err)
+				require.Equal(t, expectedCode, c)
+
+				return repo
+			},
+			newHandlerFunc: func(t *testing.T, repo repository.MarketingRepository) *web.Handler {
+				t.Helper()
+				codeGenerator := func(id int64) string {
+					return fmt.Sprintf("invitation-code-3-%d", id)
+				}
+				svc := service.NewService(repo, nil, nil, codeGenerator, nil, nil, nil, nil)
+				return web.NewHandler(svc)
+			},
+			wantCode: 200,
+			wantResp: test.Result[any]{
+				Data: fmt.Sprintf("%s?code=invitation-code-2-%d", baseURL, testID),
+			},
+		},
+		{
+			name: "一定时间后再次生成返回新的邀请码",
+			before: func(t *testing.T) repository.MarketingRepository {
+				t.Helper()
+
+				duration := 100 * time.Millisecond
+				codeCache := cache.NewInvitationCodeECache(testioc.InitCache(), duration)
+				repo := repository.NewRepository(dao.NewGORMMarketingDAO(s.db), codeCache)
+
+				c := fmt.Sprintf("invitation-code-4-%d", testID)
+				_, err := repo.CreateInvitationCode(context.Background(), domain.InvitationCode{
+					Uid:  testID,
+					Code: c,
+				})
+				require.NoError(t, err)
+
+				expectedCode, err := codeCache.GetInvitationCode(context.Background(), testID)
+				require.NoError(t, err)
+				require.Equal(t, expectedCode, c)
+
+				time.Sleep(duration)
+
+				return repo
+			},
+			newHandlerFunc: func(t *testing.T, repo repository.MarketingRepository) *web.Handler {
+				t.Helper()
+				codeGenerator := func(id int64) string {
+					return fmt.Sprintf("invitation-code-5-%d", id)
+				}
+				svc := service.NewService(repo, nil, nil, codeGenerator, nil, nil, nil, nil)
+				return web.NewHandler(svc)
+			},
+			wantCode: 200,
+			wantResp: test.Result[any]{
+				Data: fmt.Sprintf("%s?code=invitation-code-5-%d", baseURL, testID),
+			},
+		},
+	}
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			req, err := http.NewRequest(http.MethodPost,
+				"/invitation-code/gen", nil)
+			req.Header.Set("content-type", "application/json")
+			require.NoError(t, err)
+			recorder := test.NewJSONResponseRecorder[any]()
+			repo := tc.before(t)
+			server := s.newGinServer(tc.newHandlerFunc(t, repo))
+			server.ServeHTTP(recorder, req)
+			require.Equal(t, tc.wantCode, recorder.Code)
+			require.Equal(t, tc.wantResp, recorder.MustScan())
+
+			c := testioc.InitCache()
+			_, err = c.Delete(context.Background(), fmt.Sprintf("marketing:invitation-code:user:%d", testID))
+			require.NoError(t, err)
+		})
+	}
 }
 
 func (s *ModuleTestSuite) TestService_RedeemRedemptionCode() {
@@ -1719,8 +1948,6 @@ func (s *ModuleTestSuite) TestAdminHandler_GenerateRedemptionCode() {
 
 func (s *ModuleTestSuite) TestAdminHandler_ListRedemptionCode() {
 	t := s.T()
-
-	s.TearDownTest()
 
 	total := 100
 	for idx := 0; idx < total; idx++ {

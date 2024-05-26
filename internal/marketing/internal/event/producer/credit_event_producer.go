@@ -28,5 +28,5 @@ type CreditEventProducer interface {
 }
 
 func NewCreditEventProducer(q mq.MQ) (CreditEventProducer, error) {
-	return mqx.NewGeneralProducer[event.CreditIncreaseEvent](q, event.PermissionEventName)
+	return mqx.NewGeneralProducer[event.CreditIncreaseEvent](q, event.CreditEventName)
 }

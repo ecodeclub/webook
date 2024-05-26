@@ -9,11 +9,14 @@ package marketing
 import (
 	"context"
 	"sync"
+	"time"
 
+	"github.com/ecodeclub/ecache"
 	"github.com/ecodeclub/mq-api"
 	"github.com/ecodeclub/webook/internal/marketing/internal/event/consumer"
 	"github.com/ecodeclub/webook/internal/marketing/internal/event/producer"
 	"github.com/ecodeclub/webook/internal/marketing/internal/repository"
+	"github.com/ecodeclub/webook/internal/marketing/internal/repository/cache"
 	"github.com/ecodeclub/webook/internal/marketing/internal/repository/dao"
 	"github.com/ecodeclub/webook/internal/marketing/internal/service"
 	"github.com/ecodeclub/webook/internal/marketing/internal/web"
@@ -26,13 +29,15 @@ import (
 
 // Injectors from wire.go:
 
-func InitModule(db *gorm.DB, q mq.MQ, om *order.Module, pm *product.Module) (*Module, error) {
+func InitModule(db *gorm.DB, q mq.MQ, c ecache.Cache, om *order.Module, pm *product.Module) (*Module, error) {
 	marketingDAO := initDAO(db)
-	marketingRepository := repository.NewRepository(marketingDAO)
+	duration := invitationCodeExpiration()
+	invitationCodeCache := cache.NewInvitationCodeECache(c, duration)
+	marketingRepository := repository.NewRepository(marketingDAO, invitationCodeCache)
 	redemptionCodeAdminService := service.NewAdminService(marketingRepository)
 	serviceService := pm.Svc
 	generator := sequencenumber.NewGenerator()
-	v := redemptionCodeGenerator(generator)
+	v := codeGenerator(generator)
 	adminHandler := web.NewAdminHandler(redemptionCodeAdminService, serviceService, v)
 	service2 := om.Svc
 	v2 := eventKeyGenerator()
@@ -103,7 +108,7 @@ func newUserEventConsumer(svc service.Service, q mq.MQ) (*consumer.UserRegistrat
 	return res, err
 }
 
-func redemptionCodeGenerator(generator *sequencenumber.Generator) func(id int64) string {
+func codeGenerator(generator *sequencenumber.Generator) func(id int64) string {
 	return func(id int64) string {
 		code, _ := generator.Generate(id)
 		return code
@@ -112,4 +117,8 @@ func redemptionCodeGenerator(generator *sequencenumber.Generator) func(id int64)
 
 func eventKeyGenerator() func() string {
 	return shortuuid.New
+}
+
+func invitationCodeExpiration() time.Duration {
+	return time.Minute * 30
 }

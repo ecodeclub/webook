@@ -12,14 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package domain
+package ioc
 
-type OrderCompletedActivity struct {
-	OrderSN string
-	BuyerID int64
-}
+import (
+	"github.com/ecodeclub/ginx/middlewares/activelimit/locallimit"
+	"github.com/gotomicro/ego/core/econf"
+)
 
-type UserRegistrationActivity struct {
-	Uid         int64
-	InviterCode string
+func initLocalActiveLimiterBuilder() *locallimit.LocalActiveLimit {
+	return locallimit.NewLocalActiveLimit(econf.GetInt64("web.maxActiveLimit"))
 }

@@ -14,12 +14,18 @@
 
 package domain
 
-type OrderCompletedActivity struct {
-	OrderSN string
-	BuyerID int64
+type InvitationCode struct {
+	Uid  int64
+	Code string
 }
 
-type UserRegistrationActivity struct {
-	Uid         int64
-	InviterCode string
+type InvitationRecord struct {
+	InviterId int64
+	InviteeId int64
+	Code      string
+	Attrs     InvitationRecordAttrs
+}
+
+type InvitationRecordAttrs struct {
+	Credits uint64 `json:"credits"`
 }

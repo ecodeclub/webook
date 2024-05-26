@@ -21,7 +21,9 @@ import (
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/ecodeclub/ekit/sqlx"
 	"github.com/ecodeclub/webook/internal/marketing/internal/domain"
+	"github.com/ecodeclub/webook/internal/marketing/internal/repository/cache"
 	"github.com/ecodeclub/webook/internal/marketing/internal/repository/dao"
+	"github.com/gotomicro/ego/core/elog"
 )
 
 var (
@@ -35,20 +37,29 @@ type MarketingRepository interface {
 	SetUnusedRedemptionCodeStatusUsed(ctx context.Context, uid int64, code string) (domain.RedemptionCode, error)
 	TotalRedemptionCodes(ctx context.Context, uid int64) (int64, error)
 	FindRedemptionCodesByUID(ctx context.Context, uid int64, offset, limit int) ([]domain.RedemptionCode, error)
+
+	CreateInvitationCode(ctx context.Context, i domain.InvitationCode) (domain.InvitationCode, error)
+	FindInvitationCodeByCode(ctx context.Context, code string) (domain.InvitationCode, error)
+	CreateInvitationRecord(ctx context.Context, record domain.InvitationRecord) (int64, error)
+	FindInvitationRecord(ctx context.Context, inviterId, inviteeId int64, code string) (domain.InvitationRecord, error)
 }
 
 type marketingRepository struct {
-	dao dao.MarketingDAO
+	dao    dao.MarketingDAO
+	cache  cache.InvitationCodeCache
+	logger *elog.Component
 }
 
-func NewRepository(d dao.MarketingDAO) MarketingRepository {
+func NewRepository(d dao.MarketingDAO, c cache.InvitationCodeCache) MarketingRepository {
 	return &marketingRepository{
-		dao: d,
+		dao:    d,
+		cache:  c,
+		logger: elog.DefaultLogger,
 	}
 }
 
 func (m *marketingRepository) CreateRedemptionCodes(ctx context.Context, codes []domain.RedemptionCode) ([]int64, error) {
-	entities := m.toEntities(codes)
+	entities := m.toRedemptionCodeEntities(codes)
 	log.Printf("entities: %#v\n", entities)
 	return m.dao.CreateRedemptionCodes(ctx, entities)
 }
@@ -58,7 +69,7 @@ func (m *marketingRepository) FindRedemptionCode(ctx context.Context, code strin
 	if err != nil {
 		return domain.RedemptionCode{}, err
 	}
-	return m.toDomain([]dao.RedemptionCode{r})[0], err
+	return m.toRedemptionDomain([]dao.RedemptionCode{r})[0], err
 }
 
 func (m *marketingRepository) SetUnusedRedemptionCodeStatusUsed(ctx context.Context, uid int64, code string) (domain.RedemptionCode, error) {
@@ -66,7 +77,7 @@ func (m *marketingRepository) SetUnusedRedemptionCodeStatusUsed(ctx context.Cont
 	if err != nil {
 		return domain.RedemptionCode{}, err
 	}
-	return m.toDomain([]dao.RedemptionCode{r})[0], err
+	return m.toRedemptionDomain([]dao.RedemptionCode{r})[0], err
 }
 
 func (m *marketingRepository) TotalRedemptionCodes(ctx context.Context, uid int64) (int64, error) {
@@ -78,10 +89,10 @@ func (m *marketingRepository) FindRedemptionCodesByUID(ctx context.Context, uid 
 	if err != nil {
 		return nil, err
 	}
-	return m.toDomain(codes), nil
+	return m.toRedemptionDomain(codes), nil
 }
 
-func (m *marketingRepository) toDomain(codes []dao.RedemptionCode) []domain.RedemptionCode {
+func (m *marketingRepository) toRedemptionDomain(codes []dao.RedemptionCode) []domain.RedemptionCode {
 	return slice.Map(codes, func(idx int, src dao.RedemptionCode) domain.RedemptionCode {
 
 		return domain.RedemptionCode{
@@ -99,7 +110,7 @@ func (m *marketingRepository) toDomain(codes []dao.RedemptionCode) []domain.Rede
 	})
 }
 
-func (m *marketingRepository) toEntities(codes []domain.RedemptionCode) []dao.RedemptionCode {
+func (m *marketingRepository) toRedemptionCodeEntities(codes []domain.RedemptionCode) []dao.RedemptionCode {
 	return slice.Map(codes, func(idx int, src domain.RedemptionCode) dao.RedemptionCode {
 		return dao.RedemptionCode{
 			OwnerId: src.OwnerID,
@@ -111,4 +122,75 @@ func (m *marketingRepository) toEntities(codes []domain.RedemptionCode) []dao.Re
 			Status:  src.Status.ToUint8(),
 		}
 	})
+}
+
+func (m *marketingRepository) CreateInvitationCode(ctx context.Context, i domain.InvitationCode) (domain.InvitationCode, error) {
+	code, err := m.cache.GetInvitationCode(ctx, i.Uid)
+	if err == nil {
+		return domain.InvitationCode{Uid: i.Uid, Code: code}, err
+	}
+	_, err = m.dao.CreateInvitationCode(ctx, m.toInvitationCodeEntity(i))
+	if err != nil {
+		return domain.InvitationCode{}, err
+	}
+	err = m.cache.SetInvitationCode(ctx, i.Uid, i.Code)
+	if err != nil {
+		m.logger.Error("缓存邀请码失败", elog.FieldErr(err))
+	}
+	return i, nil
+}
+
+func (m *marketingRepository) toInvitationCodeEntity(i domain.InvitationCode) dao.InvitationCode {
+	return dao.InvitationCode{
+		OwnerId: i.Uid,
+		Code:    i.Code,
+	}
+}
+
+func (m *marketingRepository) FindInvitationCodeByCode(ctx context.Context, code string) (domain.InvitationCode, error) {
+	c, err := m.dao.FindInvitationCodeByCode(ctx, code)
+	if err != nil {
+		return domain.InvitationCode{}, err
+	}
+	return m.toInvitationCodeDomain(c), nil
+}
+
+func (m *marketingRepository) toInvitationCodeDomain(i dao.InvitationCode) domain.InvitationCode {
+	return domain.InvitationCode{
+		Uid:  i.OwnerId,
+		Code: i.Code,
+	}
+}
+
+func (m *marketingRepository) CreateInvitationRecord(ctx context.Context, r domain.InvitationRecord) (int64, error) {
+	return m.dao.CreateInvitationRecord(ctx, m.toInvitationRecordEntity(r))
+}
+
+func (m *marketingRepository) toInvitationRecordEntity(r domain.InvitationRecord) dao.InvitationRecord {
+	return dao.InvitationRecord{
+		InviterId: r.InviterId,
+		InviteeId: r.InviteeId,
+		Code:      r.Code,
+		Attrs: sqlx.JsonColumn[domain.InvitationRecordAttrs]{
+			Val:   r.Attrs,
+			Valid: true,
+		},
+	}
+}
+
+func (m *marketingRepository) FindInvitationRecord(ctx context.Context, inviterId, inviteeId int64, code string) (domain.InvitationRecord, error) {
+	ir, err := m.dao.FindInvitationRecord(ctx, inviterId, inviteeId, code)
+	if err != nil {
+		return domain.InvitationRecord{}, err
+	}
+	return m.toInvitationRecordDomain(ir), nil
+}
+
+func (m *marketingRepository) toInvitationRecordDomain(ir dao.InvitationRecord) domain.InvitationRecord {
+	return domain.InvitationRecord{
+		InviterId: ir.InviterId,
+		InviteeId: ir.InviteeId,
+		Code:      ir.Code,
+		Attrs:     ir.Attrs.Val,
+	}
 }
