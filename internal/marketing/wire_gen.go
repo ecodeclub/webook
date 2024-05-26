@@ -8,6 +8,7 @@ package marketing
 
 import (
 	"context"
+	"sync"
 
 	"github.com/ecodeclub/mq-api"
 	"github.com/ecodeclub/webook/internal/marketing/internal/event/consumer"
@@ -26,7 +27,7 @@ import (
 // Injectors from wire.go:
 
 func InitModule(db *gorm.DB, q mq.MQ, om *order.Module, pm *product.Module) (*Module, error) {
-	marketingDAO := dao.NewGORMMarketingDAO(db)
+	marketingDAO := initDAO(db)
 	marketingRepository := repository.NewRepository(marketingDAO)
 	redemptionCodeAdminService := service.NewAdminService(marketingRepository)
 	serviceService := pm.Svc
@@ -73,6 +74,18 @@ type (
 	Handler      = web.Handler
 	AdminHandler = web.AdminHandler
 )
+
+var initOnce sync.Once
+
+func initDAO(db *gorm.DB) dao.MarketingDAO {
+	initOnce.Do(func() {
+		err := dao.InitTables(db)
+		if err != nil {
+			panic(err)
+		}
+	})
+	return dao.NewGORMMarketingDAO(db)
+}
 
 func newOrderEventConsumer(svc service.Service, q mq.MQ) (*consumer.OrderEventConsumer, error) {
 	res, err := consumer.NewOrderEventConsumer(svc, q)

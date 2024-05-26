@@ -33,6 +33,13 @@ type Project struct {
 	Questions     []Question
 	Resumes       []Resume
 	Introductions []Introduction
+
+	// 目前来说，我们只需要两个 SN，而不是需要维持整个 SPU
+	// 后续如果需要 SPU 的其他字段，就重构为结构体
+	// 作为产品售卖的 SPU
+	ProductSPU string
+	// 作为兑换码售卖的 SPU
+	CodeSPU string
 }
 
 type ProjectStatus uint8

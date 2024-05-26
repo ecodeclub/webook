@@ -18,6 +18,9 @@ package marketing
 
 import (
 	"context"
+	"sync"
+
+	"gorm.io/gorm"
 
 	"github.com/ecodeclub/mq-api"
 	"github.com/ecodeclub/webook/internal/marketing/internal/event/consumer"
@@ -43,7 +46,7 @@ type (
 
 func InitModule(db *egorm.Component, q mq.MQ, om *order.Module, pm *product.Module) (*Module, error) {
 	wire.Build(
-		dao.NewGORMMarketingDAO,
+		initDAO,
 		repository.NewRepository,
 		wire.FieldsOf(new(*order.Module), "Svc"),
 		wire.FieldsOf(new(*product.Module), "Svc"),
@@ -62,6 +65,18 @@ func InitModule(db *egorm.Component, q mq.MQ, om *order.Module, pm *product.Modu
 		wire.Struct(new(Module), "*"),
 	)
 	return nil, nil
+}
+
+var initOnce sync.Once
+
+func initDAO(db *gorm.DB) dao.MarketingDAO {
+	initOnce.Do(func() {
+		err := dao.InitTables(db)
+		if err != nil {
+			panic(err)
+		}
+	})
+	return dao.NewGORMMarketingDAO(db)
 }
 
 func newOrderEventConsumer(svc service.Service, q mq.MQ) (*consumer.OrderEventConsumer, error) {

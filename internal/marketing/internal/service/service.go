@@ -16,7 +16,6 @@ package service
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/ecodeclub/webook/internal/marketing/internal/domain"
 	"github.com/ecodeclub/webook/internal/marketing/internal/event/producer"
@@ -82,10 +81,7 @@ func (s *service) RedeemRedemptionCode(ctx context.Context, uid int64, code stri
 	if err != nil {
 		return err
 	}
-	if r.Biz == "order" {
-		return s.orderActivityExecutor.Redeem(ctx, uid, r)
-	}
-	return fmt.Errorf("未知兑换码活动: biz=%s", r.Biz)
+	return s.orderActivityExecutor.Redeem(ctx, uid, r)
 }
 
 func (s *service) ListRedemptionCodes(ctx context.Context, uid int64, offset, list int) ([]domain.RedemptionCode, int64, error) {

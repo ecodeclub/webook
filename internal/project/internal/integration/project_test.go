@@ -146,13 +146,15 @@ func (s *ProjectTestSuite) TestProjectList() {
 			wantResp: test.Result[[]web.Project]{
 				Data: []web.Project{
 					{
-						Id:     9,
-						SN:     "SN9",
-						Title:  "标题9",
-						Status: domain.ProjectStatusPublished.ToUint8(),
-						Labels: []string{"标签9"},
-						Desc:   "描述9",
-						Utime:  9,
+						Id:         9,
+						SN:         "SN9",
+						Title:      "标题9",
+						Status:     domain.ProjectStatusPublished.ToUint8(),
+						Labels:     []string{"标签9"},
+						Desc:       "描述9",
+						Utime:      9,
+						CodeSPU:    "code-spu-9",
+						ProductSPU: "product-spu-9",
 						Interactive: web.Interactive{
 							ViewCnt:    10,
 							LikeCnt:    11,
@@ -162,13 +164,15 @@ func (s *ProjectTestSuite) TestProjectList() {
 						},
 					},
 					{
-						Id:     7,
-						SN:     "SN7",
-						Title:  "标题7",
-						Status: domain.ProjectStatusPublished.ToUint8(),
-						Labels: []string{"标签7"},
-						Desc:   "描述7",
-						Utime:  7,
+						Id:         7,
+						SN:         "SN7",
+						Title:      "标题7",
+						Status:     domain.ProjectStatusPublished.ToUint8(),
+						Labels:     []string{"标签7"},
+						Desc:       "描述7",
+						Utime:      7,
+						CodeSPU:    "code-spu-7",
+						ProductSPU: "product-spu-7",
 						Interactive: web.Interactive{
 							ViewCnt:    8,
 							LikeCnt:    9,
@@ -190,13 +194,15 @@ func (s *ProjectTestSuite) TestProjectList() {
 			wantResp: test.Result[[]web.Project]{
 				Data: []web.Project{
 					{
-						Id:     1,
-						SN:     "SN1",
-						Title:  "标题1",
-						Status: domain.ProjectStatusPublished.ToUint8(),
-						Labels: []string{"标签1"},
-						Desc:   "描述1",
-						Utime:  1,
+						Id:         1,
+						SN:         "SN1",
+						Title:      "标题1",
+						Status:     domain.ProjectStatusPublished.ToUint8(),
+						Labels:     []string{"标签1"},
+						Desc:       "描述1",
+						Utime:      1,
+						CodeSPU:    "code-spu-1",
+						ProductSPU: "product-spu-1",
 						Interactive: web.Interactive{
 							ViewCnt:    2,
 							LikeCnt:    3,
@@ -254,14 +260,16 @@ func (s *ProjectTestSuite) TestProjectDetail() {
 			wantCode: 200,
 			wantResp: test.Result[web.Project]{
 				Data: web.Project{
-					Id:        1,
-					SN:        "SN1",
-					Title:     "标题1",
-					Status:    domain.ProjectStatusPublished.ToUint8(),
-					Labels:    []string{"标签1"},
-					Desc:      "描述1",
-					Utime:     1,
-					Permitted: true,
+					Id:         1,
+					SN:         "SN1",
+					Title:      "标题1",
+					Status:     domain.ProjectStatusPublished.ToUint8(),
+					Labels:     []string{"标签1"},
+					Desc:       "描述1",
+					Utime:      1,
+					Permitted:  true,
+					CodeSPU:    "code-spu-1",
+					ProductSPU: "product-spu-1",
 					Interactive: web.Interactive{
 						ViewCnt:    2,
 						LikeCnt:    3,
@@ -318,13 +326,15 @@ func (s *ProjectTestSuite) TestProjectDetail() {
 			wantCode: 200,
 			wantResp: test.Result[web.Project]{
 				Data: web.Project{
-					Id:     3,
-					SN:     "SN3",
-					Title:  "标题3",
-					Status: domain.ProjectStatusPublished.ToUint8(),
-					Labels: []string{"标签3"},
-					Desc:   "描述3",
-					Utime:  3,
+					Id:         3,
+					SN:         "SN3",
+					Title:      "标题3",
+					Status:     domain.ProjectStatusPublished.ToUint8(),
+					Labels:     []string{"标签3"},
+					Desc:       "描述3",
+					Utime:      3,
+					CodeSPU:    "code-spu-3",
+					ProductSPU: "product-spu-3",
 					Interactive: web.Interactive{
 						ViewCnt:    4,
 						LikeCnt:    5,
@@ -378,13 +388,15 @@ func (s *ProjectTestSuite) insertWholeProject(id int64) {
 
 func (s *ProjectTestSuite) mockProject(id int64) dao.PubProject {
 	return dao.PubProject{
-		Id:     id,
-		SN:     fmt.Sprintf("SN%d", id),
-		Title:  fmt.Sprintf("标题%d", id),
-		Status: uint8(id%2 + 1),
-		Labels: sqlx.JsonColumn[[]string]{Val: []string{fmt.Sprintf("标签%d", id)}, Valid: true},
-		Desc:   fmt.Sprintf("描述%d", id),
-		Utime:  id,
+		Id:         id,
+		SN:         fmt.Sprintf("SN%d", id),
+		Title:      fmt.Sprintf("标题%d", id),
+		Status:     uint8(id%2 + 1),
+		Labels:     sqlx.JsonColumn[[]string]{Val: []string{fmt.Sprintf("标签%d", id)}, Valid: true},
+		Desc:       fmt.Sprintf("描述%d", id),
+		Utime:      id,
+		ProductSPU: sqlx.NewNullString(fmt.Sprintf("product-spu-%d", id)),
+		CodeSPU:    sqlx.NewNullString(fmt.Sprintf("code-spu-%d", id)),
 	}
 }
 
