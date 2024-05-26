@@ -1616,7 +1616,6 @@ func (s *ModuleTestSuite) assertListRedemptionCodesRespEqual(t *testing.T, expec
 func (s *ModuleTestSuite) TestHandler_GenerateInvitationCode() {
 	t := s.T()
 
-	baseURL := "https://meoying.com/"
 	testCases := []struct {
 		name string
 
@@ -1642,7 +1641,7 @@ func (s *ModuleTestSuite) TestHandler_GenerateInvitationCode() {
 			},
 			wantCode: 200,
 			wantResp: test.Result[any]{
-				Data: fmt.Sprintf("%s?code=invitation-code-1-%d", baseURL, testID),
+				Data: fmt.Sprintf("%s?code=invitation-code-1-%d", web.InvitationLinkBaseURL, testID),
 			},
 		},
 		{
@@ -1676,7 +1675,7 @@ func (s *ModuleTestSuite) TestHandler_GenerateInvitationCode() {
 			},
 			wantCode: 200,
 			wantResp: test.Result[any]{
-				Data: fmt.Sprintf("%s?code=invitation-code-2-%d", baseURL, testID),
+				Data: fmt.Sprintf("%s?code=invitation-code-2-%d", web.InvitationLinkBaseURL, testID),
 			},
 		},
 		{
@@ -1713,7 +1712,7 @@ func (s *ModuleTestSuite) TestHandler_GenerateInvitationCode() {
 			},
 			wantCode: 200,
 			wantResp: test.Result[any]{
-				Data: fmt.Sprintf("%s?code=invitation-code-5-%d", baseURL, testID),
+				Data: fmt.Sprintf("%s?code=invitation-code-5-%d", web.InvitationLinkBaseURL, testID),
 			},
 		},
 	}

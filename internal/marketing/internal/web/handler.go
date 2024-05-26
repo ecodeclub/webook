@@ -26,6 +26,10 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+const (
+	InvitationLinkBaseURL = "https://api.meoying.com/interview/oauth2/wechat/auth_url"
+)
+
 var _ ginx.Handler = &Handler{}
 
 type Handler struct {
@@ -94,6 +98,5 @@ func (h *Handler) GenerateInvitationCode(ctx *ginx.Context, sess session.Session
 }
 
 func (h *Handler) invitationLink(code domain.InvitationCode) string {
-	url := "https://meoying.com/"
-	return fmt.Sprintf("%s?code=%s", url, code.Code)
+	return fmt.Sprintf("%s?code=%s", InvitationLinkBaseURL, code.Code)
 }
