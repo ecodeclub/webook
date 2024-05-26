@@ -57,14 +57,13 @@ type NativePaymentService struct {
 	nativeCallBackTypeToPaymentStatus map[string]domain.PaymentStatus
 }
 
-func NewNativePaymentService(svc NativeAPIService, appid, mchid string) *NativePaymentService {
+func NewNativePaymentService(svc NativeAPIService, appid, mchid, notifyURL string) *NativePaymentService {
 	return &NativePaymentService{
-		svc:   svc,
-		l:     elog.DefaultLogger,
-		appID: appid,
-		mchID: mchid,
-		// todo: 配置回调URL
-		notifyURL: "https://wechat.meoying.com/pay/callback",
+		svc:       svc,
+		l:         elog.DefaultLogger,
+		appID:     appid,
+		mchID:     mchid,
+		notifyURL: notifyURL,
 		nativeCallBackTypeToPaymentStatus: map[string]domain.PaymentStatus{
 			"SUCCESS":    domain.PaymentStatusPaidSuccess, // 支付成功
 			"PAYERROR":   domain.PaymentStatusPaidFailed,  // 支付失败(其他原因，如银行返回失败)

@@ -289,7 +289,80 @@ func (s *AdminProjectTestSuite) TestProjectPublish() {
 			},
 		},
 		{
-			name: "保存成功-更新",
+			name: "发表成功-新建更新混合",
+			before: func(t *testing.T) {
+				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+				defer cancel()
+				err := s.db.WithContext(ctx).Create(&dao.Project{
+					Id:     13,
+					Title:  "老的标题",
+					SN:     "old-SN",
+					Status: domain.ProjectStatusUnpublished.ToUint8(),
+					Labels: sqlx.JsonColumn[[]string]{
+						Val:   []string{"标签3", "标签1"},
+						Valid: true,
+					},
+					Desc: "老的描述",
+					// ctime 应该不会被更新
+					Ctime: 123,
+					Utime: 123,
+				}).Error
+				require.NoError(t, err)
+			},
+			after: func(t *testing.T) {
+				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+				defer cancel()
+				// 验证数据库中有数据
+				prj, err := s.adminPrjDAO.GetById(ctx, 13)
+				require.NoError(t, err)
+				assert.True(t, prj.Utime > 123)
+				prj.Utime = 0
+				assert.Equal(t, dao.Project{
+					Id:     13,
+					Title:  "项目1",
+					SN:     "old-SN",
+					Desc:   "这是测试项目1",
+					Status: domain.ProjectStatusPublished.ToUint8(),
+					Labels: sqlx.JsonColumn[[]string]{
+						Val:   []string{"标签1"},
+						Valid: true,
+					},
+					Ctime: 123,
+				}, prj)
+
+				// 验证数据库中有数据
+				pubPrj, err := s.prjDAO.GetById(ctx, 13)
+				require.NoError(t, err)
+				assert.True(t, pubPrj.Ctime > 0)
+				pubPrj.Ctime = 0
+				assert.True(t, pubPrj.Utime > 123)
+				pubPrj.Utime = 0
+				assert.Equal(t, dao.PubProject{
+					Id:     13,
+					Title:  "项目1",
+					SN:     "old-SN",
+					Desc:   "这是测试项目1",
+					Status: domain.ProjectStatusPublished.ToUint8(),
+					Labels: sqlx.JsonColumn[[]string]{
+						Val:   []string{"标签1"},
+						Valid: true,
+					},
+				}, pubPrj)
+			},
+			req: web.Project{
+				Id:     13,
+				Title:  "项目1",
+				SN:     "old-SN",
+				Desc:   "这是测试项目1",
+				Labels: []string{"标签1"},
+			},
+			wantCode: 200,
+			wantResp: test.Result[int64]{
+				Data: 13,
+			},
+		},
+		{
+			name: "发表成功-更新",
 			before: func(t *testing.T) {
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 				defer cancel()
