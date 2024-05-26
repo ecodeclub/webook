@@ -18,6 +18,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/ecodeclub/ginx/middlewares/activelimit/locallimit"
 	"github.com/ecodeclub/webook/internal/interactive"
 
 	"github.com/ecodeclub/webook/internal/credit"
@@ -52,6 +53,7 @@ import (
 
 func initGinxServer(sp session.Provider,
 	checkMembershipMiddleware *middleware.CheckMembershipMiddlewareBuilder,
+	localActiveLimiterMiddleware *locallimit.LocalActiveLimit,
 	// 这个暂时用不上
 	checkPermissionMiddleware *middleware.CheckPermissionMiddlewareBuilder,
 	qh *baguwen.Handler,
@@ -96,6 +98,7 @@ func initGinxServer(sp session.Provider,
 	// 虽然理论上可以用 plugin 机制，但是 plugin 机制比较容易遇到不兼容的问题
 	// 实在不想处理
 	res.Use(nonsense.NonSenseV1)
+	res.Use(localActiveLimiterMiddleware.Build())
 	user.PublicRoutes(res.Engine)
 	qh.PublicRoutes(res.Engine)
 	cosHdl.PublicRoutes(res.Engine)
