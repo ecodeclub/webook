@@ -13,6 +13,7 @@ redis:
 web:
   port: 8080
   mode: debug
+  maxActiveLimit: 300
 
 session:
   sessionEncryptedKey: "abcd"

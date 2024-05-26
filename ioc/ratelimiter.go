@@ -15,14 +15,10 @@
 package ioc
 
 import (
-	"time"
-
-	"github.com/ecodeclub/ginx/middlewares/ratelimit"
-	"github.com/redis/go-redis/v9"
+	"github.com/ecodeclub/ginx/middlewares/activelimit/locallimit"
+	"github.com/gotomicro/ego/core/econf"
 )
 
-func initRateLimiterBuilder(redisCmd redis.Cmdable) *ratelimit.Builder {
-	interval := time.Second
-	rate := 1
-	return ratelimit.NewBuilder(ratelimit.NewRedisSlidingWindowLimiter(redisCmd, interval, rate))
+func initLocalActiveLimiterBuilder() *locallimit.LocalActiveLimit {
+	return locallimit.NewLocalActiveLimit(econf.GetInt64("web.maxActiveLimit"))
 }
