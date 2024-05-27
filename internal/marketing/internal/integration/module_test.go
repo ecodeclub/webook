@@ -1622,7 +1622,7 @@ func (s *ModuleTestSuite) TestHandler_GenerateInvitationCode() {
 		before         func(t *testing.T) repository.MarketingRepository
 		newHandlerFunc func(t *testing.T, repo repository.MarketingRepository) *web.Handler
 		wantCode       int
-		wantResp       test.Result[any]
+		after          func(t *testing.T, code string)
 	}{
 		{
 			name: "首次生成邀请码",
@@ -1640,8 +1640,9 @@ func (s *ModuleTestSuite) TestHandler_GenerateInvitationCode() {
 				return web.NewHandler(svc)
 			},
 			wantCode: 200,
-			wantResp: test.Result[any]{
-				Data: fmt.Sprintf("%s?code=invitation-code-1-%d", web.InvitationLinkBaseURL, testID),
+			after: func(t *testing.T, code string) {
+				t.Helper()
+				require.Equal(t, fmt.Sprintf("invitation-code-1-%d", testID), code)
 			},
 		},
 		{
@@ -1659,10 +1660,6 @@ func (s *ModuleTestSuite) TestHandler_GenerateInvitationCode() {
 				})
 				require.NoError(t, err)
 
-				expectedCode, err := codeCache.GetInvitationCode(context.Background(), testID)
-				require.NoError(t, err)
-				require.Equal(t, expectedCode, c)
-
 				return repo
 			},
 			newHandlerFunc: func(t *testing.T, repo repository.MarketingRepository) *web.Handler {
@@ -1674,8 +1671,9 @@ func (s *ModuleTestSuite) TestHandler_GenerateInvitationCode() {
 				return web.NewHandler(svc)
 			},
 			wantCode: 200,
-			wantResp: test.Result[any]{
-				Data: fmt.Sprintf("%s?code=invitation-code-2-%d", web.InvitationLinkBaseURL, testID),
+			after: func(t *testing.T, code string) {
+				t.Helper()
+				require.Equal(t, fmt.Sprintf("invitation-code-2-%d", testID), code)
 			},
 		},
 		{
@@ -1694,12 +1692,7 @@ func (s *ModuleTestSuite) TestHandler_GenerateInvitationCode() {
 				})
 				require.NoError(t, err)
 
-				expectedCode, err := codeCache.GetInvitationCode(context.Background(), testID)
-				require.NoError(t, err)
-				require.Equal(t, expectedCode, c)
-
 				time.Sleep(duration)
-
 				return repo
 			},
 			newHandlerFunc: func(t *testing.T, repo repository.MarketingRepository) *web.Handler {
@@ -1711,8 +1704,9 @@ func (s *ModuleTestSuite) TestHandler_GenerateInvitationCode() {
 				return web.NewHandler(svc)
 			},
 			wantCode: 200,
-			wantResp: test.Result[any]{
-				Data: fmt.Sprintf("%s?code=invitation-code-5-%d", web.InvitationLinkBaseURL, testID),
+			after: func(t *testing.T, code string) {
+				t.Helper()
+				require.Equal(t, fmt.Sprintf("invitation-code-5-%d", testID), code)
 			},
 		},
 	}
@@ -1727,8 +1721,11 @@ func (s *ModuleTestSuite) TestHandler_GenerateInvitationCode() {
 			repo := tc.before(t)
 			server := s.newGinServer(tc.newHandlerFunc(t, repo))
 			server.ServeHTTP(recorder, req)
+
 			require.Equal(t, tc.wantCode, recorder.Code)
-			require.Equal(t, tc.wantResp, recorder.MustScan())
+			code, ok := recorder.MustScan().Data.(string)
+			require.True(t, ok)
+			tc.after(t, code)
 
 			c := testioc.InitCache()
 			_, err = c.Delete(context.Background(), fmt.Sprintf("marketing:invitation-code:user:%d", testID))

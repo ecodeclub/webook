@@ -26,10 +26,6 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-const (
-	InvitationLinkBaseURL = "https://api.meoying.com/interview/oauth2/wechat/auth_url"
-)
-
 var _ ginx.Handler = &Handler{}
 
 type Handler struct {
@@ -90,13 +86,9 @@ func (h *Handler) ListRedemptionCodes(ctx *ginx.Context, req ListRedemptionCodes
 }
 
 func (h *Handler) GenerateInvitationCode(ctx *ginx.Context, sess session.Session) (ginx.Result, error) {
-	code, err := h.svc.GenerateInvitationCode(ctx, sess.Claims().Uid)
+	c, err := h.svc.GenerateInvitationCode(ctx, sess.Claims().Uid)
 	if err != nil {
 		return systemErrorResult, fmt.Errorf("生成邀请码失败: %w", err)
 	}
-	return ginx.Result{Data: h.invitationLink(code)}, nil
-}
-
-func (h *Handler) invitationLink(code domain.InvitationCode) string {
-	return fmt.Sprintf("%s?code=%s", InvitationLinkBaseURL, code.Code)
+	return ginx.Result{Data: c.Code}, nil
 }
