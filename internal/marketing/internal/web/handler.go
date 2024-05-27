@@ -41,7 +41,7 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g.POST("/redeem", ginx.BS[RedeemRedemptionCodeReq](h.RedeemRedemptionCode))
 	g.POST("/list", ginx.BS[ListRedemptionCodesReq](h.ListRedemptionCodes))
 
-	i := server.Group("/invitation-code")
+	i := server.Group("/invitation")
 	i.POST("/gen", ginx.S(h.GenerateInvitationCode))
 }
 

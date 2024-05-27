@@ -1714,7 +1714,7 @@ func (s *ModuleTestSuite) TestHandler_GenerateInvitationCode() {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			req, err := http.NewRequest(http.MethodPost,
-				"/invitation-code/gen", nil)
+				"/invitation/gen", nil)
 			req.Header.Set("content-type", "application/json")
 			require.NoError(t, err)
 			recorder := test.NewJSONResponseRecorder[any]()
