@@ -27,8 +27,9 @@ import (
 )
 
 var (
-	ErrRedemptionNotFound = dao.ErrRedemptionNotFound
-	ErrRedemptionCodeUsed = dao.ErrRedemptionCodeUsed
+	ErrRedemptionNotFound     = dao.ErrRedemptionNotFound
+	ErrRedemptionCodeUsed     = dao.ErrRedemptionCodeUsed
+	ErrInvitationCodeNotFound = dao.ErrInvitationCodeNotFound
 )
 
 type MarketingRepository interface {
