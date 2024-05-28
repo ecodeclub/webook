@@ -1045,6 +1045,52 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeUserRegistrationEvent() {
 				}, record)
 			},
 		},
+		{
+			name: "消费注册消息成功_为注册者开通会员_邀请码找不则忽略",
+			newMQFunc: func(t *testing.T, ctrl *gomock.Controller, evt event.UserRegistrationEvent) mq.MQ {
+				t.Helper()
+
+				mockMQ := mocks.NewMockMQ(ctrl)
+				mockConsumer := mocks.NewMockConsumer(ctrl)
+				mockConsumer.EXPECT().Consume(gomock.Any()).Return(s.newUserRegistrationEventMessage(t, evt), nil).Times(2)
+
+				mockProducer := mocks.NewMockProducer(ctrl)
+				endAtDate := time.Date(2024, 6, 30, 23, 59, 59, 0, time.UTC)
+				memberEvent := s.newMemberEventMessage(t, event.MemberEvent{
+					Key:    fmt.Sprintf("user-registration-%d", evt.Uid),
+					Uid:    evt.Uid,
+					Days:   uint64(time.Until(endAtDate) / (24 * time.Hour)),
+					Biz:    "user",
+					BizId:  evt.Uid,
+					Action: "注册福利",
+				})
+				mockProducer.EXPECT().Produce(gomock.Any(), memberEvent).Return(&mq.ProducerResult{}, nil).Times(2)
+
+				mockMQ.EXPECT().Consumer(gomock.Any(), gomock.Any()).Return(mockConsumer, nil)
+				mockMQ.EXPECT().Producer(event.MemberUpdateEventName).Return(mockProducer, nil)
+				mockMQ.EXPECT().Producer(event.CreditEventName).Return(mockProducer, nil)
+				return mockMQ
+			},
+			newSvcFunc: func(t *testing.T, ctrl *gomock.Controller, evt event.UserRegistrationEvent, q mq.MQ) service.Service {
+				t.Helper()
+
+				memberEventProducer, err := producer.NewMemberEventProducer(q)
+				require.NoError(t, err)
+
+				creditEventProducer, err := producer.NewCreditEventProducer(q)
+				require.NoError(t, err)
+
+				repo := repository.NewRepository(dao.NewGORMMarketingDAO(s.db), cache.NewInvitationCodeECache(testioc.InitCache(), time.Minute*10))
+
+				return service.NewService(repo, nil, nil, nil, nil, memberEventProducer, creditEventProducer, nil)
+			},
+			evt: event.UserRegistrationEvent{
+				Uid:            testID,
+				InvitationCode: "invalid-registration-invitation-code",
+			},
+			errRequireFunc: require.NoError,
+			after:          func(t *testing.T, evt event.UserRegistrationEvent) {},
+		},
 	}
 
 	for _, tc := range testCases {

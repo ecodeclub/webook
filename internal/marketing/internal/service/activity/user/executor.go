@@ -16,6 +16,7 @@ package user
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -23,12 +24,14 @@ import (
 	"github.com/ecodeclub/webook/internal/marketing/internal/event"
 	"github.com/ecodeclub/webook/internal/marketing/internal/event/producer"
 	"github.com/ecodeclub/webook/internal/marketing/internal/repository"
+	"github.com/gotomicro/ego/core/elog"
 )
 
 type ActivityExecutor struct {
 	repo                repository.MarketingRepository
 	memberEventProducer producer.MemberEventProducer
 	creditEventProducer producer.CreditEventProducer
+	logger              *elog.Component
 }
 
 func NewActivityExecutor(
@@ -40,6 +43,7 @@ func NewActivityExecutor(
 		repo:                repo,
 		memberEventProducer: memberEventProducer,
 		creditEventProducer: creditEventProducer,
+		logger:              elog.DefaultLogger,
 	}
 }
 
@@ -75,6 +79,10 @@ func (s *ActivityExecutor) awardInvitationBonus(ctx context.Context, act domain.
 	}
 
 	c, err := s.repo.FindInvitationCodeByCode(ctx, act.InvitationCode)
+	if errors.Is(err, repository.ErrInvitationCodeNotFound) {
+		s.logger.Warn("未找到邀请码", elog.String("invitationCode", act.InvitationCode))
+		return nil
+	}
 	if err != nil {
 		return fmt.Errorf("查找邀请码失败: %w", err)
 	}
