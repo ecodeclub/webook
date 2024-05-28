@@ -1681,7 +1681,7 @@ func (s *ModuleTestSuite) TestHandler_GenerateInvitationCode() {
 			before: func(t *testing.T) repository.MarketingRepository {
 				t.Helper()
 
-				duration := 100 * time.Millisecond
+				duration := 10 * time.Millisecond
 				codeCache := cache.NewInvitationCodeECache(testioc.InitCache(), duration)
 				repo := repository.NewRepository(dao.NewGORMMarketingDAO(s.db), codeCache)
 
@@ -1692,7 +1692,7 @@ func (s *ModuleTestSuite) TestHandler_GenerateInvitationCode() {
 				})
 				require.NoError(t, err)
 
-				time.Sleep(duration)
+				time.Sleep(time.Second)
 				return repo
 			},
 			newHandlerFunc: func(t *testing.T, repo repository.MarketingRepository) *web.Handler {
