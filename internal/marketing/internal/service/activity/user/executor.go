@@ -70,11 +70,11 @@ func (s *ActivityExecutor) awardRegistrationBonus(ctx context.Context, act domai
 }
 
 func (s *ActivityExecutor) awardInvitationBonus(ctx context.Context, act domain.UserRegistrationActivity) error {
-	if act.InviterCode == "" {
+	if act.InvitationCode == "" {
 		return nil
 	}
 
-	c, err := s.repo.FindInvitationCodeByCode(ctx, act.InviterCode)
+	c, err := s.repo.FindInvitationCodeByCode(ctx, act.InvitationCode)
 	if err != nil {
 		return fmt.Errorf("查找邀请码失败: %w", err)
 	}

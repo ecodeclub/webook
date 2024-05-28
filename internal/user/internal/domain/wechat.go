@@ -21,5 +21,5 @@ type WechatInfo struct {
 	UnionId string
 
 	// 当前用户的邀请人的邀请码
-	InviterCode string
+	InvitationCode string
 }

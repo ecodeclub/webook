@@ -1013,7 +1013,7 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeUserRegistrationEvent() {
 
 				expectedCode := domain.InvitationCode{
 					Uid:  345691,
-					Code: evt.InviterCode,
+					Code: evt.InvitationCode,
 				}
 				_, err = repo.CreateInvitationCode(context.Background(), expectedCode)
 				require.NoError(t, err)
@@ -1021,8 +1021,8 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeUserRegistrationEvent() {
 				return service.NewService(repo, nil, nil, nil, nil, memberEventProducer, creditEventProducer, nil)
 			},
 			evt: event.UserRegistrationEvent{
-				Uid:         testID,
-				InviterCode: "registration-invitation-code-345691",
+				Uid:            testID,
+				InvitationCode: "registration-invitation-code-345691",
 			},
 			errRequireFunc: require.NoError,
 			after: func(t *testing.T, evt event.UserRegistrationEvent) {
@@ -1034,13 +1034,13 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeUserRegistrationEvent() {
 				_, err := c.Delete(context.Background(), fmt.Sprintf("marketing:invitation-code:user:%d", inviterId))
 				require.NoError(t, err)
 
-				record, err := repo.FindInvitationRecord(context.Background(), inviterId, testID, evt.InviterCode)
+				record, err := repo.FindInvitationRecord(context.Background(), inviterId, testID, evt.InvitationCode)
 				require.NoError(t, err)
 
 				require.Equal(t, domain.InvitationRecord{
 					InviterId: inviterId,
 					InviteeId: testID,
-					Code:      evt.InviterCode,
+					Code:      evt.InvitationCode,
 					Attrs:     domain.InvitationRecordAttrs{Credits: 300},
 				}, record)
 			},
