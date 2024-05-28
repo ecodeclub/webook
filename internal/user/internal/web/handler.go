@@ -71,7 +71,10 @@ func (h *Handler) PublicRoutes(server *gin.Engine) {
 }
 
 func (h *Handler) WechatAuthURL(ctx *ginx.Context) (ginx.Result, error) {
-	res, err := h.weSvc.AuthURL()
+	code, _ := ctx.GetQuery("code")
+	res, err := h.weSvc.AuthURL(ctx.Request.Context(), service.AuthParams{
+		InvitationCode: code,
+	})
 	if err != nil {
 		return ginx.Result{
 			Code: errs.SystemError.Code,
@@ -141,7 +144,10 @@ func (h *Handler) Edit(ctx *ginx.Context, req EditReq, sess session.Session) (gi
 }
 
 func (h *Handler) Callback(ctx *ginx.Context, req WechatCallback) (ginx.Result, error) {
-	info, err := h.weSvc.VerifyCode(ctx, req.Code)
+	info, err := h.weSvc.Verify(ctx, service.CallbackParams{
+		Code:  req.Code,
+		State: req.State,
+	})
 	if err != nil {
 		return systemErrorResult, err
 	}

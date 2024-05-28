@@ -50,7 +50,7 @@ func InitHandler(db *egorm.Component, cache ecache.Cache,
 	return new(Handler)
 }
 
-func initWechatService() service.OAuth2Service {
+func initWechatService(cache ecache.Cache) service.OAuth2Service {
 	type Config struct {
 		AppSecretID      string `yaml:"appSecretID"`
 		AppSecretKey     string `yaml:"appSecretKey"`
@@ -61,7 +61,7 @@ func initWechatService() service.OAuth2Service {
 	if err != nil {
 		panic(err)
 	}
-	return service.NewWechatService(cfg.AppSecretID, cfg.AppSecretKey, cfg.LoginRedirectURL)
+	return service.NewWechatService(cache, cfg.AppSecretID, cfg.AppSecretKey, cfg.LoginRedirectURL)
 }
 
 func initDAO(db *egorm.Component) dao.UserDAO {
