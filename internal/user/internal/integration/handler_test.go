@@ -21,6 +21,12 @@ import (
 	"net/http"
 	"testing"
 
+	permissionmocks "github.com/ecodeclub/webook/internal/permission/mocks"
+	"github.com/ecodeclub/webook/internal/user/internal/domain"
+	"github.com/ecodeclub/webook/internal/user/internal/service"
+	svcmocks "github.com/ecodeclub/webook/internal/user/internal/service/mocks"
+	"github.com/stretchr/testify/assert"
+
 	"github.com/ecodeclub/webook/internal/member"
 	membermocks "github.com/ecodeclub/webook/internal/member/mocks"
 	"github.com/ecodeclub/webook/internal/permission"
@@ -28,14 +34,13 @@ import (
 
 	"github.com/ecodeclub/ekit/iox"
 	"github.com/ecodeclub/ginx/session"
-	test2 "github.com/ecodeclub/webook/internal/test"
+	"github.com/ecodeclub/webook/internal/test"
 	testioc "github.com/ecodeclub/webook/internal/test/ioc"
 	"github.com/ecodeclub/webook/internal/user/internal/integration/startup"
 	"github.com/ecodeclub/webook/internal/user/internal/repository/dao"
 	"github.com/ecodeclub/webook/internal/user/internal/web"
 	"github.com/ego-component/egorm"
 	"github.com/gin-gonic/gin"
-	"github.com/go-playground/assert/v2"
 	"github.com/gotomicro/ego/core/econf"
 	"github.com/gotomicro/ego/server/egin"
 	"github.com/stretchr/testify/require"
@@ -44,8 +49,10 @@ import (
 
 type HandleTestSuite struct {
 	suite.Suite
-	db     *egorm.Component
-	server *egin.Component
+	db          *egorm.Component
+	server      *egin.Component
+	mockWeSvc   *svcmocks.MockOAuth2Service
+	mockPermSvc *permissionmocks.MockService
 }
 
 func (s *HandleTestSuite) SetupSuite() {
@@ -53,24 +60,35 @@ func (s *HandleTestSuite) SetupSuite() {
 	s.db = testioc.InitDB()
 	err := dao.InitTables(s.db)
 	require.NoError(s.T(), err)
-	econf.Set("server", map[string]string{})
+	econf.Set("server", map[string]any{"debug": true})
 	server := egin.Load("server").Build()
 	ctrl := gomock.NewController(s.T())
 	memSvc := membermocks.NewMockService(ctrl)
-	memSvc.EXPECT().GetMembershipInfo(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context,
-		uid int64) (member.Member, error) {
-		return member.Member{
-			Uid:   uid,
-			EndAt: 1234,
-		}, nil
-	}).AnyTimes()
-	hdl := startup.InitHandler(nil, &member.Module{Svc: memSvc}, &permission.Module{}, nil)
+	memSvc.EXPECT().GetMembershipInfo(gomock.Any(), gomock.Any()).
+		DoAndReturn(func(ctx context.Context,
+			uid int64) (member.Member, error) {
+			return member.Member{
+				Uid:   uid,
+				EndAt: 1234,
+			}, nil
+		}).AnyTimes()
+	permSvc := permissionmocks.NewMockService(ctrl)
+	s.mockPermSvc = permSvc
+	wesvc := svcmocks.NewMockOAuth2Service(ctrl)
+	hdl := startup.InitHandler(wesvc,
+		&member.Module{Svc: memSvc},
+		&permission.Module{
+			Svc: permSvc,
+		}, nil)
+	s.mockWeSvc = wesvc
 	server.Use(func(ctx *gin.Context) {
 		ctx.Set("_session", session.NewMemorySession(session.Claims{
 			Uid: 123,
 		}))
 	})
+
 	hdl.PrivateRoutes(server.Engine)
+	hdl.PublicRoutes(server.Engine)
 	s.server = server
 }
 
@@ -85,7 +103,7 @@ func (s *HandleTestSuite) TestEditProfile() {
 		before   func(t *testing.T)
 		after    func(t *testing.T)
 		req      EditReq
-		wantResp test2.Result[any]
+		wantResp test.Result[any]
 		wantCode int
 	}{
 		{
@@ -114,7 +132,7 @@ func (s *HandleTestSuite) TestEditProfile() {
 				Avatar:   "new avatar",
 				Nickname: "new name",
 			},
-			wantResp: test2.Result[any]{
+			wantResp: test.Result[any]{
 				Msg: "OK",
 			},
 			wantCode: 200,
@@ -144,7 +162,7 @@ func (s *HandleTestSuite) TestEditProfile() {
 			req: EditReq{
 				Nickname: "new name",
 			},
-			wantResp: test2.Result[any]{
+			wantResp: test.Result[any]{
 				Msg: "OK",
 			},
 			wantCode: 200,
@@ -159,7 +177,7 @@ func (s *HandleTestSuite) TestEditProfile() {
 				"/users/profile", iox.NewJSONReader(tc.req))
 			req.Header.Set("content-type", "application/json")
 			require.NoError(t, err)
-			recorder := test2.NewJSONResponseRecorder[any]()
+			recorder := test.NewJSONResponseRecorder[any]()
 			s.server.ServeHTTP(recorder, req)
 			assert.Equal(t, tc.wantCode, recorder.Code)
 			assert.Equal(t, tc.wantResp, recorder.MustScan())
@@ -170,11 +188,125 @@ func (s *HandleTestSuite) TestEditProfile() {
 	}
 }
 
+func (s *HandleTestSuite) TestVerify() {
+	testCases := []struct {
+		name   string
+		before func(t *testing.T)
+		after  func(t *testing.T)
+
+		req      web.WechatCallback
+		wantResp test.Result[web.Profile]
+		wantCode int
+	}{
+		{
+			name: "创建",
+			before: func(t *testing.T) {
+				// 设置邀请码
+				s.mockWeSvc.EXPECT().Verify(gomock.Any(), service.CallbackParams{
+					State: "mock state 1",
+					Code:  "wechat code 1",
+				}).Return(domain.WechatInfo{
+					OpenId:         "mock-open-id-1",
+					UnionId:        "mock-union-id-1",
+					InvitationCode: "invitation-code",
+				}, nil)
+				s.mockPermSvc.EXPECT().
+					FindPersonalPermissions(gomock.Any(), gomock.Any()).
+					Return(map[string][]permission.Permission{
+						"project": {
+							{
+								Uid:   123,
+								Biz:   "project",
+								BizID: 1234,
+								Desc:  "项目权限",
+							},
+						},
+					}, nil)
+			},
+			after: func(t *testing.T) {
+
+			},
+			req: web.WechatCallback{
+				State: "mock state 1",
+				Code:  "wechat code 1",
+			},
+			wantResp: test.Result[web.Profile]{
+				Data: web.Profile{
+					MemberDDL: 1234,
+				},
+			},
+			wantCode: 200,
+		},
+		{
+			name: "查找",
+			before: func(t *testing.T) {
+				// 设置邀请码
+				s.mockWeSvc.EXPECT().Verify(gomock.Any(), service.CallbackParams{
+					State: "mock state 1",
+					Code:  "wechat code 1",
+				}).Return(domain.WechatInfo{
+					OpenId:         "mock-open-id-1",
+					UnionId:        "mock-union-id-1",
+					InvitationCode: "invitation-code",
+				}, nil)
+				s.mockPermSvc.EXPECT().
+					FindPersonalPermissions(gomock.Any(), gomock.Any()).
+					Return(map[string][]permission.Permission{
+						"project": {
+							{
+								Uid:   123,
+								Biz:   "project",
+								BizID: 1234,
+								Desc:  "项目权限",
+							},
+						},
+					}, nil)
+			},
+			after: func(t *testing.T) {
+
+			},
+			req: web.WechatCallback{
+				State: "mock state 1",
+				Code:  "wechat code 1",
+			},
+			wantResp: test.Result[web.Profile]{
+				Data: web.Profile{
+					MemberDDL: 1234,
+				},
+			},
+			wantCode: 200,
+		},
+	}
+	for _, tc := range testCases {
+		s.T().Run(tc.name, func(t *testing.T) {
+			tc.before(t)
+			req, err := http.NewRequest(http.MethodPost,
+				"/oauth2/wechat/callback", iox.NewJSONReader(tc.req))
+			req.Header.Set("content-type", "application/json")
+			require.NoError(t, err)
+			recorder := test.NewJSONResponseRecorder[web.Profile]()
+			s.server.ServeHTTP(recorder, req)
+			assert.Equal(t, tc.wantCode, recorder.Code)
+			val := recorder.MustScan()
+			assert.NotEmpty(t, val.Data.SN)
+			val.Data.SN = ""
+			assert.NotEmpty(t, val.Data.Nickname)
+			// 在创建的时候，是随机生成的昵称，所以需要特殊判断
+			val.Data.Nickname = ""
+			assert.Equal(t, tc.wantResp, val)
+			tc.after(t)
+			// 清理掉 123 的数据
+			err = s.db.Exec("TRUNCATE table `users`").Error
+			require.NoError(t, err)
+		})
+	}
+}
+
 func (s *HandleTestSuite) TestProfile() {
 	testCases := []struct {
 		name     string
 		before   func(t *testing.T)
-		wantResp test2.Result[web.Profile]
+		wantResp test.Result[web.Profile]
 		wantCode int
 	}{
 		{
@@ -187,7 +319,7 @@ func (s *HandleTestSuite) TestProfile() {
 				}).Error
 				require.NoError(t, err)
 			},
-			wantResp: test2.Result[web.Profile]{
+			wantResp: test.Result[web.Profile]{
 				Data: web.Profile{
 					Nickname:  "old name",
 					Avatar:    "old avatar",
@@ -206,7 +338,7 @@ func (s *HandleTestSuite) TestProfile() {
 				"/users/profile", nil)
 			req.Header.Set("content-type", "application/json")
 			require.NoError(t, err)
-			recorder := test2.NewJSONResponseRecorder[web.Profile]()
+			recorder := test.NewJSONResponseRecorder[web.Profile]()
 			s.server.ServeHTTP(recorder, req)
 			assert.Equal(t, tc.wantCode, recorder.Code)
 			assert.Equal(t, tc.wantResp, recorder.MustScan())
