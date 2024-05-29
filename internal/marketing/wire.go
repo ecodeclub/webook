@@ -18,10 +18,17 @@ package marketing
 
 import (
 	"context"
+	"sync"
 
+	"time"
+
+	"gorm.io/gorm"
+
+	"github.com/ecodeclub/ecache"
 	"github.com/ecodeclub/mq-api"
 	"github.com/ecodeclub/webook/internal/marketing/internal/event/consumer"
 	"github.com/ecodeclub/webook/internal/marketing/internal/event/producer"
+	"github.com/ecodeclub/webook/internal/marketing/internal/repository/cache"
 	"github.com/ecodeclub/webook/internal/product"
 	"github.com/lithammer/shortuuid/v4"
 
@@ -41,14 +48,16 @@ type (
 	AdminHandler = web.AdminHandler
 )
 
-func InitModule(db *egorm.Component, q mq.MQ, om *order.Module, pm *product.Module) (*Module, error) {
+func InitModule(db *egorm.Component, q mq.MQ, c ecache.Cache, om *order.Module, pm *product.Module) (*Module, error) {
 	wire.Build(
-		dao.NewGORMMarketingDAO,
+		initDAO,
+		invitationCodeExpiration,
+		cache.NewInvitationCodeECache,
 		repository.NewRepository,
 		wire.FieldsOf(new(*order.Module), "Svc"),
 		wire.FieldsOf(new(*product.Module), "Svc"),
 		sequencenumber.NewGenerator,
-		redemptionCodeGenerator,
+		codeGenerator,
 		eventKeyGenerator,
 		producer.NewMemberEventProducer,
 		producer.NewCreditEventProducer,
@@ -62,6 +71,18 @@ func InitModule(db *egorm.Component, q mq.MQ, om *order.Module, pm *product.Modu
 		wire.Struct(new(Module), "*"),
 	)
 	return nil, nil
+}
+
+var initOnce sync.Once
+
+func initDAO(db *gorm.DB) dao.MarketingDAO {
+	initOnce.Do(func() {
+		err := dao.InitTables(db)
+		if err != nil {
+			panic(err)
+		}
+	})
+	return dao.NewGORMMarketingDAO(db)
 }
 
 func newOrderEventConsumer(svc service.Service, q mq.MQ) (*consumer.OrderEventConsumer, error) {
@@ -80,7 +101,7 @@ func newUserEventConsumer(svc service.Service, q mq.MQ) (*consumer.UserRegistrat
 	return res, err
 }
 
-func redemptionCodeGenerator(generator *sequencenumber.Generator) func(id int64) string {
+func codeGenerator(generator *sequencenumber.Generator) func(id int64) string {
 	return func(id int64) string {
 		code, _ := generator.Generate(id)
 		return code
@@ -89,4 +110,8 @@ func redemptionCodeGenerator(generator *sequencenumber.Generator) func(id int64)
 
 func eventKeyGenerator() func() string {
 	return shortuuid.New
+}
+
+func invitationCodeExpiration() time.Duration {
+	return time.Minute * 30
 }

@@ -26,7 +26,7 @@ import (
 // Injectors from wire.go:
 
 func InitHandler(db *gorm.DB, cache2 ecache.Cache, q mq.MQ, creators []string, memberSvc *member.Module, permissionSvc *permission.Module) *web.Handler {
-	oAuth2Service := initWechatService()
+	oAuth2Service := initWechatService(cache2)
 	userDAO := initDAO(db)
 	userCache := cache.NewUserECache(cache2)
 	userRepository := repository.NewCachedUserRepository(userDAO, userCache)
@@ -45,7 +45,7 @@ var ProviderSet = wire.NewSet(web.NewHandler, cache.NewUserECache, initDAO,
 	initRegistrationEventProducer, service.NewUserService, repository.NewCachedUserRepository,
 )
 
-func initWechatService() service.OAuth2Service {
+func initWechatService(cache2 ecache.Cache) service.OAuth2Service {
 	type Config struct {
 		AppSecretID      string `yaml:"appSecretID"`
 		AppSecretKey     string `yaml:"appSecretKey"`
@@ -56,7 +56,7 @@ func initWechatService() service.OAuth2Service {
 	if err != nil {
 		panic(err)
 	}
-	return service.NewWechatService(cfg.AppSecretID, cfg.AppSecretKey, cfg.LoginRedirectURL)
+	return service.NewWechatService(cache2, cfg.AppSecretID, cfg.AppSecretKey, cfg.LoginRedirectURL)
 }
 
 func initDAO(db *egorm.Component) dao.UserDAO {

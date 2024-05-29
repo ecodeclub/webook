@@ -14,17 +14,23 @@
 
 package dao
 
-import "github.com/ecodeclub/ekit/sqlx"
+import (
+	"database/sql"
+
+	"github.com/ecodeclub/ekit/sqlx"
+)
 
 type Project struct {
-	Id     int64  `gorm:"primaryKey,autoIncrement"`
-	Title  string `gorm:"type:varchar(256)"`
-	Status uint8
-	SN     string                    `gorm:"column:sn;type:varchar(255)"`
-	Labels sqlx.JsonColumn[[]string] `gorm:"type:varchar(512)"`
-	Desc   string
-	Utime  int64
-	Ctime  int64
+	Id         int64  `gorm:"primaryKey,autoIncrement"`
+	Title      string `gorm:"type:varchar(256)"`
+	Status     uint8
+	SN         string                    `gorm:"column:sn;type:varchar(255)"`
+	Labels     sqlx.JsonColumn[[]string] `gorm:"type:varchar(512)"`
+	ProductSPU sql.NullString            `gorm:"type:varchar(255);comment:商品的SPU SN"`
+	CodeSPU    sql.NullString            `gorm:"type:varchar(255);comment:作为兑换码的SPU SN"`
+	Desc       string
+	Utime      int64
+	Ctime      int64
 }
 
 type PubProject Project

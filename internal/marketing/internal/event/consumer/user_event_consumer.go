@@ -67,5 +67,5 @@ func (c *UserRegistrationEventConsumer) Consume(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("解析消息失败: %w", err)
 	}
-	return c.svc.ExecuteUserRegistrationActivity(ctx, domain.UserRegistrationActivity{Uid: evt.Uid})
+	return c.svc.ExecuteUserRegistrationActivity(ctx, domain.UserRegistrationActivity{Uid: evt.Uid, InvitationCode: evt.InvitationCode})
 }

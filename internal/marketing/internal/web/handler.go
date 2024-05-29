@@ -40,6 +40,9 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g := server.Group("/code")
 	g.POST("/redeem", ginx.BS[RedeemRedemptionCodeReq](h.RedeemRedemptionCode))
 	g.POST("/list", ginx.BS[ListRedemptionCodesReq](h.ListRedemptionCodes))
+
+	i := server.Group("/invitation")
+	i.POST("/gen", ginx.S(h.GenerateInvitationCode))
 }
 
 func (h *Handler) PublicRoutes(_ *gin.Engine) {}
@@ -80,4 +83,12 @@ func (h *Handler) ListRedemptionCodes(ctx *ginx.Context, req ListRedemptionCodes
 			}),
 		},
 	}, nil
+}
+
+func (h *Handler) GenerateInvitationCode(ctx *ginx.Context, sess session.Session) (ginx.Result, error) {
+	c, err := h.svc.GenerateInvitationCode(ctx, sess.Claims().Uid)
+	if err != nil {
+		return systemErrorResult, fmt.Errorf("生成邀请码失败: %w", err)
+	}
+	return ginx.Result{Data: c.Code}, nil
 }

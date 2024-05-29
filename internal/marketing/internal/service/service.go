@@ -16,7 +16,6 @@ package service
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/ecodeclub/webook/internal/marketing/internal/domain"
 	"github.com/ecodeclub/webook/internal/marketing/internal/event/producer"
@@ -38,22 +37,24 @@ type Service interface {
 	ExecuteUserRegistrationActivity(ctx context.Context, act domain.UserRegistrationActivity) error
 	RedeemRedemptionCode(ctx context.Context, uid int64, code string) error
 	ListRedemptionCodes(ctx context.Context, uid int64, offset, list int) ([]domain.RedemptionCode, int64, error)
+	GenerateInvitationCode(ctx context.Context, uid int64) (domain.InvitationCode, error)
 }
 
 type service struct {
 	repo repository.MarketingRepository
 
-	productSvc            product.Service
-	eventKeyGenerator     func() string
-	orderActivityExecutor *orderexe.ActivityExecutor
-	userActivityExecutor  *user.ActivityExecutor
+	productSvc              product.Service
+	eventKeyGenerator       func() string
+	invitationCodeGenerator func(id int64) string
+	orderActivityExecutor   *orderexe.ActivityExecutor
+	userActivityExecutor    *user.ActivityExecutor
 }
 
 func NewService(
 	repo repository.MarketingRepository,
 	orderSvc order.Service,
 	productSvc product.Service,
-	redemptionCodeGenerator func(id int64) string,
+	codeGenerator func(id int64) string,
 	eventKeyGenerator func() string,
 	memberEventProducer producer.MemberEventProducer,
 	creditEventProducer producer.CreditEventProducer,
@@ -61,11 +62,12 @@ func NewService(
 ) Service {
 
 	return &service{
-		repo:                  repo,
-		productSvc:            productSvc,
-		eventKeyGenerator:     eventKeyGenerator,
-		orderActivityExecutor: orderexe.NewOrderActivityExecutor(repo, orderSvc, redemptionCodeGenerator, memberEventProducer, creditEventProducer, permissionEventProducer),
-		userActivityExecutor:  user.NewActivityExecutor(memberEventProducer, creditEventProducer),
+		repo:                    repo,
+		productSvc:              productSvc,
+		eventKeyGenerator:       eventKeyGenerator,
+		invitationCodeGenerator: codeGenerator,
+		orderActivityExecutor:   orderexe.NewOrderActivityExecutor(repo, orderSvc, codeGenerator, memberEventProducer, creditEventProducer, permissionEventProducer),
+		userActivityExecutor:    user.NewActivityExecutor(repo, memberEventProducer, creditEventProducer),
 	}
 }
 
@@ -82,10 +84,7 @@ func (s *service) RedeemRedemptionCode(ctx context.Context, uid int64, code stri
 	if err != nil {
 		return err
 	}
-	if r.Biz == "order" {
-		return s.orderActivityExecutor.Redeem(ctx, uid, r)
-	}
-	return fmt.Errorf("未知兑换码活动: biz=%s", r.Biz)
+	return s.orderActivityExecutor.Redeem(ctx, uid, r)
 }
 
 func (s *service) ListRedemptionCodes(ctx context.Context, uid int64, offset, list int) ([]domain.RedemptionCode, int64, error) {
@@ -107,4 +106,15 @@ func (s *service) ListRedemptionCodes(ctx context.Context, uid int64, offset, li
 	})
 
 	return codes, total, eg.Wait()
+}
+
+func (s *service) GenerateInvitationCode(ctx context.Context, uid int64) (domain.InvitationCode, error) {
+	c, err := s.repo.CreateInvitationCode(ctx, domain.InvitationCode{
+		Uid:  uid,
+		Code: s.invitationCodeGenerator(uid),
+	})
+	if err != nil {
+		return domain.InvitationCode{}, err
+	}
+	return c, nil
 }

@@ -12,14 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package domain
+package cache
 
-type OrderCompletedActivity struct {
-	OrderSN string
-	BuyerID int64
-}
+import "context"
 
-type UserRegistrationActivity struct {
-	Uid            int64
-	InvitationCode string
+type InvitationCodeCache interface {
+	GetInvitationCode(ctx context.Context, uid int64) (string, error)
+	SetInvitationCode(ctx context.Context, uid int64, code string) error
 }

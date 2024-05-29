@@ -16,40 +16,94 @@ package user
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/ecodeclub/webook/internal/marketing/internal/domain"
 	"github.com/ecodeclub/webook/internal/marketing/internal/event"
 	"github.com/ecodeclub/webook/internal/marketing/internal/event/producer"
+	"github.com/ecodeclub/webook/internal/marketing/internal/repository"
+	"github.com/gotomicro/ego/core/elog"
 )
 
 type ActivityExecutor struct {
+	repo                repository.MarketingRepository
 	memberEventProducer producer.MemberEventProducer
 	creditEventProducer producer.CreditEventProducer
+	logger              *elog.Component
 }
 
 func NewActivityExecutor(
+	repo repository.MarketingRepository,
 	memberEventProducer producer.MemberEventProducer,
 	creditEventProducer producer.CreditEventProducer,
 ) *ActivityExecutor {
 	return &ActivityExecutor{
+		repo:                repo,
 		memberEventProducer: memberEventProducer,
 		creditEventProducer: creditEventProducer,
+		logger:              elog.DefaultLogger,
 	}
 }
 
 func (s *ActivityExecutor) Execute(ctx context.Context, act domain.UserRegistrationActivity) error {
+	if err := s.awardRegistrationBonus(ctx, act); err != nil {
+		return err
+	}
+	return s.awardInvitationBonus(ctx, act)
+}
+
+func (s *ActivityExecutor) awardRegistrationBonus(ctx context.Context, act domain.UserRegistrationActivity) error {
 	endAtDate := time.Date(2024, 6, 30, 23, 59, 59, 0, time.UTC)
 	if endAtDate.Before(time.Now()) {
 		return nil
 	}
-	return s.memberEventProducer.Produce(ctx, event.MemberEvent{
+	err := s.memberEventProducer.Produce(ctx, event.MemberEvent{
 		Key:    fmt.Sprintf("user-registration-%d", act.Uid),
 		Uid:    act.Uid,
 		Days:   uint64(time.Until(endAtDate) / (24 * time.Hour)),
 		Biz:    "user",
 		BizId:  act.Uid,
 		Action: "注册福利",
+	})
+	if err != nil {
+		return fmt.Errorf("为注册者发放注册福利失败: %w", err)
+	}
+	return nil
+}
+
+func (s *ActivityExecutor) awardInvitationBonus(ctx context.Context, act domain.UserRegistrationActivity) error {
+	if act.InvitationCode == "" {
+		return nil
+	}
+
+	c, err := s.repo.FindInvitationCodeByCode(ctx, act.InvitationCode)
+	if errors.Is(err, repository.ErrInvitationCodeNotFound) {
+		s.logger.Warn("未找到邀请码", elog.String("invitationCode", act.InvitationCode))
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("查找邀请码失败: %w", err)
+	}
+
+	credits := uint64(300)
+	_, err = s.repo.CreateInvitationRecord(ctx, domain.InvitationRecord{
+		InviterId: c.Uid,
+		InviteeId: act.Uid,
+		Code:      c.Code,
+		Attrs:     domain.InvitationRecordAttrs{Credits: credits},
+	})
+	if err != nil {
+		return fmt.Errorf("创建邀请记录失败: %w", err)
+	}
+
+	return s.creditEventProducer.Produce(ctx, event.CreditIncreaseEvent{
+		Key:    fmt.Sprintf("inviteeId-%d", act.Uid),
+		Uid:    c.Uid,
+		Amount: credits,
+		Biz:    "user",
+		BizId:  act.Uid,
+		Action: "邀请奖励",
 	})
 }
