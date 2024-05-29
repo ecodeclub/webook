@@ -16,6 +16,7 @@ package web
 
 import (
 	"context"
+	"encoding/json"
 	"strconv"
 	"strings"
 
@@ -176,7 +177,9 @@ func (h *Handler) Callback(ctx *ginx.Context, req WechatCallback) (ginx.Result, 
 		})
 		perms[biz] = strings.Join(bizIds, ",")
 	}
-	sessData := map[string]any{"permission": perms}
+	permsVal, _ := json.Marshal(perms)
+	// redis 不能处理 map[string]map[string][string] 这种二层结构
+	sessData := map[string]any{"permission": permsVal}
 	_, err = session.NewSessionBuilder(ctx, user.Id).SetJwtData(jwtData).SetSessData(sessData).Build()
 	if err != nil {
 		return systemErrorResult, err

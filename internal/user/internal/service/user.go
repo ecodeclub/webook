@@ -26,7 +26,7 @@ import (
 	"github.com/gotomicro/ego/core/elog"
 )
 
-//go:generate mockgen -source=./user.go -package=svcmocks -destination=mocks/user.mock.go UserService
+//go:generate mockgen -source=./user.go -package=svcmocks -typed=true -destination=mocks/user.mock.go UserService
 type UserService interface {
 	Profile(ctx context.Context, id int64) (domain.User, error)
 	// FindOrCreateByWechat 查找或者初始化
@@ -66,16 +66,16 @@ func (svc *userService) FindOrCreateByWechat(ctx context.Context,
 		return u, err
 	}
 	sn := shortuuid.New()
-	id, err := svc.repo.Create(ctx, domain.User{
+	u = domain.User{
 		WechatInfo: info,
 		SN:         sn,
 		Nickname:   sn[:4],
-	})
+	}
+	id, err := svc.repo.Create(ctx, u)
 
 	if err != nil {
 		return domain.User{}, err
 	}
-
 	// 发送注册成功消息
 	evt := event.RegistrationEvent{Uid: id, InvitationCode: info.InvitationCode}
 	if e := svc.producer.Produce(ctx, evt); e != nil {
@@ -85,11 +85,8 @@ func (svc *userService) FindOrCreateByWechat(ctx context.Context,
 			elog.FieldValueAny(evt),
 		)
 	}
-
-	return domain.User{
-		Id:         id,
-		WechatInfo: info,
-	}, nil
+	u.Id = id
+	return u, nil
 }
 
 func (svc *userService) Profile(ctx context.Context,

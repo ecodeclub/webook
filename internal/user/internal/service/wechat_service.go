@@ -26,6 +26,7 @@ type CallbackParams struct {
 	State string
 }
 
+//go:generate mockgen -source=./wechat_service.go -package=svcmocks -typed=true -destination=mocks/wechat_service.mock.go OAuth2Service
 type OAuth2Service interface {
 	AuthURL(ctx context.Context, a AuthParams) (string, error)
 	Verify(ctx context.Context, c CallbackParams) (domain.WechatInfo, error)

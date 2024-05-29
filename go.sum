@@ -146,8 +146,8 @@ github.com/ecodeclub/ecache v0.0.0-20240111145855-75679834beca h1:qksXJxULYYX+3Z
 github.com/ecodeclub/ecache v0.0.0-20240111145855-75679834beca/go.mod h1:faDaVWB0J1EfgyY6e7Z40EWv65Asu4FrtlWVDAOBRiM=
 github.com/ecodeclub/ekit v0.0.9-0.20240331142359-871f65136a9b h1:E2+ixsdn65iQdIBWEC0afanMV0P9/vcaTUq9aLWOTzk=
 github.com/ecodeclub/ekit v0.0.9-0.20240331142359-871f65136a9b/go.mod h1:rEGubThvxoIQT/qnbVBkZgSvYwgKrY/dtwEWKRTmgeY=
-github.com/ecodeclub/ginx v0.0.0-20240407090958-53f744f58112 h1:ACg5ZgxFTK0NyBA8LVz428UefC3Suzwx3SQnIgWdzO8=
-github.com/ecodeclub/ginx v0.0.0-20240407090958-53f744f58112/go.mod h1:PCGcpNNuknwamOKIEkRwfwKngqg4syGydrONSIxb08w=
+github.com/ecodeclub/ginx v0.0.0-20240529151605-6f3c1e323607 h1:ggg7VH+oMurIrrfdhjsD2ODwuCJhcy5+CvN9004fPLs=
+github.com/ecodeclub/ginx v0.0.0-20240529151605-6f3c1e323607/go.mod h1:PCGcpNNuknwamOKIEkRwfwKngqg4syGydrONSIxb08w=
 github.com/ecodeclub/mq-api v0.0.0-20240508035004-fd7de3346cfe h1:PJ/YcqAQx/9XnRDoLGD9Or1gNgYjJK72+RhX7TbyMao=
 github.com/ecodeclub/mq-api v0.0.0-20240508035004-fd7de3346cfe/go.mod h1:M+2owQhSRoGyX15L0rUdoSvUDvTOuexquG/605wqYtI=
 github.com/edsrzf/mmap-go v1.0.0/go.mod h1:YO35OhQPt3KJa3ryjFM5Bs14WD66h8eGKpfaBNrHW5M=

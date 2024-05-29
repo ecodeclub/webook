@@ -3,11 +3,14 @@ package test
 import (
 	"github.com/ecodeclub/ginx/gctx"
 	"github.com/ecodeclub/ginx/session"
+	redis2 "github.com/ecodeclub/ginx/session/redis"
+	testioc "github.com/ecodeclub/webook/internal/test/ioc"
 )
 
 // 初始化一下 session
 func init() {
-	session.SetDefaultProvider(&SessionProvider{})
+	provider := redis2.NewSessionProvider(testioc.InitRedis(), "127389584287606793")
+	session.SetDefaultProvider(provider)
 }
 
 type SessionProvider struct {
