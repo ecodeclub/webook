@@ -32,18 +32,21 @@ type ActivityExecutor struct {
 	memberEventProducer producer.MemberEventProducer
 	creditEventProducer producer.CreditEventProducer
 	logger              *elog.Component
+	creditsAwarded      uint64
 }
 
 func NewActivityExecutor(
 	repo repository.MarketingRepository,
 	memberEventProducer producer.MemberEventProducer,
 	creditEventProducer producer.CreditEventProducer,
+	creditsAwarded uint64,
 ) *ActivityExecutor {
 	return &ActivityExecutor{
 		repo:                repo,
 		memberEventProducer: memberEventProducer,
 		creditEventProducer: creditEventProducer,
 		logger:              elog.DefaultLogger,
+		creditsAwarded:      creditsAwarded,
 	}
 }
 
@@ -87,12 +90,11 @@ func (s *ActivityExecutor) awardInvitationBonus(ctx context.Context, act domain.
 		return fmt.Errorf("查找邀请码失败: %w", err)
 	}
 
-	credits := uint64(300)
 	_, err = s.repo.CreateInvitationRecord(ctx, domain.InvitationRecord{
 		InviterId: c.Uid,
 		InviteeId: act.Uid,
 		Code:      c.Code,
-		Attrs:     domain.InvitationRecordAttrs{Credits: credits},
+		Attrs:     domain.InvitationRecordAttrs{Credits: s.creditsAwarded},
 	})
 	if err != nil {
 		return fmt.Errorf("创建邀请记录失败: %w", err)
@@ -101,7 +103,7 @@ func (s *ActivityExecutor) awardInvitationBonus(ctx context.Context, act domain.
 	return s.creditEventProducer.Produce(ctx, event.CreditIncreaseEvent{
 		Key:    fmt.Sprintf("inviteeId-%d", act.Uid),
 		Uid:    c.Uid,
-		Amount: credits,
+		Amount: s.creditsAwarded,
 		Biz:    "user",
 		BizId:  act.Uid,
 		Action: "邀请奖励",
