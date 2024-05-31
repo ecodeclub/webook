@@ -111,7 +111,10 @@ func (h *Handler) Profile(ctx *ginx.Context, sess session.Session) (ginx.Result,
 	eg.Go(func() error {
 		var err error
 		m, err = h.memberSvc.GetMembershipInfo(ctx, uid)
-		return err
+		if err != nil {
+			h.logger.Error("查找用户的会员信息失败", elog.FieldErr(err))
+		}
+		return nil
 	})
 
 	err := eg.Wait()
