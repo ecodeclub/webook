@@ -15,6 +15,7 @@
 package middleware
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -67,7 +68,9 @@ func TestCheckPermission(t *testing.T) {
 				mockProvider := sessmocks.NewMockProvider(ctrl)
 				mockSession := sessmocks.NewMockSession(ctrl)
 
-				mockSession.EXPECT().Get(gomock.Any(), perm).Return(ekit.AnyValue{Val: map[string]string{"project": "103,101,102"}})
+				val := map[string]string{"project": "103,101,102"}
+				jsonVal, _ := json.Marshal(val)
+				mockSession.EXPECT().Get(gomock.Any(), perm).Return(ekit.AnyValue{Val: jsonVal})
 
 				mockProvider.EXPECT().Get(gomock.Any()).Return(mockSession, nil)
 
@@ -104,7 +107,9 @@ func TestCheckPermission(t *testing.T) {
 				mockProvider := sessmocks.NewMockProvider(ctrl)
 				mockSession := sessmocks.NewMockSession(ctrl)
 
-				mockSession.EXPECT().Get(gomock.Any(), perm).Return(ekit.AnyValue{Val: map[string]string{biz: "103,101,102"}})
+				val := map[string]string{biz: "103,101,102"}
+				jsonVal, _ := json.Marshal(val)
+				mockSession.EXPECT().Get(gomock.Any(), perm).Return(ekit.AnyValue{Val: jsonVal})
 
 				claims := session.Claims{
 					Uid:  uid,
@@ -114,7 +119,9 @@ func TestCheckPermission(t *testing.T) {
 					},
 				}
 				mockSession.EXPECT().Claims().Return(claims)
-				mockSession.EXPECT().Set(gomock.Any(), perm, map[string]string{biz: "103,101,102,105"}).Return(nil)
+				newVal := map[string]string{biz: "103,101,102,105"}
+				newJsonVal, _ := json.Marshal(newVal)
+				mockSession.EXPECT().Set(gomock.Any(), perm, newJsonVal).Return(nil)
 
 				mockProvider.EXPECT().Get(gomock.Any()).Return(mockSession, nil)
 
@@ -159,7 +166,9 @@ func TestCheckPermission(t *testing.T) {
 				mockProvider := sessmocks.NewMockProvider(ctrl)
 				mockSession := sessmocks.NewMockSession(ctrl)
 
-				mockSession.EXPECT().Get(gomock.Any(), perm).Return(ekit.AnyValue{Val: map[string]string{}})
+				val := map[string]string{}
+				jsonVal, _ := json.Marshal(val)
+				mockSession.EXPECT().Get(gomock.Any(), perm).Return(ekit.AnyValue{Val: jsonVal})
 
 				claims := session.Claims{
 					Uid:  uid,
@@ -169,7 +178,9 @@ func TestCheckPermission(t *testing.T) {
 					},
 				}
 				mockSession.EXPECT().Claims().Return(claims)
-				mockSession.EXPECT().Set(gomock.Any(), perm, map[string]string{biz: "106"}).Return(nil)
+				newVal := map[string]string{biz: "106"}
+				newJsonVal, _ := json.Marshal(newVal)
+				mockSession.EXPECT().Set(gomock.Any(), perm, newJsonVal).Return(nil)
 
 				mockProvider.EXPECT().Get(gomock.Any()).Return(mockSession, nil)
 
@@ -271,7 +282,9 @@ func TestCheckPermission(t *testing.T) {
 				mockProvider := sessmocks.NewMockProvider(ctrl)
 				mockSession := sessmocks.NewMockSession(ctrl)
 
-				mockSession.EXPECT().Get(gomock.Any(), "permission").Return(ekit.AnyValue{Val: map[string]string{}})
+				val := map[string]string{}
+				jsonVal, _ := json.Marshal(val)
+				mockSession.EXPECT().Get(gomock.Any(), "permission").Return(ekit.AnyValue{Val: jsonVal})
 
 				mockProvider.EXPECT().Get(gomock.Any()).Return(mockSession, nil)
 
@@ -303,7 +316,9 @@ func TestCheckPermission(t *testing.T) {
 				mockProvider := sessmocks.NewMockProvider(ctrl)
 				mockSession := sessmocks.NewMockSession(ctrl)
 
-				mockSession.EXPECT().Get(gomock.Any(), gomock.Any()).Return(ekit.AnyValue{Val: map[string]string{}})
+				val := map[string]string{}
+				jsonVal, _ := json.Marshal(val)
+				mockSession.EXPECT().Get(gomock.Any(), gomock.Any()).Return(ekit.AnyValue{Val: jsonVal})
 
 				mockProvider.EXPECT().Get(gomock.Any()).Return(mockSession, nil)
 
@@ -346,7 +361,9 @@ func TestCheckPermission(t *testing.T) {
 				mockProvider := sessmocks.NewMockProvider(ctrl)
 				mockSession := sessmocks.NewMockSession(ctrl)
 
-				mockSession.EXPECT().Get(gomock.Any(), "permission").Return(ekit.AnyValue{Val: map[string]string{}})
+				val := map[string]string{}
+				jsonVal, _ := json.Marshal(val)
+				mockSession.EXPECT().Get(gomock.Any(), "permission").Return(ekit.AnyValue{Val: jsonVal})
 
 				claims := session.Claims{
 					Uid:  uid,
@@ -399,7 +416,9 @@ func TestCheckPermission(t *testing.T) {
 				mockProvider := sessmocks.NewMockProvider(ctrl)
 				mockSession := sessmocks.NewMockSession(ctrl)
 
-				mockSession.EXPECT().Get(gomock.Any(), "permission").Return(ekit.AnyValue{Val: map[string]string{}})
+				val := map[string]string{}
+				jsonVal, _ := json.Marshal(val)
+				mockSession.EXPECT().Get(gomock.Any(), "permission").Return(ekit.AnyValue{Val: jsonVal})
 
 				claims := session.Claims{
 					Uid:  uid,
@@ -453,7 +472,9 @@ func TestCheckPermission(t *testing.T) {
 				mockProvider := sessmocks.NewMockProvider(ctrl)
 				mockSession := sessmocks.NewMockSession(ctrl)
 
-				mockSession.EXPECT().Get(gomock.Any(), perm).Return(ekit.AnyValue{Val: map[string]string{}})
+				val := map[string]string{}
+				jsonVal, _ := json.Marshal(val)
+				mockSession.EXPECT().Get(gomock.Any(), perm).Return(ekit.AnyValue{Val: jsonVal})
 
 				claims := session.Claims{
 					Uid:  uid,
@@ -463,7 +484,9 @@ func TestCheckPermission(t *testing.T) {
 					},
 				}
 				mockSession.EXPECT().Claims().Return(claims)
-				mockSession.EXPECT().Set(gomock.Any(), perm, map[string]string{biz: "109"}).Return(errors.New("mock: 设置session出错"))
+				newVal := map[string]string{biz: "109"}
+				newJsonVal, _ := json.Marshal(newVal)
+				mockSession.EXPECT().Set(gomock.Any(), perm, newJsonVal).Return(errors.New("mock: 设置session出错"))
 
 				mockProvider.EXPECT().Get(gomock.Any()).Return(mockSession, nil)
 
