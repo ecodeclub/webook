@@ -16,7 +16,6 @@ package ioc
 
 import (
 	"context"
-	"os"
 
 	"github.com/ecodeclub/webook/internal/payment/internal/service/wechat"
 	"github.com/gotomicro/ego/core/econf"
@@ -76,12 +75,12 @@ func InitWechatNotifyHandler(cfg WechatConfig) *notify.Handler {
 
 func InitWechatConfig() WechatConfig {
 	return WechatConfig{
-		AppID:            os.Getenv("WEPAY_APP_ID"),
-		MchID:            os.Getenv("WEPAY_MCH_ID"),
-		MchKey:           os.Getenv("WEPAY_MCH_KEY"),
-		MchSerialNum:     os.Getenv("WEPAY_MCH_SERIAL_NUM"),
-		CertPath:         "./config/cert/apiclient_cert.pem",
-		KeyPath:          "./config/cert/apiclient_key.pem",
+		AppID:            econf.GetString("wechat.appID"),
+		MchID:            econf.GetString("wechat.mchID"),
+		MchKey:           econf.GetString("wechat.mchKey"),
+		MchSerialNum:     econf.GetString("wechat.mchSerialNum"),
+		CertPath:         econf.GetString("wechat.certPath"),
+		KeyPath:          econf.GetString("wechat.keyPath"),
 		PaymentNotifyURL: econf.GetString("wechat.paymentNotifyURL"),
 	}
 }

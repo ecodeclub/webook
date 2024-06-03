@@ -1,4 +1,10 @@
 wechat:
+  appID: abc
+  mchID: abc
+  mchKey: abc
+  mchSerialNum: abc
+  certPath: abc
+  keyPath: abc
   appSecretID: abc
   appSecretKey: abc
   loginRedirectURL: "your/callback"
