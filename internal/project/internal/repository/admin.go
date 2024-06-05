@@ -221,13 +221,18 @@ func (repo *projectAdminRepository) rsmToEntity(r domain.Resume) dao.ProjectResu
 
 func (repo *projectAdminRepository) prjToEntity(prj domain.Project) dao.Project {
 	return dao.Project{
-		Id:     prj.Id,
-		SN:     prj.SN,
-		Title:  prj.Title,
-		Status: prj.Status.ToUint8(),
-		Labels: sqlx.JsonColumn[[]string]{Val: prj.Labels, Valid: true},
-		Desc:   prj.Desc,
-		Utime:  prj.Utime,
+		Id:             prj.Id,
+		SN:             prj.SN,
+		Title:          prj.Title,
+		Status:         prj.Status.ToUint8(),
+		Overview:       prj.Overview,
+		SystemDesign:   prj.SystemDesign,
+		GithubRepo:     prj.GithubRepo,
+		GiteeRepo:      prj.GiteeRepo,
+		RefQuestionSet: prj.RefQuestionSet,
+		Labels:         sqlx.JsonColumn[[]string]{Val: prj.Labels, Valid: true},
+		Desc:           prj.Desc,
+		Utime:          prj.Utime,
 	}
 }
 
@@ -253,13 +258,18 @@ func (repo *projectAdminRepository) prjToDomain(prj dao.Project,
 	intrs []dao.ProjectIntroduction,
 ) domain.Project {
 	return domain.Project{
-		Id:     prj.Id,
-		SN:     prj.SN,
-		Title:  prj.Title,
-		Status: domain.ProjectStatus(prj.Status),
-		Labels: prj.Labels.Val,
-		Desc:   prj.Desc,
-		Utime:  prj.Utime,
+		Id:             prj.Id,
+		SN:             prj.SN,
+		Title:          prj.Title,
+		Status:         domain.ProjectStatus(prj.Status),
+		Labels:         prj.Labels.Val,
+		Desc:           prj.Desc,
+		Overview:       prj.Overview,
+		SystemDesign:   prj.SystemDesign,
+		GithubRepo:     prj.GithubRepo,
+		GiteeRepo:      prj.GiteeRepo,
+		RefQuestionSet: prj.RefQuestionSet,
+		Utime:          prj.Utime,
 		Resumes: slice.Map(resumes, func(idx int, src dao.ProjectResume) domain.Resume {
 			return repo.rsmToDomain(src)
 		}),

@@ -29,11 +29,17 @@ type Page struct {
 }
 
 type Project struct {
-	Id            int64          `json:"id,omitempty"`
-	SN            string         `json:"sn,omitempty"`
-	Title         string         `json:"title,omitempty"`
-	Status        uint8          `json:"status,omitempty"`
-	Desc          string         `json:"desc,omitempty"`
+	Id             int64  `json:"id,omitempty"`
+	SN             string `json:"sn,omitempty"`
+	Title          string `json:"title,omitempty"`
+	Status         uint8  `json:"status,omitempty"`
+	Desc           string `json:"desc,omitempty"`
+	GithubRepo     string `json:"githubRepo,omitempty"`
+	GiteeRepo      string `json:"giteeRepo,omitempty"`
+	RefQuestionSet int64  `json:"refQuestionSet,omitempty"`
+	// 整体概况
+	Overview      string         `json:"overview,omitempty"`
+	SystemDesign  string         `json:"systemDesign,omitempty"`
 	Labels        []string       `json:"labels,omitempty"`
 	Utime         int64          `json:"utime,omitempty"`
 	Difficulties  []Difficulty   `json:"difficulties,omitempty"`
@@ -48,15 +54,20 @@ type Project struct {
 
 func newProject(p domain.Project, intr interactive.Interactive) Project {
 	return Project{
-		Id:         p.Id,
-		Title:      p.Title,
-		SN:         p.SN,
-		Status:     p.Status.ToUint8(),
-		Desc:       p.Desc,
-		Labels:     p.Labels,
-		Utime:      p.Utime,
-		CodeSPU:    p.CodeSPU,
-		ProductSPU: p.ProductSPU,
+		Id:             p.Id,
+		Title:          p.Title,
+		SN:             p.SN,
+		Overview:       p.Overview,
+		SystemDesign:   p.SystemDesign,
+		Status:         p.Status.ToUint8(),
+		GithubRepo:     p.GithubRepo,
+		GiteeRepo:      p.GiteeRepo,
+		RefQuestionSet: p.RefQuestionSet,
+		Desc:           p.Desc,
+		Labels:         p.Labels,
+		Utime:          p.Utime,
+		CodeSPU:        p.CodeSPU,
+		ProductSPU:     p.ProductSPU,
 		Resumes: slice.Map(p.Resumes, func(idx int, src domain.Resume) Resume {
 			return newResume(src)
 		}),
@@ -75,12 +86,17 @@ func newProject(p domain.Project, intr interactive.Interactive) Project {
 
 func (p Project) toDomain() domain.Project {
 	return domain.Project{
-		Id:     p.Id,
-		Title:  p.Title,
-		SN:     p.SN,
-		Status: domain.ProjectStatus(p.Status),
-		Desc:   p.Desc,
-		Labels: p.Labels,
+		Id:             p.Id,
+		Title:          p.Title,
+		SN:             p.SN,
+		GiteeRepo:      p.GiteeRepo,
+		GithubRepo:     p.GithubRepo,
+		RefQuestionSet: p.RefQuestionSet,
+		Status:         domain.ProjectStatus(p.Status),
+		Desc:           p.Desc,
+		Labels:         p.Labels,
+		Overview:       p.Overview,
+		SystemDesign:   p.SystemDesign,
 	}
 }
 

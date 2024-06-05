@@ -39,5 +39,9 @@ func InitHandler(weSvc service.OAuth2Service, mem *member.Module, perm *permissi
 // wire.go:
 
 func initRegistrationEventProducer(q mq.MQ) event.RegistrationEventProducer {
-	return nil
+	p, err := event.NewRegistrationEventProducer(q)
+	if err != nil {
+		panic(err)
+	}
+	return p
 }

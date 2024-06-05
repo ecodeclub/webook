@@ -20,3 +20,14 @@ func InitCache() ecache.Cache {
 		Namespace: "webook:",
 	}
 }
+
+var rdb redis.Cmdable
+
+func InitRedis() redis.Cmdable {
+	if rdb != nil {
+		return rdb
+	}
+	return redis.NewClient(&redis.Options{
+		Addr: "localhost:6379",
+	})
+}

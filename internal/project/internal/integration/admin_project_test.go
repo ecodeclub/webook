@@ -128,10 +128,15 @@ func (s *AdminProjectTestSuite) TestProjectSave() {
 				assert.NotEmpty(t, prj.SN)
 				prj.SN = ""
 				assert.Equal(t, dao.Project{
-					Id:     1,
-					Title:  "项目1",
-					Desc:   "这是测试项目1",
-					Status: domain.ProjectStatusUnpublished.ToUint8(),
+					Id:             1,
+					Title:          "项目1",
+					Desc:           "这是测试项目1",
+					Overview:       "这是测试项目1 overview",
+					SystemDesign:   "这是测试项目1 SystemDesign",
+					RefQuestionSet: 444,
+					GithubRepo:     "github1",
+					GiteeRepo:      "gitee1",
+					Status:         domain.ProjectStatusUnpublished.ToUint8(),
 					Labels: sqlx.JsonColumn[[]string]{
 						Val:   []string{"标签1"},
 						Valid: true,
@@ -139,9 +144,14 @@ func (s *AdminProjectTestSuite) TestProjectSave() {
 				}, prj)
 			},
 			req: web.Project{
-				Title:  "项目1",
-				Desc:   "这是测试项目1",
-				Labels: []string{"标签1"},
+				Title:          "项目1",
+				Desc:           "这是测试项目1",
+				Overview:       "这是测试项目1 overview",
+				SystemDesign:   "这是测试项目1 SystemDesign",
+				RefQuestionSet: 444,
+				GithubRepo:     "github1",
+				GiteeRepo:      "gitee1",
+				Labels:         []string{"标签1"},
 			},
 			wantCode: 200,
 			wantResp: test.Result[int64]{
@@ -154,10 +164,15 @@ func (s *AdminProjectTestSuite) TestProjectSave() {
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 				defer cancel()
 				err := s.db.WithContext(ctx).Create(&dao.Project{
-					Id:     12,
-					Title:  "老的标题",
-					SN:     "old-SN",
-					Status: domain.ProjectStatusPublished.ToUint8(),
+					Id:             12,
+					Title:          "老的标题",
+					SN:             "old-SN",
+					Overview:       "这是老的测试项目1 overview",
+					SystemDesign:   "这是老的测试项目1 SystemDesign",
+					RefQuestionSet: 555,
+					GithubRepo:     "老的 github1",
+					GiteeRepo:      "老的 gitee1",
+					Status:         domain.ProjectStatusPublished.ToUint8(),
 					Labels: sqlx.JsonColumn[[]string]{
 						Val:   []string{"标签3", "标签1"},
 						Valid: true,
@@ -178,11 +193,16 @@ func (s *AdminProjectTestSuite) TestProjectSave() {
 				assert.True(t, prj.Utime > 123)
 				prj.Utime = 0
 				assert.Equal(t, dao.Project{
-					Id:     12,
-					Title:  "项目1",
-					SN:     "old-SN",
-					Desc:   "这是测试项目1",
-					Status: domain.ProjectStatusUnpublished.ToUint8(),
+					Id:             12,
+					Title:          "项目1",
+					SN:             "old-SN",
+					Desc:           "这是测试项目1",
+					Overview:       "这是新的测试项目1 overview",
+					SystemDesign:   "这是新的测试项目1 SystemDesign",
+					RefQuestionSet: 444,
+					GithubRepo:     "github1",
+					GiteeRepo:      "gitee1",
+					Status:         domain.ProjectStatusUnpublished.ToUint8(),
 					Labels: sqlx.JsonColumn[[]string]{
 						Val:   []string{"标签1"},
 						Valid: true,
@@ -191,11 +211,16 @@ func (s *AdminProjectTestSuite) TestProjectSave() {
 				}, prj)
 			},
 			req: web.Project{
-				Id:     12,
-				Title:  "项目1",
-				SN:     "new-SN",
-				Desc:   "这是测试项目1",
-				Labels: []string{"标签1"},
+				Id:             12,
+				Title:          "项目1",
+				SN:             "new-SN",
+				Desc:           "这是测试项目1",
+				RefQuestionSet: 444,
+				GithubRepo:     "github1",
+				GiteeRepo:      "gitee1",
+				Overview:       "这是新的测试项目1 overview",
+				SystemDesign:   "这是新的测试项目1 SystemDesign",
+				Labels:         []string{"标签1"},
 			},
 			wantCode: 200,
 			wantResp: test.Result[int64]{
@@ -249,10 +274,15 @@ func (s *AdminProjectTestSuite) TestProjectPublish() {
 				assert.NotEmpty(t, prj.SN)
 				prj.SN = ""
 				assert.Equal(t, dao.Project{
-					Id:     1,
-					Title:  "项目1",
-					Desc:   "这是测试项目1",
-					Status: domain.ProjectStatusPublished.ToUint8(),
+					Id:             1,
+					Title:          "项目1",
+					Desc:           "这是测试项目1",
+					Overview:       "这是测试项目1 overview",
+					SystemDesign:   "这是测试项目1 SystemDesign",
+					RefQuestionSet: 444,
+					GithubRepo:     "github1",
+					GiteeRepo:      "gitee1",
+					Status:         domain.ProjectStatusPublished.ToUint8(),
 					Labels: sqlx.JsonColumn[[]string]{
 						Val:   []string{"标签1"},
 						Valid: true,
@@ -268,10 +298,15 @@ func (s *AdminProjectTestSuite) TestProjectPublish() {
 				assert.NotEmpty(t, pubPrj.SN)
 				pubPrj.SN = ""
 				assert.Equal(t, dao.PubProject{
-					Id:     1,
-					Title:  "项目1",
-					Desc:   "这是测试项目1",
-					Status: domain.ProjectStatusPublished.ToUint8(),
+					Id:             1,
+					Title:          "项目1",
+					Desc:           "这是测试项目1",
+					Overview:       "这是测试项目1 overview",
+					SystemDesign:   "这是测试项目1 SystemDesign",
+					RefQuestionSet: 444,
+					GithubRepo:     "github1",
+					GiteeRepo:      "gitee1",
+					Status:         domain.ProjectStatusPublished.ToUint8(),
 					Labels: sqlx.JsonColumn[[]string]{
 						Val:   []string{"标签1"},
 						Valid: true,
@@ -279,9 +314,14 @@ func (s *AdminProjectTestSuite) TestProjectPublish() {
 				}, pubPrj)
 			},
 			req: web.Project{
-				Title:  "项目1",
-				Desc:   "这是测试项目1",
-				Labels: []string{"标签1"},
+				Title:          "项目1",
+				Desc:           "这是测试项目1",
+				Overview:       "这是测试项目1 overview",
+				SystemDesign:   "这是测试项目1 SystemDesign",
+				RefQuestionSet: 444,
+				GithubRepo:     "github1",
+				GiteeRepo:      "gitee1",
+				Labels:         []string{"标签1"},
 			},
 			wantCode: 200,
 			wantResp: test.Result[int64]{
@@ -294,10 +334,15 @@ func (s *AdminProjectTestSuite) TestProjectPublish() {
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 				defer cancel()
 				err := s.db.WithContext(ctx).Create(&dao.Project{
-					Id:     13,
-					Title:  "老的标题",
-					SN:     "old-SN",
-					Status: domain.ProjectStatusUnpublished.ToUint8(),
+					Id:             13,
+					Title:          "老的标题",
+					SN:             "old-SN",
+					Overview:       "这是老的测试项目1 overview",
+					SystemDesign:   "这是老的测试项目1 SystemDesign",
+					RefQuestionSet: 555,
+					GithubRepo:     "老的 github1",
+					GiteeRepo:      "老的 gitee1",
+					Status:         domain.ProjectStatusUnpublished.ToUint8(),
 					Labels: sqlx.JsonColumn[[]string]{
 						Val:   []string{"标签3", "标签1"},
 						Valid: true,
@@ -318,11 +363,16 @@ func (s *AdminProjectTestSuite) TestProjectPublish() {
 				assert.True(t, prj.Utime > 123)
 				prj.Utime = 0
 				assert.Equal(t, dao.Project{
-					Id:     13,
-					Title:  "项目1",
-					SN:     "old-SN",
-					Desc:   "这是测试项目1",
-					Status: domain.ProjectStatusPublished.ToUint8(),
+					Id:             13,
+					Title:          "项目1",
+					SN:             "old-SN",
+					Desc:           "这是测试项目1",
+					Overview:       "这是测试项目1 overview",
+					SystemDesign:   "这是测试项目1 SystemDesign",
+					RefQuestionSet: 444,
+					GithubRepo:     "github1",
+					GiteeRepo:      "gitee1",
+					Status:         domain.ProjectStatusPublished.ToUint8(),
 					Labels: sqlx.JsonColumn[[]string]{
 						Val:   []string{"标签1"},
 						Valid: true,
@@ -338,11 +388,16 @@ func (s *AdminProjectTestSuite) TestProjectPublish() {
 				assert.True(t, pubPrj.Utime > 123)
 				pubPrj.Utime = 0
 				assert.Equal(t, dao.PubProject{
-					Id:     13,
-					Title:  "项目1",
-					SN:     "old-SN",
-					Desc:   "这是测试项目1",
-					Status: domain.ProjectStatusPublished.ToUint8(),
+					Id:             13,
+					Title:          "项目1",
+					SN:             "old-SN",
+					Desc:           "这是测试项目1",
+					Overview:       "这是测试项目1 overview",
+					SystemDesign:   "这是测试项目1 SystemDesign",
+					RefQuestionSet: 444,
+					GithubRepo:     "github1",
+					GiteeRepo:      "gitee1",
+					Status:         domain.ProjectStatusPublished.ToUint8(),
 					Labels: sqlx.JsonColumn[[]string]{
 						Val:   []string{"标签1"},
 						Valid: true,
@@ -350,11 +405,16 @@ func (s *AdminProjectTestSuite) TestProjectPublish() {
 				}, pubPrj)
 			},
 			req: web.Project{
-				Id:     13,
-				Title:  "项目1",
-				SN:     "old-SN",
-				Desc:   "这是测试项目1",
-				Labels: []string{"标签1"},
+				Id:             13,
+				Title:          "项目1",
+				SN:             "old-SN",
+				Desc:           "这是测试项目1",
+				Overview:       "这是测试项目1 overview",
+				SystemDesign:   "这是测试项目1 SystemDesign",
+				RefQuestionSet: 444,
+				GithubRepo:     "github1",
+				GiteeRepo:      "gitee1",
+				Labels:         []string{"标签1"},
 			},
 			wantCode: 200,
 			wantResp: test.Result[int64]{
@@ -367,10 +427,15 @@ func (s *AdminProjectTestSuite) TestProjectPublish() {
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 				defer cancel()
 				err := s.db.WithContext(ctx).Create(&dao.Project{
-					Id:     12,
-					Title:  "老的标题",
-					SN:     "old-SN",
-					Status: domain.ProjectStatusUnpublished.ToUint8(),
+					Id:             12,
+					Title:          "老的标题",
+					SN:             "old-SN",
+					Overview:       "这是老的测试项目1 overview",
+					SystemDesign:   "这是老的测试项目1 SystemDesign",
+					RefQuestionSet: 555,
+					GithubRepo:     "老的 github1",
+					GiteeRepo:      "老的 gitee1",
+					Status:         domain.ProjectStatusUnpublished.ToUint8(),
 					Labels: sqlx.JsonColumn[[]string]{
 						Val:   []string{"标签3", "标签1"},
 						Valid: true,
@@ -383,10 +448,15 @@ func (s *AdminProjectTestSuite) TestProjectPublish() {
 				require.NoError(t, err)
 
 				err = s.db.WithContext(ctx).Create(&dao.PubProject{
-					Id:     12,
-					Title:  "老的标题",
-					SN:     "old-SN",
-					Status: domain.ProjectStatusUnpublished.ToUint8(),
+					Id:             12,
+					Title:          "老的标题",
+					SN:             "old-SN",
+					Overview:       "这是老的测试项目1 overview",
+					SystemDesign:   "这是老的测试项目1 SystemDesign",
+					RefQuestionSet: 555,
+					GithubRepo:     "老的 github1",
+					GiteeRepo:      "老的 gitee1",
+					Status:         domain.ProjectStatusUnpublished.ToUint8(),
 					Labels: sqlx.JsonColumn[[]string]{
 						Val:   []string{"标签3", "标签1"},
 						Valid: true,
@@ -407,11 +477,16 @@ func (s *AdminProjectTestSuite) TestProjectPublish() {
 				assert.True(t, prj.Utime > 123)
 				prj.Utime = 0
 				assert.Equal(t, dao.Project{
-					Id:     12,
-					Title:  "项目1",
-					SN:     "old-SN",
-					Desc:   "这是测试项目1",
-					Status: domain.ProjectStatusPublished.ToUint8(),
+					Id:             12,
+					Title:          "项目1",
+					SN:             "old-SN",
+					Desc:           "这是测试项目1",
+					Overview:       "这是测试项目1 overview",
+					SystemDesign:   "这是测试项目1 SystemDesign",
+					RefQuestionSet: 444,
+					GithubRepo:     "github1",
+					GiteeRepo:      "gitee1",
+					Status:         domain.ProjectStatusPublished.ToUint8(),
 					Labels: sqlx.JsonColumn[[]string]{
 						Val:   []string{"标签1"},
 						Valid: true,
@@ -425,11 +500,16 @@ func (s *AdminProjectTestSuite) TestProjectPublish() {
 				assert.True(t, pubPrj.Utime > 123)
 				pubPrj.Utime = 0
 				assert.Equal(t, dao.PubProject{
-					Id:     12,
-					Title:  "项目1",
-					SN:     "old-SN",
-					Desc:   "这是测试项目1",
-					Status: domain.ProjectStatusPublished.ToUint8(),
+					Id:             12,
+					Title:          "项目1",
+					SN:             "old-SN",
+					Desc:           "这是测试项目1",
+					Overview:       "这是测试项目1 overview",
+					SystemDesign:   "这是测试项目1 SystemDesign",
+					RefQuestionSet: 444,
+					GithubRepo:     "github1",
+					GiteeRepo:      "gitee1",
+					Status:         domain.ProjectStatusPublished.ToUint8(),
 					Labels: sqlx.JsonColumn[[]string]{
 						Val:   []string{"标签1"},
 						Valid: true,
@@ -438,11 +518,16 @@ func (s *AdminProjectTestSuite) TestProjectPublish() {
 				}, pubPrj)
 			},
 			req: web.Project{
-				Id:     12,
-				Title:  "项目1",
-				SN:     "new-SN",
-				Desc:   "这是测试项目1",
-				Labels: []string{"标签1"},
+				Id:             12,
+				Title:          "项目1",
+				SN:             "new-SN",
+				Desc:           "这是测试项目1",
+				Overview:       "这是测试项目1 overview",
+				SystemDesign:   "这是测试项目1 SystemDesign",
+				RefQuestionSet: 444,
+				GithubRepo:     "github1",
+				GiteeRepo:      "gitee1",
+				Labels:         []string{"标签1"},
 			},
 			wantCode: 200,
 			wantResp: test.Result[int64]{
@@ -591,13 +676,18 @@ func (s *AdminProjectTestSuite) TestProjectDetail() {
 			wantCode: 200,
 			wantResp: test.Result[web.Project]{
 				Data: web.Project{
-					Id:     1,
-					Title:  "标题1",
-					SN:     "SN1",
-					Status: domain.ProjectStatusUnpublished.ToUint8(),
-					Labels: []string{"标签1"},
-					Desc:   "描述1",
-					Utime:  1,
+					Id:             1,
+					Title:          "标题1",
+					SN:             "SN1",
+					Overview:       "概览1",
+					SystemDesign:   "系统设计1",
+					RefQuestionSet: 1,
+					GithubRepo:     "github1",
+					GiteeRepo:      "gitee1",
+					Status:         domain.ProjectStatusUnpublished.ToUint8(),
+					Labels:         []string{"标签1"},
+					Desc:           "描述1",
+					Utime:          1,
 					Difficulties: []web.Difficulty{
 						{
 							Id:       1,
@@ -661,13 +751,18 @@ func (s *AdminProjectTestSuite) TestProjectDetail() {
 
 func (s *AdminProjectTestSuite) mockProject(id int64) dao.Project {
 	return dao.Project{
-		Id:     id,
-		Title:  fmt.Sprintf("标题%d", id),
-		SN:     fmt.Sprintf("SN%d", id),
-		Status: domain.ProjectStatusUnpublished.ToUint8(),
-		Labels: sqlx.JsonColumn[[]string]{Val: []string{fmt.Sprintf("标签%d", id)}, Valid: true},
-		Desc:   fmt.Sprintf("描述%d", id),
-		Utime:  id,
+		Id:             id,
+		Title:          fmt.Sprintf("标题%d", id),
+		SN:             fmt.Sprintf("SN%d", id),
+		Overview:       fmt.Sprintf("概览%d", id),
+		SystemDesign:   fmt.Sprintf("系统设计%d", id),
+		Status:         domain.ProjectStatusUnpublished.ToUint8(),
+		RefQuestionSet: id,
+		GithubRepo:     fmt.Sprintf("github%d", id),
+		GiteeRepo:      fmt.Sprintf("gitee%d", id),
+		Labels:         sqlx.JsonColumn[[]string]{Val: []string{fmt.Sprintf("标签%d", id)}, Valid: true},
+		Desc:           fmt.Sprintf("描述%d", id),
+		Utime:          id,
 	}
 }
 

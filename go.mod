@@ -5,13 +5,12 @@ go 1.21.0
 require (
 	github.com/ecodeclub/ecache v0.0.0-20240111145855-75679834beca
 	github.com/ecodeclub/ekit v0.0.9-0.20240331142359-871f65136a9b
-	github.com/ecodeclub/ginx v0.0.0-20240407090958-53f744f58112
+	github.com/ecodeclub/ginx v0.0.0-20240529151605-6f3c1e323607
 	github.com/ecodeclub/mq-api v0.0.0-20240508035004-fd7de3346cfe
 	github.com/ecodeclub/webook-private v0.0.0-20240328102016-f96c72f49853
 	github.com/ego-component/egorm v1.1.1
 	github.com/gin-contrib/cors v1.5.0
 	github.com/gin-gonic/gin v1.9.1
-	github.com/go-playground/assert/v2 v2.2.0
 	github.com/go-sql-driver/mysql v1.6.0
 	github.com/google/wire v0.6.0
 	github.com/gotomicro/ego v1.1.19

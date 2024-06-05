@@ -55,7 +55,8 @@ type ProjectAdminDAO interface {
 var _ ProjectAdminDAO = &GORMProjectAdminDAO{}
 
 type GORMProjectAdminDAO struct {
-	db *egorm.Component
+	db               *egorm.Component
+	prjUpdateColumns []string
 }
 
 func (dao *GORMProjectAdminDAO) ResumeSync(ctx context.Context, rsm ProjectResume) (int64, error) {
@@ -160,8 +161,7 @@ func (dao *GORMProjectAdminDAO) Sync(ctx context.Context, entity Project) (int64
 		}
 		pubEn := PubProject(entity)
 		return tx.Clauses(clause.OnConflict{
-			DoUpdates: clause.AssignmentColumns(
-				[]string{"status", "utime", "title", "desc", "labels"}),
+			DoUpdates: clause.AssignmentColumns(dao.prjUpdateColumns),
 		}).Create(&pubEn).Error
 	})
 	return id, err
@@ -272,6 +272,7 @@ func (dao *GORMProjectAdminDAO) Count(ctx context.Context) (int64, error) {
 func (dao *GORMProjectAdminDAO) List(ctx context.Context, offset int, limit int) ([]Project, error) {
 	var res []Project
 	err := dao.db.WithContext(ctx).
+		Select("id", "sn", "title", "labels", "utime", "status", "desc").
 		Offset(offset).Limit(limit).
 		Order("utime DESC").
 		Find(&res).Error
@@ -287,13 +288,16 @@ func (dao *GORMProjectAdminDAO) save(tx *gorm.DB, prj *Project) (int64, error) {
 	prj.Ctime = now
 	prj.Utime = now
 	err := tx.Clauses(clause.OnConflict{
-		DoUpdates: clause.AssignmentColumns([]string{
-			"title", "status", "labels", "desc", "utime",
-		}),
+		DoUpdates: clause.AssignmentColumns(dao.prjUpdateColumns),
 	}).Create(prj).Error
 	return prj.Id, err
 }
 
 func NewGORMProjectAdminDAO(db *egorm.Component) *GORMProjectAdminDAO {
-	return &GORMProjectAdminDAO{db: db}
+	return &GORMProjectAdminDAO{
+		db: db,
+		prjUpdateColumns: []string{
+			"title", "status", "labels", "desc", "overview",
+			"github_repo", "gitee_repo", "ref_question_set",
+			"system_design", "utime"}}
 }
