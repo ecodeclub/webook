@@ -67,7 +67,7 @@ func NewService(
 		eventKeyGenerator:       eventKeyGenerator,
 		invitationCodeGenerator: codeGenerator,
 		orderActivityExecutor:   orderexe.NewOrderActivityExecutor(repo, orderSvc, codeGenerator, memberEventProducer, creditEventProducer, permissionEventProducer),
-		userActivityExecutor:    user.NewActivityExecutor(repo, memberEventProducer, creditEventProducer),
+		userActivityExecutor:    user.NewActivityExecutor(repo, memberEventProducer, creditEventProducer, 500),
 	}
 }
 

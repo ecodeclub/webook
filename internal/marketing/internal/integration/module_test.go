@@ -985,10 +985,11 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeUserRegistrationEvent() {
 				mockProducer.EXPECT().Produce(gomock.Any(), memberEvent).Return(&mq.ProducerResult{}, nil).Times(2)
 
 				inviterId := int64(345691)
+				creditsAwarded := uint64(500)
 				creditEvent := s.newCreditEventMessage(t, event.CreditIncreaseEvent{
 					Key:    fmt.Sprintf("inviteeId-%d", evt.Uid),
 					Uid:    inviterId,
-					Amount: 300,
+					Amount: creditsAwarded,
 					Biz:    "user",
 					BizId:  evt.Uid,
 					Action: "邀请奖励",
@@ -1036,12 +1037,12 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeUserRegistrationEvent() {
 
 				record, err := repo.FindInvitationRecord(context.Background(), inviterId, testID, evt.InvitationCode)
 				require.NoError(t, err)
-
+				creditsAwarded := uint64(500)
 				require.Equal(t, domain.InvitationRecord{
 					InviterId: inviterId,
 					InviteeId: testID,
 					Code:      evt.InvitationCode,
-					Attrs:     domain.InvitationRecordAttrs{Credits: 300},
+					Attrs:     domain.InvitationRecordAttrs{Credits: creditsAwarded},
 				}, record)
 			},
 		},

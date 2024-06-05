@@ -38,7 +38,7 @@ type CachedRepository struct {
 }
 
 func (repo *CachedRepository) Brief(ctx context.Context, id int64) (domain.Project, error) { //TODO implement me
-	prj, err := repo.dao.GetById(ctx, id)
+	prj, err := repo.dao.BriefById(ctx, id)
 	return repo.prjToDomain(prj, nil, nil, nil, nil), err
 }
 
@@ -98,15 +98,20 @@ func (repo *CachedRepository) prjToDomain(prj dao.PubProject,
 	intrs []dao.PubProjectIntroduction,
 ) domain.Project {
 	return domain.Project{
-		Id:         prj.Id,
-		SN:         prj.SN,
-		Title:      prj.Title,
-		Status:     domain.ProjectStatus(prj.Status),
-		Labels:     prj.Labels.Val,
-		Desc:       prj.Desc,
-		Utime:      prj.Utime,
-		ProductSPU: prj.ProductSPU.String,
-		CodeSPU:    prj.CodeSPU.String,
+		Id:             prj.Id,
+		SN:             prj.SN,
+		Title:          prj.Title,
+		Overview:       prj.Overview,
+		SystemDesign:   prj.SystemDesign,
+		GithubRepo:     prj.GithubRepo,
+		GiteeRepo:      prj.GiteeRepo,
+		RefQuestionSet: prj.RefQuestionSet,
+		Status:         domain.ProjectStatus(prj.Status),
+		Labels:         prj.Labels.Val,
+		Desc:           prj.Desc,
+		Utime:          prj.Utime,
+		ProductSPU:     prj.ProductSPU.String,
+		CodeSPU:        prj.CodeSPU.String,
 		Resumes: slice.Map(resumes, func(idx int, src dao.PubProjectResume) domain.Resume {
 			return repo.rsmToDomain(src)
 		}),

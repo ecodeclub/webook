@@ -15,6 +15,7 @@
 package middleware
 
 import (
+	"encoding/json"
 	"errors"
 	"net/http"
 	"strconv"
@@ -68,7 +69,8 @@ func (c *CheckPermissionMiddlewareBuilder) Build() gin.HandlerFunc {
 			c.logger.Debug("获取权限列表失败", elog.FieldErr(err))
 			return
 		}
-		permissionLists := permissionVal.Val.(map[string]string)
+		permissionLists := make(map[string]string)
+		_ = json.Unmarshal(permissionVal.Val.([]byte), &permissionLists)
 		resourceStr, ok := permissionLists[resourceName]
 		var resources []string
 		if ok && len(resourceStr) > 0 {
@@ -108,7 +110,8 @@ func (c *CheckPermissionMiddlewareBuilder) Build() gin.HandlerFunc {
 
 		// 更新Session
 		permissionLists[resourceName] = strings.Join(resources, ",")
-		err = sess.Set(ctx.Request.Context(), permissionKey, permissionLists)
+		v, _ := json.Marshal(permissionLists)
+		err = sess.Set(ctx.Request.Context(), permissionKey, v)
 		if err != nil {
 			elog.Error("更新Session失败", elog.Int64("uid", uid), elog.FieldErr(err))
 			gctx.AbortWithStatus(http.StatusForbidden)

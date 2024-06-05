@@ -21,13 +21,21 @@ const (
 )
 
 type Project struct {
-	Id     int64
-	SN     string
-	Title  string
-	Status ProjectStatus
-	Desc   string
-	Labels []string
-	Utime  int64
+	Id           int64
+	SN           string
+	Title        string
+	Overview     string
+	SystemDesign string
+	// Github 仓库
+	GithubRepo string
+	// Gitee 仓库
+	GiteeRepo string
+	// 关联的八股文面试题集
+	RefQuestionSet int64
+	Status         ProjectStatus
+	Desc           string
+	Labels         []string
+	Utime          int64
 	// 其它字段
 	Difficulties  []Difficulty
 	Questions     []Question
