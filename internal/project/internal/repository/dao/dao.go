@@ -24,6 +24,7 @@ import (
 type ProjectDAO interface {
 	List(ctx context.Context, offset int, limit int) ([]PubProject, error)
 	GetById(ctx context.Context, id int64) (PubProject, error)
+	BriefById(ctx context.Context, id int64) (PubProject, error)
 	Resumes(ctx context.Context, pid int64) ([]PubProjectResume, error)
 	Difficulties(ctx context.Context, pid int64) ([]PubProjectDifficulty, error)
 	Questions(ctx context.Context, pid int64) ([]PubProjectQuestion, error)
@@ -33,7 +34,8 @@ type ProjectDAO interface {
 var _ ProjectDAO = &GORMProjectDAO{}
 
 type GORMProjectDAO struct {
-	db *egorm.Component
+	db           *egorm.Component
+	briefColumns []string
 }
 
 func (dao *GORMProjectDAO) Introductions(ctx context.Context, pid int64) ([]PubProjectIntroduction, error) {
@@ -44,8 +46,18 @@ func (dao *GORMProjectDAO) Introductions(ctx context.Context, pid int64) ([]PubP
 
 func (dao *GORMProjectDAO) GetById(ctx context.Context, id int64) (PubProject, error) {
 	var res PubProject
-	err := dao.db.WithContext(ctx).Where("id = ? AND status = ?",
-		id, domain.ProjectStatusPublished.ToUint8()).First(&res).Error
+	err := dao.db.WithContext(ctx).
+		Where("id = ? AND status = ?",
+			id, domain.ProjectStatusPublished.ToUint8()).First(&res).Error
+	return res, err
+}
+
+func (dao *GORMProjectDAO) BriefById(ctx context.Context, id int64) (PubProject, error) {
+	var res PubProject
+	err := dao.db.WithContext(ctx).
+		Select(dao.briefColumns).
+		Where("id = ? AND status = ?",
+			id, domain.ProjectStatusPublished.ToUint8()).First(&res).Error
 	return res, err
 }
 
@@ -75,13 +87,23 @@ func (dao *GORMProjectDAO) Questions(ctx context.Context, pid int64) ([]PubProje
 
 func (dao *GORMProjectDAO) List(ctx context.Context, offset int, limit int) ([]PubProject, error) {
 	var res []PubProject
-	err := dao.db.WithContext(ctx).Where("status = ?",
-		domain.ProjectStatusPublished.ToUint8()).
+	err := dao.db.WithContext(ctx).
+		// 最关键的就是部分长的字段列表页的时候用不上，所以不要展示出来
+		Select("id", "sn", "title", "desc",
+			"code_spu", "product_spu",
+			"status", "labels", "utime", "ctime").
+		Where("status = ?",
+			domain.ProjectStatusPublished.ToUint8()).
 		Order("utime DESC").
 		Limit(limit).Offset(offset).Find(&res).Error
 	return res, err
 }
 
 func NewGORMProjectDAO(db *egorm.Component) ProjectDAO {
-	return &GORMProjectDAO{db: db}
+	return &GORMProjectDAO{
+		db: db,
+		briefColumns: []string{"id", "sn", "title", "desc",
+			"code_spu", "product_spu",
+			"status", "labels", "utime", "ctime"},
+	}
 }
