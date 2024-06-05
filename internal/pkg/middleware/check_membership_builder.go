@@ -61,7 +61,7 @@ func (c *CheckMembershipMiddlewareBuilder) Build() gin.HandlerFunc {
 			return
 		}
 
-		elog.Debug("会员已过期", elog.Int64("uid", claims.Uid),
+		elog.Debug("未开通过会员或会员已过期", elog.Int64("uid", claims.Uid),
 			elog.String("ddl", time.UnixMilli(memberDDL).Format(time.DateTime)))
 
 		// 1. jwt中未找到会员截止日期
@@ -70,6 +70,13 @@ func (c *CheckMembershipMiddlewareBuilder) Build() gin.HandlerFunc {
 		info, err := c.svc.GetMembershipInfo(ctx, claims.Uid)
 		if err != nil {
 			elog.Error("查询会员失败", elog.Int64("uid", claims.Uid), elog.FieldErr(err))
+			gctx.AbortWithStatus(http.StatusForbidden)
+			return
+		}
+
+		if info.EndAt == 0 {
+			elog.Debug("未开通会员", elog.Int64("uid", claims.Uid),
+				elog.String("ddl", time.UnixMilli(info.EndAt).Format(time.DateTime)))
 			gctx.AbortWithStatus(http.StatusForbidden)
 			return
 		}

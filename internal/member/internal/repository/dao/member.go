@@ -22,6 +22,7 @@ import (
 
 	"github.com/ego-component/egorm"
 	"github.com/go-sql-driver/mysql"
+	"gorm.io/gorm"
 )
 
 var (
@@ -47,6 +48,9 @@ func NewMemberGORMDAO(db *egorm.Component) MemberDAO {
 func (g *memberGROMDAO) FindMemberByUID(ctx context.Context, uid int64) (Member, error) {
 	var m Member
 	err := g.db.WithContext(ctx).First(&m, "uid", uid).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return m, nil
+	}
 	return m, err
 }
 
