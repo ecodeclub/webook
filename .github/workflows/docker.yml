@@ -59,6 +59,8 @@ jobs:
         uses: actions/checkout@v4
         with:
           path: 'webook'
+#          指定分支
+          ref: 'main'
       - name: Set up Go
         uses: actions/setup-go@v2
         with:
