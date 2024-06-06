@@ -387,3 +387,14 @@ func (s *ModuleTestSuite) TestService_ActivateMembership_Concurrent() {
 	})
 
 }
+
+func (s *ModuleTestSuite) TestService_GetMembershipInfo() {
+	t := s.T()
+
+	t.Run("不报错_当用户没有会员信息时", func(t *testing.T) {
+		uid := int64(99999999)
+		info, err := s.svc.GetMembershipInfo(context.Background(), uid)
+		require.NoError(t, err)
+		require.Equal(t, domain.Member{Records: []domain.MemberRecord{}}, info)
+	})
+}
