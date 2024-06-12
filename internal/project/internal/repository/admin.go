@@ -48,12 +48,32 @@ type ProjectAdminRepository interface {
 	IntroductionSave(ctx context.Context, pid int64, intr domain.Introduction) (int64, error)
 	IntroductionDetail(ctx context.Context, id int64) (domain.Introduction, error)
 	IntroductionSync(ctx context.Context, pid int64, intr domain.Introduction) (int64, error)
+	ComboSave(ctx context.Context, pid int64, c domain.Combo) (int64, error)
+	ComboDetail(ctx context.Context, cid int64) (domain.Combo, error)
+	ComboSync(ctx context.Context, pid int64, c domain.Combo) (int64, error)
 }
 
 var _ ProjectAdminRepository = (*projectAdminRepository)(nil)
 
 type projectAdminRepository struct {
 	dao dao.ProjectAdminDAO
+}
+
+func (repo *projectAdminRepository) ComboSync(ctx context.Context, pid int64, c domain.Combo) (int64, error) {
+	entity := repo.comboToEntity(c)
+	entity.Pid = pid
+	return repo.dao.ComboSync(ctx, entity)
+}
+
+func (repo *projectAdminRepository) ComboDetail(ctx context.Context, cid int64) (domain.Combo, error) {
+	c, err := repo.dao.ComboById(ctx, cid)
+	return repo.comboToDomain(c), err
+}
+
+func (repo *projectAdminRepository) ComboSave(ctx context.Context, pid int64, c domain.Combo) (int64, error) {
+	entity := repo.comboToEntity(c)
+	entity.Pid = pid
+	return repo.dao.ComboSave(ctx, entity)
 }
 
 func (repo *projectAdminRepository) ResumePublish(ctx context.Context, pid int64, resume domain.Resume) (int64, error) {
@@ -137,6 +157,7 @@ func (repo *projectAdminRepository) Detail(ctx context.Context, id int64) (domai
 		diffs   []dao.ProjectDifficulty
 		ques    []dao.ProjectQuestion
 		intrs   []dao.ProjectIntroduction
+		combos  []dao.ProjectCombo
 	)
 	eg.Go(func() error {
 		var err error
@@ -167,8 +188,14 @@ func (repo *projectAdminRepository) Detail(ctx context.Context, id int64) (domai
 		intrs, err = repo.dao.Introductions(ctx, id)
 		return err
 	})
+
+	eg.Go(func() error {
+		var err error
+		combos, err = repo.dao.Combos(ctx, id)
+		return err
+	})
 	err := eg.Wait()
-	return repo.prjToDomain(prj, resumes, diffs, ques, intrs), err
+	return repo.prjToDomain(prj, resumes, diffs, ques, intrs, combos), err
 }
 
 func (repo *projectAdminRepository) Count(ctx context.Context) (int64, error) {
@@ -178,7 +205,7 @@ func (repo *projectAdminRepository) Count(ctx context.Context) (int64, error) {
 func (repo *projectAdminRepository) List(ctx context.Context, offset int, limit int) ([]domain.Project, error) {
 	res, err := repo.dao.List(ctx, offset, limit)
 	return slice.Map(res, func(idx int, src dao.Project) domain.Project {
-		return repo.prjToDomain(src, nil, nil, nil, nil)
+		return repo.prjToDomain(src, nil, nil, nil, nil, nil)
 	}), err
 }
 
@@ -256,6 +283,7 @@ func (repo *projectAdminRepository) prjToDomain(prj dao.Project,
 	diff []dao.ProjectDifficulty,
 	ques []dao.ProjectQuestion,
 	intrs []dao.ProjectIntroduction,
+	combos []dao.ProjectCombo,
 ) domain.Project {
 	return domain.Project{
 		Id:             prj.Id,
@@ -281,6 +309,9 @@ func (repo *projectAdminRepository) prjToDomain(prj dao.Project,
 		}),
 		Introductions: slice.Map(intrs, func(idx int, src dao.ProjectIntroduction) domain.Introduction {
 			return repo.intrToDomain(src)
+		}),
+		Combos: slice.Map(combos, func(idx int, src dao.ProjectCombo) domain.Combo {
+			return repo.comboToDomain(src)
 		}),
 	}
 }
@@ -326,5 +357,25 @@ func (repo *projectAdminRepository) queToDomain(d dao.ProjectQuestion) domain.Qu
 		Status:   domain.QuestionStatus(d.Status),
 		Answer:   d.Answer,
 		Utime:    time.UnixMilli(d.Utime),
+	}
+}
+
+func (repo *projectAdminRepository) comboToDomain(c dao.ProjectCombo) domain.Combo {
+	return domain.Combo{
+		Id:      c.Id,
+		Title:   c.Title,
+		Content: c.Content,
+		Utime:   c.Utime,
+		Status:  domain.ComboStatus(c.Status),
+	}
+}
+
+func (repo *projectAdminRepository) comboToEntity(c domain.Combo) dao.ProjectCombo {
+	return dao.ProjectCombo{
+		Id:      c.Id,
+		Title:   c.Title,
+		Content: c.Content,
+		Utime:   c.Utime,
+		Status:  c.Status.ToUint8(),
 	}
 }

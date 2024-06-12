@@ -46,6 +46,7 @@ type Project struct {
 	Resumes       []Resume       `json:"resumes,omitempty"`
 	Questions     []Question     `json:"questions,omitempty"`
 	Introductions []Introduction `json:"introductions,omitempty"`
+	Combos        []Combo        `json:"combos,omitempty"`
 	Interactive   Interactive    `json:"interactive,omitempty"`
 	Permitted     bool           `json:"permitted"`
 	CodeSPU       string         `json:"codeSPU"`
@@ -79,6 +80,9 @@ func newProject(p domain.Project, intr interactive.Interactive) Project {
 		}),
 		Introductions: slice.Map(p.Introductions, func(idx int, src domain.Introduction) Introduction {
 			return newIntroduction(src)
+		}),
+		Combos: slice.Map(p.Combos, func(idx int, src domain.Combo) Combo {
+			return newCombo(src)
 		}),
 		Interactive: newInteractive(intr),
 	}
@@ -279,4 +283,38 @@ func newInteractive(intr interactive.Interactive) Interactive {
 		Liked:      intr.Liked,
 		Collected:  intr.Collected,
 	}
+}
+
+// Combo 面试套路（连招）
+type Combo struct {
+	Id      int64  `json:"id,omitempty"`
+	Title   string `json:"title,omitempty"`
+	Content string `json:"content,omitempty"`
+	Utime   int64  `json:"utime,omitempty"`
+	Status  uint8  `json:"status,omitempty"`
+}
+
+func (c Combo) toDomain() domain.Combo {
+	return domain.Combo{
+		Id:      c.Id,
+		Title:   c.Title,
+		Content: c.Content,
+		Utime:   c.Utime,
+		Status:  domain.ComboStatus(c.Status),
+	}
+}
+
+func newCombo(c domain.Combo) Combo {
+	return Combo{
+		Id:      c.Id,
+		Title:   c.Title,
+		Content: c.Content,
+		Utime:   c.Utime,
+		Status:  c.Status.ToUint8(),
+	}
+}
+
+type ComboSaveReq struct {
+	Pid   int64 `json:"pid,omitempty"`
+	Combo Combo `json:"combo,omitempty"`
 }

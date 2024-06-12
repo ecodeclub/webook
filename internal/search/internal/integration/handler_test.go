@@ -207,7 +207,7 @@ func (s *HandlerTestSuite) TestBizSearch() {
 				},
 			},
 			req: web.SearchReq{
-				KeyWords: "biz:case:test_content test_keywords test_shorthands test_guidance test_title test_label",
+				Keywords: "biz:case:test_content test_keywords test_shorthands test_guidance test_title test_label",
 			},
 		},
 		{
@@ -543,7 +543,7 @@ func (s *HandlerTestSuite) TestBizSearch() {
 				},
 			},
 			req: web.SearchReq{
-				KeyWords: "biz:question:test_content test_title test_label test_analysis_keywords test_analysis_shorthand test_analysis_highlight test_analysis_guidance test_basic_keywords test_basic_shorthand test_basic_highlight test_basic_guidance test_intermediate_keywords test_intermediate_shorthand test_intermediate_highlight test_intermediate_guidance test_advanced_keywords test_advanced_shorthand test_advanced_highlight test_advanced_guidance",
+				Keywords: "biz:question:test_content test_title test_label test_analysis_keywords test_analysis_shorthand test_analysis_highlight test_analysis_guidance test_basic_keywords test_basic_shorthand test_basic_highlight test_basic_guidance test_intermediate_keywords test_intermediate_shorthand test_intermediate_highlight test_intermediate_guidance test_advanced_keywords test_advanced_shorthand test_advanced_highlight test_advanced_guidance",
 			},
 		},
 		{
@@ -625,7 +625,7 @@ func (s *HandlerTestSuite) TestBizSearch() {
 				},
 			},
 			req: web.SearchReq{
-				KeyWords: "biz:skill:test_name test_label test_desc test_advanced test_basic test_intermediate",
+				Keywords: "biz:skill:test_name test_label test_desc test_advanced test_basic test_intermediate",
 			},
 		},
 		{
@@ -656,7 +656,7 @@ func (s *HandlerTestSuite) TestBizSearch() {
 				},
 			},
 			req: web.SearchReq{
-				KeyWords: "biz:questionSet:test_title test_desc",
+				Keywords: "biz:questionSet:test_title test_desc",
 			},
 		},
 	}
@@ -684,7 +684,7 @@ func (s *HandlerTestSuite) TestSearch() {
 	time.Sleep(1 * time.Second)
 	req, err := http.NewRequest(http.MethodPost,
 		"/search/list", iox.NewJSONReader(web.SearchReq{
-			KeyWords: "biz:all:test_title",
+			Keywords: "biz:all:test_title",
 		}))
 	req.Header.Set("content-type", "application/json")
 	require.NoError(t, err)

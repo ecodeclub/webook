@@ -93,3 +93,15 @@ type ProjectQuestion struct {
 	Utime    int64
 	Ctime    int64
 }
+
+type ProjectCombo struct {
+	Id      int64  `gorm:"primaryKey,autoIncrement"`
+	Pid     int64  `gorm:"index"`
+	Title   string `gorm:"type:varchar(256)"`
+	Content string
+	Status  uint8
+	Utime   int64
+	Ctime   int64
+}
+
+type PubProjectCombo ProjectCombo

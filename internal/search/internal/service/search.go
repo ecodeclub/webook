@@ -25,7 +25,7 @@ import (
 )
 
 type SearchService interface {
-	// 出于长远考虑，这里你用 expr 来代表搜索的表达式，后期我们会考虑支持类似 github 那种复杂的搜索表达式
+	// Search 出于长远考虑，这里你用 expr 来代表搜索的表达式，后期我们会考虑支持类似 github 那种复杂的搜索表达式
 	// 目前你可以认为，传递过来的就是 biz:all:xxxx
 	// 业务专属就是 biz:question:xxx 这种形态
 	// xxx 就是搜索的内容
@@ -67,7 +67,7 @@ func (s *searchSvc) Search(ctx context.Context, expr string) (*domain.SearchResu
 
 }
 func (s *searchSvc) parseExpr(expr string) (string, string, error) {
-	searchParams := strings.Split(expr, ":")
+	searchParams := strings.SplitN(expr, ":", 3)
 	if len(searchParams) == 3 {
 		typ := searchParams[0]
 		if typ != "biz" {
@@ -78,7 +78,6 @@ func (s *searchSvc) parseExpr(expr string) (string, string, error) {
 		return biz, keywords, nil
 	}
 	return "", "", errors.New("参数错误")
-
 }
 
 func NewSearchSvc(

@@ -48,7 +48,7 @@ func (dao *LabelGORMDAO) CreateLabel(ctx context.Context, label Label) (int64, e
 func (dao *LabelGORMDAO) UidLabels(ctx context.Context, uid int64) ([]Label, error) {
 	var res []Label
 	err := dao.db.WithContext(ctx).
-		Where("uid = ?", uid).Find(&res).Error
+		Where("uid = ?", uid).Order("id DESC").Find(&res).Error
 	return res, err
 }
 
@@ -57,9 +57,9 @@ func NewLabelGORMDAO(db *egorm.Component) LabelDAO {
 }
 
 type Label struct {
-	Id    int64 `gorm:"primaryKey,autoIncrement"`
-	Name  string
-	Uid   int64 `gorm:"index"`
+	Id    int64  `gorm:"primaryKey,autoIncrement"`
+	Name  string `gorm:"type:varchar(256);unique"`
+	Uid   int64  `gorm:"index"`
 	Ctime int64
 	Utime int64
 }

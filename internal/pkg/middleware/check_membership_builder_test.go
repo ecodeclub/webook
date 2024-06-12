@@ -71,6 +71,30 @@ func TestCheck(t *testing.T) {
 			wantCode:  200,
 		},
 		{
+			name: "JWT无效会员-未开通过会员",
+			mock: func(ctrl *gomock.Controller) (member.Service, session.Provider) {
+				service := membermocks.NewMockService(ctrl)
+				service.EXPECT().GetMembershipInfo(gomock.Any(), int64(2795)).
+					Return(member.Member{}, nil)
+
+				mockSession := sessmocks.NewMockSession(ctrl)
+				claims := session.Claims{
+					Uid:  2795,
+					SSID: "ssid-2795",
+					// 模拟未开通过会员
+					Data: map[string]string{
+						"memberDDL": strconv.FormatInt(0, 10),
+					},
+				}
+				mockSession.EXPECT().Claims().Return(claims)
+				provider := sessmocks.NewMockProvider(ctrl)
+				provider.EXPECT().Get(gomock.Any()).Return(mockSession, nil)
+				return service, provider
+			},
+			afterFunc: func(t *testing.T, ctx *ginx.Context) {},
+			wantCode:  403,
+		},
+		{
 			name: "JWT会员过期-续费",
 			mock: func(ctrl *gomock.Controller) (member.Service, session.Provider) {
 				service := membermocks.NewMockService(ctrl)

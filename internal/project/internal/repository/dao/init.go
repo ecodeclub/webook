@@ -27,5 +27,8 @@ func InitTables(db *egorm.Component) error {
 		&ProjectResume{},
 		&PubProjectResume{},
 		&ProjectIntroduction{},
-		&PubProjectIntroduction{})
+		&PubProjectIntroduction{},
+		&ProjectCombo{},
+		&PubProjectCombo{},
+	)
 }
