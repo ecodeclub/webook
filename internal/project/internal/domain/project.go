@@ -41,6 +41,7 @@ type Project struct {
 	Questions     []Question
 	Resumes       []Resume
 	Introductions []Introduction
+	Combos        []Combo
 
 	// 目前来说，我们只需要两个 SN，而不是需要维持整个 SPU
 	// 后续如果需要 SPU 的其他字段，就重构为结构体
@@ -161,3 +162,24 @@ const (
 func (r Role) ToUint8() uint8 {
 	return uint8(r)
 }
+
+// Combo 面试套路，连招
+type Combo struct {
+	Id      int64
+	Title   string
+	Content string
+	Utime   int64
+	Status  ComboStatus
+}
+
+type ComboStatus uint8
+
+func (s ComboStatus) ToUint8() uint8 {
+	return uint8(s)
+}
+
+const (
+	ComboStatusUnknown ComboStatus = iota
+	ComboStatusUnpublished
+	ComboStatusPublished
+)

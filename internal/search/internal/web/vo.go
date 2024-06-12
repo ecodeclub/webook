@@ -21,7 +21,7 @@ import (
 )
 
 type SearchReq struct {
-	KeyWords string `json:"keyWords,omitempty"`
+	Keywords string `json:"keywords,omitempty"`
 }
 
 type Case struct {

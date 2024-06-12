@@ -322,6 +322,15 @@ func (s *ProjectTestSuite) TestProjectDetail() {
 							Utime:    11,
 						},
 					},
+					Combos: []web.Combo{
+						{
+							Id:      11,
+							Content: "内容11",
+							Title:   "标题11",
+							Status:  domain.ResumeStatusPublished.ToUint8(),
+							Utime:   11,
+						},
+					},
 				},
 			},
 		},
@@ -389,6 +398,22 @@ func (s *ProjectTestSuite) insertWholeProject(id int64) {
 	que := s.mockQue(id, id*10+1)
 	err = s.db.Create(&que).Error
 	require.NoError(s.T(), err)
+
+	combo := s.mockCombo(id, id*10+1)
+	err = s.db.Create(&combo).Error
+	require.NoError(s.T(), err)
+}
+
+func (s *ProjectTestSuite) mockCombo(pid, id int64) dao.PubProjectCombo {
+	return dao.PubProjectCombo{
+		Id:      id,
+		Pid:     pid,
+		Title:   fmt.Sprintf("标题%d", id),
+		Content: fmt.Sprintf("内容%d", id),
+		Status:  domain.ComboStatusPublished.ToUint8(),
+		Ctime:   id,
+		Utime:   id,
+	}
 }
 
 func (s *ProjectTestSuite) mockProject(id int64) dao.PubProject {

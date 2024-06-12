@@ -97,6 +97,10 @@ func (s *AdminProjectTestSuite) TearDownTest() {
 	require.NoError(s.T(), err)
 	err = s.db.Exec("TRUNCATE TABLE pub_project_introductions;").Error
 	require.NoError(s.T(), err)
+	err = s.db.Exec("TRUNCATE TABLE project_combos;").Error
+	require.NoError(s.T(), err)
+	err = s.db.Exec("TRUNCATE TABLE pub_project_combos;").Error
+	require.NoError(s.T(), err)
 }
 
 // TestProjectSave 测试 Project 本身数据的保存
@@ -663,6 +667,10 @@ func (s *AdminProjectTestSuite) TestProjectDetail() {
 	err = s.db.Create(&que).Error
 	require.NoError(s.T(), err)
 
+	combo := s.mockCombo(1, 1)
+	err = s.db.Create(&combo).Error
+	require.NoError(s.T(), err)
+
 	testCases := []struct {
 		name string
 		req  web.IdReq
@@ -714,7 +722,7 @@ func (s *AdminProjectTestSuite) TestProjectDetail() {
 							Role:     domain.RoleManager.ToUint8(),
 							Content:  "内容1",
 							Analysis: "分析1",
-							Status:   domain.ResumeStatusPublished.ToUint8(),
+							Status:   domain.IntroductionStatusPublished.ToUint8(),
 							Utime:    1,
 						},
 					},
@@ -724,8 +732,17 @@ func (s *AdminProjectTestSuite) TestProjectDetail() {
 							Analysis: "分析1",
 							Answer:   "回答1",
 							Title:    "标题1",
-							Status:   domain.ResumeStatusPublished.ToUint8(),
+							Status:   domain.QuestionStatusPublished.ToUint8(),
 							Utime:    1,
+						},
+					},
+					Combos: []web.Combo{
+						{
+							Id:      1,
+							Content: "内容1",
+							Title:   "标题1",
+							Status:  domain.ComboStatusUnpublished.ToUint8(),
+							Utime:   1,
 						},
 					},
 				},

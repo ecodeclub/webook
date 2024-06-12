@@ -50,13 +50,38 @@ type ProjectAdminService interface {
 	IntroductionSave(ctx context.Context, pid int64, intr domain.Introduction) (int64, error)
 	IntroductionDetail(ctx context.Context, id int64) (domain.Introduction, error)
 	IntroductionPublish(ctx context.Context, pid int64, intr domain.Introduction) (int64, error)
+
+	ComboSave(ctx context.Context, pid int64, c domain.Combo) (int64, error)
+	ComboDetail(ctx context.Context, cid int64) (domain.Combo, error)
+	ComboPublish(ctx context.Context, pid int64, c domain.Combo) (int64, error)
 }
+
+var _ ProjectAdminService = (*projectAdminService)(nil)
 
 type projectAdminService struct {
 	adminRepo repository.ProjectAdminRepository
 	repo      repository.Repository
 	producer  event.SyncProjectToSearchEventProducer
 	logger    *elog.Component
+}
+
+func (svc *projectAdminService) ComboPublish(ctx context.Context, pid int64, c domain.Combo) (int64, error) {
+	c.Status = domain.ComboStatusPublished
+	id, err := svc.adminRepo.ComboSync(ctx, pid, c)
+	if err == nil {
+		// 同步数据
+		svc.syncToSearch(pid)
+	}
+	return id, err
+}
+
+func (svc *projectAdminService) ComboDetail(ctx context.Context, cid int64) (domain.Combo, error) {
+	return svc.adminRepo.ComboDetail(ctx, cid)
+}
+
+func (svc *projectAdminService) ComboSave(ctx context.Context, pid int64, c domain.Combo) (int64, error) {
+	c.Status = domain.ComboStatusUnpublished
+	return svc.adminRepo.ComboSave(ctx, pid, c)
 }
 
 func (svc *projectAdminService) ResumePublish(ctx context.Context, pid int64, resume domain.Resume) (int64, error) {

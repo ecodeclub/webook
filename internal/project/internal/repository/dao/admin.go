@@ -50,6 +50,10 @@ type ProjectAdminDAO interface {
 	IntroductionById(ctx context.Context, id int64) (ProjectIntroduction, error)
 	IntroductionSync(ctx context.Context, intr ProjectIntroduction) (int64, error)
 	Introductions(ctx context.Context, pid int64) ([]ProjectIntroduction, error)
+	ComboSave(ctx context.Context, c ProjectCombo) (int64, error)
+	ComboById(ctx context.Context, cid int64) (ProjectCombo, error)
+	ComboSync(ctx context.Context, c ProjectCombo) (int64, error)
+	Combos(ctx context.Context, pid int64) ([]ProjectCombo, error)
 }
 
 var _ ProjectAdminDAO = &GORMProjectAdminDAO{}
@@ -57,6 +61,50 @@ var _ ProjectAdminDAO = &GORMProjectAdminDAO{}
 type GORMProjectAdminDAO struct {
 	db               *egorm.Component
 	prjUpdateColumns []string
+}
+
+func (dao *GORMProjectAdminDAO) Combos(ctx context.Context, pid int64) ([]ProjectCombo, error) {
+	var res []ProjectCombo
+	err := dao.db.WithContext(ctx).Where("pid = ?", pid).Find(&res).Error
+	return res, err
+}
+
+func (dao *GORMProjectAdminDAO) ComboSync(ctx context.Context, c ProjectCombo) (int64, error) {
+	err := dao.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		_, err := dao.comboSave(tx, &c)
+		if err != nil {
+			return err
+		}
+		pubCb := PubProjectCombo(c)
+		return tx.Clauses(clause.OnConflict{
+			DoUpdates: clause.AssignmentColumns([]string{
+				"content", "title", "status", "utime",
+			}),
+		}).Create(&pubCb).Error
+	})
+	return c.Id, err
+}
+
+func (dao *GORMProjectAdminDAO) ComboById(ctx context.Context, cid int64) (ProjectCombo, error) {
+	var c ProjectCombo
+	err := dao.db.WithContext(ctx).Where("id = ?", cid).First(&c).Error
+	return c, err
+}
+
+func (dao *GORMProjectAdminDAO) ComboSave(ctx context.Context, c ProjectCombo) (int64, error) {
+	return dao.comboSave(dao.db.WithContext(ctx), &c)
+}
+
+func (dao *GORMProjectAdminDAO) comboSave(tx *gorm.DB, c *ProjectCombo) (int64, error) {
+	now := time.Now().UnixMilli()
+	c.Utime = now
+	c.Ctime = now
+	err := tx.Clauses(clause.OnConflict{
+		DoUpdates: clause.AssignmentColumns([]string{
+			"content", "title", "status", "utime",
+		}),
+	}).Create(c).Error
+	return c.Id, err
 }
 
 func (dao *GORMProjectAdminDAO) ResumeSync(ctx context.Context, rsm ProjectResume) (int64, error) {
