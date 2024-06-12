@@ -80,12 +80,15 @@ func (s *HandlerTestSuite) TestSystemLabels() {
 			before: func(t *testing.T) {
 				err := s.db.Create([]dao.Label{
 					{Id: 1, Name: "test", Uid: -1},
-					{Id: 2, Name: "non-system", Uid: 123}}).Error
+					{Id: 2, Name: "non-system", Uid: 123},
+					{Id: 3, Name: "test-1", Uid: -1},
+				}).Error
 				require.NoError(t, err)
 			},
 			wantCode: 200,
 			wantResp: test.Result[[]web.Label]{
 				Data: []web.Label{
+					{Id: 3, Name: "test-1"},
 					{Id: 1, Name: "test"},
 				},
 			},

@@ -29,6 +29,7 @@ type ProjectDAO interface {
 	Difficulties(ctx context.Context, pid int64) ([]PubProjectDifficulty, error)
 	Questions(ctx context.Context, pid int64) ([]PubProjectQuestion, error)
 	Introductions(ctx context.Context, pid int64) ([]PubProjectIntroduction, error)
+	Combos(ctx context.Context, pid int64) ([]PubProjectCombo, error)
 }
 
 var _ ProjectDAO = &GORMProjectDAO{}
@@ -36,6 +37,12 @@ var _ ProjectDAO = &GORMProjectDAO{}
 type GORMProjectDAO struct {
 	db           *egorm.Component
 	briefColumns []string
+}
+
+func (dao *GORMProjectDAO) Combos(ctx context.Context, pid int64) ([]PubProjectCombo, error) {
+	var res []PubProjectCombo
+	err := dao.db.WithContext(ctx).Where("pid = ?", pid).Find(&res).Error
+	return res, err
 }
 
 func (dao *GORMProjectDAO) Introductions(ctx context.Context, pid int64) ([]PubProjectIntroduction, error) {

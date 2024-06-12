@@ -39,7 +39,7 @@ type CachedRepository struct {
 
 func (repo *CachedRepository) Brief(ctx context.Context, id int64) (domain.Project, error) { //TODO implement me
 	prj, err := repo.dao.BriefById(ctx, id)
-	return repo.prjToDomain(prj, nil, nil, nil, nil), err
+	return repo.prjToDomain(prj, nil, nil, nil, nil, nil), err
 }
 
 func (repo *CachedRepository) Detail(ctx context.Context, id int64) (domain.Project, error) { //TODO implement me
@@ -50,6 +50,7 @@ func (repo *CachedRepository) Detail(ctx context.Context, id int64) (domain.Proj
 		diffs   []dao.PubProjectDifficulty
 		ques    []dao.PubProjectQuestion
 		intrs   []dao.PubProjectIntroduction
+		combos  []dao.PubProjectCombo
 	)
 	eg.Go(func() error {
 		var err error
@@ -80,14 +81,21 @@ func (repo *CachedRepository) Detail(ctx context.Context, id int64) (domain.Proj
 		intrs, err = repo.dao.Introductions(ctx, id)
 		return err
 	})
+
+	eg.Go(func() error {
+		var err error
+		combos, err = repo.dao.Combos(ctx, id)
+		return err
+	})
+
 	err := eg.Wait()
-	return repo.prjToDomain(prj, resumes, diffs, ques, intrs), err
+	return repo.prjToDomain(prj, resumes, diffs, ques, intrs, combos), err
 }
 
 func (repo *CachedRepository) List(ctx context.Context, offset int, limit int) ([]domain.Project, error) {
 	res, err := repo.dao.List(ctx, offset, limit)
 	return slice.Map(res, func(idx int, src dao.PubProject) domain.Project {
-		return repo.prjToDomain(src, nil, nil, nil, nil)
+		return repo.prjToDomain(src, nil, nil, nil, nil, nil)
 	}), err
 }
 
@@ -96,6 +104,7 @@ func (repo *CachedRepository) prjToDomain(prj dao.PubProject,
 	diff []dao.PubProjectDifficulty,
 	ques []dao.PubProjectQuestion,
 	intrs []dao.PubProjectIntroduction,
+	combos []dao.PubProjectCombo,
 ) domain.Project {
 	return domain.Project{
 		Id:             prj.Id,
@@ -124,6 +133,19 @@ func (repo *CachedRepository) prjToDomain(prj dao.PubProject,
 		Introductions: slice.Map(intrs, func(idx int, src dao.PubProjectIntroduction) domain.Introduction {
 			return repo.intrToDomain(src)
 		}),
+		Combos: slice.Map(combos, func(idx int, src dao.PubProjectCombo) domain.Combo {
+			return repo.comboToDomain(src)
+		}),
+	}
+}
+
+func (repo *CachedRepository) comboToDomain(c dao.PubProjectCombo) domain.Combo {
+	return domain.Combo{
+		Id:      c.Id,
+		Title:   c.Title,
+		Content: c.Content,
+		Utime:   c.Utime,
+		Status:  domain.ComboStatus(c.Status),
 	}
 }
 

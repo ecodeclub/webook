@@ -50,6 +50,11 @@ func (h *AdminHandler) PrivateRoutes(server *gin.Engine) {
 	g.POST("/introduction/save", ginx.B(h.IntroductionSave))
 	g.POST("/introduction/detail", ginx.B(h.IntroductionDetail))
 	g.POST("/introduction/publish", ginx.B(h.IntroductionPublish))
+
+	// 面试小套路，连招
+	g.POST("/combo/save", ginx.B(h.ComboSave))
+	g.POST("/combo/detail", ginx.B(h.ComboDetail))
+	g.POST("/combo/publish", ginx.B(h.ComboPublish))
 }
 
 func (h *AdminHandler) List(ctx *ginx.Context, req Page) (ginx.Result, error) {
@@ -232,6 +237,36 @@ func (h *AdminHandler) IntroductionDetail(ctx *ginx.Context, req IdReq) (ginx.Re
 func (h *AdminHandler) IntroductionPublish(ctx *ginx.Context,
 	req IntroductionSaveReq) (ginx.Result, error) {
 	id, err := h.svc.IntroductionPublish(ctx, req.Pid, req.Introduction.toDomain())
+	if err != nil {
+		return systemErrorResult, err
+	}
+	return ginx.Result{
+		Data: id,
+	}, nil
+}
+
+func (h *AdminHandler) ComboSave(ctx *ginx.Context, req ComboSaveReq) (ginx.Result, error) {
+	id, err := h.svc.ComboSave(ctx, req.Pid, req.Combo.toDomain())
+	if err != nil {
+		return systemErrorResult, err
+	}
+	return ginx.Result{
+		Data: id,
+	}, nil
+}
+
+func (h *AdminHandler) ComboDetail(ctx *ginx.Context, req IdReq) (ginx.Result, error) {
+	res, err := h.svc.ComboDetail(ctx, req.Id)
+	if err != nil {
+		return systemErrorResult, err
+	}
+	return ginx.Result{
+		Data: newCombo(res),
+	}, nil
+}
+
+func (h *AdminHandler) ComboPublish(ctx *ginx.Context, req ComboSaveReq) (ginx.Result, error) {
+	id, err := h.svc.ComboPublish(ctx, req.Pid, req.Combo.toDomain())
 	if err != nil {
 		return systemErrorResult, err
 	}
