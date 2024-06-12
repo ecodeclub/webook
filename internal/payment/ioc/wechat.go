@@ -74,15 +74,12 @@ func InitWechatNotifyHandler(cfg WechatConfig) *notify.Handler {
 }
 
 func InitWechatConfig() WechatConfig {
-	return WechatConfig{
-		AppID:            econf.GetString("wechat.appID"),
-		MchID:            econf.GetString("wechat.mchID"),
-		MchKey:           econf.GetString("wechat.mchKey"),
-		MchSerialNum:     econf.GetString("wechat.mchSerialNum"),
-		CertPath:         econf.GetString("wechat.certPath"),
-		KeyPath:          econf.GetString("wechat.keyPath"),
-		PaymentNotifyURL: econf.GetString("wechat.paymentNotifyURL"),
+	var cfg WechatConfig
+	err := econf.UnmarshalKey("wechat.payment", &cfg)
+	if err != nil {
+		panic(err)
 	}
+	return cfg
 }
 
 type WechatConfig struct {
