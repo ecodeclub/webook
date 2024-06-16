@@ -2,7 +2,8 @@ package repository
 
 import (
 	"context"
-	"database/sql"
+
+	"github.com/ecodeclub/ekit/sqlx"
 
 	"github.com/ecodeclub/webook/internal/user/internal/domain"
 	"github.com/ecodeclub/webook/internal/user/internal/repository/cache"
@@ -14,9 +15,8 @@ type UserRepository interface {
 	Create(ctx context.Context, u domain.User) (int64, error)
 	// Update 更新数据，只有非 0 值才会更新
 	Update(ctx context.Context, u domain.User) error
-	// FindByWechat 暂时可以认为按照 openId来查询
-	// 将来可能需要按照 unionId 来查询
-	FindByWechat(ctx context.Context, openId string) (domain.User, error)
+	// FindByWechat 按照 unionId 来查询
+	FindByWechat(ctx context.Context, unionId string) (domain.User, error)
 	FindById(ctx context.Context, id int64) (domain.User, error)
 }
 
@@ -44,23 +44,12 @@ func (ur *CachedUserRepository) Update(ctx context.Context, u domain.User) error
 }
 
 func (ur *CachedUserRepository) Create(ctx context.Context, u domain.User) (int64, error) {
-	return ur.dao.Insert(ctx, dao.User{
-		SN:       u.SN,
-		Nickname: u.Nickname,
-		WechatUnionId: sql.NullString{
-			String: u.WechatInfo.UnionId,
-			Valid:  u.WechatInfo.UnionId != "",
-		},
-		WechatOpenId: sql.NullString{
-			String: u.WechatInfo.OpenId,
-			Valid:  u.WechatInfo.OpenId != "",
-		},
-	})
+	return ur.dao.Insert(ctx, ur.domainToEntity(u))
 }
 
 func (ur *CachedUserRepository) FindByWechat(ctx context.Context,
-	openId string) (domain.User, error) {
-	u, err := ur.dao.FindByWechat(ctx, openId)
+	unionId string) (domain.User, error) {
+	u, err := ur.dao.FindByWechat(ctx, unionId)
 	return ur.entityToDomain(u), err
 }
 
@@ -82,9 +71,13 @@ func (ur *CachedUserRepository) FindById(ctx context.Context,
 
 func (ur *CachedUserRepository) domainToEntity(u domain.User) dao.User {
 	return dao.User{
-		Id:       u.Id,
-		Nickname: u.Nickname,
-		Avatar:   u.Avatar,
+		Id:               u.Id,
+		SN:               u.SN,
+		Nickname:         u.Nickname,
+		Avatar:           u.Avatar,
+		WechatUnionId:    sqlx.NewNullString(u.WechatInfo.UnionId),
+		WechatOpenId:     sqlx.NewNullString(u.WechatInfo.OpenId),
+		WechatMiniOpenId: sqlx.NewNullString(u.WechatInfo.MiniOpenId),
 	}
 }
 
@@ -95,8 +88,9 @@ func (ur *CachedUserRepository) entityToDomain(ue dao.User) domain.User {
 		SN:       ue.SN,
 		Avatar:   ue.Avatar,
 		WechatInfo: domain.WechatInfo{
-			OpenId:  ue.WechatOpenId.String,
-			UnionId: ue.WechatUnionId.String,
+			OpenId:     ue.WechatOpenId.String,
+			UnionId:    ue.WechatUnionId.String,
+			MiniOpenId: ue.WechatMiniOpenId.String,
 		},
 	}
 }

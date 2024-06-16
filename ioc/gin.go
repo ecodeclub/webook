@@ -74,6 +74,8 @@ func initGinxServer(sp session.Provider,
 ) *egin.Component {
 	session.SetDefaultProvider(sp)
 	res := egin.Load("web").Build()
+	// 基本的含义就是执行方法的时候优先考虑 gin.Context，而后考虑 gin.Request.Context
+	res.Engine.ContextWithFallback = true
 	res.Use(cors.New(cors.Config{
 		ExposeHeaders:    []string{"X-Refresh-Token", "X-Access-Token"},
 		AllowCredentials: true,

@@ -21,7 +21,7 @@ var ErrUserDuplicate = errors.New("用户已经注册")
 type UserDAO interface {
 	Insert(ctx context.Context, u User) (int64, error)
 	UpdateNonZeroFields(ctx context.Context, u User) error
-	FindByWechat(ctx context.Context, openId string) (User, error)
+	FindByWechat(ctx context.Context, unionId string) (User, error)
 	FindById(ctx context.Context, id int64) (User, error)
 }
 
@@ -53,9 +53,9 @@ func (ud *GORMUserDAO) Insert(ctx context.Context, u User) (int64, error) {
 	return u.Id, err
 }
 
-func (ud *GORMUserDAO) FindByWechat(ctx context.Context, openId string) (User, error) {
+func (ud *GORMUserDAO) FindByWechat(ctx context.Context, unionId string) (User, error) {
 	var u User
-	err := ud.db.WithContext(ctx).First(&u, "wechat_open_id = ?", openId).Error
+	err := ud.db.WithContext(ctx).First(&u, "wechat_union_id = ?", unionId).Error
 	return u, err
 }
 
@@ -66,12 +66,14 @@ func (ud *GORMUserDAO) FindById(ctx context.Context, id int64) (User, error) {
 }
 
 type User struct {
-	Id            int64 `gorm:"primaryKey,autoIncrement"`
-	Nickname      string
-	Avatar        string
-	SN            string         `gorm:"type:varchar(256);unique"`
-	WechatOpenId  sql.NullString `gorm:"type:varchar(256);unique"`
-	WechatUnionId sql.NullString `gorm:"type:varchar(256);unique"`
+	Id       int64 `gorm:"primaryKey,autoIncrement"`
+	Nickname string
+	Avatar   string
+	SN       string `gorm:"type:varchar(256);unique"`
+	// TODO 后面要考虑拆分出去作为单表了
+	WechatOpenId     sql.NullString `gorm:"type:varchar(256);unique"`
+	WechatUnionId    sql.NullString `gorm:"type:varchar(256);unique"`
+	WechatMiniOpenId sql.NullString `gorm:"type:varchar(256);unique"`
 	// 创建时间
 	Ctime int64
 	// 更新时间

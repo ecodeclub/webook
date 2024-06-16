@@ -60,8 +60,19 @@ func (svc *userService) UpdateNonSensitiveInfo(ctx context.Context, user domain.
 
 func (svc *userService) FindOrCreateByWechat(ctx context.Context,
 	info domain.WechatInfo) (domain.User, error) {
-	// 类似于手机号的过程，大部分人只是扫码登录，也就是数据在我们这里是有的
-	u, err := svc.repo.FindByWechat(ctx, info.OpenId)
+	u, err := svc.repo.FindByWechat(ctx, info.UnionId)
+	defer func() {
+		// 尝试更新 openid 或者 Mini open id
+		if (info.MiniOpenId != "" && u.WechatInfo.MiniOpenId == "") ||
+			(info.OpenId != "" && u.WechatInfo.OpenId == "") {
+			u.WechatInfo.MiniOpenId = info.MiniOpenId
+			u.WechatInfo.OpenId = info.OpenId
+			err1 := svc.repo.Update(ctx, u)
+			if err1 != nil {
+				svc.logger.Error("尝试更新微信信息失败", elog.FieldErr(err1))
+			}
+		}
+	}()
 	if !errors.Is(err, repository.ErrUserNotFound) {
 		return u, err
 	}

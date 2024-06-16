@@ -21,27 +21,28 @@ import (
 	"github.com/ecodeclub/mq-api"
 	"github.com/ecodeclub/webook/internal/member"
 	"github.com/ecodeclub/webook/internal/permission"
-	"github.com/ecodeclub/webook/internal/user/internal/event"
 	"github.com/ecodeclub/webook/internal/user/internal/repository"
 	"github.com/ecodeclub/webook/internal/user/internal/repository/cache"
-	"github.com/ecodeclub/webook/internal/user/internal/repository/dao"
 	"github.com/ecodeclub/webook/internal/user/internal/service"
-	"github.com/ecodeclub/webook/internal/user/internal/web"
 	"github.com/ego-component/egorm"
 	"github.com/google/wire"
-	"github.com/gotomicro/ego/core/econf"
 )
 
-var ProviderSet = wire.NewSet(web.NewHandler,
+var ProviderSet = wire.NewSet(
+	iniHandler,
 	cache.NewUserECache,
 	initDAO,
-	initWechatService,
+	initWechatWebOAuthService,
+	initWechatMiniOAuthService,
 	initRegistrationEventProducer,
 	service.NewUserService,
 	repository.NewCachedUserRepository)
 
-func InitHandler(db *egorm.Component, cache ecache.Cache,
-	q mq.MQ, creators []string, memberSvc *member.Module, permissionSvc *permission.Module) *Handler {
+func InitHandler(db *egorm.Component,
+	cache ecache.Cache,
+	q mq.MQ, creators []string,
+	memberSvc *member.Module,
+	permissionSvc *permission.Module) *Handler {
 	wire.Build(
 		ProviderSet,
 		wire.FieldsOf(new(*member.Module), "Svc"),
@@ -49,36 +50,3 @@ func InitHandler(db *egorm.Component, cache ecache.Cache,
 	)
 	return new(Handler)
 }
-
-func initWechatService(cache ecache.Cache) service.OAuth2Service {
-	type Config struct {
-		AppSecretID      string `yaml:"appSecretID"`
-		AppSecretKey     string `yaml:"appSecretKey"`
-		LoginRedirectURL string `yaml:"loginRedirectURL"`
-	}
-	var cfg Config
-	err := econf.UnmarshalKey("wechat", &cfg)
-	if err != nil {
-		panic(err)
-	}
-	return service.NewWechatService(cache, cfg.AppSecretID, cfg.AppSecretKey, cfg.LoginRedirectURL)
-}
-
-func initDAO(db *egorm.Component) dao.UserDAO {
-	err := dao.InitTables(db)
-	if err != nil {
-		panic(err)
-	}
-	return dao.NewGORMUserDAO(db)
-}
-
-func initRegistrationEventProducer(q mq.MQ) event.RegistrationEventProducer {
-	producer, err := event.NewRegistrationEventProducer(q)
-	if err != nil {
-		panic(err)
-	}
-	return producer
-}
-
-// Handler 暴露出去给 ioc 使用
-type Handler = web.Handler
