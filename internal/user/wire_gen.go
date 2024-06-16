@@ -11,22 +11,19 @@ import (
 	"github.com/ecodeclub/mq-api"
 	"github.com/ecodeclub/webook/internal/member"
 	"github.com/ecodeclub/webook/internal/permission"
-	"github.com/ecodeclub/webook/internal/user/internal/event"
 	"github.com/ecodeclub/webook/internal/user/internal/repository"
 	"github.com/ecodeclub/webook/internal/user/internal/repository/cache"
-	"github.com/ecodeclub/webook/internal/user/internal/repository/dao"
 	"github.com/ecodeclub/webook/internal/user/internal/service"
 	"github.com/ecodeclub/webook/internal/user/internal/web"
-	"github.com/ego-component/egorm"
 	"github.com/google/wire"
-	"github.com/gotomicro/ego/core/econf"
 	"gorm.io/gorm"
 )
 
 // Injectors from wire.go:
 
 func InitHandler(db *gorm.DB, cache2 ecache.Cache, q mq.MQ, creators []string, memberSvc *member.Module, permissionSvc *permission.Module) *web.Handler {
-	oAuth2Service := initWechatService(cache2)
+	wechatWebOAuth2Service := initWechatWebOAuthService(cache2)
+	wechatMiniOAuth2Service := initWechatMiniOAuthService()
 	userDAO := initDAO(db)
 	userCache := cache.NewUserECache(cache2)
 	userRepository := repository.NewCachedUserRepository(userDAO, userCache)
@@ -34,46 +31,15 @@ func InitHandler(db *gorm.DB, cache2 ecache.Cache, q mq.MQ, creators []string, m
 	userService := service.NewUserService(userRepository, registrationEventProducer)
 	serviceService := memberSvc.Svc
 	service2 := permissionSvc.Svc
-	handler := web.NewHandler(oAuth2Service, userService, serviceService, service2, creators)
+	handler := iniHandler(wechatWebOAuth2Service, wechatMiniOAuth2Service, userService, serviceService, service2, creators)
 	return handler
 }
 
 // wire.go:
 
-var ProviderSet = wire.NewSet(web.NewHandler, cache.NewUserECache, initDAO,
-	initWechatService,
+var ProviderSet = wire.NewSet(
+	iniHandler, cache.NewUserECache, initDAO,
+	initWechatWebOAuthService,
+	initWechatMiniOAuthService,
 	initRegistrationEventProducer, service.NewUserService, repository.NewCachedUserRepository,
 )
-
-func initWechatService(cache2 ecache.Cache) service.OAuth2Service {
-	type Config struct {
-		AppSecretID      string `yaml:"appSecretID"`
-		AppSecretKey     string `yaml:"appSecretKey"`
-		LoginRedirectURL string `yaml:"loginRedirectURL"`
-	}
-	var cfg Config
-	err := econf.UnmarshalKey("wechat", &cfg)
-	if err != nil {
-		panic(err)
-	}
-	return service.NewWechatService(cache2, cfg.AppSecretID, cfg.AppSecretKey, cfg.LoginRedirectURL)
-}
-
-func initDAO(db *egorm.Component) dao.UserDAO {
-	err := dao.InitTables(db)
-	if err != nil {
-		panic(err)
-	}
-	return dao.NewGORMUserDAO(db)
-}
-
-func initRegistrationEventProducer(q mq.MQ) event.RegistrationEventProducer {
-	producer, err := event.NewRegistrationEventProducer(q)
-	if err != nil {
-		panic(err)
-	}
-	return producer
-}
-
-// Handler 暴露出去给 ioc 使用
-type Handler = web.Handler
