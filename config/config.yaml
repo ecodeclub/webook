@@ -11,6 +11,10 @@ wechat:
     certPath: abc
     keyPath: abc
     paymentNotifyURL: "your/notifyURL"
+#    小程序配置
+  mini:
+    appSecretID: abc
+    appSecretKey: abc
 
 
 mysql:

@@ -21,6 +21,8 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/ecodeclub/ekit/sqlx"
+
 	permissionmocks "github.com/ecodeclub/webook/internal/permission/mocks"
 	"github.com/ecodeclub/webook/internal/user/internal/domain"
 	"github.com/ecodeclub/webook/internal/user/internal/service"
@@ -49,10 +51,11 @@ import (
 
 type HandleTestSuite struct {
 	suite.Suite
-	db          *egorm.Component
-	server      *egin.Component
-	mockWeSvc   *svcmocks.MockOAuth2Service
-	mockPermSvc *permissionmocks.MockService
+	db            *egorm.Component
+	server        *egin.Component
+	mockWeSvc     *svcmocks.MockOAuth2Service
+	mockWeMiniSvc *svcmocks.MockOAuth2Service
+	mockPermSvc   *permissionmocks.MockService
 }
 
 func (s *HandleTestSuite) SetupSuite() {
@@ -75,12 +78,15 @@ func (s *HandleTestSuite) SetupSuite() {
 	permSvc := permissionmocks.NewMockService(ctrl)
 	s.mockPermSvc = permSvc
 	wesvc := svcmocks.NewMockOAuth2Service(ctrl)
+	weMiniSvc := svcmocks.NewMockOAuth2Service(ctrl)
 	hdl := startup.InitHandler(wesvc,
+		weMiniSvc,
 		&member.Module{Svc: memSvc},
 		&permission.Module{
 			Svc: permSvc,
 		}, nil)
 	s.mockWeSvc = wesvc
+	s.mockWeMiniSvc = weMiniSvc
 	server.Use(func(ctx *gin.Context) {
 		ctx.Set("_session", session.NewMemorySession(session.Claims{
 			Uid: 123,
@@ -238,10 +244,110 @@ func (s *HandleTestSuite) TestVerify() {
 			wantCode: 200,
 		},
 		{
-			name: "查找",
+			name: "查找-更新 OpenId",
 			before: func(t *testing.T) {
 				// 设置邀请码
 				s.mockWeSvc.EXPECT().Verify(gomock.Any(), service.CallbackParams{
+					State: "mock state 2",
+					Code:  "wechat code 2",
+				}).Return(domain.WechatInfo{
+					OpenId:         "mock-open-id-2",
+					UnionId:        "mock-union-id-2",
+					InvitationCode: "invitation-code",
+				}, nil)
+				s.mockPermSvc.EXPECT().
+					FindPersonalPermissions(gomock.Any(), gomock.Any()).
+					Return(map[string][]permission.Permission{
+						"project": {
+							{
+								Uid:   123,
+								Biz:   "project",
+								BizID: 1234,
+								Desc:  "项目权限",
+							},
+						},
+					}, nil)
+				err := s.db.Create(&dao.User{
+					Id:               123,
+					Avatar:           "mock avatar",
+					Nickname:         "nickname",
+					SN:               "mock-sn-123",
+					WechatUnionId:    sqlx.NewNullString("mock-union-id-2"),
+					WechatMiniOpenId: sqlx.NewNullString("mock-mini-open-id-2"),
+					Ctime:            123,
+					Utime:            123,
+				}).Error
+				require.NoError(t, err)
+			},
+			after: func(t *testing.T) {
+				var u dao.User
+				err := s.db.Where("wechat_union_id = ?", "mock-union-id-2").First(&u).Error
+				require.NoError(t, err)
+				assert.Equal(t, dao.User{
+					Id:               123,
+					Avatar:           "mock avatar",
+					Nickname:         "nickname",
+					SN:               "mock-sn-123",
+					WechatUnionId:    sqlx.NewNullString("mock-union-id-2"),
+					WechatOpenId:     sqlx.NewNullString("mock-open-id-2"),
+					WechatMiniOpenId: sqlx.NewNullString("mock-mini-open-id-2"),
+					Ctime:            123,
+					Utime:            123,
+				}, u)
+			},
+			req: web.WechatCallback{
+				State: "mock state 2",
+				Code:  "wechat code 2",
+			},
+			wantResp: test.Result[web.Profile]{
+				Data: web.Profile{
+					MemberDDL: 1234,
+					Avatar:    "mock avatar",
+				},
+			},
+			wantCode: 200,
+		},
+	}
+	for _, tc := range testCases {
+		s.T().Run(tc.name, func(t *testing.T) {
+			tc.before(t)
+			req, err := http.NewRequest(http.MethodPost,
+				"/oauth2/wechat/callback", iox.NewJSONReader(tc.req))
+			req.Header.Set("content-type", "application/json")
+			require.NoError(t, err)
+			recorder := test.NewJSONResponseRecorder[web.Profile]()
+			s.server.ServeHTTP(recorder, req)
+			assert.Equal(t, tc.wantCode, recorder.Code)
+			val := recorder.MustScan()
+			assert.NotEmpty(t, val.Data.SN)
+			val.Data.SN = ""
+			assert.NotEmpty(t, val.Data.Nickname)
+			// 在创建的时候，是随机生成的昵称，所以需要特殊判断
+			val.Data.Nickname = ""
+			assert.Equal(t, tc.wantResp, val)
+			tc.after(t)
+			// 清理掉 123 的数据
+			err = s.db.Exec("TRUNCATE table `users`").Error
+			require.NoError(t, err)
+		})
+	}
+}
+
+func (s *HandleTestSuite) TestMiniVerify() {
+	testCases := []struct {
+		name   string
+		before func(t *testing.T)
+		after  func(t *testing.T)
+
+		req      web.WechatCallback
+		wantResp test.Result[web.Profile]
+		wantCode int
+	}{
+		{
+			name: "创建",
+			before: func(t *testing.T) {
+				// 设置邀请码
+				s.mockWeMiniSvc.EXPECT().Verify(gomock.Any(), service.CallbackParams{
 					State: "mock state 1",
 					Code:  "wechat code 1",
 				}).Return(domain.WechatInfo{
@@ -276,12 +382,76 @@ func (s *HandleTestSuite) TestVerify() {
 			},
 			wantCode: 200,
 		},
+		{
+			name: "查找-更新 OpenId",
+			before: func(t *testing.T) {
+				// 设置邀请码
+				s.mockWeMiniSvc.EXPECT().Verify(gomock.Any(), service.CallbackParams{
+					State: "mock state 2",
+					Code:  "wechat code 2",
+				}).Return(domain.WechatInfo{
+					UnionId:        "mock-union-id-2",
+					MiniOpenId:     "mock-mini-open-id-2",
+					InvitationCode: "invitation-code",
+				}, nil)
+				s.mockPermSvc.EXPECT().
+					FindPersonalPermissions(gomock.Any(), gomock.Any()).
+					Return(map[string][]permission.Permission{
+						"project": {
+							{
+								Uid:   123,
+								Biz:   "project",
+								BizID: 1234,
+								Desc:  "项目权限",
+							},
+						},
+					}, nil)
+				err := s.db.Create(&dao.User{
+					Id:            123,
+					Avatar:        "mock avatar",
+					Nickname:      "nickname",
+					SN:            "mock-sn-123",
+					WechatUnionId: sqlx.NewNullString("mock-union-id-2"),
+					WechatOpenId:  sqlx.NewNullString("mock-open-id-2"),
+					Ctime:         123,
+					Utime:         123,
+				}).Error
+				require.NoError(t, err)
+			},
+			after: func(t *testing.T) {
+				var u dao.User
+				err := s.db.Where("wechat_union_id = ?", "mock-union-id-2").First(&u).Error
+				require.NoError(t, err)
+				assert.Equal(t, dao.User{
+					Id:               123,
+					Avatar:           "mock avatar",
+					Nickname:         "nickname",
+					SN:               "mock-sn-123",
+					WechatUnionId:    sqlx.NewNullString("mock-union-id-2"),
+					WechatOpenId:     sqlx.NewNullString("mock-open-id-2"),
+					WechatMiniOpenId: sqlx.NewNullString("mock-mini-open-id-2"),
+					Ctime:            123,
+					Utime:            123,
+				}, u)
+			},
+			req: web.WechatCallback{
+				State: "mock state 2",
+				Code:  "wechat code 2",
+			},
+			wantResp: test.Result[web.Profile]{
+				Data: web.Profile{
+					MemberDDL: 1234,
+					Avatar:    "mock avatar",
+				},
+			},
+			wantCode: 200,
+		},
 	}
 	for _, tc := range testCases {
 		s.T().Run(tc.name, func(t *testing.T) {
 			tc.before(t)
 			req, err := http.NewRequest(http.MethodPost,
-				"/oauth2/wechat/callback", iox.NewJSONReader(tc.req))
+				"/oauth2/wechat/mini/callback", iox.NewJSONReader(tc.req))
 			req.Header.Set("content-type", "application/json")
 			require.NoError(t, err)
 			recorder := test.NewJSONResponseRecorder[web.Profile]()

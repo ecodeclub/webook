@@ -12,17 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package domain
+package startup
 
-type WechatInfo struct {
-	// OpenId 是应用内唯一
-	OpenId string
-	// UnionId 是整个公司账号内唯一,同一公司账号下的多个应用之间均相同
-	UnionId string
+import "github.com/ecodeclub/webook/internal/user/internal/service"
 
-	// MiniOpenId 是微信小程序的 id，应用内唯一
-	MiniOpenId string
-
-	// 当前用户的邀请人的邀请码
-	InvitationCode string
-}
+type wechatMiniOAuth2Service service.OAuth2Service
+type wechatWebOAuth2Service service.OAuth2Service

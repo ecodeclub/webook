@@ -37,6 +37,7 @@ var _ ginx.Handler = &Handler{}
 
 type Handler struct {
 	weSvc         service.OAuth2Service
+	weMiniSvc     service.OAuth2Service
 	userSvc       service.UserService
 	memberSvc     member.Service
 	permissionSvc permission.Service
@@ -45,10 +46,17 @@ type Handler struct {
 	logger   *elog.Component
 }
 
-func NewHandler(weSvc service.OAuth2Service,
-	userSvc service.UserService, memberSvc member.Service, permissionSvc permission.Service, creators []string) *Handler {
+func NewHandler(
+	// 微信
+	weSvc service.OAuth2Service,
+	// 微信小程序
+	weMiniSvc service.OAuth2Service,
+	userSvc service.UserService,
+	memberSvc member.Service,
+	permissionSvc permission.Service, creators []string) *Handler {
 	return &Handler{
 		weSvc:         weSvc,
+		weMiniSvc:     weMiniSvc,
 		userSvc:       userSvc,
 		memberSvc:     memberSvc,
 		permissionSvc: permissionSvc,
@@ -67,7 +75,10 @@ func (h *Handler) PublicRoutes(server *gin.Engine) {
 	oauth2 := server.Group("/oauth2")
 	oauth2.GET("/wechat/auth_url", ginx.W(h.WechatAuthURL))
 	oauth2.GET("/mock/login", ginx.W(h.MockLogin))
+	// 扫码登录回调
 	oauth2.Any("/wechat/callback", ginx.B[WechatCallback](h.Callback))
+	// 小程序登录回调
+	oauth2.Any("/wechat/mini/callback", ginx.B[WechatCallback](h.MiniCallback))
 	oauth2.Any("/wechat/token/refresh", ginx.W(h.RefreshAccessToken))
 }
 
@@ -160,19 +171,29 @@ func (h *Handler) Callback(ctx *ginx.Context, req WechatCallback) (ginx.Result, 
 		return systemErrorResult, err
 	}
 
+	res, err := h.setupSession(ctx, user)
+	if err != nil {
+		return systemErrorResult, err
+	}
+	return ginx.Result{
+		Data: res,
+	}, nil
+}
+
+func (h *Handler) setupSession(ctx *ginx.Context, user domain.User) (Profile, error) {
 	// 构建session
 	jwtData := map[string]string{}
 	// 设置是否 creator 的标记位，后续引入权限控制再来改造
 	isCreator := slice.Contains(h.creators, user.WechatInfo.UnionId)
 	jwtData["creator"] = strconv.FormatBool(isCreator)
 	// 设置会员截止日期
-	memberDDL := h.getMemberDDL(ctx.Request.Context(), user.Id)
+	memberDDL := h.getMemberDDL(ctx, user.Id)
 	jwtData["memberDDL"] = strconv.FormatInt(memberDDL, 10)
 
 	perms := make(map[string]string)
 	permissionGroup, err := h.permissionSvc.FindPersonalPermissions(ctx, user.Id)
 	if err != nil {
-		return systemErrorResult, err
+		return Profile{}, err
 	}
 	for biz, permissions := range permissionGroup {
 		bizIds := slice.Map(permissions, func(idx int, src permission.Permission) string {
@@ -185,15 +206,12 @@ func (h *Handler) Callback(ctx *ginx.Context, req WechatCallback) (ginx.Result, 
 	sessData := map[string]any{"permission": permsVal}
 	_, err = session.NewSessionBuilder(ctx, user.Id).SetJwtData(jwtData).SetSessData(sessData).Build()
 	if err != nil {
-		return systemErrorResult, err
+		return Profile{}, err
 	}
-
 	res := newProfile(user)
 	res.IsCreator = isCreator
 	res.MemberDDL = memberDDL
-	return ginx.Result{
-		Data: res,
-	}, nil
+	return res, nil
 }
 
 func (h *Handler) getMemberDDL(ctx context.Context, userID int64) int64 {
@@ -202,4 +220,26 @@ func (h *Handler) getMemberDDL(ctx context.Context, userID int64) int64 {
 		h.logger.Error("查找会员信息失败", elog.FieldErr(err), elog.Int64("uid", userID))
 	}
 	return mem.EndAt
+}
+
+// MiniCallback 微信小程序登录回调
+func (h *Handler) MiniCallback(ctx *ginx.Context, req WechatCallback) (ginx.Result, error) {
+	info, err := h.weMiniSvc.Verify(ctx, service.CallbackParams{
+		Code:  req.Code,
+		State: req.State,
+	})
+	if err != nil {
+		return systemErrorResult, err
+	}
+	user, err := h.userSvc.FindOrCreateByWechat(ctx, info)
+	if err != nil {
+		return systemErrorResult, err
+	}
+	res, err := h.setupSession(ctx, user)
+	if err != nil {
+		return systemErrorResult, err
+	}
+	return ginx.Result{
+		Data: res,
+	}, nil
 }

@@ -21,7 +21,7 @@ import (
 
 // Injectors from wire.go:
 
-func InitHandler(weSvc service.OAuth2Service, mem *member.Module, perm *permission.Module, creators []string) *web.Handler {
+func InitHandler(weSvc wechatWebOAuth2Service, weMiniSvc wechatMiniOAuth2Service, mem *member.Module, perm *permission.Module, creators []string) *web.Handler {
 	db := testioc.InitDB()
 	userDAO := dao.NewGORMUserDAO(db)
 	ecacheCache := testioc.InitCache()
@@ -32,11 +32,20 @@ func InitHandler(weSvc service.OAuth2Service, mem *member.Module, perm *permissi
 	userService := service.NewUserService(userRepository, registrationEventProducer)
 	serviceService := mem.Svc
 	service2 := perm.Svc
-	handler := web.NewHandler(weSvc, userService, serviceService, service2, creators)
+	handler := iniHandler(weSvc, weMiniSvc, userService, serviceService, service2, creators)
 	return handler
 }
 
 // wire.go:
+
+func iniHandler(
+	weSvc wechatWebOAuth2Service,
+	weMiniSvc wechatMiniOAuth2Service,
+	userSvc service.UserService,
+	memberSvc member.Service,
+	permissionSvc permission.Service, creators []string) *web.Handler {
+	return web.NewHandler(weSvc, weMiniSvc, userSvc, memberSvc, permissionSvc, creators)
+}
 
 func initRegistrationEventProducer(q mq.MQ) event.RegistrationEventProducer {
 	p, err := event.NewRegistrationEventProducer(q)

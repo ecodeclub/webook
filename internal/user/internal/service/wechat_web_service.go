@@ -29,10 +29,12 @@ type CallbackParams struct {
 //go:generate mockgen -source=./wechat_service.go -package=svcmocks -typed=true -destination=mocks/wechat_service.mock.go OAuth2Service
 type OAuth2Service interface {
 	AuthURL(ctx context.Context, a AuthParams) (string, error)
+	// Verify 扫码登录回调
 	Verify(ctx context.Context, c CallbackParams) (domain.WechatInfo, error)
 }
 
-type WechatOAuth2Service struct {
+// WechatWebOAuth2Service 网站应用
+type WechatWebOAuth2Service struct {
 	cache       ecache.Cache
 	appId       string
 	appSecret   string
@@ -42,7 +44,7 @@ type WechatOAuth2Service struct {
 }
 
 func NewWechatService(cache ecache.Cache, appId, appSecret, redirectURL string) OAuth2Service {
-	return &WechatOAuth2Service{
+	return &WechatWebOAuth2Service{
 		cache:       cache,
 		redirectURL: url.PathEscape(redirectURL),
 		logger:      elog.DefaultLogger,
@@ -52,11 +54,11 @@ func NewWechatService(cache ecache.Cache, appId, appSecret, redirectURL string) 
 	}
 }
 
-func (s *WechatOAuth2Service) AuthURL(ctx context.Context, a AuthParams) (string, error) {
+func (s *WechatWebOAuth2Service) AuthURL(ctx context.Context, a AuthParams) (string, error) {
 	return fmt.Sprintf(authURLPattern, s.appId, s.redirectURL, s.getState(ctx, a)), nil
 }
 
-func (s *WechatOAuth2Service) getState(ctx context.Context, a AuthParams) string {
+func (s *WechatWebOAuth2Service) getState(ctx context.Context, a AuthParams) string {
 	state := uuid.New()
 	if a.InvitationCode != "" {
 		// 尽最大努力建立映射但不阻碍主流程
@@ -74,7 +76,7 @@ func (s *WechatOAuth2Service) getState(ctx context.Context, a AuthParams) string
 	return state
 }
 
-func (s *WechatOAuth2Service) Verify(ctx context.Context, c CallbackParams) (domain.WechatInfo, error) {
+func (s *WechatWebOAuth2Service) Verify(ctx context.Context, c CallbackParams) (domain.WechatInfo, error) {
 	const baseURL = "https://api.weixin.qq.com/sns/oauth2/access_token"
 	var res Result
 	err := httpx.NewRequest(ctx, http.MethodGet, baseURL).
@@ -97,7 +99,7 @@ func (s *WechatOAuth2Service) Verify(ctx context.Context, c CallbackParams) (dom
 	}, nil
 }
 
-func (s *WechatOAuth2Service) getInviterCode(ctx context.Context, state string) string {
+func (s *WechatWebOAuth2Service) getInviterCode(ctx context.Context, state string) string {
 	val := s.cache.Get(ctx, state)
 	if val.KeyNotFound() {
 		return ""
