@@ -51,12 +51,17 @@ type ProjectAdminRepository interface {
 	ComboSave(ctx context.Context, pid int64, c domain.Combo) (int64, error)
 	ComboDetail(ctx context.Context, cid int64) (domain.Combo, error)
 	ComboSync(ctx context.Context, pid int64, c domain.Combo) (int64, error)
+	Delete(ctx context.Context, id int64) error
 }
 
 var _ ProjectAdminRepository = (*projectAdminRepository)(nil)
 
 type projectAdminRepository struct {
 	dao dao.ProjectAdminDAO
+}
+
+func (repo *projectAdminRepository) Delete(ctx context.Context, id int64) error {
+	return repo.dao.Delete(ctx, id)
 }
 
 func (repo *projectAdminRepository) ComboSync(ctx context.Context, pid int64, c domain.Combo) (int64, error) {

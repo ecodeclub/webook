@@ -34,6 +34,7 @@ func (h *AdminHandler) PrivateRoutes(server *gin.Engine) {
 	g.POST("/detail", ginx.B[IdReq](h.Detail))
 	g.POST("/save", ginx.B[Project](h.Save))
 	g.POST("/publish", ginx.B[Project](h.Publish))
+	g.POST("/delete", ginx.B[IdReq](h.Delete))
 
 	g.POST("/difficulty/save", ginx.B(h.DifficultySave))
 	g.POST("/difficulty/detail", ginx.B(h.DifficultyDetail))
@@ -273,6 +274,14 @@ func (h *AdminHandler) ComboPublish(ctx *ginx.Context, req ComboSaveReq) (ginx.R
 	return ginx.Result{
 		Data: id,
 	}, nil
+}
+
+func (h *AdminHandler) Delete(ctx *ginx.Context, req IdReq) (ginx.Result, error) {
+	err := h.svc.Delete(ctx, req.Id)
+	if err != nil {
+		return systemErrorResult, err
+	}
+	return ginx.Result{Msg: "OK"}, nil
 }
 
 func NewAdminHandler(svc service.ProjectAdminService) *AdminHandler {

@@ -54,6 +54,7 @@ type ProjectAdminService interface {
 	ComboSave(ctx context.Context, pid int64, c domain.Combo) (int64, error)
 	ComboDetail(ctx context.Context, cid int64) (domain.Combo, error)
 	ComboPublish(ctx context.Context, pid int64, c domain.Combo) (int64, error)
+	Delete(ctx context.Context, id int64) error
 }
 
 var _ ProjectAdminService = (*projectAdminService)(nil)
@@ -63,6 +64,10 @@ type projectAdminService struct {
 	repo      repository.Repository
 	producer  event.SyncProjectToSearchEventProducer
 	logger    *elog.Component
+}
+
+func (svc *projectAdminService) Delete(ctx context.Context, id int64) error {
+	return svc.adminRepo.Delete(ctx, id)
 }
 
 func (svc *projectAdminService) ComboPublish(ctx context.Context, pid int64, c domain.Combo) (int64, error) {
