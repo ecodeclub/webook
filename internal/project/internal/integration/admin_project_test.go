@@ -23,6 +23,8 @@ import (
 	"testing"
 	"time"
 
+	"gorm.io/gorm"
+
 	"github.com/ecodeclub/webook/internal/permission"
 
 	"github.com/ecodeclub/webook/internal/interactive"
@@ -549,6 +551,65 @@ func (s *AdminProjectTestSuite) TestProjectPublish() {
 			req.Header.Set("content-type", "application/json")
 			require.NoError(t, err)
 			recorder := test.NewJSONResponseRecorder[int64]()
+			s.server.ServeHTTP(recorder, req)
+			require.Equal(t, tc.wantCode, recorder.Code)
+			assert.Equal(t, tc.wantResp, recorder.MustScan())
+			tc.after(t)
+		})
+	}
+}
+
+func (s *AdminProjectTestSuite) TestProjectDelete() {
+	testCases := []struct {
+		name string
+
+		before func(t *testing.T)
+		after  func(t *testing.T)
+
+		req      web.IdReq
+		wantCode int
+		wantResp test.Result[any]
+	}{
+		{
+			name: "删除成功",
+			before: func(t *testing.T) {
+				err := s.db.Create(&dao.Project{Id: 11}).Error
+				require.NoError(t, err)
+			},
+			after: func(t *testing.T) {
+				var prj dao.Project
+				err := s.db.Where("id = ?", 11).First(&prj).Error
+				require.Equal(t, gorm.ErrRecordNotFound, err)
+			},
+			req: web.IdReq{
+				Id: 11,
+			},
+			wantCode: 200,
+			wantResp: test.Result[any]{Msg: "OK"},
+		},
+		{
+			name: "id不存在",
+			before: func(t *testing.T) {
+			},
+			after: func(t *testing.T) {
+			},
+			req: web.IdReq{
+				Id: 12,
+			},
+			wantCode: 200,
+			wantResp: test.Result[any]{Msg: "OK"},
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		s.T().Run(tc.name, func(t *testing.T) {
+			tc.before(t)
+			req, err := http.NewRequest(http.MethodPost,
+				"/project/delete", iox.NewJSONReader(tc.req))
+			req.Header.Set("content-type", "application/json")
+			require.NoError(t, err)
+			recorder := test.NewJSONResponseRecorder[any]()
 			s.server.ServeHTTP(recorder, req)
 			require.Equal(t, tc.wantCode, recorder.Code)
 			assert.Equal(t, tc.wantResp, recorder.MustScan())
