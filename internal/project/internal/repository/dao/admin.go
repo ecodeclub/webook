@@ -54,6 +54,7 @@ type ProjectAdminDAO interface {
 	ComboById(ctx context.Context, cid int64) (ProjectCombo, error)
 	ComboSync(ctx context.Context, c ProjectCombo) (int64, error)
 	Combos(ctx context.Context, pid int64) ([]ProjectCombo, error)
+	Delete(ctx context.Context, id int64) error
 }
 
 var _ ProjectAdminDAO = &GORMProjectAdminDAO{}
@@ -61,6 +62,11 @@ var _ ProjectAdminDAO = &GORMProjectAdminDAO{}
 type GORMProjectAdminDAO struct {
 	db               *egorm.Component
 	prjUpdateColumns []string
+}
+
+func (dao *GORMProjectAdminDAO) Delete(ctx context.Context, id int64) error {
+	// 只需要删除 project 本体就可以了。别的数据也无法查询到了
+	return dao.db.WithContext(ctx).Model(&Project{}).Delete("id = ?", id).Error
 }
 
 func (dao *GORMProjectAdminDAO) Combos(ctx context.Context, pid int64) ([]ProjectCombo, error) {
