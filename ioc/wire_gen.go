@@ -23,6 +23,7 @@ import (
 	"github.com/ecodeclub/webook/internal/project"
 	baguwen "github.com/ecodeclub/webook/internal/question"
 	"github.com/ecodeclub/webook/internal/recon"
+	"github.com/ecodeclub/webook/internal/search"
 	"github.com/ecodeclub/webook/internal/skill"
 	"github.com/google/wire"
 )
@@ -106,7 +107,13 @@ func InitApp() (*App, error) {
 	}
 	handler12 := marketingModule.Hdl
 	handler13 := interactiveModule.Hdl
-	component := initGinxServer(provider, checkMembershipMiddlewareBuilder, localActiveLimit, checkPermissionMiddlewareBuilder, handler, questionSetHandler, webHandler, handler2, handler3, handler4, handler5, handler6, handler7, handler8, handler9, handler10, handler11, handler12, handler13)
+	client := InitES()
+	searchModule, err := search.InitModule(client, mq)
+	if err != nil {
+		return nil, err
+	}
+	handler14 := searchModule.Hdl
+	component := initGinxServer(provider, checkMembershipMiddlewareBuilder, localActiveLimit, checkPermissionMiddlewareBuilder, handler, questionSetHandler, webHandler, handler2, handler3, handler4, handler5, handler6, handler7, handler8, handler9, handler10, handler11, handler12, handler13, handler14)
 	adminHandler := projectModule.AdminHdl
 	webAdminHandler := marketingModule.AdminHdl
 	adminServer := InitAdminServer(adminHandler, webAdminHandler)
@@ -129,4 +136,4 @@ func InitApp() (*App, error) {
 
 // wire.go:
 
-var BaseSet = wire.NewSet(InitDB, InitCache, InitRedis, InitMQ, InitCosConfig)
+var BaseSet = wire.NewSet(InitDB, InitCache, InitES, InitRedis, InitMQ, InitCosConfig)

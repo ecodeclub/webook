@@ -23,6 +23,10 @@ mysql:
 redis:
   addr: "redis:6379"
 
+es:
+  url: ""
+  sniff: false
+
 web:
   port: 8080
   mode: debug

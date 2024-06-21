@@ -101,7 +101,7 @@ type SearchResult struct {
 	Cases       []Case        `json:"cases,omitempty"`
 	Questions   []Question    `json:"questions,omitempty"`
 	Skills      []Skill       `json:"skills,omitempty"`
-	QuestionSet []QuestionSet `json:"question_set,omitempty"`
+	QuestionSet []QuestionSet `json:"questionSet,omitempty"`
 }
 
 func NewSearchResult(res *domain.SearchResult) SearchResult {

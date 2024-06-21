@@ -4,7 +4,7 @@
 //go:build !wireinject
 // +build !wireinject
 
-package baguwen
+package search
 
 import (
 	"context"

@@ -33,11 +33,12 @@ import (
 	"github.com/ecodeclub/webook/internal/project"
 	baguwen "github.com/ecodeclub/webook/internal/question"
 	"github.com/ecodeclub/webook/internal/recon"
+	"github.com/ecodeclub/webook/internal/search"
 	"github.com/ecodeclub/webook/internal/skill"
 	"github.com/google/wire"
 )
 
-var BaseSet = wire.NewSet(InitDB, InitCache, InitRedis, InitMQ, InitCosConfig)
+var BaseSet = wire.NewSet(InitDB, InitCache, InitES, InitRedis, InitMQ, InitCosConfig)
 
 func InitApp() (*App, error) {
 	wire.Build(wire.Struct(new(App), "*"),
@@ -74,6 +75,8 @@ func InitApp() (*App, error) {
 		permission.InitModule,
 		wire.FieldsOf(new(*permission.Module), "Svc"),
 		middleware.NewCheckPermissionMiddlewareBuilder,
+		search.InitModule,
+		wire.FieldsOf(new(*search.Module), "Hdl"),
 		initLocalActiveLimiterBuilder,
 		initCronJobs,
 		// 这两个顺序不要换
