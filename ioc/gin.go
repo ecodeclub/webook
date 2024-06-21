@@ -18,6 +18,8 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/ecodeclub/webook/internal/search"
+
 	"github.com/ecodeclub/ginx/middlewares/activelimit/locallimit"
 	"github.com/ecodeclub/webook/internal/interactive"
 
@@ -71,6 +73,7 @@ func initGinxServer(sp session.Provider,
 	paymentHdl *payment.Handler,
 	marketingHdl *marketing.Handler,
 	intrHdl *interactive.Handler,
+	searchHdl *search.Handler,
 ) *egin.Component {
 	session.SetDefaultProvider(sp)
 	res := egin.Load("web").Build()
@@ -117,6 +120,7 @@ func initGinxServer(sp session.Provider,
 	skillHdl.PrivateRoutes(res.Engine)
 	pHdl.PrivateRoutes(res.Engine)
 	orderHdl.PrivateRoutes(res.Engine)
+	searchHdl.PrivateRoutes(res.Engine)
 
 	creditHdl.PrivateRoutes(res.Engine)
 	marketingHdl.PrivateRoutes(res.Engine)

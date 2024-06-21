@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package baguwen
+package search
 
 import "github.com/ecodeclub/webook/internal/search/internal/event"
 

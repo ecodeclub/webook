@@ -26,9 +26,6 @@ import (
 
 type SearchService interface {
 	// Search 出于长远考虑，这里你用 expr 来代表搜索的表达式，后期我们会考虑支持类似 github 那种复杂的搜索表达式
-	// 目前你可以认为，传递过来的就是 biz:all:xxxx
-	// 业务专属就是 biz:question:xxx 这种形态
-	// xxx 就是搜索的内容
 	Search(ctx context.Context, expr string) (*domain.SearchResult, error)
 }
 

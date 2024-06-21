@@ -33,7 +33,7 @@ func NewHandler(svc service.SearchService) *Handler {
 	}
 }
 
-func (h *Handler) PublicRoutes(server *gin.Engine) {
+func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	server.POST("/search/list", ginx.B[SearchReq](h.List))
 }
 
