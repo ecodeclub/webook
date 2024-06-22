@@ -35,7 +35,6 @@ func (h *AdminHandler) PrivateRoutes(server *gin.Engine) {
 	g.POST("/save", ginx.B[Project](h.Save))
 	g.POST("/publish", ginx.B[Project](h.Publish))
 	g.POST("/delete", ginx.B[IdReq](h.Delete))
-	// 上架，也就是作为一个面试项目发布出去
 
 	g.POST("/difficulty/save", ginx.B(h.DifficultySave))
 	g.POST("/difficulty/detail", ginx.B(h.DifficultyDetail))
