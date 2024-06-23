@@ -18,8 +18,6 @@ import (
 	"context"
 )
 
-var defaultSize = 20
-
 type CaseDAO interface {
 	SearchCase(ctx context.Context, offset, limit int, keywords string) ([]Case, error)
 }
