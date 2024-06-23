@@ -100,6 +100,8 @@ func (p Project) toDomain() domain.Project {
 		Desc:           p.Desc,
 		Labels:         p.Labels,
 		Overview:       p.Overview,
+		CodeSPU:        p.CodeSPU,
+		ProductSPU:     p.ProductSPU,
 		SystemDesign:   p.SystemDesign,
 	}
 }

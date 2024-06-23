@@ -27,7 +27,7 @@ type Service interface {
 	FindSPUByID(ctx context.Context, id int64) (domain.SPU, error)
 	FindSKUBySN(ctx context.Context, sn string) (domain.SKU, error)
 
-	SaveProduct(ctx context.Context, spu domain.SPU, uid int64) (int64, error)
+	SaveProduct(ctx context.Context, spu domain.SPU) (string, error)
 	ProductList(ctx context.Context, offset, limit int) (int64, []domain.SPU, error)
 }
 
@@ -51,8 +51,8 @@ func (s *service) FindSKUBySN(ctx context.Context, sn string) (domain.SKU, error
 	return s.repo.FindSKUBySN(ctx, sn)
 }
 
-func (s *service) SaveProduct(ctx context.Context, spu domain.SPU, uid int64) (int64, error) {
-	return s.repo.SaveSPU(ctx, spu, uid)
+func (s *service) SaveProduct(ctx context.Context, spu domain.SPU) (string, error) {
+	return s.repo.SaveSPU(ctx, spu)
 }
 
 func (s *service) ProductList(ctx context.Context, offset, limit int) (int64, []domain.SPU, error) {

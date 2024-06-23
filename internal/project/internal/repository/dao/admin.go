@@ -353,5 +353,6 @@ func NewGORMProjectAdminDAO(db *egorm.Component) *GORMProjectAdminDAO {
 		prjUpdateColumns: []string{
 			"title", "status", "labels", "desc", "overview",
 			"github_repo", "gitee_repo", "ref_question_set",
+			"code_spu", "product_spu",
 			"system_design", "utime"}}
 }

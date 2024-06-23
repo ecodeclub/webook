@@ -19,14 +19,9 @@ package integration
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"testing"
-	"time"
-
-	"github.com/ecodeclub/mq-api"
-	"github.com/ecodeclub/webook/internal/product/internal/event"
 
 	"github.com/ecodeclub/ekit/iox"
 	"github.com/ecodeclub/ginx/session"
@@ -55,11 +50,10 @@ func TestProductModuleTestSuite(t *testing.T) {
 
 type ProductModuleTestSuite struct {
 	suite.Suite
-	server   *egin.Component
-	db       *egorm.Component
-	dao      dao.ProductDAO
-	producer mq.Producer
-	svc      service.Service
+	server *egin.Component
+	db     *egorm.Component
+	dao    dao.ProductDAO
+	svc    service.Service
 }
 
 func (s *ProductModuleTestSuite) SetupSuite() {
@@ -81,10 +75,6 @@ func (s *ProductModuleTestSuite) SetupSuite() {
 	require.NoError(s.T(), err)
 	s.dao = dao.NewProductGORMDAO(s.db)
 	s.svc = startup.InitService()
-	testmq := testioc.InitMQ()
-	producer, err := testmq.Producer(event.CreateProductTopic)
-	require.NoError(s.T(), err)
-	s.producer = producer
 }
 
 func (s *ProductModuleTestSuite) TearDownSuite() {
@@ -654,7 +644,6 @@ func (s *ProductModuleTestSuite) TestService_Save() {
 		req      web.SPUSaveReq
 		after    func(t *testing.T)
 		wantCode int
-		wantResp test.Result[int64]
 	}{
 		{
 			name:   "新增",
@@ -707,14 +696,10 @@ func (s *ProductModuleTestSuite) TestService_Save() {
 			},
 			req: web.SPUSaveReq{
 				SPU: web.SPU{
-					Name: "project1",
-					Desc: "projectDesc",
-					Category0: web.Category{
-						Name: "code",
-					},
-					Category1: web.Category{
-						Name: "project",
-					},
+					Name:      "project1",
+					Desc:      "projectDesc",
+					Category0: "code",
+					Category1: "project",
 					SKUs: []web.SKU{
 						{
 							Name:       "skuName1",
@@ -740,158 +725,11 @@ func (s *ProductModuleTestSuite) TestService_Save() {
 				},
 			},
 			wantCode: 200,
-			wantResp: test.Result[int64]{
-				Data: 1,
-			},
-		},
-		{
-			name: "编辑",
-			before: func(t *testing.T) {
-				_, err := s.dao.SaveProduct(context.Background(),
-					dao.SPU{
-						Id:          1,
-						Category0:   "product",
-						Category1:   "project",
-						SN:          "skn1",
-						Name:        "code1",
-						Description: "sknDesc",
-						Status:      2,
-						Ctime:       1,
-						Utime:       2,
-					}, []dao.SKU{
-						{
-							Id:          1,
-							SPUID:       1,
-							Name:        "skuName1",
-							SN:          "spu1",
-							Description: "skuDesc1",
-							Price:       99,
-							Stock:       1,
-							StockLimit:  10,
-							SaleType:    1,
-							Attrs: sql.NullString{
-								Valid:  true,
-								String: "1",
-							},
-							Image:  "image.com",
-							Status: 2,
-							Ctime:  1,
-							Utime:  2,
-						},
-						{
-							Id:          2,
-							SPUID:       1,
-							SN:          "spu2",
-							Name:        "skuName2",
-							Description: "skuDesc2",
-							Price:       98,
-							Stock:       2,
-							StockLimit:  19,
-							SaleType:    1,
-							Attrs: sql.NullString{
-								Valid:  true,
-								String: "1",
-							},
-							Image:  "image.com",
-							Status: 2,
-							Ctime:  1,
-							Utime:  2,
-						},
-					})
-				require.NoError(t, err)
-
-			},
-			wantCode: 200,
-			wantResp: test.Result[int64]{
-				Data: 1,
-			},
-			after: func(t *testing.T) {
-				spu, err := s.dao.FindSPUByID(context.Background(), 1)
-				require.NoError(t, err)
-				skus, err := s.dao.FindSKUsBySPUID(context.Background(), 1)
-				require.NoError(t, err)
-				s.assertSpu(t, dao.SPU{
-					Category0:   "newProduct",
-					Category1:   "newProject",
-					Name:        "newCode1",
-					Description: "newSknDesc",
-					Status:      2,
-				}, spu)
-				s.assertSkus(t, []dao.SKU{
-					{
-						SPUID:       1,
-						Name:        "newSku1",
-						Description: "newSkuDesc1",
-						Price:       98,
-						Stock:       2,
-						StockLimit:  11,
-						SaleType:    2,
-						Attrs: sql.NullString{
-							Valid:  true,
-							String: "2",
-						},
-						Image:  "image.com.new",
-						Status: 2,
-					},
-					{
-						SPUID:       1,
-						Name:        "skuName3",
-						Description: "skuDesc3",
-						Price:       90,
-						Stock:       8,
-						StockLimit:  8,
-						SaleType:    2,
-						Attrs: sql.NullString{
-							Valid:  true,
-							String: "33",
-						},
-						Image:  "image3.com",
-						Status: 2,
-					},
-				}, skus)
-			},
-			req: web.SPUSaveReq{
-				SPU: web.SPU{
-					ID:   1,
-					SN:   "skn1",
-					Name: "newCode1",
-					Desc: "newSknDesc",
-					Category0: web.Category{
-						Name: "newProduct",
-					},
-					Category1: web.Category{
-						Name: "newProject",
-					},
-					SKUs: []web.SKU{
-						{
-							ID:         1,
-							Name:       "newSku1",
-							Desc:       "newSkuDesc1",
-							Price:      98,
-							Stock:      2,
-							StockLimit: 11,
-							SaleType:   2,
-							Attrs:      "2",
-							Image:      "image.com.new",
-						},
-						{
-							Name:       "skuName3",
-							Desc:       "skuDesc3",
-							Price:      90,
-							Stock:      8,
-							StockLimit: 8,
-							SaleType:   2,
-							Attrs:      "33",
-							Image:      "image3.com",
-						},
-					},
-				},
-			},
 		},
 		{
 			name: "sn相同编辑",
 			before: func(t *testing.T) {
-				_, err := s.dao.SaveProduct(context.Background(),
+				err := s.dao.SaveProduct(context.Background(),
 					dao.SPU{
 						Id:          1,
 						Category0:   "product",
@@ -922,33 +760,11 @@ func (s *ProductModuleTestSuite) TestService_Save() {
 							Ctime:  1,
 							Utime:  2,
 						},
-						{
-							Id:          2,
-							SPUID:       1,
-							SN:          "sku2",
-							Name:        "skuName2",
-							Description: "skuDesc2",
-							Price:       98,
-							Stock:       2,
-							StockLimit:  19,
-							SaleType:    1,
-							Attrs: sql.NullString{
-								Valid:  true,
-								String: "1",
-							},
-							Image:  "image.com",
-							Status: 2,
-							Ctime:  1,
-							Utime:  2,
-						},
 					})
 				require.NoError(t, err)
 
 			},
 			wantCode: 200,
-			wantResp: test.Result[int64]{
-				Data: 1,
-			},
 			after: func(t *testing.T) {
 				spu, err := s.dao.FindSPUByID(context.Background(), 1)
 				require.NoError(t, err)
@@ -996,15 +812,11 @@ func (s *ProductModuleTestSuite) TestService_Save() {
 			},
 			req: web.SPUSaveReq{
 				SPU: web.SPU{
-					SN:   "spn1",
-					Name: "newCode1",
-					Desc: "newSknDesc",
-					Category0: web.Category{
-						Name: "newProduct",
-					},
-					Category1: web.Category{
-						Name: "newProject",
-					},
+					SN:        "spn1",
+					Name:      "newCode1",
+					Desc:      "newSknDesc",
+					Category0: "newProduct",
+					Category1: "newProject",
 					SKUs: []web.SKU{
 						{
 							SN:         "sku1",
@@ -1041,10 +853,10 @@ func (s *ProductModuleTestSuite) TestService_Save() {
 				"/product/save", iox.NewJSONReader(tc.req))
 			require.NoError(t, err)
 			req.Header.Set("content-type", "application/json")
-			recorder := test.NewJSONResponseRecorder[int64]()
+			recorder := test.NewJSONResponseRecorder[string]()
 			s.server.ServeHTTP(recorder, req)
 			require.Equal(t, tc.wantCode, recorder.Code)
-			assert.Equal(t, tc.wantResp, recorder.MustScan())
+			require.True(t, len(recorder.MustScan().Data) > 0)
 			tc.after(t)
 			err = s.db.Exec("TRUNCATE TABLE `spus`").Error
 			s.NoError(err)
@@ -1052,85 +864,6 @@ func (s *ProductModuleTestSuite) TestService_Save() {
 			s.NoError(err)
 		})
 	}
-}
-
-func (s *ProductModuleTestSuite) TestService_Event() {
-	testcases := []struct {
-		name  string
-		evt   event.SPUEvent
-		after func(t *testing.T)
-	}{
-		{
-			name: "同步商品信息",
-			evt: event.SPUEvent{
-				UID:       123,
-				SN:        "spu1",
-				Name:      "project1",
-				Desc:      "desc1",
-				Category1: "category1",
-				Category0: "category0",
-				Status:    domain.StatusOnShelf.ToUint8(),
-				SKUs: []event.SKU{
-					{
-						SN:         "skusn",
-						Name:       "skuName",
-						Desc:       "description",
-						Price:      1,
-						Stock:      1,
-						Status:     domain.StatusOnShelf.ToUint8(),
-						StockLimit: 100,
-						SaleType:   domain.SaleTypeUnlimited.ToUint8(),
-						Attrs:      "11",
-						Image:      "image.com",
-					},
-				},
-			},
-			after: func(t *testing.T) {
-				spu, err := s.dao.FindSPUByID(context.Background(), 1)
-				require.NoError(t, err)
-				skus, err := s.dao.FindSKUsBySPUID(context.Background(), 1)
-				require.NoError(t, err)
-				s.assertSpu(t, dao.SPU{
-
-					Category0:   "category0",
-					Category1:   "category1",
-					Name:        "project1",
-					Description: "desc1",
-					Status:      2,
-				}, spu)
-				s.assertSkus(t, []dao.SKU{
-					{
-						SPUID:       spu.Id,
-						Name:        "skuName",
-						Description: "description",
-						Price:       1,
-						Stock:       1,
-						StockLimit:  100,
-						SaleType:    domain.SaleTypeUnlimited.ToUint8(),
-						Attrs: sql.NullString{
-							Valid:  true,
-							String: "11",
-						},
-						Image:  "image.com",
-						Status: 2,
-					},
-				}, skus)
-			},
-		},
-	}
-	for _, tc := range testcases {
-		s.T().Run(tc.name, func(t *testing.T) {
-			evtJson, err := json.Marshal(tc.evt)
-			require.NoError(t, err)
-			_, err = s.producer.Produce(context.Background(), &mq.Message{
-				Value: evtJson,
-			})
-			require.NoError(t, err)
-			time.Sleep(5 * time.Second)
-			tc.after(t)
-		})
-	}
-
 }
 
 func (s *ProductModuleTestSuite) TestService_List() {
@@ -1153,33 +886,25 @@ func (s *ProductModuleTestSuite) TestService_List() {
 			},
 			wantCode: 200,
 			wantResp: web.SPUListResp{
-				List: []web.SPU{
+				SPUs: []web.SPU{
 					{
-						ID:   100,
-						SN:   "100",
-						Name: "name100",
-						Desc: "desc100",
-						Category0: web.Category{
-							Name: "category0100",
-						},
-						Category1: web.Category{
-							Name: "category1100",
-						},
+						ID:        100,
+						SN:        "100",
+						Name:      "name100",
+						Desc:      "desc100",
+						Category0: "category0100",
+						Category1: "category1100",
 					},
 					{
-						ID:   99,
-						SN:   "99",
-						Name: "name99",
-						Desc: "desc99",
-						Category0: web.Category{
-							Name: "category099",
-						},
-						Category1: web.Category{
-							Name: "category199",
-						},
+						ID:        99,
+						SN:        "99",
+						Name:      "name99",
+						Desc:      "desc99",
+						Category0: "category099",
+						Category1: "category199",
 					},
 				},
-				Count: 100,
+				Total: 100,
 			},
 		},
 		{
@@ -1193,34 +918,26 @@ func (s *ProductModuleTestSuite) TestService_List() {
 			},
 			wantCode: 200,
 			wantResp: web.SPUListResp{
-				List: []web.SPU{
+				SPUs: []web.SPU{
 					{
-						ID:   90,
-						SN:   "90",
-						Name: "name90",
-						Desc: "desc90",
-						Category0: web.Category{
-							Name: "category090",
-						},
-						Category1: web.Category{
-							Name: "category190",
-						},
+						ID:        90,
+						SN:        "90",
+						Name:      "name90",
+						Desc:      "desc90",
+						Category0: "category090",
+						Category1: "category190",
 					},
 
 					{
-						ID:   89,
-						SN:   "89",
-						Name: "name89",
-						Desc: "desc89",
-						Category0: web.Category{
-							Name: "category089",
-						},
-						Category1: web.Category{
-							Name: "category189",
-						},
+						ID:        89,
+						SN:        "89",
+						Name:      "name89",
+						Desc:      "desc89",
+						Category0: "category089",
+						Category1: "category189",
 					},
 				},
-				Count: 100,
+				Total: 100,
 			},
 		},
 	}

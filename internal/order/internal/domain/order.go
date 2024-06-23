@@ -55,11 +55,6 @@ type OrderItem struct {
 	SKU SKU
 }
 
-type Category struct {
-	Name string
-	Desc string
-}
-
 type SPU struct {
 	ID        int64
 	Category0 string
