@@ -21,11 +21,12 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"github.com/ecodeclub/mq-api"
-	"github.com/ecodeclub/webook/internal/product/internal/event"
 	"net/http"
 	"testing"
 	"time"
+
+	"github.com/ecodeclub/mq-api"
+	"github.com/ecodeclub/webook/internal/product/internal/event"
 
 	"github.com/ecodeclub/ekit/iox"
 	"github.com/ecodeclub/ginx/session"
@@ -54,11 +55,11 @@ func TestProductModuleTestSuite(t *testing.T) {
 
 type ProductModuleTestSuite struct {
 	suite.Suite
-	server *egin.Component
-	db     *egorm.Component
-	dao    dao.ProductDAO
+	server   *egin.Component
+	db       *egorm.Component
+	dao      dao.ProductDAO
 	producer mq.Producer
-	svc    service.Service
+	svc      service.Service
 }
 
 func (s *ProductModuleTestSuite) SetupSuite() {
@@ -1117,13 +1118,13 @@ func (s *ProductModuleTestSuite) TestService_Event() {
 	}
 	for _, tc := range testcases {
 		s.T().Run(tc.name, func(t *testing.T) {
-			evtJson,err := json.Marshal(tc.evt)
+			evtJson, err := json.Marshal(tc.evt)
 			require.NoError(t, err)
-			_,err = s.producer.Produce(context.Background(),&mq.Message{
+			_, err = s.producer.Produce(context.Background(), &mq.Message{
 				Value: evtJson,
 			})
 			require.NoError(t, err)
-			time.Sleep(5*time.Second)
+			time.Sleep(5 * time.Second)
 		})
 	}
 

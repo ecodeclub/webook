@@ -21,7 +21,7 @@ import (
 	"github.com/ecodeclub/webook/internal/pkg/middleware"
 	"github.com/ecodeclub/webook/internal/product"
 	"github.com/ecodeclub/webook/internal/project"
-	"github.com/ecodeclub/webook/internal/question"
+	baguwen "github.com/ecodeclub/webook/internal/question"
 	"github.com/ecodeclub/webook/internal/recon"
 	"github.com/ecodeclub/webook/internal/search"
 	"github.com/ecodeclub/webook/internal/skill"

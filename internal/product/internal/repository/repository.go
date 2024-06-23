@@ -17,6 +17,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+
 	"github.com/ecodeclub/webook/internal/pkg/sequencenumber"
 	"golang.org/x/sync/errgroup"
 
@@ -128,14 +129,14 @@ func (p *productRepository) FindSPUs(ctx context.Context, offset, limit int) (in
 		count, err = p.dao.CountSPUs(ctx)
 		return err
 	})
-	if err := eg.Wait();err != nil {
-		return 0,nil,err
+	if err := eg.Wait(); err != nil {
+		return 0, nil, err
 	}
-	domainSPUs := make([]domain.SPU,0,len(spus))
-	for _,spu := range spus {
-		domainSPUs = append(domainSPUs,p.toDomainSPU(spu,[]dao.SKU{}))
+	domainSPUs := make([]domain.SPU, 0, len(spus))
+	for _, spu := range spus {
+		domainSPUs = append(domainSPUs, p.toDomainSPU(spu, []dao.SKU{}))
 	}
-	return count,domainSPUs,nil
+	return count, domainSPUs, nil
 }
 
 func (p *productRepository) toEntity(spu domain.SPU, uid int64) (dao.SPU, []dao.SKU) {

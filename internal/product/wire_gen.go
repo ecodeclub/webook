@@ -8,6 +8,8 @@ package product
 
 import (
 	"context"
+	"sync"
+
 	"github.com/ecodeclub/mq-api"
 	"github.com/ecodeclub/webook/internal/product/internal/domain"
 	"github.com/ecodeclub/webook/internal/product/internal/event"
@@ -18,7 +20,6 @@ import (
 	"github.com/ego-component/egorm"
 	"github.com/google/wire"
 	"gorm.io/gorm"
-	"sync"
 )
 
 // Injectors from wire.go:

@@ -10,7 +10,7 @@ import (
 	"github.com/ecodeclub/webook/internal/product"
 	"github.com/ecodeclub/webook/internal/product/internal/service"
 	"github.com/ecodeclub/webook/internal/product/internal/web"
-	"github.com/ecodeclub/webook/internal/test/ioc"
+	testioc "github.com/ecodeclub/webook/internal/test/ioc"
 )
 
 // Injectors from wire.go:

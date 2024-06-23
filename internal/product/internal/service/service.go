@@ -56,5 +56,5 @@ func (s *service) SaveProduct(ctx context.Context, spu domain.SPU, uid int64) (i
 }
 
 func (s *service) ProductList(ctx context.Context, offset, limit int) (int64, []domain.SPU, error) {
-	return  s.repo.FindSPUs(ctx,offset,limit)
+	return s.repo.FindSPUs(ctx, offset, limit)
 }

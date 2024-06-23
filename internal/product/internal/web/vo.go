@@ -29,14 +29,13 @@ type SPUSaveResp struct {
 
 type SPUListReq struct {
 	Offset int `json:"offset"`
-	Limit int `json:"limit"`
+	Limit  int `json:"limit"`
 }
 
 type SPUListResp struct {
-	List []SPU `json:"list"`
-	Count int64`json:"count"`
+	List  []SPU `json:"list"`
+	Count int64 `json:"count"`
 }
-
 
 type SPU struct {
 	ID        int64    `json:"id,omitempty"`
