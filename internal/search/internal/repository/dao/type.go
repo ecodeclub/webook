@@ -21,7 +21,7 @@ import (
 var defaultSize = 20
 
 type CaseDAO interface {
-	SearchCase(ctx context.Context,  offset, limit int,keywords string) ([]Case, error)
+	SearchCase(ctx context.Context, offset, limit int, keywords string) ([]Case, error)
 }
 
 type QuestionDAO interface {
@@ -30,12 +30,12 @@ type QuestionDAO interface {
 
 type SkillDAO interface {
 	// ids 为case的id 和question的id
-	SearchSkill(ctx context.Context,  offset, limit int,keywords string) ([]Skill, error)
+	SearchSkill(ctx context.Context, offset, limit int, keywords string) ([]Skill, error)
 }
 
 type QuestionSetDAO interface {
 	// ids 为case的id 和question的id
-	SearchQuestionSet(ctx context.Context,  offset, limit int,keywords string) ([]QuestionSet, error)
+	SearchQuestionSet(ctx context.Context, offset, limit int, keywords string) ([]QuestionSet, error)
 }
 
 type AnyDAO interface {

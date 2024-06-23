@@ -23,7 +23,7 @@ import (
 
 type SearchHandler interface {
 	// 不加锁 res
-	search(ctx context.Context, keywords string, offset, limit int ,res *domain.SearchResult) error
+	search(ctx context.Context, keywords string, offset, limit int, res *domain.SearchResult) error
 }
 
 type caseHandler struct {
@@ -31,7 +31,7 @@ type caseHandler struct {
 }
 
 func (c *caseHandler) search(ctx context.Context, keywords string, offset, limit int, res *domain.SearchResult) error {
-	cases, err := c.caseRepo.SearchCase(ctx,offset,limit ,keywords)
+	cases, err := c.caseRepo.SearchCase(ctx, offset, limit, keywords)
 	if err != nil {
 		return err
 	}
@@ -50,7 +50,7 @@ type questionHandler struct {
 }
 
 func (q *questionHandler) search(ctx context.Context, keywords string, offset, limit int, res *domain.SearchResult) error {
-	ques, err := q.questionRepo.SearchQuestion(ctx,offset,limit, keywords)
+	ques, err := q.questionRepo.SearchQuestion(ctx, offset, limit, keywords)
 	if err != nil {
 		return err
 	}
@@ -68,8 +68,8 @@ type questionSetHandler struct {
 	questionSetRepo repository.QuestionSetRepo
 }
 
-func (q *questionSetHandler) search(ctx context.Context, keywords string,  offset, limit int,res *domain.SearchResult) error {
-	questionSets, err := q.questionSetRepo.SearchQuestionSet(ctx,offset,limit,  keywords)
+func (q *questionSetHandler) search(ctx context.Context, keywords string, offset, limit int, res *domain.SearchResult) error {
+	questionSets, err := q.questionSetRepo.SearchQuestionSet(ctx, offset, limit, keywords)
 	if err != nil {
 		return err
 	}
@@ -94,7 +94,7 @@ func NewSkillHandler(
 	}
 }
 func (s *skillHandler) search(ctx context.Context, keywords string, offset, limit int, res *domain.SearchResult) error {
-	skills, err := s.skillRepo.SearchSkill(ctx,offset,limit,keywords)
+	skills, err := s.skillRepo.SearchSkill(ctx, offset, limit, keywords)
 	if err != nil {
 		return err
 	}

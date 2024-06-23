@@ -32,7 +32,7 @@ func NewQuestionSetRepo(questionSetDao dao.QuestionSetDAO) QuestionSetRepo {
 	}
 }
 func (q *questionSetRepo) SearchQuestionSet(ctx context.Context, offset, limit int, keywords string) ([]domain.QuestionSet, error) {
-	sets, err := q.qsDao.SearchQuestionSet(ctx, offset,limit, keywords)
+	sets, err := q.qsDao.SearchQuestionSet(ctx, offset, limit, keywords)
 	if err != nil {
 		return nil, err
 	}

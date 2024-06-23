@@ -49,7 +49,7 @@ func NewQuestionSetDAO(client *elastic.Client) QuestionSetDAO {
 	}
 }
 
-func (q *questionSetElasticDAO) SearchQuestionSet(ctx context.Context,  offset, limit int,keywords string) ([]QuestionSet, error) {
+func (q *questionSetElasticDAO) SearchQuestionSet(ctx context.Context, offset, limit int, keywords string) ([]QuestionSet, error) {
 	query := elastic.NewBoolQuery().Should(
 		// 给予更高权重
 		elastic.NewMatchQuery("title", keywords).Boost(questionSetTitleBoost),
