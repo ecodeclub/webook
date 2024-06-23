@@ -35,6 +35,8 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g := server.Group("/product")
 	g.POST("/spu/detail", ginx.BS[SNReq](h.RetrieveSPUDetail))
 	g.POST("/sku/detail", ginx.BS[SNReq](h.RetrieveSKUDetail))
+	g.POST("/save", ginx.BS[SPUSaveReq](h.SaveProduct))
+	g.POST("/spu/list",ginx.BS[SPUListReq](h.SPUList))
 }
 
 func (h *Handler) RetrieveSPUDetail(ctx *ginx.Context, req SNReq, _ session.Session) (ginx.Result, error) {
@@ -76,4 +78,47 @@ func (h *Handler) RetrieveSKUDetail(ctx *ginx.Context, req SNReq, _ session.Sess
 	return ginx.Result{
 		Data: h.toSKU(sku),
 	}, nil
+}
+
+
+func (h *Handler) SaveProduct(ctx *ginx.Context, req SPUSaveReq, sess session.Session) (ginx.Result, error) {
+	uid := sess.Claims().Uid
+	id, err := h.svc.SaveProduct(ctx.Context, req.SPU.newDomainSPU(), uid)
+	if err != nil {
+		return systemErrorResult, err
+	}
+	return ginx.Result{
+		Data: id,
+	}, nil
+}
+
+func (h *Handler) SPUList(ctx *ginx.Context, req SPUListReq, _ session.Session) (ginx.Result, error) {
+	count, products, err := h.svc.ProductList(ctx.Context, req.Offset, req.Limit)
+	if err != nil {
+		return systemErrorResult, err
+	}
+	return ginx.Result{
+		Data: SPUListResp{
+			List: slice.Map(products, func(idx int, src domain.SPU) SPU {
+				return h.toSPU(src)
+			}),
+			Count: count,
+		},
+	}, nil
+
+}
+
+func (h *Handler) toSPU(sku domain.SPU) SPU {
+	return SPU{
+		ID:   sku.ID,
+		SN:   sku.SN,
+		Name: sku.Name,
+		Desc: sku.Desc,
+		Category1: Category{
+			Name: sku.Category1,
+		},
+		Category0: Category{
+			Name: sku.Category0,
+		},
+	}
 }

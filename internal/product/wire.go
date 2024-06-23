@@ -17,6 +17,9 @@
 package product
 
 import (
+	"context"
+	"github.com/ecodeclub/mq-api"
+	"github.com/ecodeclub/webook/internal/product/internal/event"
 	"sync"
 
 	"github.com/ecodeclub/webook/internal/product/internal/domain"
@@ -51,8 +54,8 @@ var HandlerSet = wire.NewSet(
 	InitService,
 	web.NewHandler)
 
-func InitModule(db *egorm.Component) (*Module, error) {
-	wire.Build(HandlerSet, wire.Struct(new(Module), "*"))
+func InitModule(db *egorm.Component, cmq mq.MQ) (*Module, error) {
+	wire.Build(HandlerSet,  InitConsumer, wire.Struct(new(Module), "*"))
 	return new(Module), nil
 }
 
@@ -64,6 +67,15 @@ func InitHandler(db *egorm.Component) *Handler {
 func InitService(db *egorm.Component) Service {
 	wire.Build(ServiceSet)
 	return nil
+}
+
+func InitConsumer(svc service.Service, cmq mq.MQ) *event.ProductConsumer {
+	consumer, err := event.NewProductConsumer(svc, cmq)
+	if err != nil {
+		panic(err)
+	}
+	consumer.Start(context.Background())
+	return consumer
 }
 
 var once = &sync.Once{}
