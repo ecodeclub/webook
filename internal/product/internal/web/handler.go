@@ -36,7 +36,7 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g.POST("/spu/detail", ginx.BS[SNReq](h.RetrieveSPUDetail))
 	g.POST("/sku/detail", ginx.BS[SNReq](h.RetrieveSKUDetail))
 	g.POST("/save", ginx.BS[SPUSaveReq](h.SaveProduct))
-	g.POST("/spu/list",ginx.BS[SPUListReq](h.SPUList))
+	g.POST("/spu/list", ginx.BS[SPUListReq](h.SPUList))
 }
 
 func (h *Handler) RetrieveSPUDetail(ctx *ginx.Context, req SNReq, _ session.Session) (ginx.Result, error) {
@@ -80,10 +80,9 @@ func (h *Handler) RetrieveSKUDetail(ctx *ginx.Context, req SNReq, _ session.Sess
 	}, nil
 }
 
-
 func (h *Handler) SaveProduct(ctx *ginx.Context, req SPUSaveReq, sess session.Session) (ginx.Result, error) {
 	uid := sess.Claims().Uid
-	id, err := h.svc.SaveProduct(ctx.Context, req.SPU.newDomainSPU(), uid)
+	id, err := h.svc.SaveProduct(ctx.Request.Context(), req.SPU.newDomainSPU(), uid)
 	if err != nil {
 		return systemErrorResult, err
 	}

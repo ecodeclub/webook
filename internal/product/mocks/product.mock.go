@@ -5,6 +5,7 @@
 //
 //	mockgen -source=./service.go -package=productmocks -destination=../../mocks/product.mock.go -typed Service
 //
+
 // Package productmocks is a generated GoMock package.
 package productmocks
 
@@ -49,31 +50,31 @@ func (m *MockService) FindSKUBySN(ctx context.Context, sn string) (domain.SKU, e
 }
 
 // FindSKUBySN indicates an expected call of FindSKUBySN.
-func (mr *MockServiceMockRecorder) FindSKUBySN(ctx, sn any) *ServiceFindSKUBySNCall {
+func (mr *MockServiceMockRecorder) FindSKUBySN(ctx, sn any) *MockServiceFindSKUBySNCall {
 	mr.mock.ctrl.T.Helper()
 	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindSKUBySN", reflect.TypeOf((*MockService)(nil).FindSKUBySN), ctx, sn)
-	return &ServiceFindSKUBySNCall{Call: call}
+	return &MockServiceFindSKUBySNCall{Call: call}
 }
 
-// ServiceFindSKUBySNCall wrap *gomock.Call
-type ServiceFindSKUBySNCall struct {
+// MockServiceFindSKUBySNCall wrap *gomock.Call
+type MockServiceFindSKUBySNCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *ServiceFindSKUBySNCall) Return(arg0 domain.SKU, arg1 error) *ServiceFindSKUBySNCall {
+func (c *MockServiceFindSKUBySNCall) Return(arg0 domain.SKU, arg1 error) *MockServiceFindSKUBySNCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *ServiceFindSKUBySNCall) Do(f func(context.Context, string) (domain.SKU, error)) *ServiceFindSKUBySNCall {
+func (c *MockServiceFindSKUBySNCall) Do(f func(context.Context, string) (domain.SKU, error)) *MockServiceFindSKUBySNCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *ServiceFindSKUBySNCall) DoAndReturn(f func(context.Context, string) (domain.SKU, error)) *ServiceFindSKUBySNCall {
+func (c *MockServiceFindSKUBySNCall) DoAndReturn(f func(context.Context, string) (domain.SKU, error)) *MockServiceFindSKUBySNCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -88,31 +89,31 @@ func (m *MockService) FindSPUByID(ctx context.Context, id int64) (domain.SPU, er
 }
 
 // FindSPUByID indicates an expected call of FindSPUByID.
-func (mr *MockServiceMockRecorder) FindSPUByID(ctx, id any) *ServiceFindSPUByIDCall {
+func (mr *MockServiceMockRecorder) FindSPUByID(ctx, id any) *MockServiceFindSPUByIDCall {
 	mr.mock.ctrl.T.Helper()
 	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindSPUByID", reflect.TypeOf((*MockService)(nil).FindSPUByID), ctx, id)
-	return &ServiceFindSPUByIDCall{Call: call}
+	return &MockServiceFindSPUByIDCall{Call: call}
 }
 
-// ServiceFindSPUByIDCall wrap *gomock.Call
-type ServiceFindSPUByIDCall struct {
+// MockServiceFindSPUByIDCall wrap *gomock.Call
+type MockServiceFindSPUByIDCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *ServiceFindSPUByIDCall) Return(arg0 domain.SPU, arg1 error) *ServiceFindSPUByIDCall {
+func (c *MockServiceFindSPUByIDCall) Return(arg0 domain.SPU, arg1 error) *MockServiceFindSPUByIDCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *ServiceFindSPUByIDCall) Do(f func(context.Context, int64) (domain.SPU, error)) *ServiceFindSPUByIDCall {
+func (c *MockServiceFindSPUByIDCall) Do(f func(context.Context, int64) (domain.SPU, error)) *MockServiceFindSPUByIDCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *ServiceFindSPUByIDCall) DoAndReturn(f func(context.Context, int64) (domain.SPU, error)) *ServiceFindSPUByIDCall {
+func (c *MockServiceFindSPUByIDCall) DoAndReturn(f func(context.Context, int64) (domain.SPU, error)) *MockServiceFindSPUByIDCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -127,31 +128,110 @@ func (m *MockService) FindSPUBySN(ctx context.Context, sn string) (domain.SPU, e
 }
 
 // FindSPUBySN indicates an expected call of FindSPUBySN.
-func (mr *MockServiceMockRecorder) FindSPUBySN(ctx, sn any) *ServiceFindSPUBySNCall {
+func (mr *MockServiceMockRecorder) FindSPUBySN(ctx, sn any) *MockServiceFindSPUBySNCall {
 	mr.mock.ctrl.T.Helper()
 	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindSPUBySN", reflect.TypeOf((*MockService)(nil).FindSPUBySN), ctx, sn)
-	return &ServiceFindSPUBySNCall{Call: call}
+	return &MockServiceFindSPUBySNCall{Call: call}
 }
 
-// ServiceFindSPUBySNCall wrap *gomock.Call
-type ServiceFindSPUBySNCall struct {
+// MockServiceFindSPUBySNCall wrap *gomock.Call
+type MockServiceFindSPUBySNCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *ServiceFindSPUBySNCall) Return(arg0 domain.SPU, arg1 error) *ServiceFindSPUBySNCall {
+func (c *MockServiceFindSPUBySNCall) Return(arg0 domain.SPU, arg1 error) *MockServiceFindSPUBySNCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *ServiceFindSPUBySNCall) Do(f func(context.Context, string) (domain.SPU, error)) *ServiceFindSPUBySNCall {
+func (c *MockServiceFindSPUBySNCall) Do(f func(context.Context, string) (domain.SPU, error)) *MockServiceFindSPUBySNCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *ServiceFindSPUBySNCall) DoAndReturn(f func(context.Context, string) (domain.SPU, error)) *ServiceFindSPUBySNCall {
+func (c *MockServiceFindSPUBySNCall) DoAndReturn(f func(context.Context, string) (domain.SPU, error)) *MockServiceFindSPUBySNCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// ProductList mocks base method.
+func (m *MockService) ProductList(ctx context.Context, offset, limit int) (int64, []domain.SPU, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ProductList", ctx, offset, limit)
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].([]domain.SPU)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// ProductList indicates an expected call of ProductList.
+func (mr *MockServiceMockRecorder) ProductList(ctx, offset, limit any) *MockServiceProductListCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ProductList", reflect.TypeOf((*MockService)(nil).ProductList), ctx, offset, limit)
+	return &MockServiceProductListCall{Call: call}
+}
+
+// MockServiceProductListCall wrap *gomock.Call
+type MockServiceProductListCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockServiceProductListCall) Return(arg0 int64, arg1 []domain.SPU, arg2 error) *MockServiceProductListCall {
+	c.Call = c.Call.Return(arg0, arg1, arg2)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockServiceProductListCall) Do(f func(context.Context, int, int) (int64, []domain.SPU, error)) *MockServiceProductListCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockServiceProductListCall) DoAndReturn(f func(context.Context, int, int) (int64, []domain.SPU, error)) *MockServiceProductListCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// SaveProduct mocks base method.
+func (m *MockService) SaveProduct(ctx context.Context, spu domain.SPU, uid int64) (int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SaveProduct", ctx, spu, uid)
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// SaveProduct indicates an expected call of SaveProduct.
+func (mr *MockServiceMockRecorder) SaveProduct(ctx, spu, uid any) *MockServiceSaveProductCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveProduct", reflect.TypeOf((*MockService)(nil).SaveProduct), ctx, spu, uid)
+	return &MockServiceSaveProductCall{Call: call}
+}
+
+// MockServiceSaveProductCall wrap *gomock.Call
+type MockServiceSaveProductCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockServiceSaveProductCall) Return(arg0 int64, arg1 error) *MockServiceSaveProductCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockServiceSaveProductCall) Do(f func(context.Context, domain.SPU, int64) (int64, error)) *MockServiceSaveProductCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockServiceSaveProductCall) DoAndReturn(f func(context.Context, domain.SPU, int64) (int64, error)) *MockServiceSaveProductCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
