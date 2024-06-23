@@ -52,7 +52,7 @@ const (
 	caseGuidanceBoost = 1
 )
 
-func (c *CaseElasticDAO) SearchCase(ctx context.Context, keywords string) ([]Case, error) {
+func (c *CaseElasticDAO) SearchCase(ctx context.Context, offset, limit int, keywords string) ([]Case, error) {
 	query := elastic.NewBoolQuery().Must(
 		elastic.NewBoolQuery().Should(
 			elastic.NewMatchQuery("title", keywords).Boost(caseTitleBoost),
@@ -62,7 +62,10 @@ func (c *CaseElasticDAO) SearchCase(ctx context.Context, keywords string) ([]Cas
 			elastic.NewMatchQuery("content", keywords).Boost(caseContentBoost),
 			elastic.NewMatchQuery("guidance", keywords).Boost(caseGuidanceBoost)),
 		elastic.NewTermQuery("status", domain.PublishedStatus))
-	resp, err := c.client.Search(CaseIndexName).Size(defaultSize).Query(query).Do(ctx)
+	resp, err := c.client.Search(CaseIndexName).
+		From(offset).
+		Size(limit).
+		Query(query).Do(ctx)
 	if err != nil {
 		return nil, err
 	}

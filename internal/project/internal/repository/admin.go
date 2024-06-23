@@ -262,6 +262,8 @@ func (repo *projectAdminRepository) prjToEntity(prj domain.Project) dao.Project 
 		GithubRepo:     prj.GithubRepo,
 		GiteeRepo:      prj.GiteeRepo,
 		RefQuestionSet: prj.RefQuestionSet,
+		CodeSPU:        sqlx.NewNullString(prj.CodeSPU),
+		ProductSPU:     sqlx.NewNullString(prj.ProductSPU),
 		Labels:         sqlx.JsonColumn[[]string]{Val: prj.Labels, Valid: true},
 		Desc:           prj.Desc,
 		Utime:          prj.Utime,
@@ -303,6 +305,8 @@ func (repo *projectAdminRepository) prjToDomain(prj dao.Project,
 		GiteeRepo:      prj.GiteeRepo,
 		RefQuestionSet: prj.RefQuestionSet,
 		Utime:          prj.Utime,
+		CodeSPU:        prj.CodeSPU.String,
+		ProductSPU:     prj.ProductSPU.String,
 		Resumes: slice.Map(resumes, func(idx int, src dao.ProjectResume) domain.Resume {
 			return repo.rsmToDomain(src)
 		}),

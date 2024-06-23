@@ -155,3 +155,82 @@ func (c *ServiceFindSPUBySNCall) DoAndReturn(f func(context.Context, string) (do
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
+
+// ProductList mocks base method.
+func (m *MockService) ProductList(ctx context.Context, offset, limit int) (int64, []domain.SPU, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ProductList", ctx, offset, limit)
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].([]domain.SPU)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// ProductList indicates an expected call of ProductList.
+func (mr *MockServiceMockRecorder) ProductList(ctx, offset, limit any) *ServiceProductListCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ProductList", reflect.TypeOf((*MockService)(nil).ProductList), ctx, offset, limit)
+	return &ServiceProductListCall{Call: call}
+}
+
+// ServiceProductListCall wrap *gomock.Call
+type ServiceProductListCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *ServiceProductListCall) Return(arg0 int64, arg1 []domain.SPU, arg2 error) *ServiceProductListCall {
+	c.Call = c.Call.Return(arg0, arg1, arg2)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *ServiceProductListCall) Do(f func(context.Context, int, int) (int64, []domain.SPU, error)) *ServiceProductListCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *ServiceProductListCall) DoAndReturn(f func(context.Context, int, int) (int64, []domain.SPU, error)) *ServiceProductListCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// SaveProduct mocks base method.
+func (m *MockService) SaveProduct(ctx context.Context, spu domain.SPU) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SaveProduct", ctx, spu)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// SaveProduct indicates an expected call of SaveProduct.
+func (mr *MockServiceMockRecorder) SaveProduct(ctx, spu any) *ServiceSaveProductCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveProduct", reflect.TypeOf((*MockService)(nil).SaveProduct), ctx, spu)
+	return &ServiceSaveProductCall{Call: call}
+}
+
+// ServiceSaveProductCall wrap *gomock.Call
+type ServiceSaveProductCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *ServiceSaveProductCall) Return(arg0 string, arg1 error) *ServiceSaveProductCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *ServiceSaveProductCall) Do(f func(context.Context, domain.SPU) (string, error)) *ServiceSaveProductCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *ServiceSaveProductCall) DoAndReturn(f func(context.Context, domain.SPU) (string, error)) *ServiceSaveProductCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}

@@ -17,6 +17,11 @@ package repository
 import (
 	"context"
 
+	"github.com/ecodeclub/ekit/sqlx"
+	"github.com/lithammer/shortuuid/v4"
+
+	"golang.org/x/sync/errgroup"
+
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/ecodeclub/webook/internal/product/internal/domain"
 	"github.com/ecodeclub/webook/internal/product/internal/repository/dao"
@@ -27,6 +32,8 @@ type ProductRepository interface {
 	FindSPUBySN(ctx context.Context, sn string) (domain.SPU, error)
 	FindSPUByID(ctx context.Context, id int64) (domain.SPU, error)
 	FindSKUBySN(ctx context.Context, sn string) (domain.SKU, error)
+	SaveSPU(ctx context.Context, spu domain.SPU) (string, error)
+	FindSPUs(ctx context.Context, offset, limit int) (int64, []domain.SPU, error)
 }
 
 func NewProductRepository(d dao.ProductDAO) ProductRepository {
@@ -102,4 +109,78 @@ func (p *productRepository) FindSKUBySN(ctx context.Context, sn string) (domain.
 		return domain.SKU{}, err
 	}
 	return p.toDomainSKU(sku), err
+}
+
+func (p *productRepository) SaveSPU(ctx context.Context, spu domain.SPU) (string, error) {
+	spuEntity, skuEntities := p.toEntity(spu)
+	return spuEntity.SN, p.dao.SaveProduct(ctx, spuEntity, skuEntities)
+}
+func (p *productRepository) FindSPUs(ctx context.Context, offset, limit int) (int64, []domain.SPU, error) {
+	var eg errgroup.Group
+	var count int64
+	var spus []dao.SPU
+	eg.Go(func() error {
+		var err error
+		spus, err = p.dao.FindSPUs(ctx, offset, limit)
+		return err
+	})
+	eg.Go(func() error {
+		var err error
+		count, err = p.dao.CountSPUs(ctx)
+		return err
+	})
+	if err := eg.Wait(); err != nil {
+		return 0, nil, err
+	}
+	domainSPUs := make([]domain.SPU, 0, len(spus))
+	for _, spu := range spus {
+		domainSPUs = append(domainSPUs, p.toDomainSPU(spu, []dao.SKU{}))
+	}
+	return count, domainSPUs, nil
+}
+
+func (p *productRepository) toEntity(spu domain.SPU) (dao.SPU, []dao.SKU) {
+	spuEntity := dao.SPU{
+		Id:          spu.ID,
+		Category0:   spu.Category0,
+		Category1:   spu.Category1,
+		SN:          spu.SN,
+		Name:        spu.Name,
+		Description: spu.Desc,
+		Status:      spu.Status.ToUint8(),
+	}
+	if spu.SN == "" {
+		spuEntity.SN = p.genSN()
+	}
+	skus := make([]dao.SKU, 0, len(spu.SKUs))
+	for _, domainSku := range spu.SKUs {
+		sku := p.toSKUEntity(domainSku)
+		if domainSku.SN == "" {
+			sku.SN = p.genSN()
+		}
+		skus = append(skus, sku)
+	}
+	return spuEntity, skus
+}
+
+func (p *productRepository) toSKUEntity(sku domain.SKU) dao.SKU {
+	skuEntity := dao.SKU{
+		SPUID:       sku.SPUID,
+		Id:          sku.ID,
+		SN:          sku.SN,
+		Name:        sku.Name,
+		Description: sku.Desc,
+		Price:       sku.Price,
+		Stock:       sku.Stock,
+		StockLimit:  sku.StockLimit,
+		SaleType:    sku.SaleType.ToUint8(),
+		Image:       sku.Image,
+		Status:      sku.Status.ToUint8(),
+		Attrs:       sqlx.NewNullString(sku.Attrs),
+	}
+	return skuEntity
+}
+
+func (p *productRepository) genSN() string {
+	return shortuuid.New()
 }

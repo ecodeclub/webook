@@ -38,7 +38,7 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 }
 
 func (h *Handler) List(ctx *ginx.Context, req SearchReq) (ginx.Result, error) {
-	data, err := h.svc.Search(ctx, req.Keywords)
+	data, err := h.svc.Search(ctx, req.Offset, req.Limit, req.Keywords)
 	if err != nil {
 		return systemErrorResult, err
 	}

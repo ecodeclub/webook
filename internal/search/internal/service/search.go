@@ -26,14 +26,14 @@ import (
 
 type SearchService interface {
 	// Search 出于长远考虑，这里你用 expr 来代表搜索的表达式，后期我们会考虑支持类似 github 那种复杂的搜索表达式
-	Search(ctx context.Context, expr string) (*domain.SearchResult, error)
+	Search(ctx context.Context, offset, limit int, expr string) (*domain.SearchResult, error)
 }
 
 type searchSvc struct {
 	searchHandlers map[string]SearchHandler
 }
 
-func (s *searchSvc) Search(ctx context.Context, expr string) (*domain.SearchResult, error) {
+func (s *searchSvc) Search(ctx context.Context, offset, limit int, expr string) (*domain.SearchResult, error) {
 	biz, keywords, err := s.parseExpr(expr)
 	if err != nil {
 		return nil, err
@@ -44,7 +44,7 @@ func (s *searchSvc) Search(ctx context.Context, expr string) (*domain.SearchResu
 		for _, handler := range s.searchHandlers {
 			bizHandler := handler
 			eg.Go(func() error {
-				return bizHandler.search(ctx, keywords, res)
+				return bizHandler.search(ctx, keywords, offset, limit, res)
 			})
 		}
 		if err = eg.Wait(); err != nil {
@@ -55,7 +55,7 @@ func (s *searchSvc) Search(ctx context.Context, expr string) (*domain.SearchResu
 		if !ok {
 			return nil, errors.New("无相关的业务处理方式")
 		}
-		err = bizhandler.search(ctx, keywords, res)
+		err = bizhandler.search(ctx, keywords, offset, limit, res)
 		if err != nil {
 			return nil, err
 		}

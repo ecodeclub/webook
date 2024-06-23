@@ -19,6 +19,9 @@ import (
 	"database/sql"
 	"time"
 
+	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
+
 	"github.com/ecodeclub/webook/internal/product/internal/domain"
 	"github.com/ego-component/egorm"
 )
@@ -30,6 +33,9 @@ type ProductDAO interface {
 	FindSKUsBySPUID(ctx context.Context, spuId int64) ([]SKU, error)
 	CreateSPU(ctx context.Context, spu SPU) (int64, error)
 	CreateSKU(ctx context.Context, sku SKU) (int64, error)
+	SaveProduct(ctx context.Context, spu SPU, skus []SKU) error
+	FindSPUs(ctx context.Context, offset, limit int) ([]SPU, error)
+	CountSPUs(ctx context.Context) (int64, error)
 }
 
 type ProductGORMDAO struct {
@@ -76,6 +82,74 @@ func (d *ProductGORMDAO) CreateSKU(ctx context.Context, sku SKU) (int64, error) 
 	now := time.Now()
 	sku.Utime, sku.Ctime = now.UnixMilli(), now.UnixMilli()
 	return sku.Id, d.db.WithContext(ctx).Create(&sku).Error
+}
+func (d *ProductGORMDAO) SaveProduct(ctx context.Context, spu SPU, skus []SKU) error {
+
+	err := d.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		id, err := d.saveSPU(tx, spu)
+		if err != nil {
+			return err
+		}
+		return d.saveSkus(tx, id, skus)
+	})
+	return err
+}
+
+func (d *ProductGORMDAO) saveSPU(tx *gorm.DB, spu SPU) (int64, error) {
+	now := time.Now().UnixMilli()
+	spu.Utime = now
+	if spu.Id == 0 {
+		spu.Status = 2
+		spu.Ctime = now
+	}
+
+	err := tx.Clauses(clause.OnConflict{
+		DoUpdates: clause.AssignmentColumns([]string{
+			"category0", "category1", "name",
+			"description", "utime",
+		}),
+	}).Create(&spu).Error
+	return spu.Id, err
+}
+
+func (d *ProductGORMDAO) saveSkus(tx *gorm.DB, spuId int64, skus []SKU) error {
+	now := time.Now().UnixMilli()
+	for idx := range skus {
+		skus[idx].Utime = now
+		skus[idx].SPUID = spuId
+		if skus[idx].Id == 0 {
+			skus[idx].Status = 2
+			skus[idx].Ctime = now
+		}
+	}
+	err := tx.Clauses(clause.OnConflict{
+		DoUpdates: clause.AssignmentColumns([]string{
+			"name", "description", "price",
+			"stock", "stock_limit", "sale_type",
+			"attrs", "image", "utime",
+		}),
+	}).Create(&skus).Error
+	return err
+}
+
+func (d *ProductGORMDAO) CountSPUs(ctx context.Context) (int64, error) {
+	var count int64
+	err := d.db.WithContext(ctx).
+		Model(&SPU{}).
+		Where(" status = ?", domain.StatusOnShelf.ToUint8()).Count(&count).Error
+	return count, err
+}
+
+func (d *ProductGORMDAO) FindSPUs(ctx context.Context, offset, limit int) ([]SPU, error) {
+	var res []SPU
+	err := d.db.WithContext(ctx).
+		Model(&SPU{}).
+		Where(" status = ?", domain.StatusOnShelf.ToUint8()).
+		Order("ctime DESC").
+		Offset(offset).
+		Limit(limit).
+		Find(&res).Error
+	return res, err
 }
 
 type SPU struct {

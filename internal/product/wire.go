@@ -19,6 +19,7 @@ package product
 import (
 	"sync"
 
+	"github.com/ecodeclub/mq-api"
 	"github.com/ecodeclub/webook/internal/product/internal/domain"
 	"github.com/ecodeclub/webook/internal/product/internal/repository"
 	"github.com/ecodeclub/webook/internal/product/internal/repository/dao"
@@ -51,7 +52,7 @@ var HandlerSet = wire.NewSet(
 	InitService,
 	web.NewHandler)
 
-func InitModule(db *egorm.Component) (*Module, error) {
+func InitModule(db *egorm.Component, cmq mq.MQ) (*Module, error) {
 	wire.Build(HandlerSet, wire.Struct(new(Module), "*"))
 	return new(Module), nil
 }

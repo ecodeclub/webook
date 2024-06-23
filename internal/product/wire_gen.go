@@ -9,6 +9,7 @@ package product
 import (
 	"sync"
 
+	"github.com/ecodeclub/mq-api"
 	"github.com/ecodeclub/webook/internal/product/internal/domain"
 	"github.com/ecodeclub/webook/internal/product/internal/repository"
 	"github.com/ecodeclub/webook/internal/product/internal/repository/dao"
@@ -21,7 +22,7 @@ import (
 
 // Injectors from wire.go:
 
-func InitModule(db *gorm.DB) (*Module, error) {
+func InitModule(db *gorm.DB, cmq mq.MQ) (*Module, error) {
 	service := InitService(db)
 	handler := web.NewHandler(service)
 	module := &Module{
