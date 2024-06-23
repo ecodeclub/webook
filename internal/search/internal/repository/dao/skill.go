@@ -59,7 +59,7 @@ func NewSkillElasticDAO(client *elastic.Client) SkillDAO {
 	}
 }
 
-func (s *skillElasticDAO) SearchSkill(ctx context.Context, keywords string) ([]Skill, error) {
+func (s *skillElasticDAO) SearchSkill(ctx context.Context,  offset, limit int,keywords string) ([]Skill, error) {
 
 	query :=
 		elastic.NewBoolQuery().Should(
@@ -72,7 +72,9 @@ func (s *skillElasticDAO) SearchSkill(ctx context.Context, keywords string) ([]S
 				elastic.NewMatchQuery("advanced.desc", keywords),
 			))
 
-	resp, err := s.client.Search(SkillIndexName).Size(defaultSize).Query(query).Do(ctx)
+	resp, err := s.client.Search(SkillIndexName).
+		From(offset).
+		Size(limit).Query(query).Do(ctx)
 	if err != nil {
 		return nil, err
 	}

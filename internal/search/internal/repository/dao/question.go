@@ -64,7 +64,7 @@ func NewQuestionDAO(client *elastic.Client) QuestionDAO {
 	}
 }
 
-func (q *questionElasticDAO) SearchQuestion(ctx context.Context, keywords string) ([]Question, error) {
+func (q *questionElasticDAO) SearchQuestion(ctx context.Context, offset, limit int, keywords string) ([]Question, error) {
 	query := elastic.NewBoolQuery().Must(
 		elastic.NewBoolQuery().Should(
 			// 给予更高权重
@@ -88,7 +88,9 @@ func (q *questionElasticDAO) SearchQuestion(ctx context.Context, keywords string
 			elastic.NewMatchQuery("answer.advanced.highlight", keywords),
 			elastic.NewMatchQuery("answer.advanced.guidance", keywords)),
 		elastic.NewTermQuery("status", 2))
-	resp, err := q.client.Search(QuestionIndexName).Size(defaultSize).Query(query).Do(ctx)
+	resp, err := q.client.Search(QuestionIndexName).
+		From(offset).
+		Size(limit).Query(query).Do(ctx)
 	if err != nil {
 		return nil, err
 	}

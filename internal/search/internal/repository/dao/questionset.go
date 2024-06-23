@@ -49,13 +49,15 @@ func NewQuestionSetDAO(client *elastic.Client) QuestionSetDAO {
 	}
 }
 
-func (q *questionSetElasticDAO) SearchQuestionSet(ctx context.Context, keywords string) ([]QuestionSet, error) {
+func (q *questionSetElasticDAO) SearchQuestionSet(ctx context.Context,  offset, limit int,keywords string) ([]QuestionSet, error) {
 	query := elastic.NewBoolQuery().Should(
 		// 给予更高权重
 		elastic.NewMatchQuery("title", keywords).Boost(questionSetTitleBoost),
 		elastic.NewMatchQuery("description", keywords).Boost(questionSetDescription),
 	)
-	resp, err := q.client.Search(QuestionSetIndexName).Size(defaultSize).Query(query).Do(ctx)
+	resp, err := q.client.Search(QuestionSetIndexName).
+		From(offset).
+		Size(limit).Query(query).Do(ctx)
 	if err != nil {
 		return nil, err
 	}

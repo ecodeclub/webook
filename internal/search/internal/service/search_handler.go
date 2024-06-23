@@ -23,15 +23,15 @@ import (
 
 type SearchHandler interface {
 	// 不加锁 res
-	search(ctx context.Context, keywords string, res *domain.SearchResult) error
+	search(ctx context.Context, keywords string, offset, limit int ,res *domain.SearchResult) error
 }
 
 type caseHandler struct {
 	caseRepo repository.CaseRepo
 }
 
-func (c *caseHandler) search(ctx context.Context, keywords string, res *domain.SearchResult) error {
-	cases, err := c.caseRepo.SearchCase(ctx, keywords)
+func (c *caseHandler) search(ctx context.Context, keywords string, offset, limit int, res *domain.SearchResult) error {
+	cases, err := c.caseRepo.SearchCase(ctx,offset,limit ,keywords)
 	if err != nil {
 		return err
 	}
@@ -49,8 +49,8 @@ type questionHandler struct {
 	questionRepo repository.QuestionRepo
 }
 
-func (q *questionHandler) search(ctx context.Context, keywords string, res *domain.SearchResult) error {
-	ques, err := q.questionRepo.SearchQuestion(ctx, keywords)
+func (q *questionHandler) search(ctx context.Context, keywords string, offset, limit int, res *domain.SearchResult) error {
+	ques, err := q.questionRepo.SearchQuestion(ctx,offset,limit, keywords)
 	if err != nil {
 		return err
 	}
@@ -68,8 +68,8 @@ type questionSetHandler struct {
 	questionSetRepo repository.QuestionSetRepo
 }
 
-func (q *questionSetHandler) search(ctx context.Context, keywords string, res *domain.SearchResult) error {
-	questionSets, err := q.questionSetRepo.SearchQuestionSet(ctx, keywords)
+func (q *questionSetHandler) search(ctx context.Context, keywords string,  offset, limit int,res *domain.SearchResult) error {
+	questionSets, err := q.questionSetRepo.SearchQuestionSet(ctx,offset,limit,  keywords)
 	if err != nil {
 		return err
 	}
@@ -93,8 +93,8 @@ func NewSkillHandler(
 		skillRepo: skillRepo,
 	}
 }
-func (s *skillHandler) search(ctx context.Context, keywords string, res *domain.SearchResult) error {
-	skills, err := s.skillRepo.SearchSkill(ctx, keywords)
+func (s *skillHandler) search(ctx context.Context, keywords string, offset, limit int, res *domain.SearchResult) error {
+	skills, err := s.skillRepo.SearchSkill(ctx,offset,limit,keywords)
 	if err != nil {
 		return err
 	}

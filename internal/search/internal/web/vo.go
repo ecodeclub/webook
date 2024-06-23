@@ -21,6 +21,8 @@ import (
 )
 
 type SearchReq struct {
+	Offset int `json:"offset"`
+	Limit int `json:"limit"`
 	Keywords string `json:"keywords,omitempty"`
 }
 

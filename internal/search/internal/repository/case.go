@@ -32,8 +32,8 @@ func NewCaseRepo(caseDao dao.CaseDAO) CaseRepo {
 	}
 }
 
-func (c *caseRepository) SearchCase(ctx context.Context, keywords string) ([]domain.Case, error) {
-	cases, err := c.caseDao.SearchCase(ctx, keywords)
+func (c *caseRepository) SearchCase(ctx context.Context,  offset, limit int,keywords string) ([]domain.Case, error) {
+	cases, err := c.caseDao.SearchCase(ctx, offset,limit, keywords)
 	if err != nil {
 		return nil, err
 	}
