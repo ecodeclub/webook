@@ -1064,12 +1064,12 @@ func (s *ProductModuleTestSuite) TestService_Event() {
 			name: "同步商品信息",
 			evt: event.SPUEvent{
 				UID:       123,
-				ID:        1,
 				SN:        "spu1",
 				Name:      "project1",
 				Desc:      "desc1",
 				Category1: "category1",
 				Category0: "category0",
+				Status:    domain.StatusOnShelf.ToUint8(),
 				SKUs: []event.SKU{
 					{
 						SN:         "skusn",
@@ -1077,6 +1077,7 @@ func (s *ProductModuleTestSuite) TestService_Event() {
 						Desc:       "description",
 						Price:      1,
 						Stock:      1,
+						Status:     domain.StatusOnShelf.ToUint8(),
 						StockLimit: 100,
 						SaleType:   domain.SaleTypeUnlimited.ToUint8(),
 						Attrs:      "11",
@@ -1090,6 +1091,7 @@ func (s *ProductModuleTestSuite) TestService_Event() {
 				skus, err := s.dao.FindSKUsBySPUID(context.Background(), 1)
 				require.NoError(t, err)
 				s.assertSpu(t, dao.SPU{
+
 					Category0:   "category0",
 					Category1:   "category1",
 					Name:        "project1",
@@ -1125,6 +1127,7 @@ func (s *ProductModuleTestSuite) TestService_Event() {
 			})
 			require.NoError(t, err)
 			time.Sleep(5 * time.Second)
+			tc.after(t)
 		})
 	}
 

@@ -14,6 +14,7 @@ type SPUEvent struct {
 	Desc      string `json:"desc"`
 	Category0 string `json:"category0"`
 	Category1 string `json:"category1"`
+	Status    uint8  `json:"status"`
 	SKUs      []SKU  `json:"skus"`
 }
 
@@ -23,6 +24,7 @@ type SKU struct {
 	Name       string `json:"name"`
 	Desc       string `json:"desc"`
 	Price      int64  `json:"price"`
+	Status     uint8  `json:"status"`
 	Stock      int64  `json:"stock"`
 	StockLimit int64  `json:"stockLimit"`
 	SaleType   uint8  `json:"saleType"`
@@ -38,6 +40,7 @@ func (s SPUEvent) ToDomain() domain.SPU {
 		Desc:      s.Desc,
 		Category0: s.Category0,
 		Category1: s.Category1,
+		Status:    domain.Status(s.Status),
 	}
 	skus := make([]domain.SKU, 0, len(s.SKUs))
 	for _, sku := range s.SKUs {
@@ -47,6 +50,7 @@ func (s SPUEvent) ToDomain() domain.SPU {
 			Name:       sku.Name,
 			Desc:       sku.Desc,
 			Price:      sku.Price,
+			Status:     domain.Status(sku.Status),
 			Stock:      sku.Stock,
 			StockLimit: sku.StockLimit,
 			SaleType:   domain.SaleType(sku.SaleType),
@@ -54,5 +58,6 @@ func (s SPUEvent) ToDomain() domain.SPU {
 			Image:      sku.Image,
 		})
 	}
+	spu.SKUs = skus
 	return spu
 }
