@@ -37,3 +37,5 @@ cover.out
 /config/cert/
 
 local_test.go
+
+.DS_Store
