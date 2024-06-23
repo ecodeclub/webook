@@ -14,10 +14,7 @@
 
 package product
 
-import "github.com/ecodeclub/webook/internal/product/internal/event"
-
 type Module struct {
-	Hdl      *Handler
-	Consumer *event.ProductConsumer
-	Svc      Service
+	Hdl *Handler
+	Svc Service
 }

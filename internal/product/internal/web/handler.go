@@ -81,13 +81,12 @@ func (h *Handler) RetrieveSKUDetail(ctx *ginx.Context, req SNReq, _ session.Sess
 }
 
 func (h *Handler) SaveProduct(ctx *ginx.Context, req SPUSaveReq, sess session.Session) (ginx.Result, error) {
-	uid := sess.Claims().Uid
-	id, err := h.svc.SaveProduct(ctx.Request.Context(), req.SPU.newDomainSPU(), uid)
+	sn, err := h.svc.SaveProduct(ctx, req.SPU.newDomainSPU())
 	if err != nil {
 		return systemErrorResult, err
 	}
 	return ginx.Result{
-		Data: id,
+		Data: sn,
 	}, nil
 }
 
@@ -98,26 +97,15 @@ func (h *Handler) SPUList(ctx *ginx.Context, req SPUListReq, _ session.Session) 
 	}
 	return ginx.Result{
 		Data: SPUListResp{
-			List: slice.Map(products, func(idx int, src domain.SPU) SPU {
+			SPUs: slice.Map(products, func(idx int, src domain.SPU) SPU {
 				return h.toSPU(src)
 			}),
-			Count: count,
+			Total: count,
 		},
 	}, nil
 
 }
 
-func (h *Handler) toSPU(sku domain.SPU) SPU {
-	return SPU{
-		ID:   sku.ID,
-		SN:   sku.SN,
-		Name: sku.Name,
-		Desc: sku.Desc,
-		Category1: Category{
-			Name: sku.Category1,
-		},
-		Category0: Category{
-			Name: sku.Category0,
-		},
-	}
+func (h *Handler) toSPU(spu domain.SPU) SPU {
+	return newSPU(spu)
 }

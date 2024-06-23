@@ -33,7 +33,7 @@ type ProductDAO interface {
 	FindSKUsBySPUID(ctx context.Context, spuId int64) ([]SKU, error)
 	CreateSPU(ctx context.Context, spu SPU) (int64, error)
 	CreateSKU(ctx context.Context, sku SKU) (int64, error)
-	SaveProduct(ctx context.Context, spu SPU, skus []SKU) (int64, error)
+	SaveProduct(ctx context.Context, spu SPU, skus []SKU) error
 	FindSPUs(ctx context.Context, offset, limit int) ([]SPU, error)
 	CountSPUs(ctx context.Context) (int64, error)
 }
@@ -83,48 +83,16 @@ func (d *ProductGORMDAO) CreateSKU(ctx context.Context, sku SKU) (int64, error) 
 	sku.Utime, sku.Ctime = now.UnixMilli(), now.UnixMilli()
 	return sku.Id, d.db.WithContext(ctx).Create(&sku).Error
 }
-func (d *ProductGORMDAO) SaveProduct(ctx context.Context, spu SPU, skus []SKU) (int64, error) {
-	var id int64
-	var err error
-	err = d.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		id, err = d.saveSPU(tx, spu)
-		if err != nil {
-			return err
-		}
-		// 找到所有的id
-		ids, err := d.findSkuIDs(tx, id)
-		if err != nil {
-			return err
-		}
-		// 删除多余的
-		err = d.deleteSKUs(tx, ids, skus)
-		if err != nil {
-			return err
-		}
-		for idx := range skus {
-			skus[idx].SPUID = id
-		}
+func (d *ProductGORMDAO) SaveProduct(ctx context.Context, spu SPU, skus []SKU) error {
 
-		return d.saveSkus(tx, skus)
+	err := d.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		id, err := d.saveSPU(tx, spu)
+		if err != nil {
+			return err
+		}
+		return d.saveSkus(tx, id, skus)
 	})
-	return id, err
-}
-func (d *ProductGORMDAO) deleteSKUs(tx *gorm.DB, allIds []int64, skus []SKU) error {
-	deleteIDs := make([]int64, 0, len(allIds))
-	idMap := make(map[int64]struct{}, len(allIds))
-	for _, sku := range skus {
-		if sku.Id == 0 {
-			continue
-		}
-		idMap[sku.Id] = struct{}{}
-	}
-
-	for _, id := range allIds {
-		if _, ok := idMap[id]; !ok {
-			deleteIDs = append(deleteIDs, id)
-		}
-	}
-	return tx.Where("id in ?", deleteIDs).Delete(&SKU{}).Error
+	return err
 }
 
 func (d *ProductGORMDAO) saveSPU(tx *gorm.DB, spu SPU) (int64, error) {
@@ -136,11 +104,6 @@ func (d *ProductGORMDAO) saveSPU(tx *gorm.DB, spu SPU) (int64, error) {
 	}
 
 	err := tx.Clauses(clause.OnConflict{
-		Columns: []clause.Column{
-			{
-				Name: "sn",
-			},
-		},
 		DoUpdates: clause.AssignmentColumns([]string{
 			"category0", "category1", "name",
 			"description", "utime",
@@ -149,28 +112,17 @@ func (d *ProductGORMDAO) saveSPU(tx *gorm.DB, spu SPU) (int64, error) {
 	return spu.Id, err
 }
 
-func (d *ProductGORMDAO) findSkuIDs(tx *gorm.DB, id int64) ([]int64, error) {
-	// 后台操作就不进行加锁
-	ids := make([]int64, 0)
-	err := tx.Model(&SKU{}).Select("id").Where("spu_id = ?", id).Scan(&ids).Error
-	return ids, err
-}
-
-func (d *ProductGORMDAO) saveSkus(tx *gorm.DB, skus []SKU) error {
+func (d *ProductGORMDAO) saveSkus(tx *gorm.DB, spuId int64, skus []SKU) error {
 	now := time.Now().UnixMilli()
 	for idx := range skus {
 		skus[idx].Utime = now
+		skus[idx].SPUID = spuId
 		if skus[idx].Id == 0 {
 			skus[idx].Status = 2
 			skus[idx].Ctime = now
 		}
 	}
 	err := tx.Clauses(clause.OnConflict{
-		Columns: []clause.Column{
-			{
-				Name: "sn",
-			},
-		},
 		DoUpdates: clause.AssignmentColumns([]string{
 			"name", "description", "price",
 			"stock", "stock_limit", "sale_type",

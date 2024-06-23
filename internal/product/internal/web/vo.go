@@ -33,18 +33,18 @@ type SPUListReq struct {
 }
 
 type SPUListResp struct {
-	List  []SPU `json:"list"`
-	Count int64 `json:"count"`
+	SPUs  []SPU `json:"spus,omitempty"`
+	Total int64 `json:"total,omitempty"`
 }
 
 type SPU struct {
-	ID        int64    `json:"id,omitempty"`
-	SN        string   `json:"sn"`
-	Name      string   `json:"name"`
-	Desc      string   `json:"desc"`
-	SKUs      []SKU    `json:"skus,omitempty"`
-	Category0 Category `json:"category0,omitempty"`
-	Category1 Category `json:"category1,omitempty"`
+	ID        int64  `json:"id,omitempty"`
+	SN        string `json:"sn"`
+	Name      string `json:"name"`
+	Desc      string `json:"desc"`
+	SKUs      []SKU  `json:"skus,omitempty"`
+	Category0 string `json:"category0,omitempty"`
+	Category1 string `json:"category1,omitempty"`
 }
 
 type SKU struct {
@@ -58,13 +58,17 @@ type SKU struct {
 	SaleType   uint8  `json:"saleType"`
 	Attrs      string `json:"attrs,omitempty"`
 	Image      string `json:"image"`
-	// SaleStart  int64  `json:"saleStart"`
-	// SaleEnd    int64  `json:"saleEnd"`
 }
 
-type Category struct {
-	Name string `json:"name"`
-	Desc string `json:"desc"`
+func newSPU(spu domain.SPU) SPU {
+	return SPU{
+		ID:        spu.ID,
+		SN:        spu.SN,
+		Name:      spu.Name,
+		Desc:      spu.Desc,
+		Category1: spu.Category1,
+		Category0: spu.Category0,
+	}
 }
 
 func (s SPU) newDomainSPU() domain.SPU {
@@ -73,8 +77,8 @@ func (s SPU) newDomainSPU() domain.SPU {
 		SN:        s.SN,
 		Name:      s.Name,
 		Desc:      s.Desc,
-		Category0: s.Category0.Name,
-		Category1: s.Category1.Name,
+		Category0: s.Category0,
+		Category1: s.Category1,
 	}
 	skus := make([]domain.SKU, 0, len(s.SKUs))
 	for _, sku := range s.SKUs {
