@@ -64,7 +64,7 @@ func InitModule(db *egorm.Component, q mq.MQ, c ecache.Cache, om *order.Module, 
 		producer.NewMemberEventProducer,
 		producer.NewCreditEventProducer,
 		producer.NewPermissionEventProducer,
-		qywechatProducer,
+		newQYWechatProducer,
 		service.NewService,
 		web.NewHandler,
 		service.NewAdminService,
@@ -119,14 +119,14 @@ func invitationCodeExpiration() time.Duration {
 	return time.Minute * 30
 }
 
-func qywechatProducer() producer.QYWeiChatEventProducer {
+func newQYWechatProducer() (producer.QYWeiChatEventProducer, error) {
 	type QyWechat struct {
 		WebhookURL string
 	}
 	var cfg QyWechat
 	err := econf.UnmarshalKey("qywechat.chatRobot", &cfg)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
-	return producer.NewQYWeChatEventProducer(cfg.WebhookURL, http.Post)
+	return producer.NewQYWeChatEventProducer(cfg.WebhookURL, http.Post), nil
 }

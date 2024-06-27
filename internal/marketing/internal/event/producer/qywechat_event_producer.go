@@ -11,7 +11,6 @@ import (
 	"github.com/ecodeclub/webook/internal/marketing/internal/event"
 )
 
-//go:generate mockgen -source=./qywechat_event_producer.go -package=evtmocks -destination=../mocks/qywechat.mock.go -typed QYWeiChatEventProducer
 type QYWeiChatEventProducer interface {
 	Produce(ctx context.Context, evt event.QYWechatEvent) error
 }
