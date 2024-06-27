@@ -59,6 +59,7 @@ func NewService(
 	memberEventProducer producer.MemberEventProducer,
 	creditEventProducer producer.CreditEventProducer,
 	permissionEventProducer producer.PermissionEventProducer,
+	qywechatEventProducer producer.QYWeiChatEventProducer,
 ) Service {
 
 	return &service{
@@ -66,7 +67,7 @@ func NewService(
 		productSvc:              productSvc,
 		eventKeyGenerator:       eventKeyGenerator,
 		invitationCodeGenerator: codeGenerator,
-		orderActivityExecutor:   orderexe.NewOrderActivityExecutor(repo, orderSvc, codeGenerator, memberEventProducer, creditEventProducer, permissionEventProducer),
+		orderActivityExecutor:   orderexe.NewOrderActivityExecutor(repo, orderSvc, codeGenerator, memberEventProducer, creditEventProducer, permissionEventProducer, qywechatEventProducer),
 		userActivityExecutor:    user.NewActivityExecutor(repo, memberEventProducer, creditEventProducer, 500),
 	}
 }

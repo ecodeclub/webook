@@ -18,10 +18,12 @@ package marketing
 
 import (
 	"context"
+	"net/http"
 	"sync"
 
 	"time"
 
+	"github.com/gotomicro/ego/core/econf"
 	"gorm.io/gorm"
 
 	"github.com/ecodeclub/ecache"
@@ -62,6 +64,7 @@ func InitModule(db *egorm.Component, q mq.MQ, c ecache.Cache, om *order.Module, 
 		producer.NewMemberEventProducer,
 		producer.NewCreditEventProducer,
 		producer.NewPermissionEventProducer,
+		newQYWechatProducer,
 		service.NewService,
 		web.NewHandler,
 		service.NewAdminService,
@@ -114,4 +117,16 @@ func eventKeyGenerator() func() string {
 
 func invitationCodeExpiration() time.Duration {
 	return time.Minute * 30
+}
+
+func newQYWechatProducer() (producer.QYWeiChatEventProducer, error) {
+	type QyWechat struct {
+		WebhookURL string
+	}
+	var cfg QyWechat
+	err := econf.UnmarshalKey("qywechat.chatRobot", &cfg)
+	if err != nil {
+		return nil, err
+	}
+	return producer.NewQYWeChatEventProducer(cfg.WebhookURL, http.Post), nil
 }
