@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"sync"
 	"testing"
@@ -136,6 +137,7 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeOrderEvent() {
 		after          func(t *testing.T, evt event.OrderEvent)
 		errRequireFunc require.ErrorAssertionFunc
 	}{
+		// 会员商品/兑换码
 		{
 			name: "消费完成订单消息成功_通过会员商品开通会员_单订单项_多个数量",
 			newMQFunc: func(t *testing.T, ctrl *gomock.Controller, evt event.OrderEvent) mq.MQ {
@@ -199,7 +201,7 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeOrderEvent() {
 				eventKeyGenerator := func() string {
 					return fmt.Sprintf("event-key-%s", evt.OrderSN)
 				}
-				return service.NewService(nil, mockOrderSvc, nil, nil, eventKeyGenerator, memberEventProducer, nil, nil)
+				return service.NewService(nil, mockOrderSvc, nil, nil, eventKeyGenerator, memberEventProducer, nil, nil, nil)
 			},
 			evt: event.OrderEvent{
 				OrderSN: "OrderSN-marketing-member",
@@ -293,7 +295,7 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeOrderEvent() {
 				eventKeyGenerator := func() string {
 					return fmt.Sprintf("event-key-%s", evt.OrderSN)
 				}
-				return service.NewService(nil, mockOrderSvc, nil, nil, eventKeyGenerator, memberEventProducer, nil, nil)
+				return service.NewService(nil, mockOrderSvc, nil, nil, eventKeyGenerator, memberEventProducer, nil, nil, nil)
 			},
 			evt: event.OrderEvent{
 				OrderSN: "OrderSN-marketing-member-2",
@@ -360,7 +362,7 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeOrderEvent() {
 					}, nil).Times(2)
 
 				return service.NewService(s.repo, mockOrderSvc, nil, s.getRedemptionCodeGenerator(sequencenumber.NewGenerator()),
-					nil, nil, nil, nil)
+					nil, nil, nil, nil, nil)
 			},
 			evt: event.OrderEvent{
 				OrderSN: "OrderSN-marketing-code-member-1",
@@ -448,7 +450,7 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeOrderEvent() {
 					}, nil).Times(2)
 
 				return service.NewService(s.repo, mockOrderSvc, nil, s.getRedemptionCodeGenerator(sequencenumber.NewGenerator()),
-					nil, nil, nil, nil)
+					nil, nil, nil, nil, nil)
 			},
 			evt: event.OrderEvent{
 				OrderSN: "OrderSN-marketing-code-member-2",
@@ -483,6 +485,7 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeOrderEvent() {
 			},
 		},
 
+		// 面试项目商品/兑换码
 		{
 			name: "消费完成订单消息成功_通过项目商品开通项目权限_单订单项",
 			newMQFunc: func(t *testing.T, ctrl *gomock.Controller, evt event.OrderEvent) mq.MQ {
@@ -544,7 +547,7 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeOrderEvent() {
 				eventKeyGenerator := func() string {
 					return fmt.Sprintf("event-key-%s", evt.OrderSN)
 				}
-				return service.NewService(nil, mockOrderSvc, nil, nil, eventKeyGenerator, nil, nil, permissionEventProducer)
+				return service.NewService(nil, mockOrderSvc, nil, nil, eventKeyGenerator, nil, nil, permissionEventProducer, nil)
 			},
 			evt: event.OrderEvent{
 				OrderSN: "OrderSN-marketing-project-101",
@@ -636,7 +639,7 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeOrderEvent() {
 				eventKeyGenerator := func() string {
 					return fmt.Sprintf("event-key-%s", evt.OrderSN)
 				}
-				return service.NewService(nil, mockOrderSvc, nil, nil, eventKeyGenerator, nil, nil, permissionEventProducer)
+				return service.NewService(nil, mockOrderSvc, nil, nil, eventKeyGenerator, nil, nil, permissionEventProducer, nil)
 			},
 			evt: event.OrderEvent{
 				OrderSN: "OrderSN-marketing-project-102",
@@ -698,7 +701,7 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeOrderEvent() {
 					}, nil).Times(2)
 
 				return service.NewService(s.repo, mockOrderSvc, nil, s.getRedemptionCodeGenerator(sequencenumber.NewGenerator()),
-					nil, nil, nil, nil)
+					nil, nil, nil, nil, nil)
 			},
 			evt: event.OrderEvent{
 				OrderSN: "OrderSN-marketing-code-project-103",
@@ -786,7 +789,7 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeOrderEvent() {
 					}, nil).Times(2)
 
 				return service.NewService(s.repo, mockOrderSvc, nil, s.getRedemptionCodeGenerator(sequencenumber.NewGenerator()),
-					nil, nil, nil, nil)
+					nil, nil, nil, nil, nil)
 			},
 			evt: event.OrderEvent{
 				OrderSN: "OrderSN-marketing-code-project-104",
@@ -817,6 +820,92 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeOrderEvent() {
 			},
 		},
 
+		// 面试服务商品
+		{
+			name: "消费完成订单消息成功_通过面试服务商品发送企业微信信息_单订单项",
+			newMQFunc: func(t *testing.T, ctrl *gomock.Controller, evt event.OrderEvent) mq.MQ {
+				t.Helper()
+
+				mockMQ := mocks.NewMockMQ(ctrl)
+				mockConsumer := mocks.NewMockConsumer(ctrl)
+				mockConsumer.EXPECT().Consume(gomock.Any()).Return(s.newOrderEventMessage(t, evt), nil).Times(2)
+
+				mockMQ.EXPECT().Consumer(gomock.Any(), gomock.Any()).Return(mockConsumer, nil)
+				return mockMQ
+			},
+			newSvcFunc: func(t *testing.T, ctrl *gomock.Controller, evt event.OrderEvent, q mq.MQ) service.Service {
+				t.Helper()
+
+				mockOrderSvc := ordermocks.NewMockService(ctrl)
+
+				orderId := 201
+				mockOrderSvc.EXPECT().
+					FindUserVisibleOrderByUIDAndSN(gomock.Any(), evt.BuyerID, evt.OrderSN).
+					Return(order.Order{
+						ID:               int64(orderId),
+						SN:               evt.OrderSN,
+						BuyerID:          evt.BuyerID,
+						OriginalTotalAmt: 50000,
+						RealTotalAmt:     50000,
+						Status:           order.StatusSuccess,
+						Items: []order.Item{
+							{
+								SPU: order.SPU{
+									ID:        5,
+									Category0: "product",
+									Category1: "service",
+								},
+								SKU: order.SKU{
+									ID:            16,
+									SN:            "sku-sn-service-product-1",
+									Attrs:         ``,
+									OriginalPrice: 500 * 100,
+									RealPrice:     500 * 100,
+									Quantity:      1,
+								},
+							},
+						},
+					}, nil).Times(2)
+
+				postFunc := func(url, contentType string, body io.Reader) (resp *http.Response, err error) {
+
+					require.NotZero(t, url)
+
+					require.Equal(t, "application/json", contentType)
+
+					bs, err := io.ReadAll(body)
+					require.NoError(t, err)
+					type Message struct {
+						MsgType string              `json:"msgtype"`
+						Text    event.QYWechatEvent `json:"text"`
+					}
+					var msg Message
+					err = json.Unmarshal(bs, &msg)
+					require.NoError(t, err)
+					require.Equal(t, "text", msg.MsgType)
+					require.Contains(t, msg.Text.Content, fmt.Sprintf("%d", orderId))
+
+					return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(body)}, nil
+				}
+
+				qyWechatEventProducer := producer.NewQYWeChatEventProducer("whatever", postFunc)
+				return service.NewService(nil, mockOrderSvc, nil, nil, nil, nil, nil, nil, qyWechatEventProducer)
+			},
+			evt: event.OrderEvent{
+				OrderSN: "OrderSN-marketing-service-101",
+				BuyerID: 887655432,
+				SPUs: []event.SPU{
+					{
+						ID:        5,
+						Category0: "product",
+						Category1: "service",
+					},
+				},
+			},
+			errRequireFunc: require.NoError,
+			after:          func(t *testing.T, evt event.OrderEvent) {},
+		},
+
 		{
 			name: "消费完成订单消息成功_忽略不关心的完成订单消息",
 			newMQFunc: func(t *testing.T, ctrl *gomock.Controller, evt event.OrderEvent) mq.MQ {
@@ -836,7 +925,7 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeOrderEvent() {
 				mockOrderSvc := ordermocks.NewMockService(ctrl)
 				memberEventProducer, err := producer.NewMemberEventProducer(q)
 				require.NoError(t, err)
-				return service.NewService(nil, mockOrderSvc, nil, nil, nil, memberEventProducer, nil, nil)
+				return service.NewService(nil, mockOrderSvc, nil, nil, nil, memberEventProducer, nil, nil, nil)
 			},
 			evt: event.OrderEvent{
 				OrderSN: "OrderSN-marketing-other",
@@ -955,7 +1044,7 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeUserRegistrationEvent() {
 
 				repo := repository.NewRepository(dao.NewGORMMarketingDAO(s.db), cache.NewInvitationCodeECache(testioc.InitCache(), time.Minute*10))
 
-				return service.NewService(repo, nil, nil, nil, nil, memberEventProducer, nil, nil)
+				return service.NewService(repo, nil, nil, nil, nil, memberEventProducer, nil, nil, nil)
 			},
 			evt: event.UserRegistrationEvent{
 				Uid: testID,
@@ -1019,7 +1108,7 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeUserRegistrationEvent() {
 				_, err = repo.CreateInvitationCode(context.Background(), expectedCode)
 				require.NoError(t, err)
 
-				return service.NewService(repo, nil, nil, nil, nil, memberEventProducer, creditEventProducer, nil)
+				return service.NewService(repo, nil, nil, nil, nil, memberEventProducer, creditEventProducer, nil, nil)
 			},
 			evt: event.UserRegistrationEvent{
 				Uid:            testID,
@@ -1083,7 +1172,7 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeUserRegistrationEvent() {
 
 				repo := repository.NewRepository(dao.NewGORMMarketingDAO(s.db), cache.NewInvitationCodeECache(testioc.InitCache(), time.Minute*10))
 
-				return service.NewService(repo, nil, nil, nil, nil, memberEventProducer, creditEventProducer, nil)
+				return service.NewService(repo, nil, nil, nil, nil, memberEventProducer, creditEventProducer, nil, nil)
 			},
 			evt: event.UserRegistrationEvent{
 				Uid:            testID,
@@ -1200,7 +1289,7 @@ func (s *ModuleTestSuite) TestHandler_RedeemRedemptionCode() {
 				memberEventProducer, err := producer.NewMemberEventProducer(q)
 				require.NoError(t, err)
 
-				svc := service.NewService(s.repo, mockOrderSvc, mockProductSvc, nil, nil, memberEventProducer, nil, nil)
+				svc := service.NewService(s.repo, mockOrderSvc, mockProductSvc, nil, nil, memberEventProducer, nil, nil, nil)
 				return web.NewHandler(svc)
 			},
 
@@ -1272,7 +1361,7 @@ func (s *ModuleTestSuite) TestHandler_RedeemRedemptionCode() {
 				memberEventProducer, err := producer.NewMemberEventProducer(q)
 				require.NoError(t, err)
 
-				svc := service.NewService(s.repo, mockOrderSvc, mockProductSvc, nil, nil, memberEventProducer, nil, nil)
+				svc := service.NewService(s.repo, mockOrderSvc, mockProductSvc, nil, nil, memberEventProducer, nil, nil, nil)
 				return web.NewHandler(svc)
 			},
 
@@ -1342,7 +1431,7 @@ func (s *ModuleTestSuite) TestHandler_RedeemRedemptionCode() {
 				permissionEventProducer, err := producer.NewPermissionEventProducer(q)
 				require.NoError(t, err)
 
-				svc := service.NewService(s.repo, mockOrderSvc, mockProductSvc, nil, nil, nil, nil, permissionEventProducer)
+				svc := service.NewService(s.repo, mockOrderSvc, mockProductSvc, nil, nil, nil, nil, permissionEventProducer, nil)
 				return web.NewHandler(svc)
 			},
 
@@ -1411,7 +1500,7 @@ func (s *ModuleTestSuite) TestHandler_RedeemRedemptionCode() {
 				permissionEventProducer, err := producer.NewPermissionEventProducer(q)
 				require.NoError(t, err)
 
-				svc := service.NewService(s.repo, mockOrderSvc, mockProductSvc, nil, nil, nil, nil, permissionEventProducer)
+				svc := service.NewService(s.repo, mockOrderSvc, mockProductSvc, nil, nil, nil, nil, permissionEventProducer, nil)
 				return web.NewHandler(svc)
 			},
 
@@ -1475,7 +1564,7 @@ func (s *ModuleTestSuite) TestHandler_RedeemRedemptionCode() {
 				memberEventProducer, err := producer.NewMemberEventProducer(q)
 				require.NoError(t, err)
 
-				svc := service.NewService(s.repo, mockOrderSvc, mockProductSvc, nil, nil, memberEventProducer, nil, nil)
+				svc := service.NewService(s.repo, mockOrderSvc, mockProductSvc, nil, nil, memberEventProducer, nil, nil, nil)
 				return web.NewHandler(svc)
 			},
 
@@ -1522,7 +1611,7 @@ func (s *ModuleTestSuite) TestHandler_RedeemRedemptionCode() {
 				memberEventProducer, err := producer.NewMemberEventProducer(q)
 				require.NoError(t, err)
 
-				svc := service.NewService(s.repo, mockOrderSvc, mockProductSvc, nil, nil, memberEventProducer, nil, nil)
+				svc := service.NewService(s.repo, mockOrderSvc, mockProductSvc, nil, nil, memberEventProducer, nil, nil, nil)
 				return web.NewHandler(svc)
 			},
 
@@ -1585,7 +1674,7 @@ func (s *ModuleTestSuite) TestHandler_ListRedemptionCode() {
 				t.Helper()
 
 				redemptionCodeGenerator := s.getRedemptionCodeGenerator(sequencenumber.NewGenerator())
-				svc := service.NewService(s.repo, nil, nil, redemptionCodeGenerator, nil, nil, nil, nil)
+				svc := service.NewService(s.repo, nil, nil, redemptionCodeGenerator, nil, nil, nil, nil, nil)
 				return web.NewHandler(svc)
 			},
 			req: web.ListRedemptionCodesReq{
@@ -1683,7 +1772,7 @@ func (s *ModuleTestSuite) TestHandler_GenerateInvitationCode() {
 				codeGenerator := func(id int64) string {
 					return fmt.Sprintf("invitation-code-1-%d", id)
 				}
-				svc := service.NewService(repo, nil, nil, codeGenerator, nil, nil, nil, nil)
+				svc := service.NewService(repo, nil, nil, codeGenerator, nil, nil, nil, nil, nil)
 				return web.NewHandler(svc)
 			},
 			wantCode: 200,
@@ -1714,7 +1803,7 @@ func (s *ModuleTestSuite) TestHandler_GenerateInvitationCode() {
 				codeGenerator := func(id int64) string {
 					return fmt.Sprintf("invitation-code-3-%d", id)
 				}
-				svc := service.NewService(repo, nil, nil, codeGenerator, nil, nil, nil, nil)
+				svc := service.NewService(repo, nil, nil, codeGenerator, nil, nil, nil, nil, nil)
 				return web.NewHandler(svc)
 			},
 			wantCode: 200,
@@ -1747,7 +1836,7 @@ func (s *ModuleTestSuite) TestHandler_GenerateInvitationCode() {
 				codeGenerator := func(id int64) string {
 					return fmt.Sprintf("invitation-code-5-%d", id)
 				}
-				svc := service.NewService(repo, nil, nil, codeGenerator, nil, nil, nil, nil)
+				svc := service.NewService(repo, nil, nil, codeGenerator, nil, nil, nil, nil, nil)
 				return web.NewHandler(svc)
 			},
 			wantCode: 200,
@@ -1811,7 +1900,7 @@ func (s *ModuleTestSuite) TestService_RedeemRedemptionCode() {
 	memberEventProducer, err := producer.NewMemberEventProducer(mockMQ)
 	require.NoError(t, err)
 
-	svc := service.NewService(s.repo, mockOrderSvc, mockProductSvc, nil, nil, memberEventProducer, nil, nil)
+	svc := service.NewService(s.repo, mockOrderSvc, mockProductSvc, nil, nil, memberEventProducer, nil, nil, nil)
 
 	var wg sync.WaitGroup
 	n := 100

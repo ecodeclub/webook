@@ -8,6 +8,7 @@ package marketing
 
 import (
 	"context"
+	"net/http"
 	"sync"
 	"time"
 
@@ -23,6 +24,7 @@ import (
 	"github.com/ecodeclub/webook/internal/order"
 	"github.com/ecodeclub/webook/internal/pkg/sequencenumber"
 	"github.com/ecodeclub/webook/internal/product"
+	"github.com/gotomicro/ego/core/econf"
 	"github.com/lithammer/shortuuid/v4"
 	"gorm.io/gorm"
 )
@@ -53,7 +55,11 @@ func InitModule(db *gorm.DB, q mq.MQ, c ecache.Cache, om *order.Module, pm *prod
 	if err != nil {
 		return nil, err
 	}
-	service3 := service.NewService(marketingRepository, service2, serviceService, v, v2, memberEventProducer, creditEventProducer, permissionEventProducer)
+	qyWeiChatEventProducer, err := newQYWechatProducer()
+	if err != nil {
+		return nil, err
+	}
+	service3 := service.NewService(marketingRepository, service2, serviceService, v, v2, memberEventProducer, creditEventProducer, permissionEventProducer, qyWeiChatEventProducer)
 	handler := web.NewHandler(service3)
 	orderEventConsumer, err := newOrderEventConsumer(service3, q)
 	if err != nil {
@@ -121,4 +127,16 @@ func eventKeyGenerator() func() string {
 
 func invitationCodeExpiration() time.Duration {
 	return time.Minute * 30
+}
+
+func newQYWechatProducer() (producer.QYWeiChatEventProducer, error) {
+	type QyWechat struct {
+		WebhookURL string
+	}
+	var cfg QyWechat
+	err := econf.UnmarshalKey("qywechat.chatRobot", &cfg)
+	if err != nil {
+		return nil, err
+	}
+	return producer.NewQYWeChatEventProducer(cfg.WebhookURL, http.Post), nil
 }

@@ -59,6 +59,10 @@ func (s SPU) IsProjectProduct() bool {
 	return s.IsProductCategory() && s.Category1 == "project"
 }
 
+func (s SPU) IsServiceProduct() bool {
+	return s.IsProductCategory() && s.Category1 == "service"
+}
+
 type CreditIncreaseEvent struct {
 	Key    string `json:"key"`
 	Uid    int64  `json:"uid"`    // 用户A       用户C
@@ -78,4 +82,8 @@ type PermissionEvent struct {
 type UserRegistrationEvent struct {
 	Uid            int64  `json:"uid,omitempty"`
 	InvitationCode string `json:"invitationCode,omitempty"`
+}
+
+type QYWechatEvent struct {
+	Content string `json:"content"`
 }
