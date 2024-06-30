@@ -58,7 +58,7 @@ func (s *ActivityExecutor) Execute(ctx context.Context, act domain.UserRegistrat
 }
 
 func (s *ActivityExecutor) awardRegistrationBonus(ctx context.Context, act domain.UserRegistrationActivity) error {
-	endAtDate := time.Date(2024, 6, 30, 23, 59, 59, 0, time.UTC)
+	endAtDate := time.Date(2024, 9, 30, 23, 59, 59, 0, time.UTC)
 	if endAtDate.Before(time.Now()) {
 		return nil
 	}

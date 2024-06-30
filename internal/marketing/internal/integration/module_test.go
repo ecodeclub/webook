@@ -1021,7 +1021,7 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeUserRegistrationEvent() {
 				mockConsumer.EXPECT().Consume(gomock.Any()).Return(s.newUserRegistrationEventMessage(t, evt), nil).Times(2)
 
 				mockProducer := mocks.NewMockProducer(ctrl)
-				endAtDate := time.Date(2024, 6, 30, 23, 59, 59, 0, time.UTC)
+				endAtDate := time.Date(2024, 9, 30, 23, 59, 59, 0, time.UTC)
 				memberEvent := s.newMemberEventMessage(t, event.MemberEvent{
 					Key:    fmt.Sprintf("user-registration-%d", evt.Uid),
 					Uid:    evt.Uid,
@@ -1062,7 +1062,7 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeUserRegistrationEvent() {
 				mockConsumer.EXPECT().Consume(gomock.Any()).Return(s.newUserRegistrationEventMessage(t, evt), nil).Times(2)
 
 				mockProducer := mocks.NewMockProducer(ctrl)
-				endAtDate := time.Date(2024, 6, 30, 23, 59, 59, 0, time.UTC)
+				endAtDate := time.Date(2024, 9, 30, 23, 59, 59, 0, time.UTC)
 				memberEvent := s.newMemberEventMessage(t, event.MemberEvent{
 					Key:    fmt.Sprintf("user-registration-%d", evt.Uid),
 					Uid:    evt.Uid,
@@ -1145,7 +1145,7 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeUserRegistrationEvent() {
 				mockConsumer.EXPECT().Consume(gomock.Any()).Return(s.newUserRegistrationEventMessage(t, evt), nil).Times(2)
 
 				mockProducer := mocks.NewMockProducer(ctrl)
-				endAtDate := time.Date(2024, 6, 30, 23, 59, 59, 0, time.UTC)
+				endAtDate := time.Date(2024, 9, 30, 23, 59, 59, 0, time.UTC)
 				memberEvent := s.newMemberEventMessage(t, event.MemberEvent{
 					Key:    fmt.Sprintf("user-registration-%d", evt.Uid),
 					Uid:    evt.Uid,
