@@ -93,19 +93,8 @@ func (g *GORMQuestionDAO) Delete(ctx context.Context, qid int64) error {
 }
 
 func (g *GORMQuestionDAO) Update(ctx context.Context, q Question, eles []AnswerElement) error {
-	now := time.Now().UnixMilli()
 	return g.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		res := tx.Model(&Question{}).WithContext(ctx).Where("id = ?", q.Id).Updates(map[string]any{
-			"title":   q.Title,
-			"content": q.Content,
-			"utime":   now,
-			"status":  q.Status,
-		})
-		if res.Error != nil {
-			return res.Error
-		}
-
-		return g.saveEles(tx, eles)
+		return g.update(tx, q, eles)
 	})
 }
 
@@ -114,6 +103,7 @@ func (g *GORMQuestionDAO) update(tx *gorm.DB, q Question, eles []AnswerElement) 
 	res := tx.Model(&q).Where("id = ?", q.Id).Updates(map[string]any{
 		"title":   q.Title,
 		"content": q.Content,
+		"labels":  q.Labels,
 		"status":  q.Status,
 		"utime":   now,
 	})
