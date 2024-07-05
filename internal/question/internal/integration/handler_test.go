@@ -244,9 +244,13 @@ func (s *HandlerTestSuite) TestSave() {
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 				defer cancel()
 				err := s.db.WithContext(ctx).Create(&dao.Question{
-					Id:      2,
-					Uid:     uid,
-					Title:   "老的标题",
+					Id:    2,
+					Uid:   uid,
+					Title: "老的标题",
+					Labels: sqlx.JsonColumn[[]string]{
+						Valid: true,
+						Val:   []string{"MySQL"},
+					},
 					Content: "老的内容",
 					Status:  domain.UnPublishedStatus.ToUint8(),
 					Ctime:   123,
@@ -277,6 +281,10 @@ func (s *HandlerTestSuite) TestSave() {
 					Status:  domain.UnPublishedStatus.ToUint8(),
 					Title:   "面试题1",
 					Content: "新的内容",
+					Labels: sqlx.JsonColumn[[]string]{
+						Valid: true,
+						Val:   []string{"sqlite"},
+					},
 				}, q)
 				assert.Equal(t, 4, len(eles))
 				analysis := eles[0]
@@ -304,6 +312,7 @@ func (s *HandlerTestSuite) TestSave() {
 						Id:           2,
 						Title:        "面试题1",
 						Content:      "新的内容",
+						Labels:       []string{"sqlite"},
 						Analysis:     analysis,
 						Basic:        s.buildAnswerEle(1),
 						Intermediate: s.buildAnswerEle(2),
@@ -470,9 +479,13 @@ func (s *HandlerTestSuite) TestSync() {
 				q, eles, err := s.dao.GetPubByID(ctx, 1)
 				require.NoError(t, err)
 				s.assertQuestion(t, dao.Question{
-					Uid:     uid,
-					Title:   "面试题1",
-					Status:  domain.PublishedStatus.ToUint8(),
+					Uid:    uid,
+					Title:  "面试题1",
+					Status: domain.PublishedStatus.ToUint8(),
+					Labels: sqlx.JsonColumn[[]string]{
+						Valid: true,
+						Val:   []string{"MySQL"},
+					},
 					Content: "面试题内容",
 				}, dao.Question(q))
 				assert.Equal(t, 4, len(eles))
@@ -481,6 +494,7 @@ func (s *HandlerTestSuite) TestSync() {
 				Question: web.Question{
 					Title:        "面试题1",
 					Content:      "面试题内容",
+					Labels:       []string{"MySQL"},
 					Analysis:     s.buildAnswerEle(0),
 					Basic:        s.buildAnswerEle(1),
 					Intermediate: s.buildAnswerEle(2),
@@ -504,7 +518,10 @@ func (s *HandlerTestSuite) TestSync() {
 					Uid:     uid,
 					Title:   "老的标题",
 					Content: "老的内容",
-
+					Labels: sqlx.JsonColumn[[]string]{
+						Valid: true,
+						Val:   []string{"MySQL"},
+					},
 					Ctime: 123,
 					Utime: 234,
 				}).Error
@@ -529,8 +546,12 @@ func (s *HandlerTestSuite) TestSync() {
 				q, eles, err := s.dao.GetByID(ctx, 2)
 				require.NoError(t, err)
 				s.assertQuestion(t, dao.Question{
-					Uid:     uid,
-					Status:  domain.PublishedStatus.ToUint8(),
+					Uid:    uid,
+					Status: domain.PublishedStatus.ToUint8(),
+					Labels: sqlx.JsonColumn[[]string]{
+						Valid: true,
+						Val:   []string{"sqlite"},
+					},
 					Title:   "面试题1",
 					Content: "新的内容",
 				}, q)
@@ -549,9 +570,13 @@ func (s *HandlerTestSuite) TestSync() {
 				pq, pEles, err := s.dao.GetPubByID(ctx, 2)
 
 				s.assertQuestion(t, dao.Question{
-					Uid:     uid,
-					Status:  domain.PublishedStatus.ToUint8(),
-					Title:   "面试题1",
+					Uid:    uid,
+					Status: domain.PublishedStatus.ToUint8(),
+					Title:  "面试题1",
+					Labels: sqlx.JsonColumn[[]string]{
+						Valid: true,
+						Val:   []string{"sqlite"},
+					},
 					Content: "新的内容",
 				}, dao.Question(pq))
 				assert.Equal(t, 4, len(pEles))
@@ -580,6 +605,7 @@ func (s *HandlerTestSuite) TestSync() {
 						Id:           2,
 						Title:        "面试题1",
 						Content:      "新的内容",
+						Labels:       []string{"sqlite"},
 						Analysis:     analysis,
 						Basic:        s.buildAnswerEle(1),
 						Intermediate: s.buildAnswerEle(2),
