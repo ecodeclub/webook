@@ -37,16 +37,17 @@ func InitModule(db *gorm.DB, intrModule *interactive.Module, ec ecache.Cache, q 
 		return nil, err
 	}
 	serviceService := service.NewService(repositoryRepository, syncDataToSearchEventProducer, interactiveEventProducer)
-	interactiveService := intrModule.Svc
-	handler := web.NewHandler(serviceService, interactiveService)
 	questionSetDAO := InitQuestionSetDAO(db)
 	questionSetRepository := repository.NewQuestionSetRepository(questionSetDAO)
 	questionSetService := service.NewQuestionSetService(questionSetRepository, interactiveEventProducer, syncDataToSearchEventProducer)
-	questionSetHandler := web.NewQuestionSetHandler(questionSetService, interactiveService)
+	service2 := intrModule.Svc
+	handler := web.NewHandler(serviceService, service2)
+	questionSetHandler := web.NewQuestionSetHandler(questionSetService, service2)
 	module := &Module{
-		Svc:   serviceService,
-		Hdl:   handler,
-		QsHdl: questionSetHandler,
+		Svc:    serviceService,
+		SetSvc: questionSetService,
+		Hdl:    handler,
+		QsHdl:  questionSetHandler,
 	}
 	return module, nil
 }

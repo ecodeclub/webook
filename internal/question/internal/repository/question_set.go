@@ -31,11 +31,19 @@ type QuestionSetRepository interface {
 	Total(ctx context.Context) (int64, error)
 	List(ctx context.Context, offset int, limit int) ([]domain.QuestionSet, error)
 	UpdateNonZero(ctx context.Context, set domain.QuestionSet) error
+	GetByIDs(ctx context.Context, ids []int64) ([]domain.QuestionSet, error)
 }
 
 type questionSetRepository struct {
 	dao    dao.QuestionSetDAO
 	logger *elog.Component
+}
+
+func (q *questionSetRepository) GetByIDs(ctx context.Context, ids []int64) ([]domain.QuestionSet, error) {
+	qs, err := q.dao.GetByIDs(ctx, ids)
+	return slice.Map(qs, func(idx int, src dao.QuestionSet) domain.QuestionSet {
+		return q.toDomainQuestionSet(src)
+	}), err
 }
 
 func (q *questionSetRepository) UpdateNonZero(ctx context.Context, set domain.QuestionSet) error {

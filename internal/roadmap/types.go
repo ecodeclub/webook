@@ -12,18 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package baguwen
+package roadmap
 
 import (
-	"github.com/ecodeclub/webook/internal/question/internal/domain"
-	"github.com/ecodeclub/webook/internal/question/internal/service"
-	"github.com/ecodeclub/webook/internal/question/internal/web"
+	"github.com/ecodeclub/webook/internal/roadmap/internal/web"
 )
 
-type Handler = web.Handler
-type QuestionSetHandler = web.QuestionSetHandler
+type Module struct {
+	AdminHdl *AdminHandler
+	Hdl      *Handler
+}
 
-type Service = service.Service
-type QuestionSetService = service.QuestionSetService
-type Question = domain.Question
-type QuestionSet = domain.QuestionSet
+type AdminHandler = web.AdminHandler
+type Handler = web.Handler
