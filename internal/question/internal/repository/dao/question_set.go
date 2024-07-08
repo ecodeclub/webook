@@ -16,15 +16,10 @@ package dao
 
 import (
 	"context"
-	"errors"
 	"time"
 
 	"github.com/ego-component/egorm"
 	"gorm.io/gorm"
-)
-
-var (
-	ErrInvalidQuestionID = errors.New("问题ID非法")
 )
 
 type QuestionSetDAO interface {
@@ -37,10 +32,17 @@ type QuestionSetDAO interface {
 	Count(ctx context.Context) (int64, error)
 	List(ctx context.Context, offset, limit int) ([]QuestionSet, error)
 	UpdateNonZero(ctx context.Context, set QuestionSet) error
+	GetByIDs(ctx context.Context, ids []int64) ([]QuestionSet, error)
 }
 
 type GORMQuestionSetDAO struct {
 	db *egorm.Component
+}
+
+func (g *GORMQuestionSetDAO) GetByIDs(ctx context.Context, ids []int64) ([]QuestionSet, error) {
+	var res []QuestionSet
+	err := g.db.WithContext(ctx).Where("id IN ?", ids).Find(&res).Error
+	return res, err
 }
 
 func (g *GORMQuestionSetDAO) UpdateNonZero(ctx context.Context, set QuestionSet) error {
