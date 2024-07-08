@@ -12,18 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package baguwen
+package dao
 
-import (
-	"github.com/ecodeclub/webook/internal/question/internal/domain"
-	"github.com/ecodeclub/webook/internal/question/internal/service"
-	"github.com/ecodeclub/webook/internal/question/internal/web"
-)
+import "github.com/ego-component/egorm"
 
-type Handler = web.Handler
-type QuestionSetHandler = web.QuestionSetHandler
-
-type Service = service.Service
-type QuestionSetService = service.QuestionSetService
-type Question = domain.Question
-type QuestionSet = domain.QuestionSet
+func InitTables(db *egorm.Component) error {
+	return db.AutoMigrate(&Roadmap{}, &Edge{})
+}

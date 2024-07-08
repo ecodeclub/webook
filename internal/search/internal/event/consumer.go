@@ -18,8 +18,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"strconv"
+	"strings"
 
 	"github.com/ecodeclub/mq-api"
 	"github.com/ecodeclub/webook/internal/search/internal/service"
@@ -56,7 +56,6 @@ func (s *SyncConsumer) Consume(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("解析消息失败: %w", err)
 	}
-	log.Println("xxxxxxxx", evt)
 	indexName := getIndexName(evt.Biz)
 	docId := strconv.Itoa(evt.BizID)
 	err = s.svc.Input(ctx, indexName, docId, evt.Data)
@@ -81,5 +80,5 @@ func (s *SyncConsumer) Stop(_ context.Context) error {
 }
 
 func getIndexName(biz string) string {
-	return fmt.Sprintf("%s_index", biz)
+	return fmt.Sprintf("%s_index", strings.ToLower(biz))
 }

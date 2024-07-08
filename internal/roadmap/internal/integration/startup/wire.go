@@ -12,18 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package baguwen
+//go:build wireinject
+
+package startup
 
 import (
-	"github.com/ecodeclub/webook/internal/question/internal/domain"
-	"github.com/ecodeclub/webook/internal/question/internal/service"
-	"github.com/ecodeclub/webook/internal/question/internal/web"
+	baguwen "github.com/ecodeclub/webook/internal/question"
+	"github.com/ecodeclub/webook/internal/roadmap"
+	testioc "github.com/ecodeclub/webook/internal/test/ioc"
+	"github.com/google/wire"
 )
 
-type Handler = web.Handler
-type QuestionSetHandler = web.QuestionSetHandler
-
-type Service = service.Service
-type QuestionSetService = service.QuestionSetService
-type Question = domain.Question
-type QuestionSet = domain.QuestionSet
+func InitModule(queModule *baguwen.Module) *roadmap.Module {
+	wire.Build(
+		testioc.BaseSet,
+		roadmap.InitModule,
+	)
+	return new(roadmap.Module)
+}

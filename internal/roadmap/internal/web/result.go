@@ -12,18 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package baguwen
+package web
 
 import (
-	"github.com/ecodeclub/webook/internal/question/internal/domain"
-	"github.com/ecodeclub/webook/internal/question/internal/service"
-	"github.com/ecodeclub/webook/internal/question/internal/web"
+	"github.com/ecodeclub/ginx"
+	"github.com/ecodeclub/webook/internal/roadmap/internal/errs"
 )
 
-type Handler = web.Handler
-type QuestionSetHandler = web.QuestionSetHandler
-
-type Service = service.Service
-type QuestionSetService = service.QuestionSetService
-type Question = domain.Question
-type QuestionSet = domain.QuestionSet
+var (
+	systemErrorResult = ginx.Result{
+		Code: errs.SystemError.Code,
+		Msg:  errs.SystemError.Msg,
+	}
+)

@@ -33,6 +33,7 @@ import (
 	"github.com/ecodeclub/webook/internal/project"
 	baguwen "github.com/ecodeclub/webook/internal/question"
 	"github.com/ecodeclub/webook/internal/recon"
+	"github.com/ecodeclub/webook/internal/roadmap"
 	"github.com/ecodeclub/webook/internal/search"
 	"github.com/ecodeclub/webook/internal/skill"
 	"github.com/google/wire"
@@ -77,6 +78,8 @@ func InitApp() (*App, error) {
 		middleware.NewCheckPermissionMiddlewareBuilder,
 		search.InitModule,
 		wire.FieldsOf(new(*search.Module), "Hdl"),
+		roadmap.InitModule,
+		wire.FieldsOf(new(*roadmap.Module), "Hdl", "AdminHdl"),
 		initLocalActiveLimiterBuilder,
 		initCronJobs,
 		// 这两个顺序不要换

@@ -26,11 +26,13 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
+//go:generate mockgen -source=./question_set.go -destination=../../mocks/quetion_set.mock.go -package=quemocks -typed=true QuestionSetService
 type QuestionSetService interface {
 	Save(ctx context.Context, set domain.QuestionSet) (int64, error)
 	UpdateQuestions(ctx context.Context, set domain.QuestionSet) error
 	List(ctx context.Context, offset, limit int) ([]domain.QuestionSet, int64, error)
 	Detail(ctx context.Context, id int64) (domain.QuestionSet, error)
+	GetByIds(ctx context.Context, ids []int64) ([]domain.QuestionSet, error)
 }
 
 type questionSetService struct {
@@ -39,6 +41,10 @@ type questionSetService struct {
 	intrProducer event.InteractiveEventProducer
 	logger       *elog.Component
 	syncTimeout  time.Duration
+}
+
+func (q *questionSetService) GetByIds(ctx context.Context, ids []int64) ([]domain.QuestionSet, error) {
+	return q.repo.GetByIDs(ctx, ids)
 }
 
 func NewQuestionSetService(repo repository.QuestionSetRepository,
