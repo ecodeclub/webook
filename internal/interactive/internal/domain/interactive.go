@@ -23,3 +23,10 @@ type Interactive struct {
 	Liked      bool
 	Collected  bool
 }
+
+type Collection struct {
+	Id int64
+	// 用户 ID
+	Uid  int64
+	Name string
+}
