@@ -61,6 +61,7 @@ func initGinxServer(sp session.Provider,
 	// 这个暂时用不上
 	checkPermissionMiddleware *middleware.CheckPermissionMiddlewareBuilder,
 	qh *baguwen.Handler,
+	examineHdl *baguwen.ExamineHandler,
 	qsh *baguwen.QuestionSetHandler,
 	lhdl *label.Handler,
 	user *user.Handler,
@@ -116,7 +117,6 @@ func initGinxServer(sp session.Provider,
 	res.Use(session.CheckLoginMiddleware())
 	user.PrivateRoutes(res.Engine)
 	lhdl.PrivateRoutes(res.Engine)
-	qh.PrivateRoutes(res.Engine)
 	qsh.PrivateRoutes(res.Engine)
 	cosHdl.PrivateRoutes(res.Engine)
 	caseHdl.PrivateRoutes(res.Engine)
@@ -136,6 +136,7 @@ func initGinxServer(sp session.Provider,
 	// 会员校验
 	res.Use(checkMembershipMiddleware.Build())
 	qh.MemberRoutes(res.Engine)
+	examineHdl.MemberRoutes(res.Engine)
 	caseHdl.MemberRoutes(res.Engine)
 	fbHdl.MemberRoutes(res.Engine)
 	return res

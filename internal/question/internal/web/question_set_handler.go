@@ -15,13 +15,12 @@
 package web
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/ecodeclub/webook/internal/interactive"
 	"golang.org/x/sync/errgroup"
 
-	"github.com/ecodeclub/ekit/bean/copier"
-	"github.com/ecodeclub/ekit/bean/copier/converter"
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/ecodeclub/ginx"
 	"github.com/ecodeclub/ginx/session"
@@ -34,17 +33,21 @@ import (
 var _ ginx.Handler = (*QuestionSetHandler)(nil)
 
 type QuestionSetHandler struct {
-	svc     service.QuestionSetService
-	logger  *elog.Component
-	intrSvc interactive.Service
+	svc        service.QuestionSetService
+	examineSvc service.ExamineService
+	logger     *elog.Component
+	intrSvc    interactive.Service
 }
 
-func NewQuestionSetHandler(svc service.QuestionSetService,
+func NewQuestionSetHandler(
+	svc service.QuestionSetService,
+	examineSvc service.ExamineService,
 	intrSvc interactive.Service) *QuestionSetHandler {
 	return &QuestionSetHandler{
-		svc:     svc,
-		intrSvc: intrSvc,
-		logger:  elog.DefaultLogger,
+		svc:        svc,
+		intrSvc:    intrSvc,
+		examineSvc: examineSvc,
+		logger:     elog.DefaultLogger,
 	}
 }
 
@@ -154,34 +157,35 @@ func (h *QuestionSetHandler) RetrieveQuestionSetDetail(
 	if err != nil {
 		return systemErrorResult, err
 	}
+	uid := sess.Claims().Uid
+	resultMap, err := h.examineSvc.GetResults(ctx, uid, data.Qids())
+	if err != nil {
+		return systemErrorResult, fmt.Errorf("查询答题情况失败 cause: %w", err)
+	}
 	return ginx.Result{
-		Data: h.toQuestionSetVO(data, intr),
+		Data: h.toQuestionSetVO(data, intr, resultMap),
 	}, nil
 }
 
 func (h *QuestionSetHandler) toQuestionSetVO(
 	set domain.QuestionSet,
-	intr interactive.Interactive) QuestionSet {
+	intr interactive.Interactive,
+	results map[int64]domain.ExamineResult) QuestionSet {
 	return QuestionSet{
 		Id:          set.Id,
 		Title:       set.Title,
 		Description: set.Description,
-		Questions:   h.toQuestionVO(set.Questions),
+		Questions:   h.toQuestionVO(set.Questions, results),
 		Utime:       set.Utime.UnixMilli(),
 		Interactive: newInteractive(intr),
 	}
 }
 
-func (h *QuestionSetHandler) toQuestionVO(questions []domain.Question) []Question {
-	dm2vo, _ := copier.NewReflectCopier[domain.Question, Question](
-		copier.ConvertField[time.Time, string]("Utime", converter.ConverterFunc[time.Time, string](func(src time.Time) (string, error) {
-			return src.Format(time.DateTime), nil
-		})),
-	)
-	vos := make([]Question, len(questions))
-	for i, question := range questions {
-		vo, _ := dm2vo.Copy(&question)
-		vos[i] = *vo
-	}
-	return vos
+func (h *QuestionSetHandler) toQuestionVO(questions []domain.Question, results map[int64]domain.ExamineResult) []Question {
+	return slice.Map(questions, func(idx int, src domain.Question) Question {
+		que := newQuestion(src, interactive.Interactive{})
+		res := results[que.Id]
+		que.ExamineResult = res.Result.ToUint8()
+		return que
+	})
 }

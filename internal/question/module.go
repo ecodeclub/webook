@@ -15,8 +15,10 @@
 package baguwen
 
 type Module struct {
-	Svc    Service
-	SetSvc QuestionSetService
-	Hdl    *Handler
-	QsHdl  *QuestionSetHandler
+	Svc        Service
+	SetSvc     QuestionSetService
+	AdminHdl   *AdminHandler
+	Hdl        *Handler
+	QsHdl      *QuestionSetHandler
+	ExamineHdl *ExamineHandler
 }

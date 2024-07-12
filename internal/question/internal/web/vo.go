@@ -42,6 +42,8 @@ type Question struct {
 	// 高阶回答
 	Advanced    AnswerElement `json:"advanced,omitempty"`
 	Interactive Interactive   `json:"interactive"`
+
+	ExamineResult uint8 `json:"examineResult"`
 }
 
 func (que Question) toDomain() domain.Question {

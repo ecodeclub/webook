@@ -27,6 +27,8 @@ import (
 	"github.com/ecodeclub/webook/internal/question/internal/repository"
 )
 
+// Service TODO 要分离制作库接口和线上库接口
+//
 //go:generate mockgen -source=./question.go -destination=../../mocks/question.mock.go -package=quemocks -typed=true Service
 type Service interface {
 	// Save 保存数据，question 绝对不会为 nil

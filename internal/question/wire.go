@@ -36,6 +36,12 @@ import (
 	"gorm.io/gorm"
 )
 
+var ExamineHandlerSet = wire.NewSet(
+	web.NewExamineHandler,
+	service.NewGPTExamineService,
+	repository.NewCachedExamineRepository,
+	dao.NewGORMExamineDAO)
+
 func InitModule(db *egorm.Component,
 	intrModule *interactive.Module,
 	ec ecache.Cache,
@@ -47,6 +53,9 @@ func InitModule(db *egorm.Component,
 		event.NewInteractiveEventProducer,
 		service.NewService,
 		web.NewHandler,
+		web.NewAdminHandler,
+
+		ExamineHandlerSet,
 
 		InitQuestionSetDAO,
 		repository.NewQuestionSetRepository,

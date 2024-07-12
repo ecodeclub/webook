@@ -20,8 +20,10 @@ import (
 	"github.com/ecodeclub/webook/internal/question/internal/web"
 )
 
+type AdminHandler = web.AdminHandler
 type Handler = web.Handler
 type QuestionSetHandler = web.QuestionSetHandler
+type ExamineHandler = web.ExamineHandler
 
 type Service = service.Service
 type QuestionSetService = service.QuestionSetService

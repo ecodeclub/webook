@@ -12,31 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package domain
+package service
 
-import (
-	"time"
+import "context"
 
-	"github.com/ecodeclub/ekit/slice"
-)
-
-// QuestionSet 题集实体
-type QuestionSet struct {
-	Id  int64
-	Uid int64
-	// 标题
-	Title string
-	// 描述
-	Description string
-
-	// 题集中引用的题目,
-	Questions []Question
-
-	Utime time.Time
+//go:generate mockgen -source=./gpt.go -destination=../../mocks/gpt.mock.go -package=aimocks -typed=true GPTService
+type GPTService interface {
+	Invoke(ctx context.Context, req GPTRequest) (GPTResponse, error)
 }
 
-func (set QuestionSet) Qids() []int64 {
-	return slice.Map(set.Questions, func(idx int, src Question) int64 {
-		return src.Id
-	})
+type GPTRequest struct {
+	Biz   string
+	Uid   int64
+	Tid   string
+	Input []string
+}
+
+type GPTResponse struct {
+	Tokens int
+	Amount int64
+	Answer string
 }

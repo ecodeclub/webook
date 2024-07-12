@@ -12,31 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package domain
+package service
 
 import (
-	"time"
+	"context"
 
-	"github.com/ecodeclub/ekit/slice"
+	"github.com/ecodeclub/webook/internal/ai"
 )
 
-// QuestionSet 题集实体
-type QuestionSet struct {
-	Id  int64
-	Uid int64
-	// 标题
-	Title string
-	// 描述
-	Description string
-
-	// 题集中引用的题目,
-	Questions []Question
-
-	Utime time.Time
+type AiService struct {
 }
 
-func (set QuestionSet) Qids() []int64 {
-	return slice.Map(set.Questions, func(idx int, src Question) int64 {
-		return src.Id
-	})
+func (a *AiService) Invoke(ctx context.Context, req ai.GPTRequest) (ai.GPTResponse, error) {
+	return ai.GPTResponse{
+		Tokens: int(req.Uid),
+		Amount: req.Uid,
+		Answer: "评分：15K",
+	}, nil
 }
