@@ -28,15 +28,15 @@ import (
 	"github.com/google/wire"
 )
 
-func InitHandler(p event.SyncDataToSearchEventProducer,
-	intrModule *interactive.Module) (*web.Handler, error) {
+func InitModule(p event.SyncDataToSearchEventProducer,
+	intrModule *interactive.Module) (*baguwen.Module, error) {
 	wire.Build(
 		testioc.BaseSet,
 		moduleSet,
 		event.NewInteractiveEventProducer,
 		wire.FieldsOf(new(*interactive.Module), "Svc"),
 	)
-	return new(web.Handler), nil
+	return new(baguwen.Module), nil
 }
 
 var moduleSet = wire.NewSet(baguwen.InitQuestionDAO,
@@ -44,19 +44,11 @@ var moduleSet = wire.NewSet(baguwen.InitQuestionDAO,
 	repository.NewCacheRepository,
 	service.NewService,
 	web.NewHandler,
+	web.NewAdminHandler,
+	baguwen.ExamineHandlerSet,
 	baguwen.InitQuestionSetDAO,
 	repository.NewQuestionSetRepository,
 	service.NewQuestionSetService,
 	web.NewQuestionSetHandler,
 	wire.Struct(new(baguwen.Module), "*"),
 )
-
-func InitQuestionSetHandler(
-	p event.SyncDataToSearchEventProducer,
-	intrModule *interactive.Module,
-) (*web.QuestionSetHandler, error) {
-	wire.Build(testioc.BaseSet, moduleSet,
-		wire.FieldsOf(new(*interactive.Module), "Svc"),
-		event.NewInteractiveEventProducer)
-	return new(web.QuestionSetHandler), nil
-}
