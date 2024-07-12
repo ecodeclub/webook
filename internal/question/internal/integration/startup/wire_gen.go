@@ -12,6 +12,7 @@ import (
 	"github.com/ecodeclub/webook/internal/question/internal/event"
 	"github.com/ecodeclub/webook/internal/question/internal/repository"
 	"github.com/ecodeclub/webook/internal/question/internal/repository/cache"
+	"github.com/ecodeclub/webook/internal/question/internal/repository/dao"
 	"github.com/ecodeclub/webook/internal/question/internal/service"
 	"github.com/ecodeclub/webook/internal/question/internal/web"
 	testioc "github.com/ecodeclub/webook/internal/test/ioc"
@@ -20,7 +21,7 @@ import (
 
 // Injectors from wire.go:
 
-func InitHandler(p event.SyncDataToSearchEventProducer, intrModule *interactive.Module) (*web.Handler, error) {
+func InitModule(p event.SyncDataToSearchEventProducer, intrModule *interactive.Module) (*baguwen.Module, error) {
 	db := testioc.InitDB()
 	questionDAO := baguwen.InitQuestionDAO(db)
 	ecacheCache := testioc.InitCache()
@@ -32,26 +33,28 @@ func InitHandler(p event.SyncDataToSearchEventProducer, intrModule *interactive.
 		return nil, err
 	}
 	serviceService := service.NewService(repositoryRepository, p, interactiveEventProducer)
-	service2 := intrModule.Svc
-	handler := web.NewHandler(serviceService, service2)
-	return handler, nil
-}
-
-func InitQuestionSetHandler(p event.SyncDataToSearchEventProducer, intrModule *interactive.Module) (*web.QuestionSetHandler, error) {
-	db := testioc.InitDB()
 	questionSetDAO := baguwen.InitQuestionSetDAO(db)
 	questionSetRepository := repository.NewQuestionSetRepository(questionSetDAO)
-	mq := testioc.InitMQ()
-	interactiveEventProducer, err := event.NewInteractiveEventProducer(mq)
-	if err != nil {
-		return nil, err
-	}
 	questionSetService := service.NewQuestionSetService(questionSetRepository, interactiveEventProducer, p)
-	serviceService := intrModule.Svc
-	questionSetHandler := web.NewQuestionSetHandler(questionSetService, serviceService)
-	return questionSetHandler, nil
+	adminHandler := web.NewAdminHandler(serviceService)
+	service2 := intrModule.Svc
+	examineDAO := dao.NewGORMExamineDAO(db)
+	examineRepository := repository.NewCachedExamineRepository(examineDAO)
+	examineService := service.NewGPTExamineService(repositoryRepository, examineRepository)
+	handler := web.NewHandler(service2, examineService, serviceService)
+	questionSetHandler := web.NewQuestionSetHandler(questionSetService, examineService, service2)
+	examineHandler := web.NewExamineHandler(examineService)
+	module := &baguwen.Module{
+		Svc:        serviceService,
+		SetSvc:     questionSetService,
+		AdminHdl:   adminHandler,
+		Hdl:        handler,
+		QsHdl:      questionSetHandler,
+		ExamineHdl: examineHandler,
+	}
+	return module, nil
 }
 
 // wire.go:
 
-var moduleSet = wire.NewSet(baguwen.InitQuestionDAO, cache.NewQuestionECache, repository.NewCacheRepository, service.NewService, web.NewHandler, baguwen.InitQuestionSetDAO, repository.NewQuestionSetRepository, service.NewQuestionSetService, web.NewQuestionSetHandler, wire.Struct(new(baguwen.Module), "*"))
+var moduleSet = wire.NewSet(baguwen.InitQuestionDAO, cache.NewQuestionECache, repository.NewCacheRepository, service.NewService, web.NewHandler, web.NewAdminHandler, baguwen.ExamineHandlerSet, baguwen.InitQuestionSetDAO, repository.NewQuestionSetRepository, service.NewQuestionSetService, web.NewQuestionSetHandler, wire.Struct(new(baguwen.Module), "*"))

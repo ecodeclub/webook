@@ -59,6 +59,7 @@ func InitApp() (*App, error) {
 		return nil, err
 	}
 	handler := baguwenModule.Hdl
+	examineHandler := baguwenModule.ExamineHdl
 	questionSetHandler := baguwenModule.QsHdl
 	webHandler := label.InitHandler(db)
 	handler2 := InitUserHandler(db, cache, mq, module, permissionModule)
@@ -116,11 +117,12 @@ func InitApp() (*App, error) {
 	handler14 := searchModule.Hdl
 	roadmapModule := roadmap.InitModule(db, baguwenModule)
 	handler15 := roadmapModule.Hdl
-	component := initGinxServer(provider, checkMembershipMiddlewareBuilder, localActiveLimit, checkPermissionMiddlewareBuilder, handler, questionSetHandler, webHandler, handler2, handler3, handler4, handler5, handler6, handler7, handler8, handler9, handler10, handler11, handler12, handler13, handler14, handler15)
+	component := initGinxServer(provider, checkMembershipMiddlewareBuilder, localActiveLimit, checkPermissionMiddlewareBuilder, handler, examineHandler, questionSetHandler, webHandler, handler2, handler3, handler4, handler5, handler6, handler7, handler8, handler9, handler10, handler11, handler12, handler13, handler14, handler15)
 	adminHandler := projectModule.AdminHdl
 	webAdminHandler := roadmapModule.AdminHdl
-	adminHandler2 := marketingModule.AdminHdl
-	adminServer := InitAdminServer(adminHandler, webAdminHandler, adminHandler2)
+	adminHandler2 := baguwenModule.AdminHdl
+	adminHandler3 := marketingModule.AdminHdl
+	adminServer := InitAdminServer(adminHandler, webAdminHandler, adminHandler2, adminHandler3)
 	closeTimeoutOrdersJob := orderModule.CloseTimeoutOrdersJob
 	closeTimeoutLockedCreditsJob := creditModule.CloseTimeoutLockedCreditsJob
 	syncWechatOrderJob := paymentModule.SyncWechatOrderJob

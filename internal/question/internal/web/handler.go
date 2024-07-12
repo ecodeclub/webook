@@ -15,94 +15,76 @@
 package web
 
 import (
-	"fmt"
-	"net/http"
-
-	"github.com/ecodeclub/webook/internal/interactive"
-	"golang.org/x/sync/errgroup"
-
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/ecodeclub/ginx"
 	"github.com/ecodeclub/ginx/session"
+	"github.com/ecodeclub/webook/internal/interactive"
 	"github.com/ecodeclub/webook/internal/question/internal/domain"
 	"github.com/ecodeclub/webook/internal/question/internal/service"
 	"github.com/gin-gonic/gin"
 	"github.com/gotomicro/ego/core/elog"
+	"golang.org/x/sync/errgroup"
 )
 
 type Handler struct {
-	svc     service.Service
-	logger  *elog.Component
-	intrSvc interactive.Service
+	logger     *elog.Component
+	intrSvc    interactive.Service
+	examineSvc service.ExamineService
+	svc        service.Service
 }
 
-func NewHandler(svc service.Service, intrSvc interactive.Service) *Handler {
-	return &Handler{
-		svc:     svc,
-		intrSvc: intrSvc,
-		logger:  elog.DefaultLogger,
-	}
+func NewHandler(intrSvc interactive.Service, examineSvc service.ExamineService, svc service.Service) *Handler {
+	return &Handler{intrSvc: intrSvc, examineSvc: examineSvc, svc: svc}
 }
 
 func (h *Handler) PublicRoutes(server *gin.Engine) {
+	// 下次发版要删除这个 pub
 	server.POST("/question/pub/list", ginx.B[Page](h.PubList))
-}
-
-func (h *Handler) PrivateRoutes(server *gin.Engine) {
-	server.POST("/question/save", ginx.S(h.Permission), ginx.BS[SaveReq](h.Save))
-	server.POST("/question/list", ginx.S(h.Permission), ginx.B[Page](h.List))
-	server.POST("/question/detail", ginx.S(h.Permission), ginx.B[Qid](h.Detail))
-	server.POST("/question/delete", ginx.S(h.Permission), ginx.B[Qid](h.Delete))
-	server.POST("/question/publish", ginx.S(h.Permission), ginx.BS[SaveReq](h.Publish))
+	server.POST("/question/list", ginx.B[Page](h.PubList))
 }
 
 func (h *Handler) MemberRoutes(server *gin.Engine) {
+	// 下次发版要删除这个 pub
 	server.POST("/question/pub/detail", ginx.BS[Qid](h.PubDetail))
+	server.POST("/question/detail", ginx.BS[Qid](h.PubDetail))
 }
 
-func (h *Handler) Delete(ctx *ginx.Context, qid Qid) (ginx.Result, error) {
-	err := h.svc.Delete(ctx, qid.Qid)
+func (h *Handler) PubDetail(ctx *ginx.Context,
+	req Qid, sess session.Session) (ginx.Result, error) {
+	var (
+		eg      errgroup.Group
+		detail  domain.Question
+		intr    interactive.Interactive
+		examine domain.Result
+	)
+	uid := sess.Claims().Uid
+	eg.Go(func() error {
+		var err error
+		detail, err = h.svc.PubDetail(ctx, req.Qid)
+		return err
+	})
+
+	eg.Go(func() error {
+		var err error
+		intr, err = h.intrSvc.Get(ctx, domain.QuestionBiz, req.Qid, uid)
+		return err
+	})
+
+	eg.Go(func() error {
+		var err error
+		examine, err = h.examineSvc.QuestionResult(ctx, uid, req.Qid)
+		return err
+	})
+	err := eg.Wait()
 	if err != nil {
 		return systemErrorResult, err
 	}
-	return ginx.Result{}, nil
-}
 
-func (h *Handler) Save(ctx *ginx.Context,
-	req SaveReq,
-	sess session.Session) (ginx.Result, error) {
-	que := req.Question.toDomain()
-	que.Uid = sess.Claims().Uid
-	id, err := h.svc.Save(ctx, &que)
-	if err != nil {
-		return systemErrorResult, err
-	}
+	que := newQuestion(detail, intr)
+	que.ExamineResult = examine.ToUint8()
 	return ginx.Result{
-		Data: id,
-	}, nil
-}
-
-func (h *Handler) Publish(ctx *ginx.Context, req SaveReq, sess session.Session) (ginx.Result, error) {
-	que := req.Question.toDomain()
-	que.Uid = sess.Claims().Uid
-	id, err := h.svc.Publish(ctx, &que)
-	if err != nil {
-		return systemErrorResult, err
-	}
-	return ginx.Result{
-		Data: id,
-	}, nil
-}
-
-func (h *Handler) List(ctx *ginx.Context, req Page) (ginx.Result, error) {
-	// 制作库不需要统计总数
-	data, cnt, err := h.svc.List(ctx, req.Offset, req.Limit)
-	if err != nil {
-		return systemErrorResult, err
-	}
-	return ginx.Result{
-		Data: h.toQuestionList(data, cnt),
-	}, nil
+		Data: que,
+	}, err
 }
 
 func (h *Handler) PubList(ctx *ginx.Context, req Page) (ginx.Result, error) {
@@ -141,65 +123,4 @@ func (h *Handler) PubList(ctx *ginx.Context, req Page) (ginx.Result, error) {
 			}
 		}),
 	}, nil
-}
-
-func (h *Handler) toQuestionList(data []domain.Question, cnt int64) QuestionList {
-	return QuestionList{
-		Total: cnt,
-		Questions: slice.Map(data, func(idx int, src domain.Question) Question {
-			return Question{
-				Id:      src.Id,
-				Title:   src.Title,
-				Content: src.Content,
-				Labels:  src.Labels,
-				Status:  src.Status.ToUint8(),
-				Utime:   src.Utime.UnixMilli(),
-			}
-		}),
-	}
-}
-
-func (h *Handler) Detail(ctx *ginx.Context, req Qid) (ginx.Result, error) {
-	detail, err := h.svc.Detail(ctx, req.Qid)
-	if err != nil {
-		return systemErrorResult, err
-	}
-	return ginx.Result{
-		Data: newQuestion(detail, interactive.Interactive{}),
-	}, err
-}
-
-func (h *Handler) PubDetail(ctx *ginx.Context,
-	req Qid, sess session.Session) (ginx.Result, error) {
-	var (
-		eg     errgroup.Group
-		detail domain.Question
-		intr   interactive.Interactive
-	)
-	eg.Go(func() error {
-		var err error
-		detail, err = h.svc.PubDetail(ctx, req.Qid)
-		return err
-	})
-
-	eg.Go(func() error {
-		var err error
-		intr, err = h.intrSvc.Get(ctx, domain.QuestionBiz, req.Qid, sess.Claims().Uid)
-		return err
-	})
-	err := eg.Wait()
-	if err != nil {
-		return systemErrorResult, err
-	}
-	return ginx.Result{
-		Data: newQuestion(detail, intr),
-	}, err
-}
-
-func (h *Handler) Permission(ctx *ginx.Context, sess session.Session) (ginx.Result, error) {
-	if sess.Claims().Get("creator").StringOrDefault("") != "true" {
-		ctx.AbortWithStatus(http.StatusInternalServerError)
-		return ginx.Result{}, fmt.Errorf("非法访问创作中心 uid: %d", sess.Claims().Uid)
-	}
-	return ginx.Result{}, ginx.ErrNoResponse
 }

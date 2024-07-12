@@ -19,6 +19,7 @@ import (
 	"github.com/ecodeclub/webook/internal/question/internal/service"
 	"github.com/ecodeclub/webook/internal/question/internal/web"
 	"github.com/ego-component/egorm"
+	"github.com/google/wire"
 	"gorm.io/gorm"
 )
 
@@ -40,19 +41,28 @@ func InitModule(db *gorm.DB, intrModule *interactive.Module, ec ecache.Cache, q 
 	questionSetDAO := InitQuestionSetDAO(db)
 	questionSetRepository := repository.NewQuestionSetRepository(questionSetDAO)
 	questionSetService := service.NewQuestionSetService(questionSetRepository, interactiveEventProducer, syncDataToSearchEventProducer)
+	adminHandler := web.NewAdminHandler(serviceService)
 	service2 := intrModule.Svc
-	handler := web.NewHandler(serviceService, service2)
-	questionSetHandler := web.NewQuestionSetHandler(questionSetService, service2)
+	examineDAO := dao.NewGORMExamineDAO(db)
+	examineRepository := repository.NewCachedExamineRepository(examineDAO)
+	examineService := service.NewGPTExamineService(repositoryRepository, examineRepository)
+	handler := web.NewHandler(service2, examineService, serviceService)
+	questionSetHandler := web.NewQuestionSetHandler(questionSetService, examineService, service2)
+	examineHandler := web.NewExamineHandler(examineService)
 	module := &Module{
-		Svc:    serviceService,
-		SetSvc: questionSetService,
-		Hdl:    handler,
-		QsHdl:  questionSetHandler,
+		Svc:        serviceService,
+		SetSvc:     questionSetService,
+		AdminHdl:   adminHandler,
+		Hdl:        handler,
+		QsHdl:      questionSetHandler,
+		ExamineHdl: examineHandler,
 	}
 	return module, nil
 }
 
 // wire.go:
+
+var ExamineHandlerSet = wire.NewSet(web.NewExamineHandler, service.NewGPTExamineService, repository.NewCachedExamineRepository, dao.NewGORMExamineDAO)
 
 var daoOnce = sync.Once{}
 

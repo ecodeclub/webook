@@ -47,7 +47,7 @@ func InitApp() (*App, error) {
 		InitSession,
 		cos.InitHandler,
 		baguwen.InitModule,
-		wire.FieldsOf(new(*baguwen.Module), "Hdl", "QsHdl"),
+		wire.FieldsOf(new(*baguwen.Module), "ExamineHdl", "AdminHdl", "Hdl", "QsHdl"),
 		InitUserHandler,
 		label.InitHandler,
 		cases.InitModule,

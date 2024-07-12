@@ -1,0 +1,90 @@
+// Copyright 2023 ecodeclub
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+//go:build e2e
+
+package integration
+
+import (
+	"testing"
+
+	"github.com/ecodeclub/webook/internal/interactive"
+	"github.com/ecodeclub/webook/internal/question/internal/repository/dao"
+	"github.com/ego-component/egorm"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
+)
+
+type BaseTestSuite struct {
+	suite.Suite
+	db *egorm.Component
+}
+
+func (s *BaseTestSuite) TearDownTest() {
+	err := s.db.Exec("TRUNCATE TABLE `answer_elements`").Error
+	require.NoError(s.T(), err)
+	err = s.db.Exec("TRUNCATE TABLE `questions`").Error
+	require.NoError(s.T(), err)
+
+	err = s.db.Exec("TRUNCATE TABLE `publish_answer_elements`").Error
+	require.NoError(s.T(), err)
+	err = s.db.Exec("TRUNCATE TABLE `publish_questions`").Error
+	require.NoError(s.T(), err)
+
+	err = s.db.Exec("TRUNCATE TABLE `question_sets`").Error
+	require.NoError(s.T(), err)
+
+	err = s.db.Exec("TRUNCATE TABLE `question_set_questions`").Error
+	require.NoError(s.T(), err)
+
+	err = s.db.Exec("TRUNCATE TABLE `question_results`").Error
+	require.NoError(s.T(), err)
+}
+
+// assertQuestionSetEqual 不比较 id
+func (s *BaseTestSuite) assertQuestionSetEqual(t *testing.T, expect dao.QuestionSet, actual dao.QuestionSet) {
+	assert.True(t, actual.Id > 0)
+	assert.True(t, actual.Ctime > 0)
+	assert.True(t, actual.Utime > 0)
+	actual.Id = 0
+	actual.Ctime = 0
+	actual.Utime = 0
+	assert.Equal(t, expect, actual)
+}
+
+// assertQuestion 不比较 id
+func (s *BaseTestSuite) assertQuestion(t *testing.T, expect dao.Question, q dao.Question) {
+	assert.True(t, q.Id > 0)
+	assert.True(t, q.Ctime > 0)
+	assert.True(t, q.Utime > 0)
+	q.Id = 0
+	q.Ctime = 0
+	q.Utime = 0
+	assert.Equal(t, expect, q)
+}
+
+func (s *BaseTestSuite) mockInteractive(biz string, id int64) interactive.Interactive {
+	liked := id%2 == 1
+	collected := id%2 == 0
+	return interactive.Interactive{
+		Biz:        biz,
+		BizId:      id,
+		ViewCnt:    int(id + 1),
+		LikeCnt:    int(id + 2),
+		CollectCnt: int(id + 3),
+		Liked:      liked,
+		Collected:  collected,
+	}
+}
