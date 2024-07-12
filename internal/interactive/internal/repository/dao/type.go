@@ -14,7 +14,7 @@
 
 package dao
 
-// 汇总表
+// Interactive 汇总表
 type Interactive struct {
 	Id         int64  `gorm:"primaryKey,autoIncrement"`
 	BizId      int64  `gorm:"uniqueIndex:biz_type_id"`
@@ -26,7 +26,7 @@ type Interactive struct {
 	Ctime      int64
 }
 
-// 点赞明细表
+// UserLikeBiz 点赞明细表
 type UserLikeBiz struct {
 	Id    int64  `gorm:"primaryKey,autoIncrement"`
 	Uid   int64  `gorm:"uniqueIndex:uid_biz_type_id"`
@@ -36,12 +36,21 @@ type UserLikeBiz struct {
 	Ctime int64
 }
 
-// 收藏明细表
+// UserCollectionBiz 收藏明细表
 type UserCollectionBiz struct {
 	Id    int64  `gorm:"primaryKey,autoIncrement"`
 	Uid   int64  `gorm:"uniqueIndex:uid_biz_type_id"`
 	BizId int64  `gorm:"uniqueIndex:uid_biz_type_id"`
 	Biz   string `gorm:"type:varchar(128);uniqueIndex:uid_biz_type_id"`
+	Utime int64
+	Ctime int64
+}
+
+type Collection struct {
+	Id int64 `gorm:"primaryKey,autoIncrement"`
+	// 在 Uid 和 Name 上创建唯一索引，确保用户不会创建同名收藏夹
+	Uid   int64  `gorm:"uniqueIndex:uid_name"`
+	Name  string `gorm:"uniqueIndex:uid_name"`
 	Utime int64
 	Ctime int64
 }
