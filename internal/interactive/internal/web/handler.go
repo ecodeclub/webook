@@ -38,6 +38,11 @@ func NewHandler(svc service.Service) *Handler {
 func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g := server.Group("/interactive")
 	g.POST("/collect/toggle", ginx.BS[CollectReq](h.Collect))
+	// 创建一个收藏夹
+	g.POST("/collection/save", ginx.BS[Collection](h.CollectionSave))
+	g.POST("/collection/list", ginx.BS[Page](h.CollectionList))
+	g.POST("/collection/delete", ginx.BS[IdReq](h.CollectionDelete))
+
 	g.POST("/like/toggle", ginx.BS[LikeReq](h.Like))
 }
 
@@ -61,4 +66,26 @@ func (h *Handler) Like(ctx *ginx.Context, req LikeReq, sess session.Session) (gi
 		return systemErrorResult, err
 	}
 	return ginx.Result{}, nil
+}
+
+func (h *Handler) CollectionSave(ctx *ginx.Context, req Collection, sess session.Session) (ginx.Result, error) {
+	// 把 ID 返回回来
+	return ginx.Result{
+		Data: 123,
+	}, nil
+}
+
+func (h *Handler) CollectionList(ctx *ginx.Context, req Page, sess session.Session) (ginx.Result, error) {
+	// 根据 ID 倒序返回数据
+	return ginx.Result{
+		Data: []Collection{},
+	}, nil
+}
+
+func (h *Handler) CollectionDelete(ctx *ginx.Context, req IdReq, sess session.Session) (ginx.Result, error) {
+	// 删除这个 id 的 collection
+	// 要注意， Uid 必须是这个人。也就是说 A 用户不能删了 B 用户的收藏夹
+	return ginx.Result{
+		Data: "OK",
+	}, nil
 }

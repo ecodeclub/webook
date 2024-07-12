@@ -20,6 +20,12 @@ type CollectReq struct {
 	// 目前还不支持收藏夹的功能。所以可以认为都是放到用户的默认收藏夹里面。
 }
 
+type Collection struct {
+	// 如果传递了这个参数，那么就是更新，如果没有则是插入
+	Id   int64  `json:"id"`
+	Name string `json:"name"`
+}
+
 type LikeReq struct {
 	Biz   string `json:"biz"`
 	BizId int64  `json:"bizId"`
@@ -60,6 +66,15 @@ type Interactive struct {
 	Liked      bool  `json:"liked"`
 	Collected  bool  `json:"collected"`
 }
-type BatatGetCntResp struct {
+type BatchGetCntResp struct {
 	InteractiveMap map[int64]Interactive `json:"interactiveMap"`
+}
+
+type Page struct {
+	Limit  int
+	Offset int
+}
+
+type IdReq struct {
+	Id int64 `json:"id"`
 }
