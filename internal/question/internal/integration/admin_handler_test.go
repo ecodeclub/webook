@@ -26,6 +26,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ecodeclub/webook/internal/permission"
+
 	"github.com/ecodeclub/webook/internal/interactive"
 	intrmocks "github.com/ecodeclub/webook/internal/interactive/mocks"
 
@@ -97,7 +99,7 @@ func (s *AdminHandlerTestSuite) SetupSuite() {
 		return res, nil
 	}).AnyTimes()
 
-	module, err := startup.InitModule(s.producer, intrModule)
+	module, err := startup.InitModule(s.producer, intrModule, &permission.Module{})
 	require.NoError(s.T(), err)
 	econf.Set("server", map[string]any{"contextTimeout": "1s"})
 	server := egin.Load("server").Build()
@@ -144,6 +146,8 @@ func (s *AdminHandlerTestSuite) TestSave() {
 					Uid:     uid,
 					Title:   "面试题1",
 					Content: "面试题内容",
+					Biz:     "project",
+					BizId:   1,
 					Status:  domain.UnPublishedStatus.ToUint8(),
 					Labels: sqlx.JsonColumn[[]string]{
 						Valid: true,
@@ -172,6 +176,8 @@ func (s *AdminHandlerTestSuite) TestSave() {
 				Question: web.Question{
 					Title:        "面试题1",
 					Content:      "面试题内容",
+					Biz:          "project",
+					BizId:        1,
 					Labels:       []string{"MySQL"},
 					Analysis:     s.buildAnswerEle(0),
 					Basic:        s.buildAnswerEle(1),
@@ -195,6 +201,8 @@ func (s *AdminHandlerTestSuite) TestSave() {
 					Id:    2,
 					Uid:   uid,
 					Title: "老的标题",
+					Biz:   "project",
+					BizId: 1,
 					Labels: sqlx.JsonColumn[[]string]{
 						Valid: true,
 						Val:   []string{"MySQL"},
@@ -228,6 +236,8 @@ func (s *AdminHandlerTestSuite) TestSave() {
 					Uid:     uid,
 					Status:  domain.UnPublishedStatus.ToUint8(),
 					Title:   "面试题1",
+					Biz:     "roadmap",
+					BizId:   2,
 					Content: "新的内容",
 					Labels: sqlx.JsonColumn[[]string]{
 						Valid: true,
@@ -260,6 +270,8 @@ func (s *AdminHandlerTestSuite) TestSave() {
 						Id:           2,
 						Title:        "面试题1",
 						Content:      "新的内容",
+						Biz:          "roadmap",
+						BizId:        2,
 						Labels:       []string{"sqlite"},
 						Analysis:     analysis,
 						Basic:        s.buildAnswerEle(1),
@@ -321,6 +333,8 @@ func (s *AdminHandlerTestSuite) TestSync() {
 				s.assertQuestion(t, dao.Question{
 					Uid:    uid,
 					Title:  "面试题1",
+					Biz:    "project",
+					BizId:  1,
 					Status: domain.PublishedStatus.ToUint8(),
 					Labels: sqlx.JsonColumn[[]string]{
 						Valid: true,
@@ -334,6 +348,8 @@ func (s *AdminHandlerTestSuite) TestSync() {
 				Question: web.Question{
 					Title:        "面试题1",
 					Content:      "面试题内容",
+					Biz:          "project",
+					BizId:        1,
 					Labels:       []string{"MySQL"},
 					Analysis:     s.buildAnswerEle(0),
 					Basic:        s.buildAnswerEle(1),
@@ -358,6 +374,8 @@ func (s *AdminHandlerTestSuite) TestSync() {
 					Uid:     uid,
 					Title:   "老的标题",
 					Content: "老的内容",
+					Biz:     "project",
+					BizId:   1,
 					Labels: sqlx.JsonColumn[[]string]{
 						Valid: true,
 						Val:   []string{"MySQL"},
@@ -388,6 +406,8 @@ func (s *AdminHandlerTestSuite) TestSync() {
 				s.assertQuestion(t, dao.Question{
 					Uid:    uid,
 					Status: domain.PublishedStatus.ToUint8(),
+					Biz:    "roadmap",
+					BizId:  2,
 					Labels: sqlx.JsonColumn[[]string]{
 						Valid: true,
 						Val:   []string{"sqlite"},
@@ -413,6 +433,8 @@ func (s *AdminHandlerTestSuite) TestSync() {
 					Uid:    uid,
 					Status: domain.PublishedStatus.ToUint8(),
 					Title:  "面试题1",
+					Biz:    "roadmap",
+					BizId:  2,
 					Labels: sqlx.JsonColumn[[]string]{
 						Valid: true,
 						Val:   []string{"sqlite"},
@@ -445,6 +467,8 @@ func (s *AdminHandlerTestSuite) TestSync() {
 						Id:           2,
 						Title:        "面试题1",
 						Content:      "新的内容",
+						Biz:          "roadmap",
+						BizId:        2,
 						Labels:       []string{"sqlite"},
 						Analysis:     analysis,
 						Basic:        s.buildAnswerEle(1),
@@ -617,6 +641,8 @@ func (s *AdminHandlerTestSuite) TestQuestionEvent() {
 		Question: web.Question{
 			Title:        "面试题1",
 			Content:      "新的内容",
+			Biz:          "project",
+			BizId:        1,
 			Analysis:     s.buildAnswerEle(1),
 			Basic:        s.buildAnswerEle(2),
 			Intermediate: s.buildAnswerEle(3),
@@ -637,6 +663,8 @@ func (s *AdminHandlerTestSuite) TestQuestionEvent() {
 		Question: web.Question{
 			Title:        "面试题2",
 			Content:      "面试题内容",
+			Biz:          "project",
+			BizId:        2,
 			Analysis:     s.buildAnswerEle(0),
 			Basic:        s.buildAnswerEle(1),
 			Intermediate: s.buildAnswerEle(2),
@@ -667,6 +695,8 @@ func (s *AdminHandlerTestSuite) TestQuestionEvent() {
 			Content: "新的内容",
 			UID:     uid,
 			Status:  1,
+			Biz:     "project",
+			BizId:   1,
 			Answer: event.Answer{
 				Analysis:     s.buildEventEle(1),
 				Basic:        s.buildEventEle(2),
@@ -679,6 +709,8 @@ func (s *AdminHandlerTestSuite) TestQuestionEvent() {
 			UID:     uid,
 			Content: "面试题内容",
 			Status:  2,
+			Biz:     "project",
+			BizId:   2,
 			Answer: event.Answer{
 				Analysis:     s.buildEventEle(0),
 				Basic:        s.buildEventEle(1),

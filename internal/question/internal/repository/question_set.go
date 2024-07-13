@@ -32,11 +32,46 @@ type QuestionSetRepository interface {
 	List(ctx context.Context, offset int, limit int) ([]domain.QuestionSet, error)
 	UpdateNonZero(ctx context.Context, set domain.QuestionSet) error
 	GetByIDs(ctx context.Context, ids []int64) ([]domain.QuestionSet, error)
+	ListByBiz(ctx context.Context, offset, limit int, biz string) ([]domain.QuestionSet, error)
+	GetByBiz(ctx context.Context, biz string, bizId int64) (domain.QuestionSet, error)
 }
+
+var _ QuestionSetRepository = &questionSetRepository{}
 
 type questionSetRepository struct {
 	dao    dao.QuestionSetDAO
 	logger *elog.Component
+}
+
+func (q *questionSetRepository) GetByBiz(ctx context.Context, biz string, bizId int64) (domain.QuestionSet, error) {
+	set, err := q.dao.GetByBiz(ctx, biz, bizId)
+	if err != nil {
+		return domain.QuestionSet{}, err
+	}
+	questions, err := q.getDomainQuestions(ctx, set.Id)
+	if err != nil {
+		return domain.QuestionSet{}, err
+	}
+	return domain.QuestionSet{
+		Id:          set.Id,
+		Uid:         set.Uid,
+		Title:       set.Title,
+		Biz:         set.Biz,
+		BizId:       set.BizId,
+		Description: set.Description,
+		Questions:   questions,
+		Utime:       time.UnixMilli(set.Utime),
+	}, nil
+}
+
+func (q *questionSetRepository) ListByBiz(ctx context.Context, offset, limit int, biz string) ([]domain.QuestionSet, error) {
+	qs, err := q.dao.ListByBiz(ctx, offset, limit, biz)
+	if err != nil {
+		return nil, err
+	}
+	return slice.Map(qs, func(idx int, src dao.QuestionSet) domain.QuestionSet {
+		return q.toDomainQuestionSet(src)
+	}), err
 }
 
 func (q *questionSetRepository) GetByIDs(ctx context.Context, ids []int64) ([]domain.QuestionSet, error) {
@@ -59,6 +94,8 @@ func (q *questionSetRepository) toEntityQuestionSet(d domain.QuestionSet) dao.Qu
 		Id:          d.Id,
 		Uid:         d.Uid,
 		Title:       d.Title,
+		Biz:         d.Biz,
+		BizId:       d.BizId,
 		Description: d.Description,
 		Utime:       d.Utime.UnixMilli(),
 	}
@@ -88,6 +125,8 @@ func (q *questionSetRepository) toDomainQuestion(que dao.Question) domain.Questi
 		Uid:     que.Uid,
 		Title:   que.Title,
 		Content: que.Content,
+		Biz:     que.Biz,
+		BizId:   que.BizId,
 		Answer:  domain.Answer{},
 		Utime:   time.UnixMilli(que.Utime),
 	}
@@ -107,6 +146,8 @@ func (q *questionSetRepository) GetByID(ctx context.Context, id int64) (domain.Q
 		Id:          set.Id,
 		Uid:         set.Uid,
 		Title:       set.Title,
+		Biz:         set.Biz,
+		BizId:       set.BizId,
 		Description: set.Description,
 		Questions:   questions,
 		Utime:       time.UnixMilli(set.Utime),
@@ -132,6 +173,8 @@ func (q *questionSetRepository) toDomainQuestionSet(qs dao.QuestionSet) domain.Q
 		Id:          qs.Id,
 		Uid:         qs.Uid,
 		Title:       qs.Title,
+		Biz:         qs.Biz,
+		BizId:       qs.BizId,
 		Description: qs.Description,
 		// Questions:   q.getDomainQuestions(),
 		Utime: time.UnixMilli(qs.Utime),

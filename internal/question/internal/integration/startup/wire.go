@@ -18,6 +18,7 @@ package startup
 
 import (
 	"github.com/ecodeclub/webook/internal/interactive"
+	"github.com/ecodeclub/webook/internal/permission"
 	baguwen "github.com/ecodeclub/webook/internal/question"
 	"github.com/ecodeclub/webook/internal/question/internal/event"
 	"github.com/ecodeclub/webook/internal/question/internal/repository"
@@ -29,12 +30,15 @@ import (
 )
 
 func InitModule(p event.SyncDataToSearchEventProducer,
-	intrModule *interactive.Module) (*baguwen.Module, error) {
+	intrModule *interactive.Module,
+	permModule *permission.Module,
+) (*baguwen.Module, error) {
 	wire.Build(
 		testioc.BaseSet,
 		moduleSet,
 		event.NewInteractiveEventProducer,
 		wire.FieldsOf(new(*interactive.Module), "Svc"),
+		wire.FieldsOf(new(*permission.Module), "Svc"),
 	)
 	return new(baguwen.Module), nil
 }
@@ -45,6 +49,7 @@ var moduleSet = wire.NewSet(baguwen.InitQuestionDAO,
 	service.NewService,
 	web.NewHandler,
 	web.NewAdminHandler,
+	web.NewAdminQuestionSetHandler,
 	baguwen.ExamineHandlerSet,
 	baguwen.InitQuestionSetDAO,
 	repository.NewQuestionSetRepository,

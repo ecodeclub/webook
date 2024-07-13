@@ -28,6 +28,8 @@ type QuestionEvent struct {
 type Question struct {
 	ID      int64    `json:"id"`
 	UID     int64    `json:"uid"`
+	Biz     string   `json:"biz"`
+	BizId   int64    `json:"bizId"`
 	Title   string   `json:"title"`
 	Labels  []string `json:"labels"`
 	Content string   `json:"content"`
@@ -57,12 +59,14 @@ type QuestionSet struct {
 	Id          int64   `json:"id"`
 	Uid         int64   `json:"uid"`
 	Title       string  `json:"title"`
+	Biz         string  `json:"biz"`
+	BizId       int64   `json:"bizId"`
 	Description string  `json:"description"`
 	Questions   []int64 `json:"questions"`
 	Utime       int64   `json:"utime"`
 }
 
-func NewQuestionEvent(q *domain.Question) QuestionEvent {
+func NewQuestionEvent(q domain.Question) QuestionEvent {
 	que := newQuestion(q)
 	qByte, _ := json.Marshal(que)
 	return QuestionEvent{
@@ -90,19 +94,23 @@ func newQuestionSet(q domain.QuestionSet) QuestionSet {
 		Id:          q.Id,
 		Uid:         q.Uid,
 		Title:       q.Title,
+		Biz:         q.Biz,
+		BizId:       q.BizId,
 		Description: q.Description,
 		Utime:       q.Utime.UnixMilli(),
 		Questions:   qids,
 	}
 }
 
-func newQuestion(q *domain.Question) Question {
+func newQuestion(q domain.Question) Question {
 	return Question{
 		ID:      q.Id,
 		UID:     q.Uid,
 		Title:   q.Title,
 		Labels:  q.Labels,
 		Content: q.Content,
+		Biz:     q.Biz,
+		BizId:   q.BizId,
 		Status:  q.Status.ToUint8(),
 		Answer: Answer{
 			Analysis:     newAnswerElement(q.Answer.Analysis),

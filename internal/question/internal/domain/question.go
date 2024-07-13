@@ -21,12 +21,20 @@ type Question struct {
 	Id    int64
 	Uid   int64
 	Title string
+
+	Biz   string
+	BizId int64
+
 	// 属于系统标签
 	Labels  []string
 	Content string
 	Status  QuestionStatus
 	Answer  Answer
 	Utime   time.Time
+}
+
+func (q Question) IsBaguwen() bool {
+	return q.Biz == DefaultBiz
 }
 
 type Answer struct {

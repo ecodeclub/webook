@@ -153,7 +153,7 @@ func (s *service) syncQuestion(id int64) {
 		)
 		return
 	}
-	evt := event.NewQuestionEvent(&que)
+	evt := event.NewQuestionEvent(que)
 	err = s.syncProducer.Produce(ctx, evt)
 	if err != nil {
 		s.logger.Error("发送同步搜索信息",

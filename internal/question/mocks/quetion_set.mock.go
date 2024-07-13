@@ -78,6 +78,45 @@ func (c *QuestionSetServiceDetailCall) DoAndReturn(f func(context.Context, int64
 	return c
 }
 
+// DetailByBiz mocks base method.
+func (m *MockQuestionSetService) DetailByBiz(ctx context.Context, biz string, bizId int64) (domain.QuestionSet, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DetailByBiz", ctx, biz, bizId)
+	ret0, _ := ret[0].(domain.QuestionSet)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// DetailByBiz indicates an expected call of DetailByBiz.
+func (mr *MockQuestionSetServiceMockRecorder) DetailByBiz(ctx, biz, bizId any) *QuestionSetServiceDetailByBizCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DetailByBiz", reflect.TypeOf((*MockQuestionSetService)(nil).DetailByBiz), ctx, biz, bizId)
+	return &QuestionSetServiceDetailByBizCall{Call: call}
+}
+
+// QuestionSetServiceDetailByBizCall wrap *gomock.Call
+type QuestionSetServiceDetailByBizCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *QuestionSetServiceDetailByBizCall) Return(arg0 domain.QuestionSet, arg1 error) *QuestionSetServiceDetailByBizCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *QuestionSetServiceDetailByBizCall) Do(f func(context.Context, string, int64) (domain.QuestionSet, error)) *QuestionSetServiceDetailByBizCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *QuestionSetServiceDetailByBizCall) DoAndReturn(f func(context.Context, string, int64) (domain.QuestionSet, error)) *QuestionSetServiceDetailByBizCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // GetByIds mocks base method.
 func (m *MockQuestionSetService) GetByIds(ctx context.Context, ids []int64) ([]domain.QuestionSet, error) {
 	m.ctrl.T.Helper()
@@ -153,6 +192,45 @@ func (c *QuestionSetServiceListCall) Do(f func(context.Context, int, int) ([]dom
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
 func (c *QuestionSetServiceListCall) DoAndReturn(f func(context.Context, int, int) ([]domain.QuestionSet, int64, error)) *QuestionSetServiceListCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// ListDefault mocks base method.
+func (m *MockQuestionSetService) ListDefault(ctx context.Context, offset, limit int) ([]domain.QuestionSet, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListDefault", ctx, offset, limit)
+	ret0, _ := ret[0].([]domain.QuestionSet)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListDefault indicates an expected call of ListDefault.
+func (mr *MockQuestionSetServiceMockRecorder) ListDefault(ctx, offset, limit any) *QuestionSetServiceListDefaultCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListDefault", reflect.TypeOf((*MockQuestionSetService)(nil).ListDefault), ctx, offset, limit)
+	return &QuestionSetServiceListDefaultCall{Call: call}
+}
+
+// QuestionSetServiceListDefaultCall wrap *gomock.Call
+type QuestionSetServiceListDefaultCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *QuestionSetServiceListDefaultCall) Return(arg0 []domain.QuestionSet, arg1 error) *QuestionSetServiceListDefaultCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *QuestionSetServiceListDefaultCall) Do(f func(context.Context, int, int) ([]domain.QuestionSet, error)) *QuestionSetServiceListDefaultCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *QuestionSetServiceListDefaultCall) DoAndReturn(f func(context.Context, int, int) ([]domain.QuestionSet, error)) *QuestionSetServiceListDefaultCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

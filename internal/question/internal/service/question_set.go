@@ -26,13 +26,17 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
+// QuestionSetService 还没有分离制作库和线上库
+//
 //go:generate mockgen -source=./question_set.go -destination=../../mocks/quetion_set.mock.go -package=quemocks -typed=true QuestionSetService
 type QuestionSetService interface {
 	Save(ctx context.Context, set domain.QuestionSet) (int64, error)
 	UpdateQuestions(ctx context.Context, set domain.QuestionSet) error
 	List(ctx context.Context, offset, limit int) ([]domain.QuestionSet, int64, error)
+	ListDefault(ctx context.Context, offset, limit int) ([]domain.QuestionSet, error)
 	Detail(ctx context.Context, id int64) (domain.QuestionSet, error)
 	GetByIds(ctx context.Context, ids []int64) ([]domain.QuestionSet, error)
+	DetailByBiz(ctx context.Context, biz string, bizId int64) (domain.QuestionSet, error)
 }
 
 type questionSetService struct {
@@ -43,20 +47,16 @@ type questionSetService struct {
 	syncTimeout  time.Duration
 }
 
-func (q *questionSetService) GetByIds(ctx context.Context, ids []int64) ([]domain.QuestionSet, error) {
-	return q.repo.GetByIDs(ctx, ids)
+func (q *questionSetService) DetailByBiz(ctx context.Context, biz string, bizId int64) (domain.QuestionSet, error) {
+	return q.repo.GetByBiz(ctx, biz, bizId)
 }
 
-func NewQuestionSetService(repo repository.QuestionSetRepository,
-	intrProducer event.InteractiveEventProducer,
-	producer event.SyncDataToSearchEventProducer) QuestionSetService {
-	return &questionSetService{
-		repo:         repo,
-		producer:     producer,
-		intrProducer: intrProducer,
-		logger:       elog.DefaultLogger,
-		syncTimeout:  10 * time.Second,
-	}
+func (q *questionSetService) ListDefault(ctx context.Context, offset, limit int) ([]domain.QuestionSet, error) {
+	return q.repo.ListByBiz(ctx, offset, limit, domain.DefaultBiz)
+}
+
+func (q *questionSetService) GetByIds(ctx context.Context, ids []int64) ([]domain.QuestionSet, error) {
+	return q.repo.GetByIDs(ctx, ids)
 }
 
 func (q *questionSetService) Save(ctx context.Context, set domain.QuestionSet) (int64, error) {
@@ -136,5 +136,17 @@ func (q *questionSetService) syncQuestionSet(id int64) {
 			elog.FieldErr(err),
 			elog.Any("event", evt),
 		)
+	}
+}
+
+func NewQuestionSetService(repo repository.QuestionSetRepository,
+	intrProducer event.InteractiveEventProducer,
+	producer event.SyncDataToSearchEventProducer) QuestionSetService {
+	return &questionSetService{
+		repo:         repo,
+		producer:     producer,
+		intrProducer: intrProducer,
+		logger:       elog.DefaultLogger,
+		syncTimeout:  10 * time.Second,
 	}
 }

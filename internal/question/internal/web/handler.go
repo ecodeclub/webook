@@ -15,10 +15,13 @@
 package web
 
 import (
+	"fmt"
+
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/ecodeclub/ginx"
 	"github.com/ecodeclub/ginx/session"
 	"github.com/ecodeclub/webook/internal/interactive"
+	"github.com/ecodeclub/webook/internal/permission"
 	"github.com/ecodeclub/webook/internal/question/internal/domain"
 	"github.com/ecodeclub/webook/internal/question/internal/service"
 	"github.com/gin-gonic/gin"
@@ -31,10 +34,16 @@ type Handler struct {
 	intrSvc    interactive.Service
 	examineSvc service.ExamineService
 	svc        service.Service
+	permSvc    permission.Service
 }
 
-func NewHandler(intrSvc interactive.Service, examineSvc service.ExamineService, svc service.Service) *Handler {
-	return &Handler{intrSvc: intrSvc, examineSvc: examineSvc, svc: svc}
+func NewHandler(intrSvc interactive.Service,
+	examineSvc service.ExamineService,
+	permSvc permission.Service,
+	svc service.Service) *Handler {
+	return &Handler{intrSvc: intrSvc,
+		permSvc:    permSvc,
+		examineSvc: examineSvc, svc: svc}
 }
 
 func (h *Handler) PublicRoutes(server *gin.Engine) {
@@ -61,7 +70,26 @@ func (h *Handler) PubDetail(ctx *ginx.Context,
 	eg.Go(func() error {
 		var err error
 		detail, err = h.svc.PubDetail(ctx, req.Qid)
-		return err
+		if err != nil {
+			return fmt.Errorf("查找面试题详情失败 %w", err)
+		}
+		// 非八股文，我们需要判定是否有权限
+		// 暂时在这里聚合
+		if !detail.IsBaguwen() {
+			var ok bool
+			ok, err = h.permSvc.HasPermission(ctx, permission.Permission{
+				Uid:   uid,
+				Biz:   detail.Biz,
+				BizID: detail.BizId,
+			})
+			if err != nil {
+				return fmt.Errorf("判定用户是否有权限失败 %w", err)
+			}
+			if !ok {
+				return fmt.Errorf("用户不具有面试题对应业务的权限 uid %d, biz: %s, bizId: %d", uid, detail.Biz, detail.BizId)
+			}
+		}
+		return nil
 	})
 
 	eg.Go(func() error {
@@ -112,15 +140,7 @@ func (h *Handler) PubList(ctx *ginx.Context, req Page) (ginx.Result, error) {
 	return ginx.Result{
 		// 在 C 端是下拉刷新
 		Data: slice.Map(data, func(idx int, src domain.Question) Question {
-			return Question{
-				Id:          src.Id,
-				Title:       src.Title,
-				Content:     src.Content,
-				Labels:      src.Labels,
-				Status:      src.Status.ToUint8(),
-				Utime:       src.Utime.UnixMilli(),
-				Interactive: newInteractive(intrs[src.Id]),
-			}
+			return newQuestion(src, intrs[src.Id])
 		}),
 	}, nil
 }
