@@ -26,9 +26,16 @@ type Question struct {
 	Title string `gorm:"type=varchar(512)"`
 	// 面试题目内容
 	Content string
-	Status  uint8 `gorm:"type:tinyint(3);comment:0-未知 1-未发表 2-已发表"`
-	Ctime   int64
-	Utime   int64 `gorm:"index"`
+
+	// biz。也就是我们这个面试题目还可以用在特定一些场景下
+	// 不必设置唯一索引，因为我们允许一个业务有多个题集
+	// 如果 biz 和 bizId 都是零值，那么代表的就是八股文
+	Biz   string `gorm:"type=varchar(256);index:biz;not null;default:'baguwen';"`
+	BizId int64  `gorm:"index:biz;not null;default:0;"`
+
+	Status uint8 `gorm:"type:tinyint(3);comment:0-未知 1-未发表 2-已发表"`
+	Ctime  int64
+	Utime  int64 `gorm:"index"`
 }
 
 type PublishQuestion Question
@@ -64,7 +71,7 @@ type AnswerElement struct {
 	Utime int64
 }
 
-// QuestionSet 题集 属于个人
+// QuestionSet 题集
 type QuestionSet struct {
 	Id int64 `gorm:"primaryKey,autoIncrement"`
 	// 所有者
@@ -73,6 +80,11 @@ type QuestionSet struct {
 	Title string
 	// 题集描述
 	Description string
+
+	// 注意，QuestionSet 的 Biz 和 BizId 可以和内部的 Question 的不同
+	// 举个例子来说，一个面试项目的模拟面试题，一部分是面试项目本身的题目，一部分是八股文
+	Biz   string `gorm:"type=varchar(256);index:biz;not null;default:'baguwen';"`
+	BizId int64  `gorm:"index:biz;not null;default:0;"`
 
 	Ctime int64
 	Utime int64 `gorm:"index"`

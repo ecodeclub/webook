@@ -38,6 +38,7 @@ type AdminServer *egin.Component
 func InitAdminServer(prj *project.AdminHandler,
 	rm *roadmap.AdminHandler,
 	que *baguwen.AdminHandler,
+	queSet *baguwen.AdminQuestionSetHandler,
 	mark *marketing.AdminHandler) AdminServer {
 	res := egin.Load("admin").Build()
 	res.Use(cors.New(cors.Config{
@@ -62,6 +63,7 @@ func InitAdminServer(prj *project.AdminHandler,
 	res.Use(session.CheckLoginMiddleware())
 	res.Use(AdminPermission())
 	prj.PrivateRoutes(res.Engine)
+	queSet.PrivateRoutes(res.Engine)
 	mark.PrivateRoutes(res.Engine)
 	rm.PrivateRoutes(res.Engine)
 	que.PrivateRoutes(res.Engine)

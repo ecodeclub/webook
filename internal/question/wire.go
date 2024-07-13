@@ -19,6 +19,8 @@ package baguwen
 import (
 	"sync"
 
+	"github.com/ecodeclub/webook/internal/permission"
+
 	"github.com/ecodeclub/webook/internal/interactive"
 
 	"github.com/ecodeclub/webook/internal/question/internal/event"
@@ -45,6 +47,7 @@ var ExamineHandlerSet = wire.NewSet(
 func InitModule(db *egorm.Component,
 	intrModule *interactive.Module,
 	ec ecache.Cache,
+	perm *permission.Module,
 	q mq.MQ) (*Module, error) {
 	wire.Build(InitQuestionDAO,
 		cache.NewQuestionECache,
@@ -54,6 +57,7 @@ func InitModule(db *egorm.Component,
 		service.NewService,
 		web.NewHandler,
 		web.NewAdminHandler,
+		web.NewAdminQuestionSetHandler,
 
 		ExamineHandlerSet,
 
@@ -63,6 +67,7 @@ func InitModule(db *egorm.Component,
 		web.NewQuestionSetHandler,
 
 		wire.FieldsOf(new(*interactive.Module), "Svc"),
+		wire.FieldsOf(new(*permission.Module), "Svc"),
 
 		wire.Struct(new(Module), "*"),
 	)

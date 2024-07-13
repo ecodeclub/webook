@@ -106,6 +106,8 @@ func (g *GORMQuestionDAO) update(tx *gorm.DB, q Question, eles []AnswerElement) 
 		"labels":  q.Labels,
 		"status":  q.Status,
 		"utime":   now,
+		"biz":     q.Biz,
+		"biz_id":  q.BizId,
 	})
 	if res.Error != nil {
 		return res.Error

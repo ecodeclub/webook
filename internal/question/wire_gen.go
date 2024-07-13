@@ -12,6 +12,7 @@ import (
 	"github.com/ecodeclub/ecache"
 	"github.com/ecodeclub/mq-api"
 	"github.com/ecodeclub/webook/internal/interactive"
+	"github.com/ecodeclub/webook/internal/permission"
 	"github.com/ecodeclub/webook/internal/question/internal/event"
 	"github.com/ecodeclub/webook/internal/question/internal/repository"
 	"github.com/ecodeclub/webook/internal/question/internal/repository/cache"
@@ -25,7 +26,7 @@ import (
 
 // Injectors from wire.go:
 
-func InitModule(db *gorm.DB, intrModule *interactive.Module, ec ecache.Cache, q mq.MQ) (*Module, error) {
+func InitModule(db *gorm.DB, intrModule *interactive.Module, ec ecache.Cache, perm *permission.Module, q mq.MQ) (*Module, error) {
 	questionDAO := InitQuestionDAO(db)
 	questionCache := cache.NewQuestionECache(ec)
 	repositoryRepository := repository.NewCacheRepository(questionDAO, questionCache)
@@ -42,20 +43,23 @@ func InitModule(db *gorm.DB, intrModule *interactive.Module, ec ecache.Cache, q 
 	questionSetRepository := repository.NewQuestionSetRepository(questionSetDAO)
 	questionSetService := service.NewQuestionSetService(questionSetRepository, interactiveEventProducer, syncDataToSearchEventProducer)
 	adminHandler := web.NewAdminHandler(serviceService)
+	adminQuestionSetHandler := web.NewAdminQuestionSetHandler(questionSetService)
 	service2 := intrModule.Svc
 	examineDAO := dao.NewGORMExamineDAO(db)
 	examineRepository := repository.NewCachedExamineRepository(examineDAO)
 	examineService := service.NewGPTExamineService(repositoryRepository, examineRepository)
-	handler := web.NewHandler(service2, examineService, serviceService)
+	service3 := perm.Svc
+	handler := web.NewHandler(service2, examineService, service3, serviceService)
 	questionSetHandler := web.NewQuestionSetHandler(questionSetService, examineService, service2)
 	examineHandler := web.NewExamineHandler(examineService)
 	module := &Module{
-		Svc:        serviceService,
-		SetSvc:     questionSetService,
-		AdminHdl:   adminHandler,
-		Hdl:        handler,
-		QsHdl:      questionSetHandler,
-		ExamineHdl: examineHandler,
+		Svc:         serviceService,
+		SetSvc:      questionSetService,
+		AdminHdl:    adminHandler,
+		AdminSetHdl: adminQuestionSetHandler,
+		Hdl:         handler,
+		QsHdl:       questionSetHandler,
+		ExamineHdl:  examineHandler,
 	}
 	return module, nil
 }

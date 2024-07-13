@@ -33,6 +33,8 @@ type Question struct {
 	Content string `json:"content,omitempty"`
 	Utime   int64  `json:"utime,omitempty"`
 	Status  uint8  `json:"status,omitempty"`
+	Biz     string `json:"biz"`
+	BizId   int64  `json:"bizId"`
 
 	Analysis AnswerElement `json:"analysis,omitempty"`
 	// 基本回答
@@ -52,6 +54,8 @@ func (que Question) toDomain() domain.Question {
 		Title:   que.Title,
 		Content: que.Content,
 		Labels:  que.Labels,
+		Biz:     que.Biz,
+		BizId:   que.BizId,
 		Answer: domain.Answer{
 			Analysis:     que.Analysis.toDomain(),
 			Basic:        que.Basic.toDomain(),
@@ -67,6 +71,8 @@ func newQuestion(que domain.Question, intr interactive.Interactive) Question {
 		Title:        que.Title,
 		Content:      que.Content,
 		Labels:       que.Labels,
+		Biz:          que.Biz,
+		BizId:        que.BizId,
 		Status:       que.Status.ToUint8(),
 		Analysis:     newAnswerElement(que.Answer.Analysis),
 		Basic:        newAnswerElement(que.Answer.Basic),
@@ -129,13 +135,7 @@ type QuestionList struct {
 	Total     int64      `json:"total,omitempty"`
 }
 
-type SaveQuestionSetReq struct {
-	Id          int64  `json:"id"`
-	Title       string `json:"title,omitempty"`
-	Description string `json:"description,omitempty"`
-}
-
-type UpdateQuestionsOfQuestionSetReq struct {
+type UpdateQuestions struct {
 	QSID int64   `json:"qsid"`
 	QIDs []int64 `json:"qids,omitempty"`
 }
@@ -149,8 +149,22 @@ type QuestionSet struct {
 	Title       string      `json:"title,omitempty"`
 	Description string      `json:"description,omitempty"`
 	Questions   []Question  `json:"questions,omitempty"`
+	Biz         string      `json:"biz"`
+	BizId       int64       `json:"bizId"`
 	Utime       int64       `json:"utime,omitempty"`
 	Interactive Interactive `json:"interactive,omitempty"`
+}
+
+// newQuestionSet 只包含基础信息
+func newQuestionSet(set domain.QuestionSet) QuestionSet {
+	return QuestionSet{
+		Id:          set.Id,
+		Title:       set.Title,
+		Description: set.Description,
+		Biz:         set.Biz,
+		BizId:       set.BizId,
+		Utime:       set.Utime.UnixMilli(),
+	}
 }
 
 type QuestionSetList struct {
@@ -174,4 +188,9 @@ func newInteractive(intr interactive.Interactive) Interactive {
 		Liked:      intr.Liked,
 		Collected:  intr.Collected,
 	}
+}
+
+type BizReq struct {
+	Biz   string `json:"biz"`
+	BizId int64  `json:"bizId"`
 }

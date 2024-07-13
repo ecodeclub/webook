@@ -29,6 +29,9 @@ type QuestionSet struct {
 	// 描述
 	Description string
 
+	Biz   string
+	BizId int64
+
 	// 题集中引用的题目,
 	Questions []Question
 

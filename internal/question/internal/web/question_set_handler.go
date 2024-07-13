@@ -15,8 +15,7 @@
 package web
 
 import (
-	"fmt"
-	"time"
+	"context"
 
 	"github.com/ecodeclub/webook/internal/interactive"
 	"golang.org/x/sync/errgroup"
@@ -55,49 +54,14 @@ func (h *QuestionSetHandler) PublicRoutes(server *gin.Engine) {}
 
 func (h *QuestionSetHandler) PrivateRoutes(server *gin.Engine) {
 	g := server.Group("/question-sets")
-	g.POST("/save", ginx.BS[SaveQuestionSetReq](h.SaveQuestionSet))
-	g.POST("/questions/save", ginx.BS[UpdateQuestionsOfQuestionSetReq](h.UpdateQuestionsOfQuestionSet))
 	g.POST("/list", ginx.B[Page](h.ListQuestionSets))
 	g.POST("/detail", ginx.BS(h.RetrieveQuestionSetDetail))
-}
-
-// SaveQuestionSet 保存
-func (h *QuestionSetHandler) SaveQuestionSet(ctx *ginx.Context, req SaveQuestionSetReq, sess session.Session) (ginx.Result, error) {
-	id, err := h.svc.Save(ctx.Request.Context(), domain.QuestionSet{
-		Id:          req.Id,
-		Uid:         sess.Claims().Uid,
-		Title:       req.Title,
-		Description: req.Description,
-		Utime:       time.Now(),
-	})
-	if err != nil {
-		return systemErrorResult, err
-	}
-	return ginx.Result{
-		Data: id,
-	}, nil
-}
-
-// UpdateQuestionsOfQuestionSet 整体更新题集中的所有问题 覆盖式的 前端传递过来的问题集合就是题集中最终的问题集合
-func (h *QuestionSetHandler) UpdateQuestionsOfQuestionSet(ctx *ginx.Context, req UpdateQuestionsOfQuestionSetReq, sess session.Session) (ginx.Result, error) {
-	questions := make([]domain.Question, len(req.QIDs))
-	for i := range req.QIDs {
-		questions[i] = domain.Question{Id: req.QIDs[i]}
-	}
-	err := h.svc.UpdateQuestions(ctx.Request.Context(), domain.QuestionSet{
-		Id:        req.QSID,
-		Uid:       sess.Claims().Uid,
-		Questions: questions,
-	})
-	if err != nil {
-		return systemErrorResult, err
-	}
-	return ginx.Result{}, nil
+	g.POST("/detail/biz", ginx.BS(h.GetDetailByBiz))
 }
 
 // ListQuestionSets 展示个人题集
 func (h *QuestionSetHandler) ListQuestionSets(ctx *ginx.Context, req Page) (ginx.Result, error) {
-	data, total, err := h.svc.List(ctx, req.Offset, req.Limit)
+	data, err := h.svc.ListDefault(ctx, req.Offset, req.Limit)
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -118,38 +82,56 @@ func (h *QuestionSetHandler) ListQuestionSets(ctx *ginx.Context, req Page) (ginx
 	}
 	return ginx.Result{
 		Data: QuestionSetList{
-			Total: total,
 			QuestionSets: slice.Map(data, func(idx int, src domain.QuestionSet) QuestionSet {
-				return QuestionSet{
-					Id:          src.Id,
-					Title:       src.Title,
-					Description: src.Description,
-					Utime:       src.Utime.UnixMilli(),
-					Interactive: newInteractive(intrs[src.Id]),
-				}
+				qs := newQuestionSet(src)
+				qs.Interactive = newInteractive(intrs[src.Id])
+				return qs
 			}),
 		},
 	}, nil
+}
+
+func (h *QuestionSetHandler) GetDetailByBiz(
+	ctx *ginx.Context,
+	req BizReq, sess session.Session) (ginx.Result, error) {
+	data, err := h.svc.DetailByBiz(ctx, req.Biz, req.BizId)
+	if err != nil {
+		return systemErrorResult, err
+	}
+	return h.getDetail(ctx, sess.Claims().Uid, data)
 }
 
 // RetrieveQuestionSetDetail 题集详情
 func (h *QuestionSetHandler) RetrieveQuestionSetDetail(
 	ctx *ginx.Context,
 	req QuestionSetID, sess session.Session) (ginx.Result, error) {
+
+	data, err := h.svc.Detail(ctx.Request.Context(), req.QSID)
+	if err != nil {
+		return systemErrorResult, err
+	}
+	return h.getDetail(ctx, sess.Claims().Uid, data)
+}
+
+func (h *QuestionSetHandler) getDetail(
+	ctx context.Context,
+	uid int64,
+	qs domain.QuestionSet) (ginx.Result, error) {
 	var (
-		eg   errgroup.Group
-		data domain.QuestionSet
-		intr interactive.Interactive
+		eg        errgroup.Group
+		intr      interactive.Interactive
+		resultMap map[int64]domain.ExamineResult
 	)
+
 	eg.Go(func() error {
 		var err error
-		data, err = h.svc.Detail(ctx.Request.Context(), req.QSID)
+		intr, err = h.intrSvc.Get(ctx, "questionSet", qs.Id, uid)
 		return err
 	})
 
 	eg.Go(func() error {
 		var err error
-		intr, err = h.intrSvc.Get(ctx, "questionSet", req.QSID, sess.Claims().Uid)
+		resultMap, err = h.examineSvc.GetResults(ctx, uid, qs.Qids())
 		return err
 	})
 
@@ -157,13 +139,9 @@ func (h *QuestionSetHandler) RetrieveQuestionSetDetail(
 	if err != nil {
 		return systemErrorResult, err
 	}
-	uid := sess.Claims().Uid
-	resultMap, err := h.examineSvc.GetResults(ctx, uid, data.Qids())
-	if err != nil {
-		return systemErrorResult, fmt.Errorf("查询答题情况失败 cause: %w", err)
-	}
+
 	return ginx.Result{
-		Data: h.toQuestionSetVO(data, intr, resultMap),
+		Data: h.toQuestionSetVO(qs, intr, resultMap),
 	}, nil
 }
 
@@ -171,14 +149,10 @@ func (h *QuestionSetHandler) toQuestionSetVO(
 	set domain.QuestionSet,
 	intr interactive.Interactive,
 	results map[int64]domain.ExamineResult) QuestionSet {
-	return QuestionSet{
-		Id:          set.Id,
-		Title:       set.Title,
-		Description: set.Description,
-		Questions:   h.toQuestionVO(set.Questions, results),
-		Utime:       set.Utime.UnixMilli(),
-		Interactive: newInteractive(intr),
-	}
+	qs := newQuestionSet(set)
+	qs.Questions = h.toQuestionVO(set.Questions, results)
+	qs.Interactive = newInteractive(intr)
+	return qs
 }
 
 func (h *QuestionSetHandler) toQuestionVO(questions []domain.Question, results map[int64]domain.ExamineResult) []Question {

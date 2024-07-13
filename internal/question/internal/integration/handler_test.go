@@ -24,6 +24,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ecodeclub/webook/internal/permission"
+	permissionmocks "github.com/ecodeclub/webook/internal/permission/mocks"
+	"github.com/ecodeclub/webook/internal/question/internal/errs"
+
 	"github.com/ecodeclub/webook/internal/interactive"
 	intrmocks "github.com/ecodeclub/webook/internal/interactive/mocks"
 
@@ -42,7 +46,6 @@ import (
 	"github.com/ecodeclub/webook/internal/question/internal/web"
 	"github.com/ecodeclub/webook/internal/test"
 	testioc "github.com/ecodeclub/webook/internal/test/ioc"
-	"github.com/ego-component/egorm"
 	"github.com/gin-gonic/gin"
 	"github.com/gotomicro/ego/core/econf"
 	"github.com/gotomicro/ego/server/egin"
@@ -54,37 +57,16 @@ import (
 const uid = 123
 
 type HandlerTestSuite struct {
-	suite.Suite
-	server         *egin.Component
-	db             *egorm.Component
-	rdb            ecache.Cache
-	dao            dao.QuestionDAO
-	questionSetDAO dao.QuestionSetDAO
-	ctrl           *gomock.Controller
-	producer       *eveMocks.MockSyncEventProducer
-}
-
-func (s *HandlerTestSuite) TearDownTest() {
-	err := s.db.Exec("TRUNCATE TABLE `publish_answer_elements`").Error
-	require.NoError(s.T(), err)
-	err = s.db.Exec("TRUNCATE TABLE `publish_questions`").Error
-	require.NoError(s.T(), err)
-
-	err = s.db.Exec("TRUNCATE TABLE `question_sets`").Error
-	require.NoError(s.T(), err)
-
-	err = s.db.Exec("TRUNCATE TABLE `question_set_questions`").Error
-	require.NoError(s.T(), err)
-
-	err = s.db.Exec("TRUNCATE TABLE `question_results`").Error
-	require.NoError(s.T(), err)
+	BaseTestSuite
+	server *egin.Component
+	rdb    ecache.Cache
 }
 
 func (s *HandlerTestSuite) SetupSuite() {
-	s.ctrl = gomock.NewController(s.T())
-	s.producer = eveMocks.NewMockSyncEventProducer(s.ctrl)
+	ctrl := gomock.NewController(s.T())
+	producer := eveMocks.NewMockSyncEventProducer(ctrl)
 
-	intrSvc := intrmocks.NewMockService(s.ctrl)
+	intrSvc := intrmocks.NewMockService(ctrl)
 	intrModule := &interactive.Module{
 		Svc: intrSvc,
 	}
@@ -112,7 +94,14 @@ func (s *HandlerTestSuite) SetupSuite() {
 		return res, nil
 	}).AnyTimes()
 
-	module, err := startup.InitModule(s.producer, intrModule)
+	permSvc := permissionmocks.NewMockService(ctrl)
+	// biz id 为偶数就有权限
+	permSvc.EXPECT().HasPermission(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context,
+		perm permission.Permission) (bool, error) {
+		return perm.BizID%2 == 0, nil
+	}).AnyTimes()
+
+	module, err := startup.InitModule(producer, intrModule, &permission.Module{Svc: permSvc})
 	require.NoError(s.T(), err)
 	econf.Set("server", map[string]any{"contextTimeout": "1s"})
 	server := egin.Load("server").Build()
@@ -136,8 +125,6 @@ func (s *HandlerTestSuite) SetupSuite() {
 	s.db = testioc.InitDB()
 	err = dao.InitTables(s.db)
 	require.NoError(s.T(), err)
-	s.dao = dao.NewGORMQuestionDAO(s.db)
-	s.questionSetDAO = dao.NewGORMQuestionSetDAO(s.db)
 	s.rdb = testioc.InitCache()
 }
 
@@ -145,8 +132,12 @@ func (s *HandlerTestSuite) TestPubList() {
 	// 插入一百条
 	data := make([]dao.PublishQuestion, 0, 100)
 	for idx := 0; idx < 100; idx++ {
+		id := int64(idx + 1)
 		data = append(data, dao.PublishQuestion{
+			Id:      id,
 			Uid:     uid,
+			Biz:     "project",
+			BizId:   id,
 			Status:  domain.UnPublishedStatus.ToUint8(),
 			Title:   fmt.Sprintf("这是标题 %d", idx),
 			Content: fmt.Sprintf("这是解析 %d", idx),
@@ -177,6 +168,8 @@ func (s *HandlerTestSuite) TestPubList() {
 						Content: "这是解析 99",
 						Status:  domain.UnPublishedStatus.ToUint8(),
 						Utime:   123,
+						Biz:     "project",
+						BizId:   100,
 						Interactive: web.Interactive{
 							ViewCnt:    101,
 							LikeCnt:    102,
@@ -191,6 +184,8 @@ func (s *HandlerTestSuite) TestPubList() {
 						Content: "这是解析 98",
 						Status:  domain.UnPublishedStatus.ToUint8(),
 						Utime:   123,
+						Biz:     "project",
+						BizId:   99,
 						Interactive: web.Interactive{
 							ViewCnt:    100,
 							LikeCnt:    101,
@@ -215,6 +210,8 @@ func (s *HandlerTestSuite) TestPubList() {
 						Id:      1,
 						Title:   "这是标题 0",
 						Content: "这是解析 0",
+						Biz:     "project",
+						BizId:   1,
 						Status:  domain.UnPublishedStatus.ToUint8(),
 						Utime:   123,
 						Interactive: web.Interactive{
@@ -255,10 +252,13 @@ func (s *HandlerTestSuite) TestPubDetail() {
 	// 插入一百条
 	data := make([]dao.PublishQuestion, 0, 2)
 	results := make([]dao.QuestionResult, 0, 2)
-	for idx := 0; idx < 2; idx++ {
+	for idx := 0; idx < 3; idx++ {
+		id := int64(idx + 1)
 		data = append(data, dao.PublishQuestion{
-			Id:      int64(idx + 1),
+			Id:      id,
 			Uid:     uid,
+			BizId:   id,
+			Biz:     "project",
 			Status:  domain.PublishedStatus.ToUint8(),
 			Title:   fmt.Sprintf("这是标题 %d", idx),
 			Content: fmt.Sprintf("这是解析 %d", idx),
@@ -291,6 +291,8 @@ func (s *HandlerTestSuite) TestPubDetail() {
 				Data: web.Question{
 					Id:      2,
 					Title:   "这是标题 1",
+					Biz:     "project",
+					BizId:   2,
 					Status:  domain.PublishedStatus.ToUint8(),
 					Content: "这是解析 1",
 					Utime:   0,
@@ -305,12 +307,22 @@ func (s *HandlerTestSuite) TestPubDetail() {
 				},
 			},
 		},
+		{
+			name: "没有权限",
+			req: web.Qid{
+				Qid: 3,
+			},
+			wantCode: 500,
+			wantResp: test.Result[web.Question]{
+				Msg:  errs.SystemError.Msg,
+				Code: errs.SystemError.Code,
+			},
+		},
 	}
 	for _, tc := range testCases {
-		tc := tc
 		s.T().Run(tc.name, func(t *testing.T) {
 			req, err := http.NewRequest(http.MethodPost,
-				"/question/pub/detail", iox.NewJSONReader(tc.req))
+				"/question/detail", iox.NewJSONReader(tc.req))
 			req.Header.Set("content-type", "application/json")
 			require.NoError(t, err)
 			recorder := test.NewJSONResponseRecorder[web.Question]()
@@ -318,41 +330,6 @@ func (s *HandlerTestSuite) TestPubDetail() {
 			require.Equal(t, tc.wantCode, recorder.Code)
 			assert.Equal(t, tc.wantResp, recorder.MustScan())
 		})
-	}
-}
-
-func (s *HandlerTestSuite) buildAnswerEle(idx int64) web.AnswerElement {
-	return web.AnswerElement{
-		Content:   fmt.Sprintf("这是解析 %d", idx),
-		Keywords:  fmt.Sprintf("关键字 %d", idx),
-		Shorthand: fmt.Sprintf("快速记忆法 %d", idx),
-		Highlight: fmt.Sprintf("亮点 %d", idx),
-		Guidance:  fmt.Sprintf("引导点 %d", idx),
-	}
-}
-
-// assertQuestion 不比较 id
-func (s *HandlerTestSuite) assertQuestion(t *testing.T, expect dao.Question, q dao.Question) {
-	assert.True(t, q.Id > 0)
-	assert.True(t, q.Ctime > 0)
-	assert.True(t, q.Utime > 0)
-	q.Id = 0
-	q.Ctime = 0
-	q.Utime = 0
-	assert.Equal(t, expect, q)
-}
-
-func (s *HandlerTestSuite) mockInteractive(biz string, id int64) interactive.Interactive {
-	liked := id%2 == 1
-	collected := id%2 == 0
-	return interactive.Interactive{
-		Biz:        biz,
-		BizId:      id,
-		ViewCnt:    int(id + 1),
-		LikeCnt:    int(id + 2),
-		CollectCnt: int(id + 3),
-		Liked:      liked,
-		Collected:  collected,
 	}
 }
 

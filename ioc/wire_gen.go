@@ -54,7 +54,7 @@ func InitApp() (*App, error) {
 		return nil, err
 	}
 	cache := InitCache(cmdable)
-	baguwenModule, err := baguwen.InitModule(db, interactiveModule, cache, mq)
+	baguwenModule, err := baguwen.InitModule(db, interactiveModule, cache, permissionModule, mq)
 	if err != nil {
 		return nil, err
 	}
@@ -121,8 +121,9 @@ func InitApp() (*App, error) {
 	adminHandler := projectModule.AdminHdl
 	webAdminHandler := roadmapModule.AdminHdl
 	adminHandler2 := baguwenModule.AdminHdl
+	adminQuestionSetHandler := baguwenModule.AdminSetHdl
 	adminHandler3 := marketingModule.AdminHdl
-	adminServer := InitAdminServer(adminHandler, webAdminHandler, adminHandler2, adminHandler3)
+	adminServer := InitAdminServer(adminHandler, webAdminHandler, adminHandler2, adminQuestionSetHandler, adminHandler3)
 	closeTimeoutOrdersJob := orderModule.CloseTimeoutOrdersJob
 	closeTimeoutLockedCreditsJob := creditModule.CloseTimeoutLockedCreditsJob
 	syncWechatOrderJob := paymentModule.SyncWechatOrderJob
