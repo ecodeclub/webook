@@ -33,10 +33,27 @@ type QuestionSetDAO interface {
 	List(ctx context.Context, offset, limit int) ([]QuestionSet, error)
 	UpdateNonZero(ctx context.Context, set QuestionSet) error
 	GetByIDs(ctx context.Context, ids []int64) ([]QuestionSet, error)
+	ListByBiz(ctx context.Context, offset int, limit int, biz string) ([]QuestionSet, error)
+	GetByBiz(ctx context.Context, biz string, bizId int64) (QuestionSet, error)
 }
 
 type GORMQuestionSetDAO struct {
 	db *egorm.Component
+}
+
+func (g *GORMQuestionSetDAO) GetByBiz(ctx context.Context, biz string, bizId int64) (QuestionSet, error) {
+	var res QuestionSet
+	db := g.db.WithContext(ctx)
+	err := db.Where("biz = ? AND biz_id = ?", biz, bizId).First(&res).Error
+	return res, err
+}
+
+func (g *GORMQuestionSetDAO) ListByBiz(ctx context.Context, offset int, limit int, biz string) ([]QuestionSet, error) {
+	var res []QuestionSet
+	db := g.db.WithContext(ctx)
+	err := db.Where("biz = ?", biz).
+		Offset(offset).Limit(limit).Order("id DESC").Find(&res).Error
+	return res, err
 }
 
 func (g *GORMQuestionSetDAO) GetByIDs(ctx context.Context, ids []int64) ([]QuestionSet, error) {
@@ -108,10 +125,7 @@ func (g *GORMQuestionSetDAO) UpdateQuestionsByID(ctx context.Context, id int64, 
 				Utime: now,
 			})
 		}
-		if err := tx.WithContext(ctx).Create(&newQuestions).Error; err != nil {
-			return err
-		}
-		return nil
+		return tx.WithContext(ctx).Create(&newQuestions).Error
 	})
 }
 

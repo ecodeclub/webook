@@ -8,6 +8,7 @@ package startup
 
 import (
 	"github.com/ecodeclub/webook/internal/interactive"
+	"github.com/ecodeclub/webook/internal/permission"
 	baguwen "github.com/ecodeclub/webook/internal/question"
 	"github.com/ecodeclub/webook/internal/question/internal/event"
 	"github.com/ecodeclub/webook/internal/question/internal/repository"
@@ -21,7 +22,7 @@ import (
 
 // Injectors from wire.go:
 
-func InitModule(p event.SyncDataToSearchEventProducer, intrModule *interactive.Module) (*baguwen.Module, error) {
+func InitModule(p event.SyncDataToSearchEventProducer, intrModule *interactive.Module, permModule *permission.Module) (*baguwen.Module, error) {
 	db := testioc.InitDB()
 	questionDAO := baguwen.InitQuestionDAO(db)
 	ecacheCache := testioc.InitCache()
@@ -37,24 +38,27 @@ func InitModule(p event.SyncDataToSearchEventProducer, intrModule *interactive.M
 	questionSetRepository := repository.NewQuestionSetRepository(questionSetDAO)
 	questionSetService := service.NewQuestionSetService(questionSetRepository, interactiveEventProducer, p)
 	adminHandler := web.NewAdminHandler(serviceService)
+	adminQuestionSetHandler := web.NewAdminQuestionSetHandler(questionSetService)
 	service2 := intrModule.Svc
 	examineDAO := dao.NewGORMExamineDAO(db)
 	examineRepository := repository.NewCachedExamineRepository(examineDAO)
 	examineService := service.NewGPTExamineService(repositoryRepository, examineRepository)
-	handler := web.NewHandler(service2, examineService, serviceService)
+	service3 := permModule.Svc
+	handler := web.NewHandler(service2, examineService, service3, serviceService)
 	questionSetHandler := web.NewQuestionSetHandler(questionSetService, examineService, service2)
 	examineHandler := web.NewExamineHandler(examineService)
 	module := &baguwen.Module{
-		Svc:        serviceService,
-		SetSvc:     questionSetService,
-		AdminHdl:   adminHandler,
-		Hdl:        handler,
-		QsHdl:      questionSetHandler,
-		ExamineHdl: examineHandler,
+		Svc:         serviceService,
+		SetSvc:      questionSetService,
+		AdminHdl:    adminHandler,
+		AdminSetHdl: adminQuestionSetHandler,
+		Hdl:         handler,
+		QsHdl:       questionSetHandler,
+		ExamineHdl:  examineHandler,
 	}
 	return module, nil
 }
 
 // wire.go:
 
-var moduleSet = wire.NewSet(baguwen.InitQuestionDAO, cache.NewQuestionECache, repository.NewCacheRepository, service.NewService, web.NewHandler, web.NewAdminHandler, baguwen.ExamineHandlerSet, baguwen.InitQuestionSetDAO, repository.NewQuestionSetRepository, service.NewQuestionSetService, web.NewQuestionSetHandler, wire.Struct(new(baguwen.Module), "*"))
+var moduleSet = wire.NewSet(baguwen.InitQuestionDAO, cache.NewQuestionECache, repository.NewCacheRepository, service.NewService, web.NewHandler, web.NewAdminHandler, web.NewAdminQuestionSetHandler, baguwen.ExamineHandlerSet, baguwen.InitQuestionSetDAO, repository.NewQuestionSetRepository, service.NewQuestionSetService, web.NewQuestionSetHandler, wire.Struct(new(baguwen.Module), "*"))

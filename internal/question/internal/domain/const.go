@@ -17,4 +17,7 @@ package domain
 const (
 	QuestionBiz    = "question"
 	QuestionSetBiz = "questionSet"
+	// DefaultBiz 是指和 Question, QuestionSet 关联在一起的 Biz
+	// 默认就是八股文
+	DefaultBiz = "baguwen"
 )

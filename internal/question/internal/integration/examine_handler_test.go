@@ -22,6 +22,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ecodeclub/webook/internal/permission"
+
 	"github.com/ecodeclub/ekit/iox"
 	"github.com/ecodeclub/ginx/session"
 	"github.com/ecodeclub/webook/internal/interactive"
@@ -48,7 +50,7 @@ type ExamineHandlerTest struct {
 }
 
 func (s *ExamineHandlerTest) SetupSuite() {
-	module, err := startup.InitModule(nil, &interactive.Module{})
+	module, err := startup.InitModule(nil, &interactive.Module{}, &permission.Module{})
 	require.NoError(s.T(), err)
 	hdl := module.ExamineHdl
 	s.db = testioc.InitDB()

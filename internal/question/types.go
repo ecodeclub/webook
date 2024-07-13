@@ -21,6 +21,7 @@ import (
 )
 
 type AdminHandler = web.AdminHandler
+type AdminQuestionSetHandler = web.AdminQuestionSetHandler
 type Handler = web.Handler
 type QuestionSetHandler = web.QuestionSetHandler
 type ExamineHandler = web.ExamineHandler
