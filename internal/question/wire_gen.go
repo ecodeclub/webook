@@ -14,6 +14,7 @@ import (
 	"github.com/ecodeclub/webook/internal/interactive"
 	"github.com/ecodeclub/webook/internal/permission"
 	"github.com/ecodeclub/webook/internal/question/internal/event"
+	"github.com/ecodeclub/webook/internal/question/internal/job"
 	"github.com/ecodeclub/webook/internal/question/internal/repository"
 	"github.com/ecodeclub/webook/internal/question/internal/repository/cache"
 	"github.com/ecodeclub/webook/internal/question/internal/repository/dao"
@@ -21,6 +22,7 @@ import (
 	"github.com/ecodeclub/webook/internal/question/internal/web"
 	"github.com/ego-component/egorm"
 	"github.com/google/wire"
+	"github.com/gotomicro/ego/core/econf"
 	"gorm.io/gorm"
 )
 
@@ -52,14 +54,16 @@ func InitModule(db *gorm.DB, intrModule *interactive.Module, ec ecache.Cache, pe
 	handler := web.NewHandler(service2, examineService, service3, serviceService)
 	questionSetHandler := web.NewQuestionSetHandler(questionSetService, examineService, service2)
 	examineHandler := web.NewExamineHandler(examineService)
+	knowledgeJobStarter := initKnowledgeStarter(serviceService)
 	module := &Module{
-		Svc:         serviceService,
-		SetSvc:      questionSetService,
-		AdminHdl:    adminHandler,
-		AdminSetHdl: adminQuestionSetHandler,
-		Hdl:         handler,
-		QsHdl:       questionSetHandler,
-		ExamineHdl:  examineHandler,
+		Svc:                 serviceService,
+		SetSvc:              questionSetService,
+		AdminHdl:            adminHandler,
+		AdminSetHdl:         adminQuestionSetHandler,
+		Hdl:                 handler,
+		QsHdl:               questionSetHandler,
+		ExamineHdl:          examineHandler,
+		KnowledgeJobStarter: knowledgeJobStarter,
 	}
 	return module, nil
 }
@@ -69,6 +73,11 @@ func InitModule(db *gorm.DB, intrModule *interactive.Module, ec ecache.Cache, pe
 var ExamineHandlerSet = wire.NewSet(web.NewExamineHandler, service.NewGPTExamineService, repository.NewCachedExamineRepository, dao.NewGORMExamineDAO)
 
 var daoOnce = sync.Once{}
+
+func initKnowledgeStarter(svc service.Service) *job.KnowledgeJobStarter {
+	baseDir := econf.GetString("job.genKnowledge.baseDir")
+	return job.NewKnowledgeJobStarter(svc, baseDir)
+}
 
 func InitTableOnce(db *gorm.DB) {
 	daoOnce.Do(func() {
