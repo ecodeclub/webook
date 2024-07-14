@@ -36,6 +36,7 @@ type CreditRepository interface {
 	CancelDeductCredits(ctx context.Context, uid, tid int64) error
 	FindExpiredLockedCreditLogs(ctx context.Context, offset int, limit int, ctime int64) ([]domain.CreditLog, error)
 	TotalExpiredLockedCreditLogs(ctx context.Context, ctime int64) (int64, error)
+	ConfirmDeductCreditsWithAmount(ctx context.Context, uid, tid, amount int64) error
 }
 
 type creditRepository struct {
@@ -51,6 +52,7 @@ func (r *creditRepository) AddCredits(ctx context.Context, credit domain.Credit)
 	err := r.dao.Upsert(ctx, cl[0])
 	return err
 }
+
 
 func (r *creditRepository) toCreditLogsEntity(c domain.Credit) []dao.CreditLog {
 	return slice.Map(c.Logs, func(idx int, src domain.CreditLog) dao.CreditLog {
@@ -118,4 +120,8 @@ func (r *creditRepository) FindExpiredLockedCreditLogs(ctx context.Context, offs
 
 func (r *creditRepository) TotalExpiredLockedCreditLogs(ctx context.Context, ctime int64) (int64, error) {
 	return r.dao.TotalExpiredLockedCreditLogs(ctx, ctime)
+}
+
+func (r *creditRepository)ConfirmDeductCreditsWithAmount(ctx context.Context, uid, tid, amount int64) error{
+	return r.dao.ConfirmCreditLockLogWithAmount(ctx,uid,tid,amount)
 }

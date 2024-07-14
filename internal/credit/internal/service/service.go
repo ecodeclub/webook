@@ -39,6 +39,7 @@ type Service interface {
 	ConfirmDeductCredits(ctx context.Context, uid, tid int64) error
 	CancelDeductCredits(ctx context.Context, uid, tid int64) error
 	FindExpiredLockedCreditLogs(ctx context.Context, offset int, limit int, ctime int64) ([]domain.CreditLog, int64, error)
+	ConfirmDeductCreditsWithAmount(ctx context.Context,uid,tid,amount int64)error
 }
 
 type service struct {
@@ -62,6 +63,10 @@ func (s *service) GetCreditsByUID(ctx context.Context, uid int64) (domain.Credit
 		return domain.Credit{Uid: uid}, nil
 	}
 	return c, err
+}
+
+func (s *service)ConfirmDeductCreditsWithAmount(ctx context.Context,uid,tid,amount int64)error {
+	return s.repo.ConfirmDeductCreditsWithAmount(ctx,uid,tid,amount)
 }
 
 func (s *service) TryDeductCredits(ctx context.Context, credit domain.Credit) (id int64, err error) {

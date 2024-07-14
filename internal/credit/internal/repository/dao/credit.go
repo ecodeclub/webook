@@ -32,6 +32,7 @@ var (
 	ErrCreditNotEnough              = errors.New("积分不足")
 	ErrRecordNotFound               = egorm.ErrRecordNotFound
 	ErrInvalidLockedCreditLogStatus = errors.New("锁定的积分流水初始状态非法")
+	ErrInvalidConfirmCredit         = errors.New("确认扣款指定的积分需要小于锁定的积分")
 )
 
 type CreditDAO interface {
@@ -43,6 +44,7 @@ type CreditDAO interface {
 	CancelCreditLockLog(ctx context.Context, uid, tid int64) error
 	FindExpiredLockedCreditLogs(ctx context.Context, offset int, limit int, ctime int64) ([]CreditLog, error)
 	TotalExpiredLockedCreditLogs(ctx context.Context, ctime int64) (int64, error)
+	ConfirmCreditLockLogWithAmount(ctx context.Context, uid, tid, amount int64) error
 }
 
 type creditDAO struct {
@@ -224,7 +226,9 @@ func (g *creditDAO) getCreditLogIDByKey(tx *gorm.DB, key string) (int64, error) 
 func (g *creditDAO) ConfirmCreditLockLog(ctx context.Context, uid, tid int64) error {
 	for {
 		err := g.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-			totalCreditsIncreaseAmountFunc := func(cl CreditLog) uint64 { return uint64(0) }
+			totalCreditsIncreaseAmountFunc := func(cl CreditLog) (uint64, int64, error) {
+				return uint64(0), 0, nil
+			}
 			return g.updateCreditLockLog(tx, uid, tid, CreditLogStatusLocked, CreditLogStatusActive, totalCreditsIncreaseAmountFunc)
 		})
 		if errors.Is(err, ErrUpdateCreditConflict) {
@@ -238,7 +242,10 @@ func (g *creditDAO) ConfirmCreditLockLog(ctx context.Context, uid, tid int64) er
 func (g *creditDAO) CancelCreditLockLog(ctx context.Context, uid, tid int64) error {
 	for {
 		err := g.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-			totalCreditsIncreaseAmountFunc := func(cl CreditLog) uint64 { return uint64(0 - cl.CreditChange) }
+			totalCreditsIncreaseAmountFunc := func(cl CreditLog) (uint64, int64, error) {
+				// 日志记录不需要变化
+				return uint64(0 - cl.CreditChange), 0, nil
+			}
 			return g.updateCreditLockLog(tx, uid, tid, CreditLogStatusLocked, CreditLogStatusInactive, totalCreditsIncreaseAmountFunc)
 		})
 		if errors.Is(err, ErrUpdateCreditConflict) {
@@ -251,8 +258,29 @@ func (g *creditDAO) CancelCreditLockLog(ctx context.Context, uid, tid int64) err
 	}
 }
 
+// ConfirmCreditLockLogWithAmount 确认扣多少积分
+func (g *creditDAO) ConfirmCreditLockLogWithAmount(ctx context.Context, uid, tid, amount int64) error {
+	for {
+		err := g.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+			totalCreditsIncreaseAmountFunc := func(cl CreditLog) (uint64, int64, error) {
+				credit := 0 - cl.CreditChange
+				if amount > credit {
+					return 0, 0, ErrInvalidConfirmCredit
+				}
+				return uint64(credit - amount), credit - amount, nil
+			}
+			return g.updateCreditLockLog(tx, uid, tid, CreditLogStatusLocked, CreditLogStatusActive, totalCreditsIncreaseAmountFunc)
+		})
+		if errors.Is(err, ErrUpdateCreditConflict) {
+			continue
+		}
+		return err
+	}
+}
+
+// totalCreditsIncreaseAmountFunc 返回主记录增加多少，和日志里增加多少
 func (g *creditDAO) updateCreditLockLog(tx *gorm.DB, uid, tid int64, srcStatus, dstStatus uint8,
-	totalCreditsIncreaseAmountFunc func(cl CreditLog) uint64) error {
+	totalCreditsIncreaseAmountFunc func(cl CreditLog) (uint64, int64, error)) error {
 	// 更新
 	now := time.Now().UnixMilli()
 
@@ -270,14 +298,24 @@ func (g *creditDAO) updateCreditLockLog(tx *gorm.DB, uid, tid int64, srcStatus, 
 		// 已处理过并且达到目标状态 重复处理相同请求,返回第一次处理的结果
 		return nil
 	}
+	// 记录原先锁住了多少积分
+	lockedCredit := cl.CreditChange
 
 	if cl.Status != srcStatus {
 		// 未达到预期初始状态
 		return fmt.Errorf("%w: 已被修改为%d", ErrInvalidLockedCreditLogStatus, cl.Status)
 	}
+	changeCre, logChangeCre, err := totalCreditsIncreaseAmountFunc(cl)
+	if err != nil {
+		return err
+	}
 
 	cl.Status = dstStatus
 	cl.Utime = now
+	if logChangeCre != 0 {
+		cl.CreditChange = cl.CreditChange + logChangeCre
+		cl.CreditBalance = cl.CreditBalance + uint64(logChangeCre)
+	}
 	res := tx.Model(&CreditLog{}).
 		Where("uid = ? AND id = ? AND status = ?", uid, tid, srcStatus).
 		Updates(cl)
@@ -290,8 +328,8 @@ func (g *creditDAO) updateCreditLockLog(tx *gorm.DB, uid, tid int64, srcStatus, 
 	}
 
 	version := c.Version
-	c.TotalCredits += totalCreditsIncreaseAmountFunc(cl)
-	c.LockedTotalCredits -= uint64(0 - cl.CreditChange)
+	c.TotalCredits += changeCre
+	c.LockedTotalCredits -= uint64(0 - lockedCredit)
 	c.Version += 1
 	c.Utime = now
 
