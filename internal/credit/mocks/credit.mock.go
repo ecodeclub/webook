@@ -5,6 +5,7 @@
 //
 //	mockgen -source=./service.go -destination=../../mocks/credit.mock.go -package=creditmocks -typed Service
 //
+
 // Package creditmocks is a generated GoMock package.
 package creditmocks
 
@@ -48,31 +49,31 @@ func (m *MockService) AddCredits(ctx context.Context, credit domain.Credit) erro
 }
 
 // AddCredits indicates an expected call of AddCredits.
-func (mr *MockServiceMockRecorder) AddCredits(ctx, credit any) *ServiceAddCreditsCall {
+func (mr *MockServiceMockRecorder) AddCredits(ctx, credit any) *MockServiceAddCreditsCall {
 	mr.mock.ctrl.T.Helper()
 	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddCredits", reflect.TypeOf((*MockService)(nil).AddCredits), ctx, credit)
-	return &ServiceAddCreditsCall{Call: call}
+	return &MockServiceAddCreditsCall{Call: call}
 }
 
-// ServiceAddCreditsCall wrap *gomock.Call
-type ServiceAddCreditsCall struct {
+// MockServiceAddCreditsCall wrap *gomock.Call
+type MockServiceAddCreditsCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *ServiceAddCreditsCall) Return(arg0 error) *ServiceAddCreditsCall {
+func (c *MockServiceAddCreditsCall) Return(arg0 error) *MockServiceAddCreditsCall {
 	c.Call = c.Call.Return(arg0)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *ServiceAddCreditsCall) Do(f func(context.Context, domain.Credit) error) *ServiceAddCreditsCall {
+func (c *MockServiceAddCreditsCall) Do(f func(context.Context, domain.Credit) error) *MockServiceAddCreditsCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *ServiceAddCreditsCall) DoAndReturn(f func(context.Context, domain.Credit) error) *ServiceAddCreditsCall {
+func (c *MockServiceAddCreditsCall) DoAndReturn(f func(context.Context, domain.Credit) error) *MockServiceAddCreditsCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -86,31 +87,31 @@ func (m *MockService) CancelDeductCredits(ctx context.Context, uid, tid int64) e
 }
 
 // CancelDeductCredits indicates an expected call of CancelDeductCredits.
-func (mr *MockServiceMockRecorder) CancelDeductCredits(ctx, uid, tid any) *ServiceCancelDeductCreditsCall {
+func (mr *MockServiceMockRecorder) CancelDeductCredits(ctx, uid, tid any) *MockServiceCancelDeductCreditsCall {
 	mr.mock.ctrl.T.Helper()
 	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CancelDeductCredits", reflect.TypeOf((*MockService)(nil).CancelDeductCredits), ctx, uid, tid)
-	return &ServiceCancelDeductCreditsCall{Call: call}
+	return &MockServiceCancelDeductCreditsCall{Call: call}
 }
 
-// ServiceCancelDeductCreditsCall wrap *gomock.Call
-type ServiceCancelDeductCreditsCall struct {
+// MockServiceCancelDeductCreditsCall wrap *gomock.Call
+type MockServiceCancelDeductCreditsCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *ServiceCancelDeductCreditsCall) Return(arg0 error) *ServiceCancelDeductCreditsCall {
+func (c *MockServiceCancelDeductCreditsCall) Return(arg0 error) *MockServiceCancelDeductCreditsCall {
 	c.Call = c.Call.Return(arg0)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *ServiceCancelDeductCreditsCall) Do(f func(context.Context, int64, int64) error) *ServiceCancelDeductCreditsCall {
+func (c *MockServiceCancelDeductCreditsCall) Do(f func(context.Context, int64, int64) error) *MockServiceCancelDeductCreditsCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *ServiceCancelDeductCreditsCall) DoAndReturn(f func(context.Context, int64, int64) error) *ServiceCancelDeductCreditsCall {
+func (c *MockServiceCancelDeductCreditsCall) DoAndReturn(f func(context.Context, int64, int64) error) *MockServiceCancelDeductCreditsCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -124,31 +125,69 @@ func (m *MockService) ConfirmDeductCredits(ctx context.Context, uid, tid int64) 
 }
 
 // ConfirmDeductCredits indicates an expected call of ConfirmDeductCredits.
-func (mr *MockServiceMockRecorder) ConfirmDeductCredits(ctx, uid, tid any) *ServiceConfirmDeductCreditsCall {
+func (mr *MockServiceMockRecorder) ConfirmDeductCredits(ctx, uid, tid any) *MockServiceConfirmDeductCreditsCall {
 	mr.mock.ctrl.T.Helper()
 	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ConfirmDeductCredits", reflect.TypeOf((*MockService)(nil).ConfirmDeductCredits), ctx, uid, tid)
-	return &ServiceConfirmDeductCreditsCall{Call: call}
+	return &MockServiceConfirmDeductCreditsCall{Call: call}
 }
 
-// ServiceConfirmDeductCreditsCall wrap *gomock.Call
-type ServiceConfirmDeductCreditsCall struct {
+// MockServiceConfirmDeductCreditsCall wrap *gomock.Call
+type MockServiceConfirmDeductCreditsCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *ServiceConfirmDeductCreditsCall) Return(arg0 error) *ServiceConfirmDeductCreditsCall {
+func (c *MockServiceConfirmDeductCreditsCall) Return(arg0 error) *MockServiceConfirmDeductCreditsCall {
 	c.Call = c.Call.Return(arg0)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *ServiceConfirmDeductCreditsCall) Do(f func(context.Context, int64, int64) error) *ServiceConfirmDeductCreditsCall {
+func (c *MockServiceConfirmDeductCreditsCall) Do(f func(context.Context, int64, int64) error) *MockServiceConfirmDeductCreditsCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *ServiceConfirmDeductCreditsCall) DoAndReturn(f func(context.Context, int64, int64) error) *ServiceConfirmDeductCreditsCall {
+func (c *MockServiceConfirmDeductCreditsCall) DoAndReturn(f func(context.Context, int64, int64) error) *MockServiceConfirmDeductCreditsCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// ConfirmDeductCreditsWithAmount mocks base method.
+func (m *MockService) ConfirmDeductCreditsWithAmount(ctx context.Context, uid, tid, amount int64) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ConfirmDeductCreditsWithAmount", ctx, uid, tid, amount)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ConfirmDeductCreditsWithAmount indicates an expected call of ConfirmDeductCreditsWithAmount.
+func (mr *MockServiceMockRecorder) ConfirmDeductCreditsWithAmount(ctx, uid, tid, amount any) *MockServiceConfirmDeductCreditsWithAmountCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ConfirmDeductCreditsWithAmount", reflect.TypeOf((*MockService)(nil).ConfirmDeductCreditsWithAmount), ctx, uid, tid, amount)
+	return &MockServiceConfirmDeductCreditsWithAmountCall{Call: call}
+}
+
+// MockServiceConfirmDeductCreditsWithAmountCall wrap *gomock.Call
+type MockServiceConfirmDeductCreditsWithAmountCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockServiceConfirmDeductCreditsWithAmountCall) Return(arg0 error) *MockServiceConfirmDeductCreditsWithAmountCall {
+	c.Call = c.Call.Return(arg0)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockServiceConfirmDeductCreditsWithAmountCall) Do(f func(context.Context, int64, int64, int64) error) *MockServiceConfirmDeductCreditsWithAmountCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockServiceConfirmDeductCreditsWithAmountCall) DoAndReturn(f func(context.Context, int64, int64, int64) error) *MockServiceConfirmDeductCreditsWithAmountCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -164,31 +203,31 @@ func (m *MockService) FindExpiredLockedCreditLogs(ctx context.Context, offset, l
 }
 
 // FindExpiredLockedCreditLogs indicates an expected call of FindExpiredLockedCreditLogs.
-func (mr *MockServiceMockRecorder) FindExpiredLockedCreditLogs(ctx, offset, limit, ctime any) *ServiceFindExpiredLockedCreditLogsCall {
+func (mr *MockServiceMockRecorder) FindExpiredLockedCreditLogs(ctx, offset, limit, ctime any) *MockServiceFindExpiredLockedCreditLogsCall {
 	mr.mock.ctrl.T.Helper()
 	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindExpiredLockedCreditLogs", reflect.TypeOf((*MockService)(nil).FindExpiredLockedCreditLogs), ctx, offset, limit, ctime)
-	return &ServiceFindExpiredLockedCreditLogsCall{Call: call}
+	return &MockServiceFindExpiredLockedCreditLogsCall{Call: call}
 }
 
-// ServiceFindExpiredLockedCreditLogsCall wrap *gomock.Call
-type ServiceFindExpiredLockedCreditLogsCall struct {
+// MockServiceFindExpiredLockedCreditLogsCall wrap *gomock.Call
+type MockServiceFindExpiredLockedCreditLogsCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *ServiceFindExpiredLockedCreditLogsCall) Return(arg0 []domain.CreditLog, arg1 int64, arg2 error) *ServiceFindExpiredLockedCreditLogsCall {
+func (c *MockServiceFindExpiredLockedCreditLogsCall) Return(arg0 []domain.CreditLog, arg1 int64, arg2 error) *MockServiceFindExpiredLockedCreditLogsCall {
 	c.Call = c.Call.Return(arg0, arg1, arg2)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *ServiceFindExpiredLockedCreditLogsCall) Do(f func(context.Context, int, int, int64) ([]domain.CreditLog, int64, error)) *ServiceFindExpiredLockedCreditLogsCall {
+func (c *MockServiceFindExpiredLockedCreditLogsCall) Do(f func(context.Context, int, int, int64) ([]domain.CreditLog, int64, error)) *MockServiceFindExpiredLockedCreditLogsCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *ServiceFindExpiredLockedCreditLogsCall) DoAndReturn(f func(context.Context, int, int, int64) ([]domain.CreditLog, int64, error)) *ServiceFindExpiredLockedCreditLogsCall {
+func (c *MockServiceFindExpiredLockedCreditLogsCall) DoAndReturn(f func(context.Context, int, int, int64) ([]domain.CreditLog, int64, error)) *MockServiceFindExpiredLockedCreditLogsCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -203,31 +242,31 @@ func (m *MockService) GetCreditsByUID(ctx context.Context, uid int64) (domain.Cr
 }
 
 // GetCreditsByUID indicates an expected call of GetCreditsByUID.
-func (mr *MockServiceMockRecorder) GetCreditsByUID(ctx, uid any) *ServiceGetCreditsByUIDCall {
+func (mr *MockServiceMockRecorder) GetCreditsByUID(ctx, uid any) *MockServiceGetCreditsByUIDCall {
 	mr.mock.ctrl.T.Helper()
 	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCreditsByUID", reflect.TypeOf((*MockService)(nil).GetCreditsByUID), ctx, uid)
-	return &ServiceGetCreditsByUIDCall{Call: call}
+	return &MockServiceGetCreditsByUIDCall{Call: call}
 }
 
-// ServiceGetCreditsByUIDCall wrap *gomock.Call
-type ServiceGetCreditsByUIDCall struct {
+// MockServiceGetCreditsByUIDCall wrap *gomock.Call
+type MockServiceGetCreditsByUIDCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *ServiceGetCreditsByUIDCall) Return(arg0 domain.Credit, arg1 error) *ServiceGetCreditsByUIDCall {
+func (c *MockServiceGetCreditsByUIDCall) Return(arg0 domain.Credit, arg1 error) *MockServiceGetCreditsByUIDCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *ServiceGetCreditsByUIDCall) Do(f func(context.Context, int64) (domain.Credit, error)) *ServiceGetCreditsByUIDCall {
+func (c *MockServiceGetCreditsByUIDCall) Do(f func(context.Context, int64) (domain.Credit, error)) *MockServiceGetCreditsByUIDCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *ServiceGetCreditsByUIDCall) DoAndReturn(f func(context.Context, int64) (domain.Credit, error)) *ServiceGetCreditsByUIDCall {
+func (c *MockServiceGetCreditsByUIDCall) DoAndReturn(f func(context.Context, int64) (domain.Credit, error)) *MockServiceGetCreditsByUIDCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -242,31 +281,31 @@ func (m *MockService) TryDeductCredits(ctx context.Context, credit domain.Credit
 }
 
 // TryDeductCredits indicates an expected call of TryDeductCredits.
-func (mr *MockServiceMockRecorder) TryDeductCredits(ctx, credit any) *ServiceTryDeductCreditsCall {
+func (mr *MockServiceMockRecorder) TryDeductCredits(ctx, credit any) *MockServiceTryDeductCreditsCall {
 	mr.mock.ctrl.T.Helper()
 	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TryDeductCredits", reflect.TypeOf((*MockService)(nil).TryDeductCredits), ctx, credit)
-	return &ServiceTryDeductCreditsCall{Call: call}
+	return &MockServiceTryDeductCreditsCall{Call: call}
 }
 
-// ServiceTryDeductCreditsCall wrap *gomock.Call
-type ServiceTryDeductCreditsCall struct {
+// MockServiceTryDeductCreditsCall wrap *gomock.Call
+type MockServiceTryDeductCreditsCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *ServiceTryDeductCreditsCall) Return(id int64, err error) *ServiceTryDeductCreditsCall {
+func (c *MockServiceTryDeductCreditsCall) Return(id int64, err error) *MockServiceTryDeductCreditsCall {
 	c.Call = c.Call.Return(id, err)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *ServiceTryDeductCreditsCall) Do(f func(context.Context, domain.Credit) (int64, error)) *ServiceTryDeductCreditsCall {
+func (c *MockServiceTryDeductCreditsCall) Do(f func(context.Context, domain.Credit) (int64, error)) *MockServiceTryDeductCreditsCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *ServiceTryDeductCreditsCall) DoAndReturn(f func(context.Context, domain.Credit) (int64, error)) *ServiceTryDeductCreditsCall {
+func (c *MockServiceTryDeductCreditsCall) DoAndReturn(f func(context.Context, domain.Credit) (int64, error)) *MockServiceTryDeductCreditsCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
