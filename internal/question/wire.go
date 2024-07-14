@@ -19,6 +19,10 @@ package baguwen
 import (
 	"sync"
 
+	"github.com/gotomicro/ego/core/econf"
+
+	"github.com/ecodeclub/webook/internal/question/internal/job"
+
 	"github.com/ecodeclub/webook/internal/permission"
 
 	"github.com/ecodeclub/webook/internal/interactive"
@@ -65,6 +69,7 @@ func InitModule(db *egorm.Component,
 		repository.NewQuestionSetRepository,
 		service.NewQuestionSetService,
 		web.NewQuestionSetHandler,
+		initKnowledgeStarter,
 
 		wire.FieldsOf(new(*interactive.Module), "Svc"),
 		wire.FieldsOf(new(*permission.Module), "Svc"),
@@ -75,6 +80,11 @@ func InitModule(db *egorm.Component,
 }
 
 var daoOnce = sync.Once{}
+
+func initKnowledgeStarter(svc service.Service) *job.KnowledgeJobStarter {
+	baseDir := econf.GetString("job.genKnowledge.baseDir")
+	return job.NewKnowledgeJobStarter(svc, baseDir)
+}
 
 func InitTableOnce(db *gorm.DB) {
 	daoOnce.Do(func() {

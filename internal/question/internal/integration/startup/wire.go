@@ -17,10 +17,13 @@
 package startup
 
 import (
+	"os"
+
 	"github.com/ecodeclub/webook/internal/interactive"
 	"github.com/ecodeclub/webook/internal/permission"
 	baguwen "github.com/ecodeclub/webook/internal/question"
 	"github.com/ecodeclub/webook/internal/question/internal/event"
+	"github.com/ecodeclub/webook/internal/question/internal/job"
 	"github.com/ecodeclub/webook/internal/question/internal/repository"
 	"github.com/ecodeclub/webook/internal/question/internal/repository/cache"
 	"github.com/ecodeclub/webook/internal/question/internal/service"
@@ -49,6 +52,7 @@ var moduleSet = wire.NewSet(baguwen.InitQuestionDAO,
 	service.NewService,
 	web.NewHandler,
 	web.NewAdminHandler,
+	initKnowledgeJobStarter,
 	web.NewAdminQuestionSetHandler,
 	baguwen.ExamineHandlerSet,
 	baguwen.InitQuestionSetDAO,
@@ -57,3 +61,7 @@ var moduleSet = wire.NewSet(baguwen.InitQuestionDAO,
 	web.NewQuestionSetHandler,
 	wire.Struct(new(baguwen.Module), "*"),
 )
+
+func initKnowledgeJobStarter(svc service.Service) *job.KnowledgeJobStarter {
+	return job.NewKnowledgeJobStarter(svc, os.TempDir())
+}

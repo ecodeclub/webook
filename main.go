@@ -4,6 +4,7 @@ import (
 	"github.com/ecodeclub/webook/ioc"
 	"github.com/gotomicro/ego"
 	"github.com/gotomicro/ego/server/egin"
+	"github.com/gotomicro/ego/server/egovernor"
 )
 
 // export EGO_DEBUG=true
@@ -19,7 +20,12 @@ func main() {
 	err = egoApp.
 		// Invoker 在 Ego 里面，应该叫做初始化函数
 		Invoker().
-		Serve(app.Web, (*egin.Component)(app.Admin)).
+		Serve(
+			egovernor.Load("server.governor").Build(),
+			app.Web,
+			(*egin.Component)(app.Admin)).
+		Job(app.Jobs...).
+		Cron(app.Crons...).
 		Run()
 	panic(err)
 }

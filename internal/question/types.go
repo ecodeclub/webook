@@ -16,6 +16,7 @@ package baguwen
 
 import (
 	"github.com/ecodeclub/webook/internal/question/internal/domain"
+	"github.com/ecodeclub/webook/internal/question/internal/job"
 	"github.com/ecodeclub/webook/internal/question/internal/service"
 	"github.com/ecodeclub/webook/internal/question/internal/web"
 )
@@ -30,3 +31,5 @@ type Service = service.Service
 type QuestionSetService = service.QuestionSetService
 type Question = domain.Question
 type QuestionSet = domain.QuestionSet
+
+type KnowledgeJobStarter = job.KnowledgeJobStarter

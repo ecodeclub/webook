@@ -7,10 +7,13 @@
 package startup
 
 import (
+	"os"
+
 	"github.com/ecodeclub/webook/internal/interactive"
 	"github.com/ecodeclub/webook/internal/permission"
 	baguwen "github.com/ecodeclub/webook/internal/question"
 	"github.com/ecodeclub/webook/internal/question/internal/event"
+	"github.com/ecodeclub/webook/internal/question/internal/job"
 	"github.com/ecodeclub/webook/internal/question/internal/repository"
 	"github.com/ecodeclub/webook/internal/question/internal/repository/cache"
 	"github.com/ecodeclub/webook/internal/question/internal/repository/dao"
@@ -47,18 +50,24 @@ func InitModule(p event.SyncDataToSearchEventProducer, intrModule *interactive.M
 	handler := web.NewHandler(service2, examineService, service3, serviceService)
 	questionSetHandler := web.NewQuestionSetHandler(questionSetService, examineService, service2)
 	examineHandler := web.NewExamineHandler(examineService)
+	knowledgeJobStarter := initKnowledgeJobStarter(serviceService)
 	module := &baguwen.Module{
-		Svc:         serviceService,
-		SetSvc:      questionSetService,
-		AdminHdl:    adminHandler,
-		AdminSetHdl: adminQuestionSetHandler,
-		Hdl:         handler,
-		QsHdl:       questionSetHandler,
-		ExamineHdl:  examineHandler,
+		Svc:                 serviceService,
+		SetSvc:              questionSetService,
+		AdminHdl:            adminHandler,
+		AdminSetHdl:         adminQuestionSetHandler,
+		Hdl:                 handler,
+		QsHdl:               questionSetHandler,
+		ExamineHdl:          examineHandler,
+		KnowledgeJobStarter: knowledgeJobStarter,
 	}
 	return module, nil
 }
 
 // wire.go:
 
-var moduleSet = wire.NewSet(baguwen.InitQuestionDAO, cache.NewQuestionECache, repository.NewCacheRepository, service.NewService, web.NewHandler, web.NewAdminHandler, web.NewAdminQuestionSetHandler, baguwen.ExamineHandlerSet, baguwen.InitQuestionSetDAO, repository.NewQuestionSetRepository, service.NewQuestionSetService, web.NewQuestionSetHandler, wire.Struct(new(baguwen.Module), "*"))
+var moduleSet = wire.NewSet(baguwen.InitQuestionDAO, cache.NewQuestionECache, repository.NewCacheRepository, service.NewService, web.NewHandler, web.NewAdminHandler, initKnowledgeJobStarter, web.NewAdminQuestionSetHandler, baguwen.ExamineHandlerSet, baguwen.InitQuestionSetDAO, repository.NewQuestionSetRepository, service.NewQuestionSetService, web.NewQuestionSetHandler, wire.Struct(new(baguwen.Module), "*"))
+
+func initKnowledgeJobStarter(svc service.Service) *job.KnowledgeJobStarter {
+	return job.NewKnowledgeJobStarter(svc, os.TempDir())
+}

@@ -133,10 +133,13 @@ func InitApp() (*App, error) {
 	}
 	syncPaymentAndOrderJob := reconModule.SyncPaymentAndOrderJob
 	v := initCronJobs(closeTimeoutOrdersJob, closeTimeoutLockedCreditsJob, syncWechatOrderJob, syncPaymentAndOrderJob)
+	knowledgeJobStarter := baguwenModule.KnowledgeJobStarter
+	v2 := initJobs(knowledgeJobStarter)
 	app := &App{
 		Web:   component,
 		Admin: adminServer,
-		Jobs:  v,
+		Crons: v,
+		Jobs:  v2,
 	}
 	return app, nil
 }
