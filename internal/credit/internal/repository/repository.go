@@ -53,7 +53,6 @@ func (r *creditRepository) AddCredits(ctx context.Context, credit domain.Credit)
 	return err
 }
 
-
 func (r *creditRepository) toCreditLogsEntity(c domain.Credit) []dao.CreditLog {
 	return slice.Map(c.Logs, func(idx int, src domain.CreditLog) dao.CreditLog {
 		return dao.CreditLog{
@@ -122,6 +121,6 @@ func (r *creditRepository) TotalExpiredLockedCreditLogs(ctx context.Context, cti
 	return r.dao.TotalExpiredLockedCreditLogs(ctx, ctime)
 }
 
-func (r *creditRepository)ConfirmDeductCreditsWithAmount(ctx context.Context, uid, tid, amount int64) error{
-	return r.dao.ConfirmCreditLockLogWithAmount(ctx,uid,tid,amount)
+func (r *creditRepository) ConfirmDeductCreditsWithAmount(ctx context.Context, uid, tid, amount int64) error {
+	return r.dao.ConfirmCreditLockLogWithAmount(ctx, uid, tid, amount)
 }
