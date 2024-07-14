@@ -5,6 +5,9 @@ FROM golang:1.21
 # Set the working directory inside the container
 WORKDIR /app
 
+## 装数据用
+RUN mkdir /data
+
 # Copy the Go module files
 COPY webook /app/webook
 

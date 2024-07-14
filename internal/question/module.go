@@ -22,4 +22,6 @@ type Module struct {
 	Hdl         *Handler
 	QsHdl       *QuestionSetHandler
 	ExamineHdl  *ExamineHandler
+
+	KnowledgeJobStarter *KnowledgeJobStarter
 }

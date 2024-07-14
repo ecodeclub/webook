@@ -582,31 +582,6 @@ func (s *AdminHandlerTestSuite) TestDelete() {
 
 }
 
-func (s *AdminHandlerTestSuite) buildDAOAnswerEle(
-	qid int64,
-	idx int,
-	typ uint8) dao.AnswerElement {
-	return dao.AnswerElement{
-		Qid:       qid,
-		Type:      typ,
-		Content:   fmt.Sprintf("这是解析 %d", idx),
-		Keywords:  fmt.Sprintf("关键字 %d", idx),
-		Shorthand: fmt.Sprintf("快速记忆法 %d", idx),
-		Highlight: fmt.Sprintf("亮点 %d", idx),
-		Guidance:  fmt.Sprintf("引导点 %d", idx),
-	}
-}
-
-func (s *AdminHandlerTestSuite) buildAnswerEle(idx int64) web.AnswerElement {
-	return web.AnswerElement{
-		Content:   fmt.Sprintf("这是解析 %d", idx),
-		Keywords:  fmt.Sprintf("关键字 %d", idx),
-		Shorthand: fmt.Sprintf("快速记忆法 %d", idx),
-		Highlight: fmt.Sprintf("亮点 %d", idx),
-		Guidance:  fmt.Sprintf("引导点 %d", idx),
-	}
-}
-
 // assertAnswerElement 不包括 Id
 func (s *AdminHandlerTestSuite) assertAnswerElement(
 	t *testing.T,
