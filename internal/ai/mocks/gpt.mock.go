@@ -5,6 +5,7 @@
 //
 //	mockgen -source=./gpt.go -destination=../../mocks/gpt.mock.go -package=aimocks -typed=true GPTService
 //
+
 // Package aimocks is a generated GoMock package.
 package aimocks
 
@@ -12,7 +13,7 @@ import (
 	context "context"
 	reflect "reflect"
 
-	service "github.com/ecodeclub/webook/internal/ai/internal/service"
+	domain "github.com/ecodeclub/webook/internal/ai/internal/domain"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -40,40 +41,40 @@ func (m *MockGPTService) EXPECT() *MockGPTServiceMockRecorder {
 }
 
 // Invoke mocks base method.
-func (m *MockGPTService) Invoke(ctx context.Context, req service.GPTRequest) (service.GPTResponse, error) {
+func (m *MockGPTService) Invoke(ctx context.Context, req domain.GPTRequest) (domain.GPTResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Invoke", ctx, req)
-	ret0, _ := ret[0].(service.GPTResponse)
+	ret0, _ := ret[0].(domain.GPTResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Invoke indicates an expected call of Invoke.
-func (mr *MockGPTServiceMockRecorder) Invoke(ctx, req any) *GPTServiceInvokeCall {
+func (mr *MockGPTServiceMockRecorder) Invoke(ctx, req any) *MockGPTServiceInvokeCall {
 	mr.mock.ctrl.T.Helper()
 	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Invoke", reflect.TypeOf((*MockGPTService)(nil).Invoke), ctx, req)
-	return &GPTServiceInvokeCall{Call: call}
+	return &MockGPTServiceInvokeCall{Call: call}
 }
 
-// GPTServiceInvokeCall wrap *gomock.Call
-type GPTServiceInvokeCall struct {
+// MockGPTServiceInvokeCall wrap *gomock.Call
+type MockGPTServiceInvokeCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *GPTServiceInvokeCall) Return(arg0 service.GPTResponse, arg1 error) *GPTServiceInvokeCall {
+func (c *MockGPTServiceInvokeCall) Return(arg0 domain.GPTResponse, arg1 error) *MockGPTServiceInvokeCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *GPTServiceInvokeCall) Do(f func(context.Context, service.GPTRequest) (service.GPTResponse, error)) *GPTServiceInvokeCall {
+func (c *MockGPTServiceInvokeCall) Do(f func(context.Context, domain.GPTRequest) (domain.GPTResponse, error)) *MockGPTServiceInvokeCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *GPTServiceInvokeCall) DoAndReturn(f func(context.Context, service.GPTRequest) (service.GPTResponse, error)) *GPTServiceInvokeCall {
+func (c *MockGPTServiceInvokeCall) DoAndReturn(f func(context.Context, domain.GPTRequest) (domain.GPTResponse, error)) *MockGPTServiceInvokeCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
