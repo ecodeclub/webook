@@ -1,35 +1,31 @@
-// Copyright 2023 ecodeclub
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-// http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
 package service
 
-import "context"
+import (
+	"context"
+
+	"github.com/ecodeclub/webook/internal/ai/internal/domain"
+	"github.com/ecodeclub/webook/internal/ai/internal/service/handler"
+)
 
 //go:generate mockgen -source=./gpt.go -destination=../../mocks/gpt.mock.go -package=aimocks -typed=true GPTService
 type GPTService interface {
-	Invoke(ctx context.Context, req GPTRequest) (GPTResponse, error)
+	Invoke(ctx context.Context, req domain.GPTRequest) (domain.GPTResponse, error)
 }
 
-type GPTRequest struct {
-	Biz   string
-	Uid   int64
-	Tid   string
-	Input []string
+type gptService struct {
+	handlerFunc handler.HandleFunc
 }
 
-type GPTResponse struct {
-	Tokens int
-	Amount int64
-	Answer string
+func NewGPTService(handlers []handler.GptHandler) GPTService {
+	var hdl handler.HandleFunc
+	for i := len(handlers) - 1; i >= 0; i-- {
+		hdl = handlers[i].Next(hdl)
+	}
+	return &gptService{
+		handlerFunc: hdl,
+	}
+}
+
+func (g *gptService) Invoke(ctx context.Context, req domain.GPTRequest) (domain.GPTResponse, error) {
+	return g.handlerFunc(ctx, req)
 }
