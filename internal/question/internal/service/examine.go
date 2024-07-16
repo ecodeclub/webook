@@ -109,10 +109,11 @@ func (svc *GPTExamineService) parseExamineResult(answer string) domain.Result {
 func NewGPTExamineService(
 	queRepo repository.Repository,
 	repo repository.ExamineRepository,
+	aiSvc ai.GPTService,
 ) ExamineService {
 	return &GPTExamineService{
 		queRepo: queRepo,
 		repo:    repo,
-		aiSvc:   &AiService{},
+		aiSvc:   aiSvc,
 	}
 }

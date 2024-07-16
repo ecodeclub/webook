@@ -7,6 +7,7 @@
 package ioc
 
 import (
+	"github.com/ecodeclub/webook/internal/ai"
 	"github.com/ecodeclub/webook/internal/cases"
 	"github.com/ecodeclub/webook/internal/cos"
 	"github.com/ecodeclub/webook/internal/credit"
@@ -54,7 +55,15 @@ func InitApp() (*App, error) {
 		return nil, err
 	}
 	cache := InitCache(cmdable)
-	baguwenModule, err := baguwen.InitModule(db, interactiveModule, cache, permissionModule, mq)
+	creditModule, err := credit.InitModule(db, mq, cache)
+	if err != nil {
+		return nil, err
+	}
+	aiModule, err := ai.InitModule(db, creditModule)
+	if err != nil {
+		return nil, err
+	}
+	baguwenModule, err := baguwen.InitModule(db, interactiveModule, cache, permissionModule, aiModule, mq)
 	if err != nil {
 		return nil, err
 	}
@@ -83,10 +92,6 @@ func InitApp() (*App, error) {
 		return nil, err
 	}
 	handler7 := productModule.Hdl
-	creditModule, err := credit.InitModule(db, mq, cache)
-	if err != nil {
-		return nil, err
-	}
 	paymentModule, err := payment.InitModule(db, mq, cache, creditModule)
 	if err != nil {
 		return nil, err

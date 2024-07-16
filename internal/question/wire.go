@@ -19,6 +19,8 @@ package baguwen
 import (
 	"sync"
 
+	"github.com/ecodeclub/webook/internal/ai"
+
 	"github.com/gotomicro/ego/core/econf"
 
 	"github.com/ecodeclub/webook/internal/question/internal/job"
@@ -52,6 +54,7 @@ func InitModule(db *egorm.Component,
 	intrModule *interactive.Module,
 	ec ecache.Cache,
 	perm *permission.Module,
+	aiModule *ai.Module,
 	q mq.MQ) (*Module, error) {
 	wire.Build(InitQuestionDAO,
 		cache.NewQuestionECache,
@@ -73,6 +76,7 @@ func InitModule(db *egorm.Component,
 
 		wire.FieldsOf(new(*interactive.Module), "Svc"),
 		wire.FieldsOf(new(*permission.Module), "Svc"),
+		wire.FieldsOf(new(*ai.Module), "Svc"),
 
 		wire.Struct(new(Module), "*"),
 	)

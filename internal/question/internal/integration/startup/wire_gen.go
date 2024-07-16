@@ -9,6 +9,7 @@ package startup
 import (
 	"os"
 
+	"github.com/ecodeclub/webook/internal/ai"
 	"github.com/ecodeclub/webook/internal/interactive"
 	"github.com/ecodeclub/webook/internal/permission"
 	baguwen "github.com/ecodeclub/webook/internal/question"
@@ -25,7 +26,7 @@ import (
 
 // Injectors from wire.go:
 
-func InitModule(p event.SyncDataToSearchEventProducer, intrModule *interactive.Module, permModule *permission.Module) (*baguwen.Module, error) {
+func InitModule(p event.SyncDataToSearchEventProducer, intrModule *interactive.Module, permModule *permission.Module, aiModule *ai.Module) (*baguwen.Module, error) {
 	db := testioc.InitDB()
 	questionDAO := baguwen.InitQuestionDAO(db)
 	ecacheCache := testioc.InitCache()
@@ -45,7 +46,8 @@ func InitModule(p event.SyncDataToSearchEventProducer, intrModule *interactive.M
 	service2 := intrModule.Svc
 	examineDAO := dao.NewGORMExamineDAO(db)
 	examineRepository := repository.NewCachedExamineRepository(examineDAO)
-	examineService := service.NewGPTExamineService(repositoryRepository, examineRepository)
+	gptService := aiModule.Svc
+	examineService := service.NewGPTExamineService(repositoryRepository, examineRepository, gptService)
 	service3 := permModule.Svc
 	handler := web.NewHandler(service2, examineService, service3, serviceService)
 	questionSetHandler := web.NewQuestionSetHandler(questionSetService, examineService, service2)
