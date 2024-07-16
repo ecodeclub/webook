@@ -26,7 +26,7 @@ type ExamineRecord struct {
 	// 原始的 AI 回答
 	RawResult string
 	// 冗余字段，使用的 tokens 数量
-	Tokens int
+	Tokens int64
 	// 冗余字段，花费的金额
 	Amount int64
 

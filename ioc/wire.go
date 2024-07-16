@@ -17,6 +17,7 @@
 package ioc
 
 import (
+	"github.com/ecodeclub/webook/internal/ai"
 	"github.com/ecodeclub/webook/internal/cases"
 	"github.com/ecodeclub/webook/internal/cos"
 	"github.com/ecodeclub/webook/internal/credit"
@@ -83,6 +84,7 @@ func InitApp() (*App, error) {
 		wire.FieldsOf(new(*search.Module), "Hdl"),
 		roadmap.InitModule,
 		wire.FieldsOf(new(*roadmap.Module), "Hdl", "AdminHdl"),
+		ai.InitModule,
 		initLocalActiveLimiterBuilder,
 		initCronJobs,
 		// 这两个顺序不要换

@@ -19,6 +19,8 @@ package startup
 import (
 	"os"
 
+	"github.com/ecodeclub/webook/internal/ai"
+
 	"github.com/ecodeclub/webook/internal/interactive"
 	"github.com/ecodeclub/webook/internal/permission"
 	baguwen "github.com/ecodeclub/webook/internal/question"
@@ -35,6 +37,7 @@ import (
 func InitModule(p event.SyncDataToSearchEventProducer,
 	intrModule *interactive.Module,
 	permModule *permission.Module,
+	aiModule *ai.Module,
 ) (*baguwen.Module, error) {
 	wire.Build(
 		testioc.BaseSet,
@@ -42,6 +45,7 @@ func InitModule(p event.SyncDataToSearchEventProducer,
 		event.NewInteractiveEventProducer,
 		wire.FieldsOf(new(*interactive.Module), "Svc"),
 		wire.FieldsOf(new(*permission.Module), "Svc"),
+		wire.FieldsOf(new(*ai.Module), "Svc"),
 	)
 	return new(baguwen.Module), nil
 }

@@ -25,6 +25,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ecodeclub/webook/internal/ai"
+
 	"github.com/ecodeclub/webook/internal/permission"
 
 	"github.com/ecodeclub/ecache"
@@ -64,7 +66,8 @@ func (s *AdminSetHandlerTestSuite) SetupSuite() {
 
 	intrModule := &interactive.Module{}
 
-	module, err := startup.InitModule(s.producer, intrModule, &permission.Module{})
+	module, err := startup.InitModule(s.producer, intrModule,
+		&permission.Module{}, &ai.Module{})
 	require.NoError(s.T(), err)
 	econf.Set("server", map[string]any{"contextTimeout": "1s"})
 	server := egin.Load("server").Build()

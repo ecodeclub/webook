@@ -11,6 +11,7 @@ import (
 
 	"github.com/ecodeclub/ecache"
 	"github.com/ecodeclub/mq-api"
+	"github.com/ecodeclub/webook/internal/ai"
 	"github.com/ecodeclub/webook/internal/interactive"
 	"github.com/ecodeclub/webook/internal/permission"
 	"github.com/ecodeclub/webook/internal/question/internal/event"
@@ -28,7 +29,7 @@ import (
 
 // Injectors from wire.go:
 
-func InitModule(db *gorm.DB, intrModule *interactive.Module, ec ecache.Cache, perm *permission.Module, q mq.MQ) (*Module, error) {
+func InitModule(db *gorm.DB, intrModule *interactive.Module, ec ecache.Cache, perm *permission.Module, aiModule *ai.Module, q mq.MQ) (*Module, error) {
 	questionDAO := InitQuestionDAO(db)
 	questionCache := cache.NewQuestionECache(ec)
 	repositoryRepository := repository.NewCacheRepository(questionDAO, questionCache)
@@ -49,7 +50,8 @@ func InitModule(db *gorm.DB, intrModule *interactive.Module, ec ecache.Cache, pe
 	service2 := intrModule.Svc
 	examineDAO := dao.NewGORMExamineDAO(db)
 	examineRepository := repository.NewCachedExamineRepository(examineDAO)
-	examineService := service.NewGPTExamineService(repositoryRepository, examineRepository)
+	gptService := aiModule.Svc
+	examineService := service.NewGPTExamineService(repositoryRepository, examineRepository, gptService)
 	service3 := perm.Svc
 	handler := web.NewHandler(service2, examineService, service3, serviceService)
 	questionSetHandler := web.NewQuestionSetHandler(questionSetService, examineService, service2)
