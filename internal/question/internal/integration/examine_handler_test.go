@@ -22,6 +22,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ecodeclub/webook/internal/ai"
+	aimocks "github.com/ecodeclub/webook/internal/ai/mocks"
+	"go.uber.org/mock/gomock"
+
 	"github.com/ecodeclub/webook/internal/permission"
 
 	"github.com/ecodeclub/ekit/iox"
@@ -50,7 +54,16 @@ type ExamineHandlerTest struct {
 }
 
 func (s *ExamineHandlerTest) SetupSuite() {
-	module, err := startup.InitModule(nil, &interactive.Module{}, &permission.Module{})
+	ctrl := gomock.NewController(s.T())
+	aiSvc := aimocks.NewMockService(ctrl)
+	aiSvc.EXPECT().Invoke(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, req ai.GPTRequest) (ai.GPTResponse, error) {
+		return ai.GPTResponse{
+			Tokens: req.Uid,
+			Amount: req.Uid,
+			Answer: "评分：15K",
+		}, nil
+	}).AnyTimes()
+	module, err := startup.InitModule(nil, &interactive.Module{}, &permission.Module{}, &ai.Module{Svc: aiSvc})
 	require.NoError(s.T(), err)
 	hdl := module.ExamineHdl
 	s.db = testioc.InitDB()

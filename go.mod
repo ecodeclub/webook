@@ -1,8 +1,6 @@
 module github.com/ecodeclub/webook
 
-go 1.22.2
-
-toolchain go1.22.5
+go 1.22.5
 
 require (
 	github.com/ecodeclub/ecache v0.0.0-20240111145855-75679834beca

@@ -24,6 +24,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ecodeclub/webook/internal/ai"
+
 	"github.com/ecodeclub/webook/internal/permission"
 	permissionmocks "github.com/ecodeclub/webook/internal/permission/mocks"
 	"github.com/ecodeclub/webook/internal/question/internal/errs"
@@ -101,7 +103,8 @@ func (s *HandlerTestSuite) SetupSuite() {
 		return perm.BizID%2 == 0, nil
 	}).AnyTimes()
 
-	module, err := startup.InitModule(producer, intrModule, &permission.Module{Svc: permSvc})
+	module, err := startup.InitModule(producer, intrModule,
+		&permission.Module{Svc: permSvc}, &ai.Module{})
 	require.NoError(s.T(), err)
 	econf.Set("server", map[string]any{"contextTimeout": "1s"})
 	server := egin.Load("server").Build()

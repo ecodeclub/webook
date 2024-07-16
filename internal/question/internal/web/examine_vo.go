@@ -28,7 +28,7 @@ type ExamineResult struct {
 	RawResult string `json:"rawResult"`
 
 	// 使用的 token 数量
-	Tokens int `json:"tokens"`
+	Tokens int64 `json:"tokens"`
 	// 花费的金额
 	Amount int64 `json:"amount"`
 }

@@ -22,6 +22,10 @@ qywechat:
   chatRobot:
     webhookURL: "your/webhookURL"
 
+zhipu:
+  apikey: ''
+  knowledgeId: ''
+
 mysql:
   dsn: "webook:webook@tcp(mysql8:3306)/webook?charset=utf8mb4&collation=utf8mb4_general_ci&parseTime=True&loc=Local&timeout=1s&readTimeout=3s&writeTimeout=3s"
 

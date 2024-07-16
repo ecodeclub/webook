@@ -21,7 +21,7 @@ type ExamineResult struct {
 	RawResult string
 
 	// 使用的 token 数量
-	Tokens int
+	Tokens int64
 	// 花费的金额
 	Amount int64
 	Tid    string
