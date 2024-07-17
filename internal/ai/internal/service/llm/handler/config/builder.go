@@ -19,7 +19,7 @@ import (
 
 	"github.com/ecodeclub/webook/internal/ai/internal/domain"
 	"github.com/ecodeclub/webook/internal/ai/internal/repository"
-	"github.com/ecodeclub/webook/internal/ai/internal/service/gpt/handler"
+	"github.com/ecodeclub/webook/internal/ai/internal/service/llm/handler"
 )
 
 // HandlerBuilder 改为从数据库中读取
@@ -34,11 +34,11 @@ func NewBuilder(repo repository.ConfigRepository) *HandlerBuilder {
 }
 
 func (b *HandlerBuilder) Next(next handler.Handler) handler.Handler {
-	return handler.HandleFunc(func(ctx context.Context, req domain.GPTRequest) (domain.GPTResponse, error) {
+	return handler.HandleFunc(func(ctx context.Context, req domain.LLMRequest) (domain.LLMResponse, error) {
 		// 读取配置
 		cfg, err := b.repo.GetConfig(ctx, req.Biz)
 		if err != nil {
-			return domain.GPTResponse{}, err
+			return domain.LLMResponse{}, err
 		}
 		req.Config = cfg
 		return next.Handle(ctx, req)

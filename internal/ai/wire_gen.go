@@ -11,11 +11,11 @@ import (
 
 	"github.com/ecodeclub/webook/internal/ai/internal/repository"
 	"github.com/ecodeclub/webook/internal/ai/internal/repository/dao"
-	"github.com/ecodeclub/webook/internal/ai/internal/service/gpt"
-	"github.com/ecodeclub/webook/internal/ai/internal/service/gpt/handler/config"
-	credit2 "github.com/ecodeclub/webook/internal/ai/internal/service/gpt/handler/credit"
-	"github.com/ecodeclub/webook/internal/ai/internal/service/gpt/handler/log"
-	"github.com/ecodeclub/webook/internal/ai/internal/service/gpt/handler/record"
+	"github.com/ecodeclub/webook/internal/ai/internal/service/llm"
+	"github.com/ecodeclub/webook/internal/ai/internal/service/llm/handler/config"
+	credit2 "github.com/ecodeclub/webook/internal/ai/internal/service/llm/handler/credit"
+	"github.com/ecodeclub/webook/internal/ai/internal/service/llm/handler/log"
+	"github.com/ecodeclub/webook/internal/ai/internal/service/llm/handler/record"
 	"github.com/ecodeclub/webook/internal/credit"
 	"github.com/ego-component/egorm"
 	"gorm.io/gorm"
@@ -29,18 +29,18 @@ func InitModule(db *gorm.DB, creditSvc *credit.Module) (*Module, error) {
 	configRepository := repository.NewCachedConfigRepository(configDAO)
 	configHandlerBuilder := config.NewBuilder(configRepository)
 	service := creditSvc.Svc
-	gptCreditDAO := InitGPTCreditLogDAO(db)
-	gptCreditLogRepo := repository.NewGPTCreditLogRepo(gptCreditDAO)
-	creditHandlerBuilder := credit2.NewHandlerBuilder(service, gptCreditLogRepo)
-	gptRecordDAO := dao.NewGORMGPTLogDAO(db)
-	gptLogRepo := repository.NewGPTLogRepo(gptRecordDAO)
-	recordHandlerBuilder := record.NewHandler(gptLogRepo)
+	llmCreditDAO := InitLLMCreditLogDAO(db)
+	llmCreditLogRepo := repository.NewLLMCreditLogRepo(llmCreditDAO)
+	creditHandlerBuilder := credit2.NewHandlerBuilder(service, llmCreditLogRepo)
+	llmRecordDAO := dao.NewGORMLLMLogDAO(db)
+	llmLogRepo := repository.NewLLMLogRepo(llmRecordDAO)
+	recordHandlerBuilder := record.NewHandler(llmLogRepo)
 	v := InitCommonHandlers(handlerBuilder, configHandlerBuilder, creditHandlerBuilder, recordHandlerBuilder)
 	handler := InitZhipu()
 	facadeHandler := InitHandlerFacade(v, handler)
-	gptService := gpt.NewGPTService(facadeHandler)
+	llmService := llm.NewLLMService(facadeHandler)
 	module := &Module{
-		Svc: gptService,
+		Svc: llmService,
 	}
 	return module, nil
 }
@@ -58,7 +58,7 @@ func InitTableOnce(db *gorm.DB) {
 	})
 }
 
-func InitGPTCreditLogDAO(db *egorm.Component) dao.GPTCreditDAO {
+func InitLLMCreditLogDAO(db *egorm.Component) dao.LLMCreditDAO {
 	InitTableOnce(db)
-	return dao.NewGPTCreditLogDAO(db)
+	return dao.NewLLMCreditLogDAO(db)
 }

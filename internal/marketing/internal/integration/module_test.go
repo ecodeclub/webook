@@ -906,6 +906,85 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeOrderEvent() {
 			after:          func(t *testing.T, evt event.OrderEvent) {},
 		},
 
+		// 购买积分
+		{
+			name: "订单成功-增加积分",
+			newMQFunc: func(t *testing.T, ctrl *gomock.Controller, evt event.OrderEvent) mq.MQ {
+				t.Helper()
+
+				mockMQ := mocks.NewMockMQ(ctrl)
+				mockConsumer := mocks.NewMockConsumer(ctrl)
+				mockConsumer.EXPECT().Consume(gomock.Any()).Return(s.newOrderEventMessage(t, evt), nil).Times(2)
+
+				mockMQ.EXPECT().Consumer(gomock.Any(), gomock.Any()).Return(mockConsumer, nil)
+				return mockMQ
+			},
+			newSvcFunc: func(t *testing.T, ctrl *gomock.Controller, evt event.OrderEvent, q mq.MQ) service.Service {
+				t.Helper()
+
+				mockOrderSvc := ordermocks.NewMockService(ctrl)
+
+				const orderId = int64(201)
+				mockOrderSvc.EXPECT().
+					FindUserVisibleOrderByUIDAndSN(gomock.Any(), evt.BuyerID, evt.OrderSN).
+					Return(order.Order{
+						ID:               orderId,
+						SN:               evt.OrderSN,
+						BuyerID:          evt.BuyerID,
+						OriginalTotalAmt: 50000,
+						RealTotalAmt:     50000,
+						Status:           order.StatusSuccess,
+						Items: []order.Item{
+							{
+								SPU: order.SPU{
+									ID:        5,
+									Category0: "product",
+									Category1: "credit",
+								},
+								SKU: order.SKU{
+									ID:            16,
+									SN:            "sku-sn-service-product-1",
+									Attrs:         `{"credit": 5000}`,
+									OriginalPrice: 500 * 100,
+									RealPrice:     500 * 100,
+									Quantity:      1,
+								},
+							},
+						},
+					}, nil).Times(2)
+
+				mockMQ := mocks.NewMockMQ(ctrl)
+				mockProducer := mocks.NewMockProducer(ctrl)
+				creditEvent := s.newCreditEventMessage(t, event.CreditIncreaseEvent{
+					Key: evt.OrderSN + "_incr",
+					Uid: evt.BuyerID,
+					// 在 attrs 里面放着
+					Amount: 5000,
+					Biz:    "order",
+					BizId:  orderId,
+					Action: "购买积分",
+				})
+				mockProducer.EXPECT().Produce(gomock.Any(), creditEvent).Return(&mq.ProducerResult{}, nil).Times(2)
+				mockMQ.EXPECT().Producer(event.CreditEventName).Return(mockProducer, nil)
+				creditProducer, err := producer.NewCreditEventProducer(mockMQ)
+				assert.NoError(t, err)
+				return service.NewService(nil, mockOrderSvc, nil, nil, nil, nil, creditProducer, nil, nil)
+			},
+			evt: event.OrderEvent{
+				OrderSN: "OrderSN-marketing-service-102",
+				BuyerID: 887655432,
+				SPUs: []event.SPU{
+					{
+						ID:        5,
+						Category0: "product",
+						Category1: "credit",
+					},
+				},
+			},
+			errRequireFunc: require.NoError,
+			after:          func(t *testing.T, evt event.OrderEvent) {},
+		},
+
 		{
 			name: "消费完成订单消息成功_忽略不关心的完成订单消息",
 			newMQFunc: func(t *testing.T, ctrl *gomock.Controller, evt event.OrderEvent) mq.MQ {

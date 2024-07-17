@@ -9,9 +9,9 @@ import (
 	"time"
 
 	"github.com/ecodeclub/ekit/sqlx"
-	"github.com/ecodeclub/webook/internal/ai/internal/service/gpt"
-	gptHandler "github.com/ecodeclub/webook/internal/ai/internal/service/gpt/handler"
-	hdlmocks "github.com/ecodeclub/webook/internal/ai/internal/service/gpt/handler/mocks"
+	"github.com/ecodeclub/webook/internal/ai/internal/service/llm"
+	llmHandler "github.com/ecodeclub/webook/internal/ai/internal/service/llm/handler"
+	hdlmocks "github.com/ecodeclub/webook/internal/ai/internal/service/llm/handler/mocks"
 
 	"github.com/ecodeclub/webook/internal/ai/internal/domain"
 	"github.com/ecodeclub/webook/internal/ai/internal/integration/startup"
@@ -28,23 +28,23 @@ import (
 
 const knowledgeId = "abc"
 
-type GptSuite struct {
+type LLMServiceSuite struct {
 	suite.Suite
-	logDao dao.GPTRecordDAO
+	logDao dao.LLMRecordDAO
 	db     *egorm.Component
-	svc    gpt.Service
+	svc    llm.Service
 }
 
-func TestGptSuite(t *testing.T) {
-	suite.Run(t, new(GptSuite))
+func TestLLMServiceSuite(t *testing.T) {
+	suite.Run(t, new(LLMServiceSuite))
 }
 
-func (s *GptSuite) SetupSuite() {
+func (s *LLMServiceSuite) SetupSuite() {
 	db := testioc.InitDB()
 	s.db = db
 	err := dao.InitTables(db)
 	require.NoError(s.T(), err)
-	s.logDao = dao.NewGORMGPTLogDAO(db)
+	s.logDao = dao.NewGORMLLMLogDAO(db)
 
 	// 先插入 BizConfig
 	now := time.Now().UnixMilli()
@@ -59,30 +59,30 @@ func (s *GptSuite) SetupSuite() {
 	assert.NoError(s.T(), err)
 }
 
-func (s *GptSuite) TearDownSuite() {
+func (s *LLMServiceSuite) TearDownSuite() {
 	err := s.db.Exec("TRUNCATE TABLE `ai_biz_configs`").Error
 	require.NoError(s.T(), err)
 }
 
-func (s *GptSuite) TearDownTest() {
-	err := s.db.Exec("TRUNCATE TABLE `gpt_records`").Error
+func (s *LLMServiceSuite) TearDownTest() {
+	err := s.db.Exec("TRUNCATE TABLE `llm_records`").Error
 	require.NoError(s.T(), err)
-	err = s.db.Exec("TRUNCATE TABLE `gpt_credits`").Error
+	err = s.db.Exec("TRUNCATE TABLE `llm_credits`").Error
 	require.NoError(s.T(), err)
 }
 
-func (s *GptSuite) TestService() {
+func (s *LLMServiceSuite) TestService() {
 	t := s.T()
 	testCases := []struct {
 		name       string
-		req        domain.GPTRequest
-		before     func(t *testing.T, ctrl *gomock.Controller) (gptHandler.Handler, credit.Service)
+		req        domain.LLMRequest
+		before     func(t *testing.T, ctrl *gomock.Controller) (llmHandler.Handler, credit.Service)
 		assertFunc assert.ErrorAssertionFunc
-		after      func(t *testing.T, resp domain.GPTResponse)
+		after      func(t *testing.T, resp domain.LLMResponse)
 	}{
 		{
 			name: "八股文测试-成功",
-			req: domain.GPTRequest{
+			req: domain.LLMRequest{
 				Biz: domain.BizQuestionExamine,
 				Uid: 123,
 				Tid: "11",
@@ -93,10 +93,10 @@ func (s *GptSuite) TestService() {
 			},
 			assertFunc: assert.NoError,
 			before: func(t *testing.T,
-				ctrl *gomock.Controller) (gptHandler.Handler, credit.Service) {
-				gptHdl := hdlmocks.NewMockHandler(ctrl)
-				gptHdl.EXPECT().Handle(gomock.Any(), gomock.Any()).
-					Return(domain.GPTResponse{
+				ctrl *gomock.Controller) (llmHandler.Handler, credit.Service) {
+				llmHdl := hdlmocks.NewMockHandler(ctrl)
+				llmHdl.EXPECT().Handle(gomock.Any(), gomock.Any()).
+					Return(domain.LLMResponse{
 						Tokens: 100,
 						Amount: 100,
 						Answer: "aians",
@@ -105,22 +105,23 @@ func (s *GptSuite) TestService() {
 				creditSvc.EXPECT().GetCreditsByUID(gomock.Any(), gomock.Any()).Return(credit.Credit{
 					TotalAmount: 1000,
 				}, nil)
-				creditSvc.EXPECT().AddCredits(gomock.Any(), gomock.Any()).Return(nil)
-				return gptHdl, creditSvc
+				creditSvc.EXPECT().TryDeductCredits(gomock.Any(), gomock.Any()).Return(11, nil)
+				creditSvc.EXPECT().ConfirmDeductCredits(gomock.Any(), int64(123), int64(11)).Return(nil)
+				return llmHdl, creditSvc
 			},
-			after: func(t *testing.T, resp domain.GPTResponse) {
+			after: func(t *testing.T, resp domain.LLMResponse) {
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 				defer cancel()
 				// 校验response写入的内容是否正确
-				assert.Equal(t, domain.GPTResponse{
+				assert.Equal(t, domain.LLMResponse{
 					Tokens: 100,
 					Amount: 100,
 					Answer: "aians",
 				}, resp)
-				var logModel dao.GPTRecord
+				var logModel dao.LLMRecord
 				err := s.db.WithContext(ctx).Where("id = ?", 1).First(&logModel).Error
 				require.NoError(t, err)
-				s.assertLog(dao.GPTRecord{
+				s.assertLog(dao.LLMRecord{
 					Id:          1,
 					Tid:         "11",
 					Uid:         123,
@@ -140,10 +141,10 @@ func (s *GptSuite) TestService() {
 					Answer:         sqlx.NewNullString("aians"),
 				}, logModel)
 				// 校验credit写入的内容是否正确
-				var creditLogModel dao.GPTCredit
+				var creditLogModel dao.LLMCredit
 				err = s.db.WithContext(ctx).Where("id = ?", 1).First(&creditLogModel).Error
 				require.NoError(t, err)
-				s.assertCreditLog(dao.GPTCredit{
+				s.assertCreditLog(dao.LLMCredit{
 					Id:     1,
 					Tid:    "11",
 					Uid:    123,
@@ -155,7 +156,7 @@ func (s *GptSuite) TestService() {
 		},
 		{
 			name: "积分不足",
-			req: domain.GPTRequest{
+			req: domain.LLMRequest{
 				Biz: domain.BizQuestionExamine,
 				Uid: 124,
 				Tid: "11",
@@ -164,21 +165,21 @@ func (s *GptSuite) TestService() {
 				},
 			},
 			before: func(t *testing.T,
-				ctrl *gomock.Controller) (gptHandler.Handler, credit.Service) {
-				gptHdl := hdlmocks.NewMockHandler(ctrl)
+				ctrl *gomock.Controller) (llmHandler.Handler, credit.Service) {
+				llmHdl := hdlmocks.NewMockHandler(ctrl)
 				creditSvc := creditmocks.NewMockService(ctrl)
 				creditSvc.EXPECT().GetCreditsByUID(gomock.Any(), gomock.Any()).Return(credit.Credit{
 					TotalAmount: 0,
 				}, nil)
-				return gptHdl, creditSvc
+				return llmHdl, creditSvc
 			},
-			after: func(t *testing.T, resp domain.GPTResponse) {
+			after: func(t *testing.T, resp domain.LLMResponse) {
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 				defer cancel()
-				var logModel dao.GPTRecord
+				var logModel dao.LLMRecord
 				err := s.db.WithContext(ctx).Where("uid = ?", 124).First(&logModel).Error
 				require.NoError(t, err)
-				s.assertLog(dao.GPTRecord{
+				s.assertLog(dao.LLMRecord{
 					Id:          1,
 					Tid:         "11",
 					Uid:         124,
@@ -198,8 +199,8 @@ func (s *GptSuite) TestService() {
 			assertFunc: assert.Error,
 		},
 		{
-			name: "GPT调用失败",
-			req: domain.GPTRequest{
+			name: "llm 调用失败",
+			req: domain.LLMRequest{
 				Biz: domain.BizQuestionExamine,
 				Uid: 125,
 				Tid: "11",
@@ -209,23 +210,23 @@ func (s *GptSuite) TestService() {
 				},
 			},
 			before: func(t *testing.T,
-				ctrl *gomock.Controller) (gptHandler.Handler, credit.Service) {
-				gptHdl := hdlmocks.NewMockHandler(ctrl)
-				gptHdl.EXPECT().Handle(gomock.Any(), gomock.Any()).
-					Return(domain.GPTResponse{}, errors.New("调用失败"))
+				ctrl *gomock.Controller) (llmHandler.Handler, credit.Service) {
+				llmHdl := hdlmocks.NewMockHandler(ctrl)
+				llmHdl.EXPECT().Handle(gomock.Any(), gomock.Any()).
+					Return(domain.LLMResponse{}, errors.New("调用失败"))
 				creditSvc := creditmocks.NewMockService(ctrl)
 				creditSvc.EXPECT().GetCreditsByUID(gomock.Any(), gomock.Any()).Return(credit.Credit{
 					TotalAmount: 1000,
 				}, nil)
-				return gptHdl, creditSvc
+				return llmHdl, creditSvc
 			},
-			after: func(t *testing.T, resp domain.GPTResponse) {
+			after: func(t *testing.T, resp domain.LLMResponse) {
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 				defer cancel()
-				var logModel dao.GPTRecord
+				var logModel dao.LLMRecord
 				err := s.db.WithContext(ctx).Where("uid = ?", 125).First(&logModel).Error
 				require.NoError(t, err)
-				s.assertLog(dao.GPTRecord{
+				s.assertLog(dao.LLMRecord{
 					Id:          1,
 					Tid:         "11",
 					Uid:         125,
@@ -245,10 +246,10 @@ func (s *GptSuite) TestService() {
 					Answer:         sqlx.NewNullString("aians"),
 				}, logModel)
 				// 校验credit写入的内容是否正确
-				var creditLogModel dao.GPTCredit
+				var creditLogModel dao.LLMCredit
 				err = s.db.WithContext(ctx).Where("id = ?", 1).First(&creditLogModel).Error
 				require.NoError(t, err)
-				s.assertCreditLog(dao.GPTCredit{
+				s.assertCreditLog(dao.LLMCredit{
 					Id:     1,
 					Tid:    "11",
 					Uid:    125,
@@ -261,7 +262,7 @@ func (s *GptSuite) TestService() {
 		},
 		{
 			name: "积分足够，扣款失败",
-			req: domain.GPTRequest{
+			req: domain.LLMRequest{
 				Biz: domain.BizQuestionExamine,
 				Uid: 126,
 				Tid: "11",
@@ -272,10 +273,10 @@ func (s *GptSuite) TestService() {
 			},
 			assertFunc: assert.Error,
 			before: func(t *testing.T,
-				ctrl *gomock.Controller) (gptHandler.Handler, credit.Service) {
-				gptHdl := hdlmocks.NewMockHandler(ctrl)
-				gptHdl.EXPECT().Handle(gomock.Any(), gomock.Any()).
-					Return(domain.GPTResponse{
+				ctrl *gomock.Controller) (llmHandler.Handler, credit.Service) {
+				llmHdl := hdlmocks.NewMockHandler(ctrl)
+				llmHdl.EXPECT().Handle(gomock.Any(), gomock.Any()).
+					Return(domain.LLMResponse{
 						Tokens: 100,
 						Amount: 100,
 						Answer: "aians",
@@ -284,22 +285,37 @@ func (s *GptSuite) TestService() {
 				creditSvc.EXPECT().GetCreditsByUID(gomock.Any(), gomock.Any()).Return(credit.Credit{
 					TotalAmount: 1000,
 				}, nil)
-				creditSvc.EXPECT().AddCredits(gomock.Any(), gomock.Any()).Return(errors.New("mock db error"))
-				return gptHdl, creditSvc
+				creditSvc.EXPECT().TryDeductCredits(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, c credit.Credit) (int64, error) {
+					c.Logs[0].Key = ""
+					c.Logs[0].BizId = 0
+					assert.Equal(t, credit.Credit{
+						Uid: 126,
+						Logs: []credit.CreditLog{
+							{
+								ChangeAmount: 100,
+								Uid:          126,
+								Biz:          "ai-llm",
+								Desc:         "ai-llm服务",
+							},
+						},
+					}, c)
+					return 0, errors.New("mock db error")
+				})
+				return llmHdl, creditSvc
 			},
-			after: func(t *testing.T, resp domain.GPTResponse) {
+			after: func(t *testing.T, resp domain.LLMResponse) {
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 				defer cancel()
 				// 校验response写入的内容是否正确
-				assert.Equal(t, domain.GPTResponse{
+				assert.Equal(t, domain.LLMResponse{
 					Tokens: 100,
 					Amount: 100,
 					Answer: "aians",
 				}, resp)
-				var logModel dao.GPTRecord
+				var logModel dao.LLMRecord
 				err := s.db.WithContext(ctx).Where("uid = ?", 126).First(&logModel).Error
 				require.NoError(t, err)
-				s.assertLog(dao.GPTRecord{
+				s.assertLog(dao.LLMRecord{
 					Id:          1,
 					Tid:         "11",
 					Uid:         126,
@@ -319,10 +335,10 @@ func (s *GptSuite) TestService() {
 					Answer:         sqlx.NewNullString("aians"),
 				}, logModel)
 				// 校验credit写入的内容是否正确
-				var creditLogModel dao.GPTCredit
+				var creditLogModel dao.LLMCredit
 				err = s.db.WithContext(ctx).Where("id = ?", 1).First(&creditLogModel).Error
 				require.NoError(t, err)
-				s.assertCreditLog(dao.GPTCredit{
+				s.assertCreditLog(dao.LLMCredit{
 					Id:     1,
 					Tid:    "11",
 					Uid:    126,
@@ -352,7 +368,7 @@ func (s *GptSuite) TestService() {
 	}
 }
 
-func (s *GptSuite) assertLog(wantLog dao.GPTRecord, actual dao.GPTRecord) {
+func (s *LLMServiceSuite) assertLog(wantLog dao.LLMRecord, actual dao.LLMRecord) {
 	require.True(s.T(), actual.Ctime != 0)
 	require.True(s.T(), actual.Utime != 0)
 	actual.Ctime = 0
@@ -360,7 +376,7 @@ func (s *GptSuite) assertLog(wantLog dao.GPTRecord, actual dao.GPTRecord) {
 	assert.Equal(s.T(), wantLog, actual)
 }
 
-func (s *GptSuite) assertCreditLog(wantLog dao.GPTCredit, actual dao.GPTCredit) {
+func (s *LLMServiceSuite) assertCreditLog(wantLog dao.LLMCredit, actual dao.LLMCredit) {
 	require.True(s.T(), actual.Ctime != 0)
 	require.True(s.T(), actual.Utime != 0)
 	actual.Ctime = 0

@@ -24,23 +24,24 @@ import (
 	"gorm.io/gorm/clause"
 )
 
-type GPTRecordDAO interface {
-	Save(ctx context.Context, r GPTRecord) (int64, error)
+type LLMRecordDAO interface {
+	Save(ctx context.Context, r LLMRecord) (int64, error)
 }
 
-type GORMGPTLogDAO struct {
+// GORMLLMLogDAO => GORM LLM LogDAO
+type GORMLLMLogDAO struct {
 	db *egorm.Component
 }
 
-func NewGORMGPTLogDAO(db *egorm.Component) GPTRecordDAO {
-	return &GORMGPTLogDAO{db: db}
+func NewGORMLLMLogDAO(db *egorm.Component) LLMRecordDAO {
+	return &GORMLLMLogDAO{db: db}
 }
 
-func (g *GORMGPTLogDAO) Save(ctx context.Context, record GPTRecord) (int64, error) {
+func (g *GORMLLMLogDAO) Save(ctx context.Context, record LLMRecord) (int64, error) {
 	now := time.Now().UnixMilli()
 	record.Ctime = now
 	record.Utime = now
-	err := g.db.WithContext(ctx).Model(&GPTRecord{}).
+	err := g.db.WithContext(ctx).Model(&LLMRecord{}).
 		Clauses(clause.OnConflict{
 			Columns:   []clause.Column{{Name: "id"}},
 			DoUpdates: clause.AssignmentColumns([]string{"status", "utime"}),
@@ -48,13 +49,13 @@ func (g *GORMGPTLogDAO) Save(ctx context.Context, record GPTRecord) (int64, erro
 	return record.Id, err
 }
 
-func (g *GORMGPTLogDAO) FirstLog(ctx context.Context, id int64) (*GPTRecord, error) {
-	logModel := &GPTRecord{}
-	err := g.db.WithContext(ctx).Model(&GPTRecord{}).Where("id = ?", id).First(logModel).Error
+func (g *GORMLLMLogDAO) FirstLog(ctx context.Context, id int64) (*LLMRecord, error) {
+	logModel := &LLMRecord{}
+	err := g.db.WithContext(ctx).Model(&LLMRecord{}).Where("id = ?", id).First(logModel).Error
 	return logModel, err
 }
 
-type GPTRecord struct {
+type LLMRecord struct {
 	Id             int64                     `gorm:"primaryKey;autoIncrement;comment:积分流水表自增ID"`
 	Tid            string                    `gorm:"type:varchar(256);not null;uniqueIndex:unq_tid;comment:一次请求的Tid只能有一次"`
 	Uid            int64                     `gorm:"not null;index:idx_user_id;comment:用户ID"`
@@ -65,11 +66,11 @@ type GPTRecord struct {
 	Input          sqlx.JsonColumn[[]string] `gorm:"type:text;comment:调用请求的参数"`
 	KnowledgeId    string                    `gorm:"type:varchar(256);not null;comment:使用的知识库 ID"`
 	PromptTemplate sql.NullString            `gorm:"type:text;comment:PromptTemplate 模板，加上请求参数构成一个完整的 prompt"`
-	Answer         sql.NullString            `gorm:"type:text;comment:gpt的回答"`
+	Answer         sql.NullString            `gorm:"type:text;comment:llm的回答"`
 	Ctime          int64
 	Utime          int64
 }
 
-func (l GPTRecord) TableName() string {
-	return "gpt_records"
+func (l LLMRecord) TableName() string {
+	return "llm_records"
 }

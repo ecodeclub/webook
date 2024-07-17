@@ -7,32 +7,32 @@ import (
 	"github.com/ecodeclub/webook/internal/ai/internal/repository/dao"
 )
 
-type GPTCreditLogRepo interface {
-	SaveCredit(ctx context.Context, GPTDeductLog domain.GPTCredit) (int64, error)
+type LLMCreditLogRepo interface {
+	SaveCredit(ctx context.Context, l domain.LLMCredit) (int64, error)
 }
 
-type gptCreditLogRepo struct {
-	logDao dao.GPTCreditDAO
+type llmCreditLogRepo struct {
+	logDao dao.LLMCreditDAO
 }
 
-func NewGPTCreditLogRepo(logDao dao.GPTCreditDAO) GPTCreditLogRepo {
-	return &gptCreditLogRepo{
+func NewLLMCreditLogRepo(logDao dao.LLMCreditDAO) LLMCreditLogRepo {
+	return &llmCreditLogRepo{
 		logDao: logDao,
 	}
 }
 
-func (g *gptCreditLogRepo) creditLogToEntity(gptLog domain.GPTCredit) dao.GPTCredit {
-	return dao.GPTCredit{
-		Id:     gptLog.Id,
-		Tid:    gptLog.Tid,
-		Uid:    gptLog.Uid,
-		Biz:    gptLog.Biz,
-		Amount: gptLog.Amount,
-		Status: gptLog.Status.ToUint8(),
+func (g *llmCreditLogRepo) creditLogToEntity(l domain.LLMCredit) dao.LLMCredit {
+	return dao.LLMCredit{
+		Id:     l.Id,
+		Tid:    l.Tid,
+		Uid:    l.Uid,
+		Biz:    l.Biz,
+		Amount: l.Amount,
+		Status: l.Status.ToUint8(),
 	}
 }
 
-func (g *gptCreditLogRepo) SaveCredit(ctx context.Context, gptDeductLog domain.GPTCredit) (int64, error) {
-	logEntity := g.creditLogToEntity(gptDeductLog)
+func (g *llmCreditLogRepo) SaveCredit(ctx context.Context, l domain.LLMCredit) (int64, error) {
+	logEntity := g.creditLogToEntity(l)
 	return g.logDao.SaveCredit(ctx, logEntity)
 }

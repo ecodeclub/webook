@@ -22,7 +22,7 @@ func NewHandler(apikey string,
 	if err != nil {
 		return nil, err
 	}
-	const model = "glm-4"
+	const model = "glm-4-0520"
 	svc := client.ChatCompletion(model)
 	return &Handler{
 		client: client,
@@ -33,25 +33,26 @@ func NewHandler(apikey string,
 }
 
 func (h *Handler) Name() string {
-	return "gpt"
+	return "zhipu"
 }
 
-func (h *Handler) Handle(ctx context.Context, req domain.GPTRequest) (domain.GPTResponse, error) {
+func (h *Handler) Handle(ctx context.Context, req domain.LLMRequest) (domain.LLMResponse, error) {
 	// 这边它不会调用 next，因为它是最终的出口
-	msg := h.newParams(req.Input)
 	completion, err := h.svc.AddTool(zhipu.ChatCompletionToolRetrieval{
-		KnowledgeID:    req.Config.KnowledgeId,
-		PromptTemplate: req.Config.PromptTemplate,
-	}).AddMessage(msg).Do(ctx)
+		KnowledgeID: req.Config.KnowledgeId,
+	}).AddMessage(zhipu.ChatCompletionMessage{
+		Role:    "user",
+		Content: req.Prompt,
+	}).Do(ctx)
 	if err != nil {
-		return domain.GPTResponse{}, err
+		return domain.LLMResponse{}, err
 	}
 	tokens := completion.Usage.TotalTokens
 	// 现在的报价都是 N/1k token
 	// 而后向上取整
 	amt := math.Ceil(float64(tokens) * h.price / 1000)
 	// 金额只有具体的模型才知道怎么算
-	resp := domain.GPTResponse{
+	resp := domain.LLMResponse{
 		Tokens: tokens,
 		Amount: int64(amt),
 	}
@@ -60,12 +61,4 @@ func (h *Handler) Handle(ctx context.Context, req domain.GPTRequest) (domain.GPT
 		resp.Answer = completion.Choices[0].Message.Content
 	}
 	return resp, nil
-}
-
-func (h *Handler) newParams(inputs []string) zhipu.ChatCompletionMessage {
-	msg := inputs[0]
-	return zhipu.ChatCompletionMessage{
-		Role:    "user",
-		Content: msg,
-	}
 }

@@ -25,6 +25,8 @@ import (
 	"github.com/lithammer/shortuuid/v4"
 )
 
+var ErrInsufficientCredit = ai.ErrInsufficientCredit
+
 // ExamineService 测试服务
 type ExamineService interface {
 	// Examine 测试服务
@@ -34,43 +36,45 @@ type ExamineService interface {
 	GetResults(ctx context.Context, uid int64, ids []int64) (map[int64]domain.ExamineResult, error)
 }
 
-var _ ExamineService = &GPTExamineService{}
+var _ ExamineService = &LLMExamineService{}
 
-// GPTExamineService 使用 GPT 进行评价的测试服务
-type GPTExamineService struct {
+// LLMExamineService 使用 LLM 进行评价的测试服务
+type LLMExamineService struct {
 	queRepo repository.Repository
 	repo    repository.ExamineRepository
-	aiSvc   ai.GPTService
+	aiSvc   ai.LLMService
 }
 
-func (svc *GPTExamineService) GetResults(ctx context.Context, uid int64, ids []int64) (map[int64]domain.ExamineResult, error) {
+func (svc *LLMExamineService) GetResults(ctx context.Context, uid int64, ids []int64) (map[int64]domain.ExamineResult, error) {
 	results, err := svc.repo.GetResultsByIds(ctx, uid, ids)
 	return slice.ToMap[domain.ExamineResult, int64](results, func(ele domain.ExamineResult) int64 {
 		return ele.Qid
 	}), err
 }
 
-func (svc *GPTExamineService) QuestionResult(ctx context.Context, uid, qid int64) (domain.Result, error) {
+func (svc *LLMExamineService) QuestionResult(ctx context.Context, uid, qid int64) (domain.Result, error) {
 	return svc.repo.GetResultByUidAndQid(ctx, uid, qid)
 }
 
-func (svc *GPTExamineService) Examine(ctx context.Context,
+func (svc *LLMExamineService) Examine(ctx context.Context,
 	uid int64,
 	qid int64, input string) (domain.ExamineResult, error) {
+	const biz = "question_examine"
 	// 实际上我们只需要 title，但是懒得写一个新的接口了
 	que, err := svc.queRepo.GetPubByID(ctx, qid)
 	if err != nil {
 		return domain.ExamineResult{}, err
 	}
 	tid := shortuuid.New()
-	aiReq := ai.GPTRequest{
+	aiReq := ai.LLMRequest{
 		Uid:   uid,
 		Tid:   tid,
+		Biz:   biz,
 		Input: []string{que.Title, input},
 	}
 	aiResp, err := svc.aiSvc.Invoke(ctx, aiReq)
 	if err != nil {
-		return domain.ExamineResult{}, nil
+		return domain.ExamineResult{}, err
 	}
 	// 解析结果
 	parsedRes := svc.parseExamineResult(aiResp.Answer)
@@ -86,7 +90,7 @@ func (svc *GPTExamineService) Examine(ctx context.Context,
 	return result, err
 }
 
-func (svc *GPTExamineService) parseExamineResult(answer string) domain.Result {
+func (svc *LLMExamineService) parseExamineResult(answer string) domain.Result {
 	answer = strings.TrimSpace(answer)
 	// 获取第一行
 	segs := strings.SplitN(answer, "\n", 2)
@@ -106,12 +110,12 @@ func (svc *GPTExamineService) parseExamineResult(answer string) domain.Result {
 	}
 }
 
-func NewGPTExamineService(
+func NewLLMExamineService(
 	queRepo repository.Repository,
 	repo repository.ExamineRepository,
-	aiSvc ai.GPTService,
+	aiSvc ai.LLMService,
 ) ExamineService {
-	return &GPTExamineService{
+	return &LLMExamineService{
 		queRepo: queRepo,
 		repo:    repo,
 		aiSvc:   aiSvc,

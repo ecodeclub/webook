@@ -22,28 +22,28 @@ import (
 	"github.com/ecodeclub/webook/internal/ai/internal/repository/dao"
 )
 
-type GPTLogRepo interface {
-	SaveLog(ctx context.Context, gptLog domain.GPTRecord) (int64, error)
+type LLMLogRepo interface {
+	SaveLog(ctx context.Context, l domain.LLMRecord) (int64, error)
 }
 
 // 调用日志
-type gptLogDAO struct {
-	logDao dao.GPTRecordDAO
+type llmLogDAO struct {
+	logDao dao.LLMRecordDAO
 }
 
-func NewGPTLogRepo(logDao dao.GPTRecordDAO) GPTLogRepo {
-	return &gptLogDAO{
+func NewLLMLogRepo(logDao dao.LLMRecordDAO) LLMLogRepo {
+	return &llmLogDAO{
 		logDao: logDao,
 	}
 }
 
-func (g *gptLogDAO) SaveLog(ctx context.Context, gptLog domain.GPTRecord) (int64, error) {
-	logEntity := g.toEntity(gptLog)
+func (g *llmLogDAO) SaveLog(ctx context.Context, l domain.LLMRecord) (int64, error) {
+	logEntity := g.toEntity(l)
 	return g.logDao.Save(ctx, logEntity)
 }
 
-func (g *gptLogDAO) toEntity(r domain.GPTRecord) dao.GPTRecord {
-	return dao.GPTRecord{
+func (g *llmLogDAO) toEntity(r domain.LLMRecord) dao.LLMRecord {
+	return dao.LLMRecord{
 		Id:          r.Id,
 		Tid:         r.Tid,
 		Uid:         r.Uid,

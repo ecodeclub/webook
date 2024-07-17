@@ -2,7 +2,7 @@ package domain
 
 const BizQuestionExamine = "question_examine"
 
-type GPTRequest struct {
+type LLMRequest struct {
 	Biz string
 	Uid int64
 	// 请求id
@@ -15,12 +15,12 @@ type GPTRequest struct {
 	Config BizConfig
 }
 
-type GPTResponse struct {
+type LLMResponse struct {
 	// 花费的token
 	Tokens int64
 	// 花费的金额
 	Amount int64
-	// gpt的回答
+	// llm 的回答
 	Answer string
 }
 
@@ -37,7 +37,7 @@ type BizConfig struct {
 	PromptTemplate string
 }
 
-type GPTCredit struct {
+type LLMCredit struct {
 	Id     int64
 	Tid    string
 	Uid    int64
@@ -49,7 +49,7 @@ type GPTCredit struct {
 	Utime  int64
 }
 
-type GPTRecord struct {
+type LLMRecord struct {
 	Id             int64
 	Tid            string
 	Uid            int64

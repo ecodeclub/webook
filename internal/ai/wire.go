@@ -5,11 +5,11 @@ package ai
 import (
 	"sync"
 
-	"github.com/ecodeclub/webook/internal/ai/internal/service/gpt"
-	"github.com/ecodeclub/webook/internal/ai/internal/service/gpt/handler/config"
-	aicredit "github.com/ecodeclub/webook/internal/ai/internal/service/gpt/handler/credit"
-	"github.com/ecodeclub/webook/internal/ai/internal/service/gpt/handler/log"
-	"github.com/ecodeclub/webook/internal/ai/internal/service/gpt/handler/record"
+	"github.com/ecodeclub/webook/internal/ai/internal/service/llm"
+	"github.com/ecodeclub/webook/internal/ai/internal/service/llm/handler/config"
+	aicredit "github.com/ecodeclub/webook/internal/ai/internal/service/llm/handler/credit"
+	"github.com/ecodeclub/webook/internal/ai/internal/service/llm/handler/log"
+	"github.com/ecodeclub/webook/internal/ai/internal/service/llm/handler/record"
 
 	"github.com/ecodeclub/webook/internal/ai/internal/repository"
 	"github.com/ecodeclub/webook/internal/ai/internal/repository/dao"
@@ -21,13 +21,13 @@ import (
 
 func InitModule(db *egorm.Component, creditSvc *credit.Module) (*Module, error) {
 	wire.Build(
-		gpt.NewGPTService,
-		repository.NewGPTLogRepo,
-		repository.NewGPTCreditLogRepo,
+		llm.NewLLMService,
+		repository.NewLLMLogRepo,
+		repository.NewLLMCreditLogRepo,
 		repository.NewCachedConfigRepository,
 
-		InitGPTCreditLogDAO,
-		dao.NewGORMGPTLogDAO,
+		InitLLMCreditLogDAO,
+		dao.NewGORMLLMLogDAO,
 		dao.NewGORMConfigDAO,
 
 		config.NewBuilder,
@@ -56,7 +56,7 @@ func InitTableOnce(db *gorm.DB) {
 	})
 }
 
-func InitGPTCreditLogDAO(db *egorm.Component) dao.GPTCreditDAO {
+func InitLLMCreditLogDAO(db *egorm.Component) dao.LLMCreditDAO {
 	InitTableOnce(db)
-	return dao.NewGPTCreditLogDAO(db)
+	return dao.NewLLMCreditLogDAO(db)
 }

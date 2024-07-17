@@ -3,7 +3,7 @@ package record
 import (
 	"context"
 
-	"github.com/ecodeclub/webook/internal/ai/internal/service/gpt/handler"
+	"github.com/ecodeclub/webook/internal/ai/internal/service/llm/handler"
 	"github.com/gotomicro/ego/core/elog"
 
 	"github.com/ecodeclub/webook/internal/ai/internal/domain"
@@ -11,11 +11,11 @@ import (
 )
 
 type HandlerBuilder struct {
-	repo   repository.GPTLogRepo
+	repo   repository.LLMLogRepo
 	logger *elog.Component
 }
 
-func NewHandler(repo repository.GPTLogRepo) *HandlerBuilder {
+func NewHandler(repo repository.LLMLogRepo) *HandlerBuilder {
 	return &HandlerBuilder{
 		repo:   repo,
 		logger: elog.DefaultLogger,
@@ -26,8 +26,8 @@ func (h *HandlerBuilder) Name() string {
 }
 
 func (h *HandlerBuilder) Next(next handler.Handler) handler.Handler {
-	return handler.HandleFunc(func(ctx context.Context, req domain.GPTRequest) (domain.GPTResponse, error) {
-		log := domain.GPTRecord{
+	return handler.HandleFunc(func(ctx context.Context, req domain.LLMRequest) (domain.LLMResponse, error) {
+		log := domain.LLMRecord{
 			Tid:            req.Tid,
 			Biz:            req.Biz,
 			Uid:            req.Uid,
@@ -38,13 +38,13 @@ func (h *HandlerBuilder) Next(next handler.Handler) handler.Handler {
 		defer func() {
 			_, err1 := h.repo.SaveLog(ctx, log)
 			if err1 != nil {
-				h.logger.Error("保存 GPT 访问记录失败", elog.FieldErr(err1))
+				h.logger.Error("保存 LLM 访问记录失败", elog.FieldErr(err1))
 			}
 		}()
 		resp, err := next.Handle(ctx, req)
 		if err != nil {
 			log.Status = domain.RecordStatusFailed
-			return domain.GPTResponse{}, err
+			return domain.LLMResponse{}, err
 		}
 		log.Tokens = resp.Tokens
 		log.Amount = resp.Amount

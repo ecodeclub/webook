@@ -15,13 +15,13 @@
 package ai
 
 import (
-	"github.com/ecodeclub/webook/internal/ai/internal/service/gpt/handler"
-	"github.com/ecodeclub/webook/internal/ai/internal/service/gpt/handler/biz"
-	"github.com/ecodeclub/webook/internal/ai/internal/service/gpt/handler/config"
-	"github.com/ecodeclub/webook/internal/ai/internal/service/gpt/handler/credit"
-	"github.com/ecodeclub/webook/internal/ai/internal/service/gpt/handler/gpt/zhipu"
-	"github.com/ecodeclub/webook/internal/ai/internal/service/gpt/handler/log"
-	"github.com/ecodeclub/webook/internal/ai/internal/service/gpt/handler/record"
+	"github.com/ecodeclub/webook/internal/ai/internal/service/llm/handler"
+	"github.com/ecodeclub/webook/internal/ai/internal/service/llm/handler/biz"
+	"github.com/ecodeclub/webook/internal/ai/internal/service/llm/handler/config"
+	"github.com/ecodeclub/webook/internal/ai/internal/service/llm/handler/credit"
+	"github.com/ecodeclub/webook/internal/ai/internal/service/llm/handler/log"
+	"github.com/ecodeclub/webook/internal/ai/internal/service/llm/handler/platform/zhipu"
+	"github.com/ecodeclub/webook/internal/ai/internal/service/llm/handler/record"
 	"github.com/gotomicro/ego/core/econf"
 )
 
@@ -51,12 +51,12 @@ func InitZhipu() *zhipu.Handler {
 
 func InitQuestionExamineHandler(
 	common []handler.Builder,
-	// gpt 就是真正的出口
-	gpt handler.Handler) *biz.CompositionHandler {
-	// log -> cfg -> credit -> record -> question_examine -> gpt
+	// platform 就是真正的出口
+	platform handler.Handler) *biz.CompositionHandler {
+	// log -> cfg -> credit -> record -> question_examine -> platform
 	builder := biz.NewQuestionExamineBizHandlerBuilder()
 	common = append(common, builder)
-	res := biz.NewCombinedBizHandler("question_examine", common, gpt)
+	res := biz.NewCombinedBizHandler("question_examine", common, platform)
 	return res
 }
 

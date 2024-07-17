@@ -56,8 +56,8 @@ type ExamineHandlerTest struct {
 func (s *ExamineHandlerTest) SetupSuite() {
 	ctrl := gomock.NewController(s.T())
 	aiSvc := aimocks.NewMockService(ctrl)
-	aiSvc.EXPECT().Invoke(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, req ai.GPTRequest) (ai.GPTResponse, error) {
-		return ai.GPTResponse{
+	aiSvc.EXPECT().Invoke(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, req ai.LLMRequest) (ai.LLMResponse, error) {
+		return ai.LLMResponse{
 			Tokens: req.Uid,
 			Amount: req.Uid,
 			Answer: "评分：15K",
@@ -169,7 +169,6 @@ func (s *ExamineHandlerTest) TestExamine() {
 				Data: web.ExamineResult{
 					Result:    domain.ResultBasic.ToUint8(),
 					RawResult: "评分：15K",
-					Tokens:    uid,
 					Amount:    uid,
 				},
 			},
@@ -238,7 +237,6 @@ func (s *ExamineHandlerTest) TestExamine() {
 				Data: web.ExamineResult{
 					Result:    domain.ResultBasic.ToUint8(),
 					RawResult: "评分：15K",
-					Tokens:    uid,
 					Amount:    uid,
 				},
 			},

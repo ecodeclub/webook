@@ -69,8 +69,14 @@ func (c *OrderEventConsumer) Consume(ctx context.Context) error {
 		return err
 	}
 
+	// TODO 删除这个校验。
+	// 如果后续找不到对应的 Handler，就直接返回，否则每次都要在这里增加代码
 	for _, spu := range evt.SPUs {
-		if !spu.IsMemberProduct() && !spu.IsProjectProduct() && !spu.IsServiceProduct() && !spu.IsCodeCategory() {
+		if !spu.IsMemberProduct() &&
+			!spu.IsProjectProduct() &&
+			!spu.IsServiceProduct() &&
+			!spu.IsCreditProduct() &&
+			!spu.IsCodeCategory() {
 			return nil
 		}
 	}
