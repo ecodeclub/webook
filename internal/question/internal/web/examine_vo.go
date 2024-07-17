@@ -38,7 +38,6 @@ func newExamineResult(r domain.ExamineResult) ExamineResult {
 		Qid:       r.Qid,
 		Result:    r.Result.ToUint8(),
 		RawResult: r.RawResult,
-		Tokens:    r.Tokens,
 		Amount:    r.Amount,
 	}
 }

@@ -12,15 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package biz
+package ai
 
-import (
-	"github.com/ecodeclub/webook/internal/ai/internal/service/gpt/handler"
-)
+import "github.com/ecodeclub/webook/internal/ai/internal/service/llm/handler/credit"
 
-// GPTBizHandler 近似于标记接口，也就是用于区分专属于业务的，和通用的 Handler
-type GPTBizHandler interface {
-	handler.Handler
-	// Biz 它处理的业务
-	Biz() string
-}
+var ErrInsufficientCredit = credit.ErrInsufficientCredit

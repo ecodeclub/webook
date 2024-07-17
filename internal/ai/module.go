@@ -1,5 +1,5 @@
 package ai
 
 type Module struct {
-	Svc GPTService
+	Svc LLMService
 }

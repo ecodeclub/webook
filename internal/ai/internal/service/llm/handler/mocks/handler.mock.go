@@ -13,7 +13,7 @@ import (
 	reflect "reflect"
 
 	domain "github.com/ecodeclub/webook/internal/ai/internal/domain"
-	handler "github.com/ecodeclub/webook/internal/ai/internal/service/gpt/handler"
+	handler "github.com/ecodeclub/webook/internal/ai/internal/service/llm/handler"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -41,10 +41,10 @@ func (m *MockHandler) EXPECT() *MockHandlerMockRecorder {
 }
 
 // Handle mocks base method.
-func (m *MockHandler) Handle(ctx context.Context, req domain.GPTRequest) (domain.GPTResponse, error) {
+func (m *MockHandler) Handle(ctx context.Context, req domain.LLMRequest) (domain.LLMResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Handle", ctx, req)
-	ret0, _ := ret[0].(domain.GPTResponse)
+	ret0, _ := ret[0].(domain.LLMResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -62,19 +62,19 @@ type HandlerHandleCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *HandlerHandleCall) Return(arg0 domain.GPTResponse, arg1 error) *HandlerHandleCall {
+func (c *HandlerHandleCall) Return(arg0 domain.LLMResponse, arg1 error) *HandlerHandleCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *HandlerHandleCall) Do(f func(context.Context, domain.GPTRequest) (domain.GPTResponse, error)) *HandlerHandleCall {
+func (c *HandlerHandleCall) Do(f func(context.Context, domain.LLMRequest) (domain.LLMResponse, error)) *HandlerHandleCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *HandlerHandleCall) DoAndReturn(f func(context.Context, domain.GPTRequest) (domain.GPTResponse, error)) *HandlerHandleCall {
+func (c *HandlerHandleCall) DoAndReturn(f func(context.Context, domain.LLMRequest) (domain.LLMResponse, error)) *HandlerHandleCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

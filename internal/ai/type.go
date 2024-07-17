@@ -2,9 +2,9 @@ package ai
 
 import (
 	"github.com/ecodeclub/webook/internal/ai/internal/domain"
-	"github.com/ecodeclub/webook/internal/ai/internal/service/gpt"
+	"github.com/ecodeclub/webook/internal/ai/internal/service/llm"
 )
 
-type GPTRequest = domain.GPTRequest
-type GPTResponse = domain.GPTResponse
-type GPTService = gpt.Service
+type LLMRequest = domain.LLMRequest
+type LLMResponse = domain.LLMResponse
+type LLMService = llm.Service

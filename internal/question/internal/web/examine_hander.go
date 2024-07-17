@@ -15,8 +15,11 @@
 package web
 
 import (
+	"errors"
+
 	"github.com/ecodeclub/ginx"
 	"github.com/ecodeclub/ginx/session"
+	"github.com/ecodeclub/webook/internal/question/internal/errs"
 	"github.com/ecodeclub/webook/internal/question/internal/service"
 	"github.com/gin-gonic/gin"
 )
@@ -38,10 +41,18 @@ func (h *ExamineHandler) MemberRoutes(server *gin.Engine) {
 
 func (h *ExamineHandler) Examine(ctx *ginx.Context, req ExamineReq, sess session.Session) (ginx.Result, error) {
 	res, err := h.svc.Examine(ctx, sess.Claims().Uid, req.Qid, req.Input)
-	if err != nil {
+	switch {
+	case errors.Is(err, service.ErrInsufficientCredit):
+		return ginx.Result{
+			Code: errs.InsufficientCredit.Code,
+			Msg:  errs.InsufficientCredit.Msg,
+		}, nil
+
+	case err == nil:
+		return ginx.Result{
+			Data: newExamineResult(res),
+		}, nil
+	default:
 		return systemErrorResult, err
 	}
-	return ginx.Result{
-		Data: newExamineResult(res),
-	}, nil
 }
