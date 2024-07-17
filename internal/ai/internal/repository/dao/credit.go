@@ -8,8 +8,8 @@ import (
 	"gorm.io/gorm/clause"
 )
 
-// GPTCredit gpt扣分调用记录表
-type GPTCredit struct {
+// LLMCredit llm 扣分调用记录表
+type LLMCredit struct {
 	Id     int64  `gorm:"primaryKey;autoIncrement;comment:积分流水表自增ID"`
 	Tid    string `gorm:"type:varchar(256);not null;comment:一次请求的Tid，可能有多次"`
 	Uid    int64  `gorm:"not null;index:idx_user_id;comment:用户ID"`
@@ -20,32 +20,32 @@ type GPTCredit struct {
 	Utime  int64
 }
 
-func (l GPTCredit) TableName() string {
-	return "gpt_credits"
+func (l LLMCredit) TableName() string {
+	return "llm_credits"
 }
 
-type GPTCreditDAO interface {
-	SaveCredit(ctx context.Context, GPTDeductLog GPTCredit) (int64, error)
+type LLMCreditDAO interface {
+	SaveCredit(ctx context.Context, l LLMCredit) (int64, error)
 }
 
-type GORMGPTCreditDAO struct {
+type GORMLLMCreditDAO struct {
 	db *egorm.Component
 }
 
-func NewGPTCreditLogDAO(db *egorm.Component) GPTCreditDAO {
-	return &GORMGPTCreditDAO{
+func NewLLMCreditLogDAO(db *egorm.Component) LLMCreditDAO {
+	return &GORMLLMCreditDAO{
 		db: db,
 	}
 }
 
-func (g *GORMGPTCreditDAO) SaveCredit(ctx context.Context, gptLog GPTCredit) (int64, error) {
+func (g *GORMLLMCreditDAO) SaveCredit(ctx context.Context, l LLMCredit) (int64, error) {
 	now := time.Now().UnixMilli()
-	gptLog.Ctime = now
-	gptLog.Utime = now
-	err := g.db.WithContext(ctx).Model(&GPTCredit{}).
+	l.Ctime = now
+	l.Utime = now
+	err := g.db.WithContext(ctx).Model(&LLMCredit{}).
 		Clauses(clause.OnConflict{
 			Columns:   []clause.Column{{Name: "id"}},
 			DoUpdates: clause.AssignmentColumns([]string{"status", "utime"}),
-		}).Create(&gptLog).Error
-	return gptLog.Id, err
+		}).Create(&l).Error
+	return l.Id, err
 }

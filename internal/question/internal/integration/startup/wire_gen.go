@@ -47,7 +47,7 @@ func InitModule(p event.SyncDataToSearchEventProducer, intrModule *interactive.M
 	examineDAO := dao.NewGORMExamineDAO(db)
 	examineRepository := repository.NewCachedExamineRepository(examineDAO)
 	gptService := aiModule.Svc
-	examineService := service.NewGPTExamineService(repositoryRepository, examineRepository, gptService)
+	examineService := service.NewLLMExamineService(repositoryRepository, examineRepository, gptService)
 	service3 := permModule.Svc
 	handler := web.NewHandler(service2, examineService, service3, serviceService)
 	questionSetHandler := web.NewQuestionSetHandler(questionSetService, examineService, service2)

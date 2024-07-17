@@ -25,12 +25,16 @@
 > 这里比较蛋疼的是 401 和 403 的语义。所以我也没什么好纠结的，只是做一个简单的区分
 
 ## 商品SPU类别说明
+
+从标准的电商结构上来说，类别是一个独立的模块，并且会做比较复杂的关系型数据库的设计。但是目前我们在这个项目里面，并不需要这么复杂的东西，所以只需要搞一个粗糙的二级目录就可以了。
+
 - category0表示SPU顶级类别,可选值有product表示商品,code表示兑换码
 - category1表示SPU次级类别,可选值有member/project等
 
 两者组合语义如下:
 - category0=product, category1=member 表示会员商品
 - category0=code, category1=project 表示项目兑换码
+- category0=product, category1=credit 表示积分（积分本身也可以购买）
 
 ## 营销模块说明
 

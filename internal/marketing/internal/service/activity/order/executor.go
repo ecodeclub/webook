@@ -44,6 +44,7 @@ func NewOrderActivityExecutor(
 	registry.RegisterOrderHandler("product", "member", handler.NewProductMemberHandler(memberEventProducer, creditEventProducer))
 	registry.RegisterOrderHandler("product", "project", handler.NewProductProjectHandler(permissionEventProducer, creditEventProducer))
 	registry.RegisterOrderHandler("product", "service", handler.NewProductServiceHandler(qywechatEventProducer))
+	registry.RegisterOrderHandler("product", "credit", handler.NewProductCreditHandler(creditEventProducer))
 
 	codeMemberHandler := handler.NewCodeMemberHandler(repo, memberEventProducer, creditEventProducer, redemptionCodeGenerator)
 	registry.RegisterOrderHandler("code", "member", codeMemberHandler)

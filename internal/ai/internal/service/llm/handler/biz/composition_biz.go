@@ -18,7 +18,7 @@ import (
 	"context"
 
 	"github.com/ecodeclub/webook/internal/ai/internal/domain"
-	"github.com/ecodeclub/webook/internal/ai/internal/service/gpt/handler"
+	"github.com/ecodeclub/webook/internal/ai/internal/service/llm/handler"
 )
 
 // CompositionHandler 通过组合 Handler 来完成某个业务
@@ -28,7 +28,7 @@ type CompositionHandler struct {
 	name string
 }
 
-func (c *CompositionHandler) Handle(ctx context.Context, req domain.GPTRequest) (domain.GPTResponse, error) {
+func (c *CompositionHandler) Handle(ctx context.Context, req domain.LLMRequest) (domain.LLMResponse, error) {
 	return c.root.Handle(ctx, req)
 }
 
@@ -42,8 +42,8 @@ func (c *CompositionHandler) Biz() string {
 
 func NewCombinedBizHandler(name string,
 	common []handler.Builder,
-	gpt handler.Handler) *CompositionHandler {
-	root := gpt
+	l handler.Handler) *CompositionHandler {
+	root := l
 	for i := len(common) - 1; i >= 0; i-- {
 		current := common[i]
 		root = current.Next(root)

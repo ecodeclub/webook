@@ -46,7 +46,7 @@ import (
 
 var ExamineHandlerSet = wire.NewSet(
 	web.NewExamineHandler,
-	service.NewGPTExamineService,
+	service.NewLLMExamineService,
 	repository.NewCachedExamineRepository,
 	dao.NewGORMExamineDAO)
 

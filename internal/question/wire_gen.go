@@ -50,8 +50,8 @@ func InitModule(db *gorm.DB, intrModule *interactive.Module, ec ecache.Cache, pe
 	service2 := intrModule.Svc
 	examineDAO := dao.NewGORMExamineDAO(db)
 	examineRepository := repository.NewCachedExamineRepository(examineDAO)
-	gptService := aiModule.Svc
-	examineService := service.NewGPTExamineService(repositoryRepository, examineRepository, gptService)
+	llmService := aiModule.Svc
+	examineService := service.NewLLMExamineService(repositoryRepository, examineRepository, llmService)
 	service3 := perm.Svc
 	handler := web.NewHandler(service2, examineService, service3, serviceService)
 	questionSetHandler := web.NewQuestionSetHandler(questionSetService, examineService, service2)
@@ -72,7 +72,7 @@ func InitModule(db *gorm.DB, intrModule *interactive.Module, ec ecache.Cache, pe
 
 // wire.go:
 
-var ExamineHandlerSet = wire.NewSet(web.NewExamineHandler, service.NewGPTExamineService, repository.NewCachedExamineRepository, dao.NewGORMExamineDAO)
+var ExamineHandlerSet = wire.NewSet(web.NewExamineHandler, service.NewLLMExamineService, repository.NewCachedExamineRepository, dao.NewGORMExamineDAO)
 
 var daoOnce = sync.Once{}
 

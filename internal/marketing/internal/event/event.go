@@ -55,6 +55,9 @@ func (s SPU) IsMemberProduct() bool {
 	return s.IsProductCategory() && s.Category1 == "member"
 }
 
+func (s SPU) IsCreditProduct() bool {
+	return s.IsProductCategory() && s.Category1 == "credit"
+}
 func (s SPU) IsProjectProduct() bool {
 	return s.IsProductCategory() && s.Category1 == "project"
 }

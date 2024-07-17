@@ -4,8 +4,8 @@ import "github.com/ego-component/egorm"
 
 func InitTables(db *egorm.Component) error {
 	return db.AutoMigrate(
-		&GPTCredit{},
-		&GPTRecord{},
+		&LLMCredit{},
+		&LLMRecord{},
 		&BizConfig{},
 	)
 }
