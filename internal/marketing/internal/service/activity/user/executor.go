@@ -18,7 +18,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/ecodeclub/webook/internal/marketing/internal/domain"
 	"github.com/ecodeclub/webook/internal/marketing/internal/event"
@@ -58,14 +57,10 @@ func (s *ActivityExecutor) Execute(ctx context.Context, act domain.UserRegistrat
 }
 
 func (s *ActivityExecutor) awardRegistrationBonus(ctx context.Context, act domain.UserRegistrationActivity) error {
-	endAtDate := time.Date(2024, 9, 30, 23, 59, 59, 0, time.UTC)
-	if endAtDate.Before(time.Now()) {
-		return nil
-	}
 	err := s.memberEventProducer.Produce(ctx, event.MemberEvent{
 		Key:    fmt.Sprintf("user-registration-%d", act.Uid),
 		Uid:    act.Uid,
-		Days:   uint64(time.Until(endAtDate) / (24 * time.Hour)),
+		Days:   7,
 		Biz:    "user",
 		BizId:  act.Uid,
 		Action: "注册福利",
