@@ -1091,7 +1091,7 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeUserRegistrationEvent() {
 		after          func(t *testing.T, evt event.UserRegistrationEvent)
 	}{
 		{
-			name: "消费注册消息成功_为注册者开通会员",
+			name: "消费注册消息成功_为注册者开通7天会员",
 			newMQFunc: func(t *testing.T, ctrl *gomock.Controller, evt event.UserRegistrationEvent) mq.MQ {
 				t.Helper()
 
@@ -1100,11 +1100,10 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeUserRegistrationEvent() {
 				mockConsumer.EXPECT().Consume(gomock.Any()).Return(s.newUserRegistrationEventMessage(t, evt), nil).Times(2)
 
 				mockProducer := mocks.NewMockProducer(ctrl)
-				endAtDate := time.Date(2024, 9, 30, 23, 59, 59, 0, time.UTC)
 				memberEvent := s.newMemberEventMessage(t, event.MemberEvent{
 					Key:    fmt.Sprintf("user-registration-%d", evt.Uid),
 					Uid:    evt.Uid,
-					Days:   uint64(time.Until(endAtDate) / (24 * time.Hour)),
+					Days:   7,
 					Biz:    "user",
 					BizId:  evt.Uid,
 					Action: "注册福利",
@@ -1132,7 +1131,7 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeUserRegistrationEvent() {
 			after:          func(t *testing.T, evt event.UserRegistrationEvent) {},
 		},
 		{
-			name: "消费注册消息成功_为注册者开通会员_为邀请者增加积分",
+			name: "消费注册消息成功_为注册者开通7天会员_为邀请者增加积分",
 			newMQFunc: func(t *testing.T, ctrl *gomock.Controller, evt event.UserRegistrationEvent) mq.MQ {
 				t.Helper()
 
@@ -1141,11 +1140,10 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeUserRegistrationEvent() {
 				mockConsumer.EXPECT().Consume(gomock.Any()).Return(s.newUserRegistrationEventMessage(t, evt), nil).Times(2)
 
 				mockProducer := mocks.NewMockProducer(ctrl)
-				endAtDate := time.Date(2024, 9, 30, 23, 59, 59, 0, time.UTC)
 				memberEvent := s.newMemberEventMessage(t, event.MemberEvent{
 					Key:    fmt.Sprintf("user-registration-%d", evt.Uid),
 					Uid:    evt.Uid,
-					Days:   uint64(time.Until(endAtDate) / (24 * time.Hour)),
+					Days:   7,
 					Biz:    "user",
 					BizId:  evt.Uid,
 					Action: "注册福利",
@@ -1215,7 +1213,7 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeUserRegistrationEvent() {
 			},
 		},
 		{
-			name: "消费注册消息成功_为注册者开通会员_邀请码找不则忽略",
+			name: "消费注册消息成功_为注册者开通7天会员_邀请码找不则忽略",
 			newMQFunc: func(t *testing.T, ctrl *gomock.Controller, evt event.UserRegistrationEvent) mq.MQ {
 				t.Helper()
 
@@ -1224,11 +1222,10 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeUserRegistrationEvent() {
 				mockConsumer.EXPECT().Consume(gomock.Any()).Return(s.newUserRegistrationEventMessage(t, evt), nil).Times(2)
 
 				mockProducer := mocks.NewMockProducer(ctrl)
-				endAtDate := time.Date(2024, 9, 30, 23, 59, 59, 0, time.UTC)
 				memberEvent := s.newMemberEventMessage(t, event.MemberEvent{
 					Key:    fmt.Sprintf("user-registration-%d", evt.Uid),
 					Uid:    evt.Uid,
-					Days:   uint64(time.Until(endAtDate) / (24 * time.Hour)),
+					Days:   7,
 					Biz:    "user",
 					BizId:  evt.Uid,
 					Action: "注册福利",
