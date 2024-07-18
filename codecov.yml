@@ -1,0 +1,5 @@
+ignore:
+  - "ioc"
+  - "**/**.mock.go"
+  - "**/wire.go"
+  - "**/wire_gen.go"
