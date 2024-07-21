@@ -20,6 +20,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/ecodeclub/webook/internal/pkg/middleware"
+
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/ecodeclub/ginx"
 	"github.com/ecodeclub/ginx/session"
@@ -67,19 +69,20 @@ func NewHandler(
 
 func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	users := server.Group("/users")
-	users.GET("/profile", ginx.S(h.Profile))
-	users.POST("/profile", ginx.BS[EditReq](h.Edit))
+	users.GET("/profile", middleware.NewAddAppIdBuilder().Build(), ginx.S(h.Profile))
+	users.POST("/profile", middleware.NewAddAppIdBuilder().Build(), ginx.BS[EditReq](h.Edit))
 }
 
 func (h *Handler) PublicRoutes(server *gin.Engine) {
+	appidFunc := middleware.NewAddAppIdBuilder().Build()
 	oauth2 := server.Group("/oauth2")
-	oauth2.GET("/wechat/auth_url", ginx.W(h.WechatAuthURL))
-	oauth2.GET("/mock/login", ginx.W(h.MockLogin))
+	oauth2.GET("/wechat/auth_url", appidFunc, ginx.W(h.WechatAuthURL))
+	oauth2.GET("/mock/login", appidFunc, ginx.W(h.MockLogin))
 	// 扫码登录回调
-	oauth2.Any("/wechat/callback", ginx.B[WechatCallback](h.Callback))
+	oauth2.Any("/wechat/callback", appidFunc, ginx.B[WechatCallback](h.Callback))
 	// 小程序登录回调
-	oauth2.Any("/wechat/mini/callback", ginx.B[WechatCallback](h.MiniCallback))
-	oauth2.Any("/wechat/token/refresh", ginx.W(h.RefreshAccessToken))
+	oauth2.Any("/wechat/mini/callback", appidFunc, ginx.B[WechatCallback](h.MiniCallback))
+	oauth2.Any("/wechat/token/refresh", appidFunc, ginx.W(h.RefreshAccessToken))
 }
 
 func (h *Handler) WechatAuthURL(ctx *ginx.Context) (ginx.Result, error) {
@@ -115,7 +118,7 @@ func (h *Handler) Profile(ctx *ginx.Context, sess session.Session) (ginx.Result,
 	uid := sess.Claims().Uid
 	eg.Go(func() error {
 		var err error
-		u, err = h.userSvc.Profile(ctx, uid)
+		u, err = h.userSvc.Profile(ctx.Request.Context(), uid)
 		return err
 	})
 
@@ -145,7 +148,7 @@ func (h *Handler) Profile(ctx *ginx.Context, sess session.Session) (ginx.Result,
 // Edit 用户编辑信息
 func (h *Handler) Edit(ctx *ginx.Context, req EditReq, sess session.Session) (ginx.Result, error) {
 	uid := sess.Claims().Uid
-	err := h.userSvc.UpdateNonSensitiveInfo(ctx, domain.User{
+	err := h.userSvc.UpdateNonSensitiveInfo(ctx.Request.Context(), domain.User{
 		Id:       uid,
 		Nickname: req.Nickname,
 		Avatar:   req.Avatar,
@@ -159,14 +162,15 @@ func (h *Handler) Edit(ctx *ginx.Context, req EditReq, sess session.Session) (gi
 }
 
 func (h *Handler) Callback(ctx *ginx.Context, req WechatCallback) (ginx.Result, error) {
-	info, err := h.weSvc.Verify(ctx, service.CallbackParams{
+	nctx := ctx.Request.Context()
+	info, err := h.weSvc.Verify(nctx, service.CallbackParams{
 		Code:  req.Code,
 		State: req.State,
 	})
 	if err != nil {
 		return systemErrorResult, err
 	}
-	user, err := h.userSvc.FindOrCreateByWechat(ctx, info)
+	user, err := h.userSvc.FindOrCreateByWechat(nctx, info)
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -191,7 +195,7 @@ func (h *Handler) setupSession(ctx *ginx.Context, user domain.User) (Profile, er
 	jwtData["memberDDL"] = strconv.FormatInt(memberDDL, 10)
 
 	perms := make(map[string]string)
-	permissionGroup, err := h.permissionSvc.FindPersonalPermissions(ctx, user.Id)
+	permissionGroup, err := h.permissionSvc.FindPersonalPermissions(ctx.Request.Context(), user.Id)
 	if err != nil {
 		return Profile{}, err
 	}
@@ -224,14 +228,14 @@ func (h *Handler) getMemberDDL(ctx context.Context, userID int64) int64 {
 
 // MiniCallback 微信小程序登录回调
 func (h *Handler) MiniCallback(ctx *ginx.Context, req WechatCallback) (ginx.Result, error) {
-	info, err := h.weMiniSvc.Verify(ctx, service.CallbackParams{
+	info, err := h.weMiniSvc.Verify(ctx.Request.Context(), service.CallbackParams{
 		Code:  req.Code,
 		State: req.State,
 	})
 	if err != nil {
 		return systemErrorResult, err
 	}
-	user, err := h.userSvc.FindOrCreateByWechat(ctx, info)
+	user, err := h.userSvc.FindOrCreateByWechat(ctx.Request.Context(), info)
 	if err != nil {
 		return systemErrorResult, err
 	}

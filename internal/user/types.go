@@ -22,6 +22,14 @@ import (
 // Handler 暴露出去给 ioc 使用
 type Handler = web.Handler
 
+// UserService 方便测试
+type UserService = service.UserService
+
+type Module struct {
+	Hdl *Handler
+	Svc UserService
+}
+
 // 规避 wire 的坑
 type wechatMiniOAuth2Service service.OAuth2Service
 type wechatWebOAuth2Service service.OAuth2Service
