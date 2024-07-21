@@ -44,7 +44,9 @@ type GORMQuestionSetDAO struct {
 func (g *GORMQuestionSetDAO) GetByBiz(ctx context.Context, biz string, bizId int64) (QuestionSet, error) {
 	var res QuestionSet
 	db := g.db.WithContext(ctx)
-	err := db.Where("biz = ? AND biz_id = ?", biz, bizId).First(&res).Error
+	err := db.Where("biz = ? AND biz_id = ?", biz, bizId).
+		Order("utime DESC").
+		First(&res).Error
 	return res, err
 }
 
