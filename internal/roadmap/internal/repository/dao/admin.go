@@ -50,7 +50,8 @@ func (dao *GORMAdminDAO) AddEdge(ctx context.Context, edge Edge) error {
 
 func (dao *GORMAdminDAO) GetEdgesByRid(ctx context.Context, rid int64) ([]Edge, error) {
 	var res []Edge
-	err := dao.db.WithContext(ctx).Where("rid = ?", rid).Find(&res).Error
+	// 按照更新时间倒序排序
+	err := dao.db.WithContext(ctx).Where("rid = ?", rid).Order("utime DESC").Find(&res).Error
 	return res, err
 }
 
