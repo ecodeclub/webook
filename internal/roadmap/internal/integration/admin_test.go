@@ -313,9 +313,9 @@ func (s *AdminHandlerTestSuite) TestDetail() {
 	}).Error
 	require.NoError(s.T(), err)
 	edges := []dao.Edge{
-		{Id: 1, Rid: 1, SrcBiz: domain.BizQuestionSet, SrcId: 1, DstBiz: domain.BizQuestion, DstId: 2},
-		{Id: 2, Rid: 1, SrcBiz: domain.BizQuestion, SrcId: 2, DstBiz: domain.BizQuestionSet, DstId: 3},
-		{Id: 3, Rid: 2, SrcBiz: domain.BizQuestion, SrcId: 2, DstBiz: domain.BizQuestionSet, DstId: 3},
+		{Id: 1, Rid: 1, SrcBiz: domain.BizQuestionSet, SrcId: 1, DstBiz: domain.BizQuestion, DstId: 2, Utime: 123},
+		{Id: 2, Rid: 1, SrcBiz: domain.BizQuestion, SrcId: 2, DstBiz: domain.BizQuestionSet, DstId: 3, Utime: 124},
+		{Id: 3, Rid: 2, SrcBiz: domain.BizQuestion, SrcId: 2, DstBiz: domain.BizQuestionSet, DstId: 3, Utime: 125},
 	}
 	err = db.Create(&edges).Error
 	require.NoError(s.T(), err)
@@ -341,19 +341,6 @@ func (s *AdminHandlerTestSuite) TestDetail() {
 					Utime:    222,
 					Edges: []web.Edge{
 						{
-							Id: 1,
-							Src: web.Node{
-								Biz:   domain.BizQuestionSet,
-								BizId: 1,
-								Title: "题集1",
-							},
-							Dst: web.Node{
-								Biz:   domain.BizQuestion,
-								BizId: 2,
-								Title: "题目2",
-							},
-						},
-						{
 							Id: 2,
 							Src: web.Node{
 								BizId: 2,
@@ -364,6 +351,19 @@ func (s *AdminHandlerTestSuite) TestDetail() {
 								BizId: 3,
 								Biz:   domain.BizQuestionSet,
 								Title: "题集3",
+							},
+						},
+						{
+							Id: 1,
+							Src: web.Node{
+								Biz:   domain.BizQuestionSet,
+								BizId: 1,
+								Title: "题集1",
+							},
+							Dst: web.Node{
+								Biz:   domain.BizQuestion,
+								BizId: 2,
+								Title: "题目2",
 							},
 						},
 					},
