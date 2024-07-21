@@ -1,12 +1,13 @@
 package middleware
 
 import (
-	"github.com/gin-gonic/gin"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/gin-gonic/gin"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestAddAppId(t *testing.T) {
@@ -21,13 +22,13 @@ func TestAddAppId(t *testing.T) {
 			wantCode: 200,
 			before: func(t *testing.T, ctx *gin.Context) {
 				header := make(http.Header)
-				header.Set(appCtxKey, "1")
+				header.Set(string(AppCtxKey), "1")
 				ctx.Request = httptest.NewRequest(http.MethodPost, "/users/profile", nil)
 				ctx.Request.Header = header
 			},
 			afterFunc: func(t *testing.T, ctx *gin.Context) {
 				c := ctx.Request.Context()
-				v := c.Value(appCtxKey)
+				v := c.Value(AppCtxKey)
 				res, ok := v.(uint)
 				require.True(t, ok)
 				assert.Equal(t, uint(1), res)
@@ -43,7 +44,7 @@ func TestAddAppId(t *testing.T) {
 			},
 			afterFunc: func(t *testing.T, ctx *gin.Context) {
 				c := ctx.Request.Context()
-				v := c.Value(appCtxKey)
+				v := c.Value(AppCtxKey)
 				require.Nil(t, v)
 			},
 		},
@@ -52,7 +53,7 @@ func TestAddAppId(t *testing.T) {
 			wantCode: 400,
 			before: func(t *testing.T, ctx *gin.Context) {
 				header := make(http.Header)
-				header.Set(appCtxKey, "dasdsa")
+				header.Set(string(AppCtxKey), "dasdsa")
 				ctx.Request = httptest.NewRequest(http.MethodPost, "/users/profile", nil)
 				ctx.Request.Header = header
 			},

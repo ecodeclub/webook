@@ -20,10 +20,13 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"github.com/ecodeclub/webook/internal/pkg/snowflake"
-	"github.com/ecodeclub/webook/internal/user"
 	"net/http"
 	"testing"
+
+	"github.com/ecodeclub/webook/internal/pkg/middleware"
+
+	"github.com/ecodeclub/webook/internal/pkg/snowflake"
+	"github.com/ecodeclub/webook/internal/user"
 
 	"github.com/ecodeclub/ekit/sqlx"
 
@@ -1159,7 +1162,7 @@ func (s *HandlerWithAppTestSuite) TestFindOrCreateByWechat() {
 			},
 			before: func(t *testing.T) {},
 			ctx: func() context.Context {
-				return context.WithValue(context.Background(), "app", uint(1))
+				return middleware.CtxWithAppId(context.Background(), uint(1))
 			},
 			after: func(t *testing.T) {
 				var u dao.User

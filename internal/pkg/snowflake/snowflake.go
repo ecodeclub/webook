@@ -3,6 +3,7 @@ package snowflake
 import (
 	"errors"
 	"fmt"
+
 	"github.com/bwmarrin/snowflake"
 	"github.com/ecodeclub/ekit/syncx"
 )
@@ -13,7 +14,7 @@ type SnowFlake interface {
 
 type CustomSnowFlake struct {
 	// 键为appid
-	nodes syncx.Map[uint, *snowflake.Node]
+	nodes *syncx.Map[uint, *snowflake.Node]
 }
 
 const (
@@ -33,7 +34,7 @@ var (
 
 // node表示第几个节点，appid表示有几个应用 从0开始排序  0-ietls 最多到31
 func NewCustomSnowFlake(nodeId uint, apps uint) (*CustomSnowFlake, error) {
-	nodeMap := syncx.Map[uint, *snowflake.Node]{}
+	nodeMap := &syncx.Map[uint, *snowflake.Node]{}
 	if nodeId > maxNode {
 		return nil, fmt.Errorf("%w", ErrExceedNode)
 	}
