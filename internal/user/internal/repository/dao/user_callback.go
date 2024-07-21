@@ -3,6 +3,9 @@ package dao
 import (
 	"context"
 	"fmt"
+
+	"github.com/ecodeclub/webook/internal/pkg/middleware"
+
 	"github.com/ecodeclub/webook/internal/pkg/snowflake"
 	"github.com/gotomicro/ego/core/elog"
 	"github.com/pkg/errors"
@@ -11,7 +14,6 @@ import (
 
 const (
 	uidCtxKey = "uid"
-	appCtxKey = "app"
 )
 
 var appMap = map[uint]string{
@@ -114,7 +116,6 @@ func build(db *gorm.DB, logger *elog.Component) {
 		db.Statement.Table = tableName
 		return
 	}
-	return
 }
 
 func appIdFromUserId(ctx context.Context) (uint, bool) {
@@ -136,12 +137,7 @@ func userId(ctx context.Context) (int64, bool) {
 }
 
 func appId(ctx context.Context) (uint, bool) {
-	v := ctx.Value(appCtxKey)
-	if v == nil {
-		return 0, false
-	}
-	appId, ok := v.(uint)
-	return appId, ok
+	return middleware.AppID(ctx)
 }
 
 func tableNameFromAppId(appid uint) (string, error) {
