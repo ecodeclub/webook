@@ -27,11 +27,11 @@ var (
 
 type UserInsertCallBackBuilder struct {
 	logger  *elog.Component
-	idMaker snowflake.AppIDGenerator
+	idMaker *snowflake.UIDGenerator
 }
 
 func NewUserInsertCallBackBuilder(nodeid, apps uint) (*UserInsertCallBackBuilder, error) {
-	idMaker, err := snowflake.NewMeoyingIDGenerator(nodeid, apps)
+	idMaker, err := snowflake.NewUIDGenerator(nodeid, apps)
 	if err != nil {
 		return nil, err
 	}
