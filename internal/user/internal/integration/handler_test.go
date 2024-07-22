@@ -20,9 +20,10 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"github.com/ecodeclub/webook/internal/pkg/ectx"
 	"net/http"
 	"testing"
+
+	"github.com/ecodeclub/webook/internal/pkg/ectx"
 
 	"github.com/ecodeclub/webook/internal/pkg/snowflake"
 	"github.com/ecodeclub/webook/internal/user"

@@ -1,10 +1,11 @@
 package middleware
 
 import (
-	"github.com/ecodeclub/webook/internal/pkg/ectx"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/ecodeclub/webook/internal/pkg/ectx"
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
