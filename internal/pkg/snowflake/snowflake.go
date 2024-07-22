@@ -8,37 +8,49 @@ import (
 	"github.com/ecodeclub/ekit/syncx"
 )
 
-type SnowFlake interface {
+type ID int64
+
+// AppID 返回生成时输入的appid
+func (f ID) AppID() uint {
+	node := snowflake.ID(f).Node()
+	return uint(node >> 5)
+}
+
+func (f ID) Int64() int64 {
+	return int64(f)
+}
+
+type AppIDGenerator interface {
+	// Generate 功能生成雪花id（ID）。返回雪花id（ID）的每一位的组成如下。返回值ID可以通过AppID()返回生成时输入的appid。
+	// +---------------------------------------------------------------------------------------+
+	// | 1 Bit Unused | 41 Bit Timestamp |  5 Bit APPID | 5 Bit NodeID  |   12 Bit Sequence ID |
+	// +---------------------------------------------------------------------------------------+
 	Generate(appid uint) (ID, error)
 }
 
-type CustomSnowFlake struct {
+type MeoyingIDGenerator struct {
 	// 键为appid
 	nodes *syncx.Map[uint, *snowflake.Node]
 }
 
 const (
-	maxNode uint = 31
-	maxApp  uint = 31
+	maxNodeNum uint = 31
+	maxAppNum  uint = 31
 )
 
 var (
-	ErrExceedNode = errors.New("node超出限制")
-	ErrExceedApp  = errors.New("app超出限制")
+	ErrExceedNode = errors.New("node编号超出限制")
+	ErrExceedApp  = errors.New("app编号超出限制")
 	ErrUnknownApp = errors.New("未知的app")
 )
 
-// +---------------------------------------------------------------------------------------+
-// | 1 Bit Unused | 41 Bit Timestamp |  5 Bit APPID | 5 Bit NodeID  |   12 Bit Sequence ID |
-// +---------------------------------------------------------------------------------------+
-
-// node表示第几个节点，appid表示有几个应用 从0开始排序  0-ietls 最多到31
-func NewCustomSnowFlake(nodeId uint, apps uint) (*CustomSnowFlake, error) {
+// NewMeoyingIDGenerator nodeId表示第几个节点，apps表示有几个应用 从0开始排序 0-webook 1-ielts 最多到31
+func NewMeoyingIDGenerator(nodeId uint, apps uint) (*MeoyingIDGenerator, error) {
 	nodeMap := &syncx.Map[uint, *snowflake.Node]{}
-	if nodeId > maxNode {
+	if nodeId > maxNodeNum {
 		return nil, fmt.Errorf("%w", ErrExceedNode)
 	}
-	if apps > maxApp+1 {
+	if apps > maxAppNum+1 {
 		return nil, fmt.Errorf("%w", ErrExceedApp)
 	}
 	for i := 0; i < int(apps); i++ {
@@ -49,28 +61,17 @@ func NewCustomSnowFlake(nodeId uint, apps uint) (*CustomSnowFlake, error) {
 		}
 		nodeMap.Store(uint(i), n)
 	}
-	return &CustomSnowFlake{
+	return &MeoyingIDGenerator{
 		nodes: nodeMap,
 	}, nil
 
 }
 
-type ID int64
-
-func (c *CustomSnowFlake) Generate(appid uint) (ID, error) {
+func (c *MeoyingIDGenerator) Generate(appid uint) (ID, error) {
 	n, ok := c.nodes.Load(appid)
 	if !ok {
 		return 0, fmt.Errorf("%w", ErrUnknownApp)
 	}
 	id := n.Generate()
 	return ID(id), nil
-}
-
-func (f ID) AppID() uint {
-	node := snowflake.ID(f).Node()
-	return uint(node >> 5)
-}
-
-func (f ID) Int64() int64 {
-	return int64(f)
 }

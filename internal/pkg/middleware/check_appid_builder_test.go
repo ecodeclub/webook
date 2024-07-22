@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"github.com/ecodeclub/webook/internal/pkg/ectx"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -22,14 +23,13 @@ func TestAddAppId(t *testing.T) {
 			wantCode: 200,
 			before: func(t *testing.T, ctx *gin.Context) {
 				header := make(http.Header)
-				header.Set(string(AppCtxKey), "1")
+				header.Set(appIDHeader, "1")
 				ctx.Request = httptest.NewRequest(http.MethodPost, "/users/profile", nil)
 				ctx.Request.Header = header
 			},
 			afterFunc: func(t *testing.T, ctx *gin.Context) {
 				c := ctx.Request.Context()
-				v := c.Value(AppCtxKey)
-				res, ok := v.(uint)
+				res, ok := ectx.GetAppIdFromCtx(c)
 				require.True(t, ok)
 				assert.Equal(t, uint(1), res)
 			},
@@ -44,8 +44,8 @@ func TestAddAppId(t *testing.T) {
 			},
 			afterFunc: func(t *testing.T, ctx *gin.Context) {
 				c := ctx.Request.Context()
-				v := c.Value(AppCtxKey)
-				require.Nil(t, v)
+				_, ok := ectx.GetAppIdFromCtx(c)
+				require.False(t, ok)
 			},
 		},
 		{
@@ -53,7 +53,7 @@ func TestAddAppId(t *testing.T) {
 			wantCode: 400,
 			before: func(t *testing.T, ctx *gin.Context) {
 				header := make(http.Header)
-				header.Set(string(AppCtxKey), "dasdsa")
+				header.Set(appIDHeader, "dasdsa")
 				ctx.Request = httptest.NewRequest(http.MethodPost, "/users/profile", nil)
 				ctx.Request.Header = header
 			},
@@ -67,7 +67,7 @@ func TestAddAppId(t *testing.T) {
 			w := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(w)
 			tc.before(t, c)
-			builder := NewAddAppIdBuilder()
+			builder := NewCheckAppIdBuilder()
 			hdl := builder.Build()
 			hdl(c)
 			assert.Equal(t, tc.wantCode, c.Writer.Status())
