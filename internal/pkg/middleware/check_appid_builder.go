@@ -1,9 +1,10 @@
 package middleware
 
 import (
-	"github.com/ecodeclub/webook/internal/pkg/ectx"
 	"net/http"
 	"strconv"
+
+	"github.com/ecodeclub/webook/internal/pkg/ectx"
 
 	"github.com/ecodeclub/ginx"
 	"github.com/gin-gonic/gin"
@@ -13,9 +14,8 @@ import (
 type CheckAppIdBuilder struct {
 }
 
-
 const (
-	appIDHeader                = "app"
+	appIDHeader = "app"
 )
 
 func NewCheckAppIdBuilder() *CheckAppIdBuilder {
@@ -39,5 +39,3 @@ func (a *CheckAppIdBuilder) Build() gin.HandlerFunc {
 		ctx.Request = ctx.Request.WithContext(newCtx)
 	}
 }
-
-

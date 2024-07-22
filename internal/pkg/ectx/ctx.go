@@ -7,6 +7,7 @@ type appContextType string
 var (
 	appCtxKey appContextType = "app"
 )
+
 func GetAppIdFromCtx(ctx context.Context) (uint, bool) {
 	app := ctx.Value(appCtxKey)
 	if app == nil {
