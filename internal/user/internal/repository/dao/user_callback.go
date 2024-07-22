@@ -3,8 +3,7 @@ package dao
 import (
 	"context"
 	"fmt"
-
-	"github.com/ecodeclub/webook/internal/pkg/middleware"
+	"github.com/ecodeclub/webook/internal/pkg/ectx"
 
 	"github.com/ecodeclub/webook/internal/pkg/snowflake"
 	"github.com/gotomicro/ego/core/elog"
@@ -27,11 +26,11 @@ var (
 
 type UserInsertCallBackBuilder struct {
 	logger  *elog.Component
-	idMaker *snowflake.CustomSnowFlake
+	idMaker snowflake.AppIDGenerator
 }
 
 func NewUserInsertCallBackBuilder(nodeid, apps uint) (*UserInsertCallBackBuilder, error) {
-	idMaker, err := snowflake.NewCustomSnowFlake(nodeid, apps)
+	idMaker, err := snowflake.NewMeoyingIDGenerator(nodeid, apps)
 	if err != nil {
 		return nil, err
 	}
@@ -137,7 +136,7 @@ func userId(ctx context.Context) (int64, bool) {
 }
 
 func appId(ctx context.Context) (uint, bool) {
-	return middleware.AppID(ctx)
+	return ectx.GetAppIdFromCtx(ctx)
 }
 
 func tableNameFromAppId(appid uint) (string, error) {

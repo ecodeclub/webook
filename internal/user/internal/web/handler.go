@@ -69,12 +69,12 @@ func NewHandler(
 
 func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	users := server.Group("/users")
-	users.GET("/profile", middleware.NewAddAppIdBuilder().Build(), ginx.S(h.Profile))
-	users.POST("/profile", middleware.NewAddAppIdBuilder().Build(), ginx.BS[EditReq](h.Edit))
+	users.GET("/profile", middleware.NewCheckAppIdBuilder().Build(), ginx.S(h.Profile))
+	users.POST("/profile", middleware.NewCheckAppIdBuilder().Build(), ginx.BS[EditReq](h.Edit))
 }
 
 func (h *Handler) PublicRoutes(server *gin.Engine) {
-	appidFunc := middleware.NewAddAppIdBuilder().Build()
+	appidFunc := middleware.NewCheckAppIdBuilder().Build()
 	oauth2 := server.Group("/oauth2")
 	oauth2.GET("/wechat/auth_url", appidFunc, ginx.W(h.WechatAuthURL))
 	oauth2.GET("/mock/login", appidFunc, ginx.W(h.MockLogin))

@@ -3,37 +3,51 @@ package snowflake
 import (
 	"testing"
 
-	"github.com/bwmarrin/snowflake"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func Test_NewGenerate(t *testing.T) {
-	t.Run("nodeId超出限制", func(t *testing.T) {
-		_, err := NewCustomSnowFlake(32, 6)
-		require.ErrorIs(t, err, ErrExceedNode)
-	})
-	t.Run("app数量超出限制", func(t *testing.T) {
-		_, err := NewCustomSnowFlake(3, 33)
-		require.ErrorIs(t, err, ErrExceedApp)
-	})
-	t.Run("正常生成", func(t *testing.T) {
-		idMaker, err := NewCustomSnowFlake(0, 4)
-		require.NoError(t, err)
-		appids := make([]uint, 0, 4)
-		idMaker.nodes.Range(func(key uint, value *snowflake.Node) bool {
-			appids = append(appids, key)
-			return true
+	testcases := []struct {
+		name        string
+		nodeId      uint
+		apps        uint
+		wantErrFunc require.ErrorAssertionFunc
+	}{
+		{
+			name:   "nodeId超出限制",
+			nodeId: 32,
+			apps:   6,
+			wantErrFunc: func(t require.TestingT, err error, _ ...interface{}) {
+				require.ErrorIs(t, err, ErrExceedNode)
+			},
+		},
+		{
+			name:   "appId超出限制",
+			nodeId: 3,
+			apps:   33,
+			wantErrFunc: func(t require.TestingT, err error, _ ...interface{}) {
+				require.ErrorIs(t, err, ErrExceedApp)
+			},
+		},
+		{
+			name:        "生成正常",
+			nodeId:      0,
+			apps:        6,
+			wantErrFunc: require.NoError,
+		},
+	}
+	for _, tt := range testcases {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := NewMeoyingIDGenerator(tt.nodeId, tt.apps)
+			tt.wantErrFunc(t, err)
 		})
-		assert.ElementsMatch(t, []uint{
-			0, 1, 2, 3,
-		}, appids)
-	})
+	}
 
 }
 
 func Test_Generate(t *testing.T) {
-	idmaker, err := NewCustomSnowFlake(1, 6)
+	idmaker, err := NewMeoyingIDGenerator(1, 6)
 	require.NoError(t, err)
 	ids := make([]int64, 0)
 	for i := 0; i < 6; i++ {
@@ -54,7 +68,7 @@ func Test_Generate(t *testing.T) {
 }
 
 func Test_GenerateAppId(t *testing.T) {
-	idmaker, err := NewCustomSnowFlake(1, 16)
+	idmaker, err := NewMeoyingIDGenerator(1, 16)
 	require.NoError(t, err)
 	testcases := []struct {
 		name    string
