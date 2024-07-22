@@ -39,7 +39,7 @@ func Test_NewGenerate(t *testing.T) {
 	}
 	for _, tt := range testcases {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := NewMeoyingIDGenerator(tt.nodeId, tt.apps)
+			_, err := NewUIDGenerator(tt.nodeId, tt.apps)
 			tt.wantErrFunc(t, err)
 		})
 	}
@@ -47,7 +47,7 @@ func Test_NewGenerate(t *testing.T) {
 }
 
 func Test_Generate(t *testing.T) {
-	idmaker, err := NewMeoyingIDGenerator(1, 6)
+	idmaker, err := NewUIDGenerator(1, 6)
 	require.NoError(t, err)
 	ids := make([]int64, 0)
 	for i := 0; i < 6; i++ {
@@ -68,7 +68,7 @@ func Test_Generate(t *testing.T) {
 }
 
 func Test_GenerateAppId(t *testing.T) {
-	idmaker, err := NewMeoyingIDGenerator(1, 16)
+	idmaker, err := NewUIDGenerator(1, 16)
 	require.NoError(t, err)
 	testcases := []struct {
 		name    string
