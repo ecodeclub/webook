@@ -36,7 +36,7 @@ type QuestionDAO interface {
 	Sync(ctx context.Context, que Question, eles []AnswerElement) (int64, error)
 
 	// 线上库 API
-	PubList(ctx context.Context, offset int, limit int) ([]PublishQuestion, error)
+	PubList(ctx context.Context, offset int, limit int, biz string) ([]PublishQuestion, error)
 	PubCount(ctx context.Context) (int64, error)
 	GetPubByID(ctx context.Context, qid int64) (PublishQuestion, []PublishAnswerElement, error)
 	GetPubByIDs(ctx context.Context, qids []int64) ([]PublishQuestion, error)
@@ -152,9 +152,10 @@ func (g *GORMQuestionDAO) Count(ctx context.Context) (int64, error) {
 	return res, err
 }
 
-func (g *GORMQuestionDAO) PubList(ctx context.Context, offset int, limit int) ([]PublishQuestion, error) {
+func (g *GORMQuestionDAO) PubList(ctx context.Context, offset int, limit int, biz string) ([]PublishQuestion, error) {
 	var res []PublishQuestion
 	err := g.db.WithContext(ctx).Offset(offset).
+		Where("biz = ?", biz).
 		Limit(limit).Order("id DESC").
 		Find(&res).Error
 	return res, err

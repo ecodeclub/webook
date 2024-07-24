@@ -139,7 +139,7 @@ func (s *HandlerTestSuite) TestPubList() {
 		data = append(data, dao.PublishQuestion{
 			Id:      id,
 			Uid:     uid,
-			Biz:     "project",
+			Biz:     domain.DefaultBiz,
 			BizId:   id,
 			Status:  domain.UnPublishedStatus.ToUint8(),
 			Title:   fmt.Sprintf("这是标题 %d", idx),
@@ -147,6 +147,19 @@ func (s *HandlerTestSuite) TestPubList() {
 			Utime:   123,
 		})
 	}
+
+	// project 的不会被搜索到
+	data = append(data, dao.PublishQuestion{
+		Id:      101,
+		Uid:     uid,
+		Biz:     "project",
+		BizId:   101,
+		Status:  domain.UnPublishedStatus.ToUint8(),
+		Title:   fmt.Sprintf("这是标题 %d", 101),
+		Content: fmt.Sprintf("这是解析 %d", 101),
+		Utime:   123,
+	})
+
 	err := s.db.Create(&data).Error
 	require.NoError(s.T(), err)
 	testCases := []struct {
@@ -171,7 +184,7 @@ func (s *HandlerTestSuite) TestPubList() {
 						Content: "这是解析 99",
 						Status:  domain.UnPublishedStatus.ToUint8(),
 						Utime:   123,
-						Biz:     "project",
+						Biz:     domain.DefaultBiz,
 						BizId:   100,
 						Interactive: web.Interactive{
 							ViewCnt:    101,
@@ -187,7 +200,7 @@ func (s *HandlerTestSuite) TestPubList() {
 						Content: "这是解析 98",
 						Status:  domain.UnPublishedStatus.ToUint8(),
 						Utime:   123,
-						Biz:     "project",
+						Biz:     domain.DefaultBiz,
 						BizId:   99,
 						Interactive: web.Interactive{
 							ViewCnt:    100,
@@ -213,7 +226,7 @@ func (s *HandlerTestSuite) TestPubList() {
 						Id:      1,
 						Title:   "这是标题 0",
 						Content: "这是解析 0",
-						Biz:     "project",
+						Biz:     domain.DefaultBiz,
 						BizId:   1,
 						Status:  domain.UnPublishedStatus.ToUint8(),
 						Utime:   123,

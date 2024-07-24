@@ -29,8 +29,7 @@ import (
 )
 
 type Repository interface {
-	PubList(ctx context.Context, offset int, limit int) ([]domain.Question, error)
-	PubTotal(ctx context.Context) (int64, error)
+	PubList(ctx context.Context, offset int, limit int, biz string) ([]domain.Question, error)
 	// Sync 保存到制作库，而后同步到线上库
 	Sync(ctx context.Context, que *domain.Question) (int64, error)
 	List(ctx context.Context, offset int, limit int) ([]domain.Question, error)
@@ -111,28 +110,12 @@ func (c *CachedRepository) Total(ctx context.Context) (int64, error) {
 	return c.dao.Count(ctx)
 }
 
-func (c *CachedRepository) PubList(ctx context.Context, offset int, limit int) ([]domain.Question, error) {
+func (c *CachedRepository) PubList(ctx context.Context, offset int, limit int, biz string) ([]domain.Question, error) {
 	// TODO 缓存第一页
-	qs, err := c.dao.PubList(ctx, offset, limit)
+	qs, err := c.dao.PubList(ctx, offset, limit, biz)
 	return slice.Map(qs, func(idx int, src dao.PublishQuestion) domain.Question {
 		return c.toDomain(dao.Question(src))
 	}), err
-}
-
-func (c *CachedRepository) PubTotal(ctx context.Context) (int64, error) {
-	res, err := c.cache.GetTotal(ctx)
-	if err == nil {
-		return res, err
-	}
-	res, err = c.dao.PubCount(ctx)
-	if err != nil {
-		return 0, err
-	}
-	err = c.cache.SetTotal(ctx, res)
-	if err != nil {
-		c.logger.Error("更新缓存中的总数失败", elog.FieldErr(err))
-	}
-	return res, nil
 }
 
 func (c *CachedRepository) toDomainWithAnswer(que dao.Question, eles []dao.AnswerElement) domain.Question {
