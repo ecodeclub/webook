@@ -39,6 +39,7 @@ type Service interface {
 	// Delete 会直接删除制作库和线上库的数据
 	Delete(ctx context.Context, qid int64) error
 
+	// PubList 只会返回八股文的数据
 	PubList(ctx context.Context, offset int, limit int) ([]domain.Question, error)
 	// GetPubByIDs 目前只会获取基础信息，也就是不包括答案在内的信息
 	GetPubByIDs(ctx context.Context, ids []int64) ([]domain.Question, error)
@@ -102,7 +103,7 @@ func (s *service) List(ctx context.Context, offset int, limit int) ([]domain.Que
 }
 
 func (s *service) PubList(ctx context.Context, offset int, limit int) ([]domain.Question, error) {
-	return s.repo.PubList(ctx, offset, limit)
+	return s.repo.PubList(ctx, offset, limit, domain.DefaultBiz)
 }
 
 func (s *service) Save(ctx context.Context, question *domain.Question) (int64, error) {
