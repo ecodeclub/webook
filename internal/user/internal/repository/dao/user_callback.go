@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/ecodeclub/webook/internal/pkg/ectx"
-
 	"github.com/ecodeclub/webook/internal/pkg/snowflake"
 	"github.com/gotomicro/ego/core/elog"
 	"github.com/pkg/errors"
@@ -14,6 +12,7 @@ import (
 
 const (
 	uidCtxKey = "uid"
+	appCtxKey = "app"
 )
 
 var appMap = map[uint]string{
@@ -137,7 +136,9 @@ func userId(ctx context.Context) (int64, bool) {
 }
 
 func appId(ctx context.Context) (uint, bool) {
-	return ectx.GetAppIdFromCtx(ctx)
+	val := ctx.Value(appCtxKey)
+	appid, ok := val.(uint)
+	return appid, ok
 }
 
 func tableNameFromAppId(appid uint) (string, error) {

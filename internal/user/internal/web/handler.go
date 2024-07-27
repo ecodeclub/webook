@@ -87,7 +87,7 @@ func (h *Handler) PublicRoutes(server *gin.Engine) {
 
 func (h *Handler) WechatAuthURL(ctx *ginx.Context) (ginx.Result, error) {
 	code, _ := ctx.GetQuery("code")
-	res, err := h.weSvc.AuthURL(ctx.Request.Context(), service.AuthParams{
+	res, err := h.weSvc.AuthURL(ctx, service.AuthParams{
 		InvitationCode: code,
 	})
 	if err != nil {
@@ -118,7 +118,7 @@ func (h *Handler) Profile(ctx *ginx.Context, sess session.Session) (ginx.Result,
 	uid := sess.Claims().Uid
 	eg.Go(func() error {
 		var err error
-		u, err = h.userSvc.Profile(ctx.Request.Context(), uid)
+		u, err = h.userSvc.Profile(ctx, uid)
 		return err
 	})
 
@@ -148,7 +148,7 @@ func (h *Handler) Profile(ctx *ginx.Context, sess session.Session) (ginx.Result,
 // Edit 用户编辑信息
 func (h *Handler) Edit(ctx *ginx.Context, req EditReq, sess session.Session) (ginx.Result, error) {
 	uid := sess.Claims().Uid
-	err := h.userSvc.UpdateNonSensitiveInfo(ctx.Request.Context(), domain.User{
+	err := h.userSvc.UpdateNonSensitiveInfo(ctx, domain.User{
 		Id:       uid,
 		Nickname: req.Nickname,
 		Avatar:   req.Avatar,
@@ -162,15 +162,15 @@ func (h *Handler) Edit(ctx *ginx.Context, req EditReq, sess session.Session) (gi
 }
 
 func (h *Handler) Callback(ctx *ginx.Context, req WechatCallback) (ginx.Result, error) {
-	nctx := ctx.Request.Context()
-	info, err := h.weSvc.Verify(nctx, service.CallbackParams{
+
+	info, err := h.weSvc.Verify(ctx, service.CallbackParams{
 		Code:  req.Code,
 		State: req.State,
 	})
 	if err != nil {
 		return systemErrorResult, err
 	}
-	user, err := h.userSvc.FindOrCreateByWechat(nctx, info)
+	user, err := h.userSvc.FindOrCreateByWechat(ctx, info)
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -195,7 +195,7 @@ func (h *Handler) setupSession(ctx *ginx.Context, user domain.User) (Profile, er
 	jwtData["memberDDL"] = strconv.FormatInt(memberDDL, 10)
 
 	perms := make(map[string]string)
-	permissionGroup, err := h.permissionSvc.FindPersonalPermissions(ctx.Request.Context(), user.Id)
+	permissionGroup, err := h.permissionSvc.FindPersonalPermissions(ctx, user.Id)
 	if err != nil {
 		return Profile{}, err
 	}
@@ -228,14 +228,14 @@ func (h *Handler) getMemberDDL(ctx context.Context, userID int64) int64 {
 
 // MiniCallback 微信小程序登录回调
 func (h *Handler) MiniCallback(ctx *ginx.Context, req WechatCallback) (ginx.Result, error) {
-	info, err := h.weMiniSvc.Verify(ctx.Request.Context(), service.CallbackParams{
+	info, err := h.weMiniSvc.Verify(ctx, service.CallbackParams{
 		Code:  req.Code,
 		State: req.State,
 	})
 	if err != nil {
 		return systemErrorResult, err
 	}
-	user, err := h.userSvc.FindOrCreateByWechat(ctx.Request.Context(), info)
+	user, err := h.userSvc.FindOrCreateByWechat(ctx, info)
 	if err != nil {
 		return systemErrorResult, err
 	}

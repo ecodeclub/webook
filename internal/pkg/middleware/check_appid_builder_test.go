@@ -5,8 +5,6 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/ecodeclub/webook/internal/pkg/ectx"
-
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -29,10 +27,10 @@ func TestAddAppId(t *testing.T) {
 				ctx.Request.Header = header
 			},
 			afterFunc: func(t *testing.T, ctx *gin.Context) {
-				c := ctx.Request.Context()
-				res, ok := ectx.GetAppIdFromCtx(c)
+				app := ctx.Value(AppCtxKey)
+				v, ok := app.(uint)
 				require.True(t, ok)
-				assert.Equal(t, uint(1), res)
+				assert.Equal(t, uint(1), v)
 			},
 		},
 		{
@@ -44,9 +42,8 @@ func TestAddAppId(t *testing.T) {
 				ctx.Request.Header = header
 			},
 			afterFunc: func(t *testing.T, ctx *gin.Context) {
-				c := ctx.Request.Context()
-				_, ok := ectx.GetAppIdFromCtx(c)
-				require.False(t, ok)
+				v := ctx.Value(AppCtxKey)
+				require.Nil(t, v)
 			},
 		},
 		{

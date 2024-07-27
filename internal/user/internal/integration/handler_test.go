@@ -20,10 +20,9 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"github.com/ecodeclub/webook/internal/pkg/middleware"
 	"net/http"
 	"testing"
-
-	"github.com/ecodeclub/webook/internal/pkg/ectx"
 
 	"github.com/ecodeclub/webook/internal/pkg/snowflake"
 	"github.com/ecodeclub/webook/internal/user"
@@ -545,8 +544,6 @@ type HandlerWithAppTestSuite struct {
 func (s *HandlerWithAppTestSuite) SetupSuite() {
 	econf.Set("http_users", map[string]any{})
 	s.db = testioc.InitDB()
-	err := dao.InitTables(s.db)
-	require.NoError(s.T(), err)
 	econf.Set("server", map[string]any{"debug": true})
 	server := egin.Load("server").Build()
 	ctrl := gomock.NewController(s.T())
@@ -1162,7 +1159,8 @@ func (s *HandlerWithAppTestSuite) TestFindOrCreateByWechat() {
 			},
 			before: func(t *testing.T) {},
 			ctx: func() context.Context {
-				return ectx.CtxWithAppId(context.Background(), uint(1))
+				ctx := context.WithValue(context.Background(), middleware.AppCtxKey, uint(1))
+				return ctx
 			},
 			after: func(t *testing.T) {
 				var u dao.User
