@@ -18,6 +18,8 @@ import (
 	"context"
 	"time"
 
+	"golang.org/x/sync/errgroup"
+
 	"github.com/ecodeclub/ekit/sqlx"
 
 	"github.com/ecodeclub/ekit/slice"
@@ -42,6 +44,8 @@ type Repository interface {
 	GetById(ctx context.Context, qid int64) (domain.Question, error)
 	GetPubByID(ctx context.Context, qid int64) (domain.Question, error)
 	GetPubByIDs(ctx context.Context, ids []int64) ([]domain.Question, error)
+	// ExcludeQuestions 分页接口，不含这些 id 的问题
+	ExcludeQuestions(ctx context.Context, ids []int64, offset int, limit int) ([]domain.Question, int64, error)
 }
 
 // CachedRepository 支持缓存的 repository 实现
@@ -69,6 +73,29 @@ func (c *CachedRepository) GetPubByID(ctx context.Context, qid int64) (domain.Qu
 		return dao.AnswerElement(src)
 	})
 	return c.toDomainWithAnswer(dao.Question(data), eles), nil
+}
+
+func (c *CachedRepository) ExcludeQuestions(ctx context.Context, ids []int64, offset int, limit int) ([]domain.Question, int64, error) {
+	var (
+		eg   errgroup.Group
+		cnt  int64
+		data []dao.Question
+	)
+	eg.Go(func() error {
+		var err error
+		cnt, err = c.dao.NotInTotal(ctx, ids)
+		return err
+	})
+
+	eg.Go(func() error {
+		var err error
+		data, err = c.dao.NotIn(ctx, ids, offset, limit)
+		return err
+	})
+	err := eg.Wait()
+	return slice.Map(data, func(idx int, src dao.Question) domain.Question {
+		return c.toDomain(src)
+	}), cnt, err
 }
 
 func (c *CachedRepository) GetById(ctx context.Context, qid int64) (domain.Question, error) {

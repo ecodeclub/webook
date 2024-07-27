@@ -27,6 +27,7 @@ import (
 )
 
 type AdminQuestionSetHandler struct {
+	AdminBaseHandler
 	svc service.QuestionSetService
 }
 
@@ -40,6 +41,17 @@ func (h *AdminQuestionSetHandler) PrivateRoutes(server *gin.Engine) {
 	g.POST("/questions/save", ginx.BS[UpdateQuestions](h.UpdateQuestions))
 	g.POST("/list", ginx.B[Page](h.ListQuestionSets))
 	g.POST("/detail", ginx.B(h.RetrieveQuestionSetDetail))
+	g.POST("/candidate", ginx.B[CandidateReq](h.Candidate))
+}
+
+func (h *AdminQuestionSetHandler) Candidate(ctx *ginx.Context, req CandidateReq) (ginx.Result, error) {
+	data, cnt, err := h.svc.GetCandidates(ctx, req.QSID, req.Offset, req.Limit)
+	if err != nil {
+		return systemErrorResult, err
+	}
+	return ginx.Result{
+		Data: h.toQuestionList(data, cnt),
+	}, nil
 }
 
 // UpdateQuestions 整体更新题集中的所有问题 覆盖式的 前端传递过来的问题集合就是题集中最终的问题集合

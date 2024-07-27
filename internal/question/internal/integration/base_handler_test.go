@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/ecodeclub/webook/internal/question/internal/domain"
+
 	"github.com/ecodeclub/webook/internal/question/internal/web"
 
 	"github.com/ecodeclub/webook/internal/interactive"
@@ -89,6 +91,30 @@ func (s *BaseTestSuite) mockInteractive(biz string, id int64) interactive.Intera
 		CollectCnt: int(id + 3),
 		Liked:      liked,
 		Collected:  collected,
+	}
+}
+
+func (s *BaseTestSuite) buildQuestion(id int64) dao.Question {
+	return dao.Question{
+		Id:      id,
+		Uid:     uid,
+		Biz:     domain.DefaultBiz,
+		BizId:   id,
+		Title:   fmt.Sprintf("标题%d", id),
+		Content: fmt.Sprintf("内容%d", id),
+		Ctime:   123 + id,
+		Utime:   123 + id,
+	}
+}
+
+func (s *BaseTestSuite) buildWebQuestion(id int64) web.Question {
+	return web.Question{
+		Id:      id,
+		Biz:     domain.DefaultBiz,
+		BizId:   id,
+		Title:   fmt.Sprintf("标题%d", id),
+		Content: fmt.Sprintf("内容%d", id),
+		Utime:   123 + id,
 	}
 }
 

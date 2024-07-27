@@ -40,14 +40,14 @@ func InitModule(p event.SyncDataToSearchEventProducer, intrModule *interactive.M
 	serviceService := service.NewService(repositoryRepository, p, interactiveEventProducer)
 	questionSetDAO := baguwen.InitQuestionSetDAO(db)
 	questionSetRepository := repository.NewQuestionSetRepository(questionSetDAO)
-	questionSetService := service.NewQuestionSetService(questionSetRepository, interactiveEventProducer, p)
+	questionSetService := service.NewQuestionSetService(questionSetRepository, repositoryRepository, interactiveEventProducer, p)
 	adminHandler := web.NewAdminHandler(serviceService)
 	adminQuestionSetHandler := web.NewAdminQuestionSetHandler(questionSetService)
 	service2 := intrModule.Svc
 	examineDAO := dao.NewGORMExamineDAO(db)
 	examineRepository := repository.NewCachedExamineRepository(examineDAO)
-	gptService := aiModule.Svc
-	examineService := service.NewLLMExamineService(repositoryRepository, examineRepository, gptService)
+	llmService := aiModule.Svc
+	examineService := service.NewLLMExamineService(repositoryRepository, examineRepository, llmService)
 	service3 := permModule.Svc
 	handler := web.NewHandler(service2, examineService, service3, serviceService)
 	questionSetHandler := web.NewQuestionSetHandler(questionSetService, examineService, service2)
