@@ -15,11 +15,12 @@ func (u *UserPlugin) Initialize(db *gorm.DB) error {
 	if err != nil {
 		panic(err)
 	}
-	err = db.Callback().Query().Before("*").Register("user_query", NewUserCallBackBuilder().Build())
+	shardingByApp := NewUserCallBackBuilder().Build()
+	err = db.Callback().Query().Before("*").Register("user_query", shardingByApp)
 	if err != nil {
 		return err
 	}
-	err = db.Callback().Delete().Before("*").Register("user_delete", NewUserCallBackBuilder().Build())
+	err = db.Callback().Delete().Before("*").Register("user_delete", shardingByApp)
 	if err != nil {
 		return err
 	}
@@ -27,5 +28,5 @@ func (u *UserPlugin) Initialize(db *gorm.DB) error {
 	if err != nil {
 		return err
 	}
-	return db.Callback().Update().Before("*").Register("user_update", NewUserCallBackBuilder().Build())
+	return db.Callback().Update().Before("*").Register("user_update", shardingByApp)
 }

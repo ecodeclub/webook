@@ -66,7 +66,6 @@ type HandleTestSuite struct {
 }
 
 func (s *HandleTestSuite) SetupSuite() {
-	econf.Set("http_users", map[string]any{})
 	s.db = testioc.InitDB()
 	err := dao.InitTables(s.db)
 	require.NoError(s.T(), err)
@@ -543,7 +542,6 @@ type HandlerWithAppTestSuite struct {
 }
 
 func (s *HandlerWithAppTestSuite) SetupSuite() {
-	econf.Set("http_users", map[string]any{})
 	s.db = testioc.InitDB()
 	econf.Set("server", map[string]any{"debug": true})
 	server := egin.Load("server").Build()
@@ -576,6 +574,8 @@ func (s *HandlerWithAppTestSuite) SetupSuite() {
 			Uid: 1814857761469632512,
 		}))
 	})
+
+	server.Use(middleware.NewCheckAppIdBuilder().Build())
 
 	hdl.PrivateRoutes(server.Engine)
 	hdl.PublicRoutes(server.Engine)
@@ -675,7 +675,7 @@ func (s *HandlerWithAppTestSuite) TestEditProfile() {
 			req, err := http.NewRequest(http.MethodPost,
 				"/users/profile", iox.NewJSONReader(tc.req))
 			req.Header.Set("content-type", "application/json")
-			req.Header.Set("app", fmt.Sprintf("%d", tc.app))
+			req.Header.Set("X-APP", fmt.Sprintf("%d", tc.app))
 			require.NoError(t, err)
 			recorder := test.NewJSONResponseRecorder[any]()
 			s.server.ServeHTTP(recorder, req)
@@ -926,7 +926,7 @@ func (s *HandlerWithAppTestSuite) TestVerify() {
 			req, err := http.NewRequest(http.MethodPost,
 				"/oauth2/wechat/callback", iox.NewJSONReader(tc.req))
 			req.Header.Set("content-type", "application/json")
-			req.Header.Set("app", fmt.Sprintf("%d", tc.app))
+			req.Header.Set("X-APP", fmt.Sprintf("%d", tc.app))
 			require.NoError(t, err)
 			recorder := test.NewJSONResponseRecorder[web.Profile]()
 			s.server.ServeHTTP(recorder, req)
@@ -1074,7 +1074,7 @@ func (s *HandlerWithAppTestSuite) TestMiniVerify() {
 			req, err := http.NewRequest(http.MethodPost,
 				"/oauth2/wechat/mini/callback", iox.NewJSONReader(tc.req))
 			req.Header.Set("content-type", "application/json")
-			req.Header.Set("app", fmt.Sprintf("%d", tc.appid))
+			req.Header.Set("X-APP", fmt.Sprintf("%d", tc.appid))
 			require.NoError(t, err)
 			recorder := test.NewJSONResponseRecorder[web.Profile]()
 			s.server.ServeHTTP(recorder, req)
@@ -1133,7 +1133,7 @@ func (s *HandlerWithAppTestSuite) TestProfile() {
 			req, err := http.NewRequest(http.MethodGet,
 				"/users/profile", nil)
 			req.Header.Set("content-type", "application/json")
-			req.Header.Set("app", fmt.Sprintf("%d", tc.appid))
+			req.Header.Set("X-APP", fmt.Sprintf("%d", tc.appid))
 			require.NoError(t, err)
 			recorder := test.NewJSONResponseRecorder[web.Profile]()
 			s.server.ServeHTTP(recorder, req)

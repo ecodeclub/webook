@@ -13,7 +13,7 @@ type CheckAppIdBuilder struct {
 }
 
 const (
-	appIDHeader = "app"
+	appIDHeader = "X-APP"
 	AppCtxKey   = "app"
 )
 

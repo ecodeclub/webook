@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/ecodeclub/webook/internal/pkg/ectx"
+
 	"github.com/ecodeclub/webook/internal/pkg/snowflake"
 	"github.com/gotomicro/ego/core/elog"
 	"github.com/pkg/errors"
@@ -44,8 +46,8 @@ func (u *UserInsertCallBackBuilder) Build() func(db *gorm.DB) {
 	return func(db *gorm.DB) {
 		table := db.Statement.Table
 		if table == UserTableName {
-			appid, ok := appId(db.Statement.Context)
-			// 没设置就是默认的webook的appid
+			appid, ok := ectx.AppFromCtx(db.Statement.Context)
+			// 没设置就是默认的 webook 的appid
 			if !ok {
 				appid = WebookApp
 			}
@@ -74,7 +76,7 @@ func (u *UserInsertCallBackBuilder) Build() func(db *gorm.DB) {
 	}
 }
 
-// 除insert以外的语句
+// UserCallBackBuilder 除insert以外的语句
 type UserCallBackBuilder struct {
 	logger *elog.Component
 }
@@ -93,7 +95,7 @@ func (u *UserCallBackBuilder) Build() func(db *gorm.DB) {
 
 func build(db *gorm.DB, logger *elog.Component) {
 	ctx := db.Statement.Context
-	appid, ok := appId(ctx)
+	appid, ok := ectx.AppFromCtx(ctx)
 	var tableName string
 	var err error
 	if ok {
@@ -133,12 +135,6 @@ func userId(ctx context.Context) (int64, bool) {
 	}
 	uid, ok := v.(int64)
 	return uid, ok
-}
-
-func appId(ctx context.Context) (uint, bool) {
-	val := ctx.Value(appCtxKey)
-	appid, ok := val.(uint)
-	return appid, ok
 }
 
 func tableNameFromAppId(appid uint) (string, error) {

@@ -69,8 +69,8 @@ func NewHandler(
 
 func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	users := server.Group("/users")
-	users.GET("/profile", middleware.NewCheckAppIdBuilder().Build(), ginx.S(h.Profile))
-	users.POST("/profile", middleware.NewCheckAppIdBuilder().Build(), ginx.BS[EditReq](h.Edit))
+	users.GET("/profile", ginx.S(h.Profile))
+	users.POST("/profile", ginx.BS[EditReq](h.Edit))
 }
 
 func (h *Handler) PublicRoutes(server *gin.Engine) {

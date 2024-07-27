@@ -86,7 +86,9 @@ func initGinxServer(sp session.Provider,
 	res.Use(cors.New(cors.Config{
 		ExposeHeaders:    []string{"X-Refresh-Token", "X-Access-Token"},
 		AllowCredentials: true,
-		AllowHeaders:     []string{"X-Timestamp", "Authorization", "Content-Type"},
+		AllowHeaders: []string{"X-Timestamp",
+			"X-APP",
+			"Authorization", "Content-Type"},
 		AllowOriginFunc: func(origin string) bool {
 			if strings.HasPrefix(origin, "http://localhost") {
 				return true
@@ -98,6 +100,9 @@ func initGinxServer(sp session.Provider,
 	res.GET("/hello", func(ctx *gin.Context) {
 		ctx.String(http.StatusOK, "hello, world!")
 	})
+
+	// 放到这里统一管理，后续扩展性更加好
+	res.Use(middleware.NewCheckAppIdBuilder().Build())
 
 	// 微信支付的回调不需要安全校验机制
 	paymentHdl.PublicRoutes(res.Engine)
