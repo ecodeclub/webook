@@ -126,6 +126,12 @@ type Page struct {
 	Limit  int `json:"limit,omitempty"`
 }
 
+type CandidateReq struct {
+	QSID   int64 `json:"qsid"`
+	Offset int   `json:"offset,omitempty"`
+	Limit  int   `json:"limit,omitempty"`
+}
+
 type Qid struct {
 	Qid int64 `json:"qid"`
 }

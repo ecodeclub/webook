@@ -12,7 +12,10 @@ func InitDB() *egorm.Component {
 	if db != nil {
 		return db
 	}
-	econf.Set("mysql", map[string]string{"dsn": "webook:webook@tcp(localhost:13316)/webook?charset=utf8mb4&collation=utf8mb4_general_ci&parseTime=True&loc=Local&timeout=1s&readTimeout=3s&writeTimeout=3s"})
+	econf.Set("mysql", map[string]any{
+		"dsn":   "webook:webook@tcp(localhost:13316)/webook?charset=utf8mb4&collation=utf8mb4_general_ci&parseTime=True&loc=Local&timeout=1s&readTimeout=3s&writeTimeout=3s",
+		"debug": true,
+	})
 	ioc.WaitForDBSetup(econf.GetStringMapString("mysql")["dsn"])
 	db = egorm.Load("mysql").Build()
 	return db

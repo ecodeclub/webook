@@ -18,6 +18,8 @@ import (
 	"context"
 	"time"
 
+	"github.com/ecodeclub/ekit/slice"
+
 	"github.com/ecodeclub/webook/internal/question/internal/event"
 	"github.com/gotomicro/ego/core/elog"
 
@@ -37,14 +39,27 @@ type QuestionSetService interface {
 	Detail(ctx context.Context, id int64) (domain.QuestionSet, error)
 	GetByIds(ctx context.Context, ids []int64) ([]domain.QuestionSet, error)
 	DetailByBiz(ctx context.Context, biz string, bizId int64) (domain.QuestionSet, error)
+	GetCandidates(ctx context.Context, id int64, offset int, limit int) ([]domain.Question, int64, error)
 }
 
 type questionSetService struct {
 	repo         repository.QuestionSetRepository
+	queRepo      repository.Repository
 	producer     event.SyncDataToSearchEventProducer
 	intrProducer event.InteractiveEventProducer
 	logger       *elog.Component
 	syncTimeout  time.Duration
+}
+
+func (q *questionSetService) GetCandidates(ctx context.Context, id int64, offset int, limit int) ([]domain.Question, int64, error) {
+	qs, err := q.repo.GetByID(ctx, id)
+	if err != nil {
+		return nil, 0, err
+	}
+	qids := slice.Map(qs.Questions, func(idx int, src domain.Question) int64 {
+		return src.Id
+	})
+	return q.queRepo.ExcludeQuestions(ctx, qids, offset, limit)
 }
 
 func (q *questionSetService) DetailByBiz(ctx context.Context, biz string, bizId int64) (domain.QuestionSet, error) {
@@ -140,10 +155,12 @@ func (q *questionSetService) syncQuestionSet(id int64) {
 }
 
 func NewQuestionSetService(repo repository.QuestionSetRepository,
+	queRepo repository.Repository,
 	intrProducer event.InteractiveEventProducer,
 	producer event.SyncDataToSearchEventProducer) QuestionSetService {
 	return &questionSetService{
 		repo:         repo,
+		queRepo:      queRepo,
 		producer:     producer,
 		intrProducer: intrProducer,
 		logger:       elog.DefaultLogger,

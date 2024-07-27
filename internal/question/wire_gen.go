@@ -44,7 +44,7 @@ func InitModule(db *gorm.DB, intrModule *interactive.Module, ec ecache.Cache, pe
 	serviceService := service.NewService(repositoryRepository, syncDataToSearchEventProducer, interactiveEventProducer)
 	questionSetDAO := InitQuestionSetDAO(db)
 	questionSetRepository := repository.NewQuestionSetRepository(questionSetDAO)
-	questionSetService := service.NewQuestionSetService(questionSetRepository, interactiveEventProducer, syncDataToSearchEventProducer)
+	questionSetService := service.NewQuestionSetService(questionSetRepository, repositoryRepository, interactiveEventProducer, syncDataToSearchEventProducer)
 	adminHandler := web.NewAdminHandler(serviceService)
 	adminQuestionSetHandler := web.NewAdminQuestionSetHandler(questionSetService)
 	service2 := intrModule.Svc

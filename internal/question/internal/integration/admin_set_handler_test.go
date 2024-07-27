@@ -197,6 +197,80 @@ func (s *AdminSetHandlerTestSuite) TestQuestionSet_Save() {
 	}
 }
 
+func (s *AdminSetHandlerTestSuite) TestQuestionSet_Candidates() {
+	testCases := []struct {
+		name string
+
+		before func(t *testing.T)
+		req    web.CandidateReq
+
+		wantCode int
+		wantResp test.Result[web.QuestionList]
+	}{
+		{
+			name: "获取成功",
+			before: func(t *testing.T) {
+				// 准备数据
+				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+				defer cancel()
+				// 创建一个空题集
+				id, err := s.questionSetDAO.Create(ctx, dao.QuestionSet{
+					Id:          1,
+					Uid:         uid,
+					Title:       "Go",
+					Description: "Go题集",
+					Biz:         "roadmap",
+					BizId:       2,
+					Utime:       123,
+				})
+				require.NoError(t, err)
+				// 添加问题
+				questions := []dao.Question{
+					s.buildQuestion(1),
+					s.buildQuestion(2),
+					s.buildQuestion(3),
+					s.buildQuestion(4),
+					s.buildQuestion(5),
+					s.buildQuestion(6),
+				}
+				err = s.db.WithContext(ctx).Create(&questions).Error
+				require.NoError(t, err)
+				qids := []int64{1, 2, 3}
+				require.NoError(t, s.questionSetDAO.UpdateQuestionsByID(ctx, id, qids))
+			},
+			req: web.CandidateReq{
+				QSID:   1,
+				Offset: 1,
+				Limit:  2,
+			},
+			wantCode: 200,
+			wantResp: test.Result[web.QuestionList]{
+				Data: web.QuestionList{
+					Total: 3,
+					Questions: []web.Question{
+						s.buildWebQuestion(5),
+						s.buildWebQuestion(4),
+					},
+				},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		s.T().Run(tc.name, func(t *testing.T) {
+			tc.before(t)
+			req, err := http.NewRequest(http.MethodPost,
+				"/question-sets/candidate", iox.NewJSONReader(tc.req))
+			req.Header.Set("content-type", "application/json")
+			require.NoError(t, err)
+			recorder := test.NewJSONResponseRecorder[web.QuestionList]()
+			s.server.ServeHTTP(recorder, req)
+			require.Equal(t, tc.wantCode, recorder.Code)
+			assert.Equal(t, tc.wantResp, recorder.MustScan())
+		})
+	}
+}
+
 func (s *AdminSetHandlerTestSuite) TestQuestionSet_UpdateQuestions() {
 	testCases := []struct {
 		name   string
