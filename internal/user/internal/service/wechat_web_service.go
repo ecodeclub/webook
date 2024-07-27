@@ -8,6 +8,8 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/ecodeclub/webook/internal/pkg/ectx"
+
 	"github.com/ecodeclub/ecache"
 	"github.com/ecodeclub/ekit/net/httpx"
 	"github.com/ecodeclub/webook/internal/user/internal/domain"
@@ -46,7 +48,7 @@ type WechatWebOAuth2Service struct {
 func NewWechatService(cache ecache.Cache, appId, appSecret, redirectURL string) OAuth2Service {
 	return &WechatWebOAuth2Service{
 		cache:       cache,
-		redirectURL: url.PathEscape(redirectURL),
+		redirectURL: redirectURL,
 		logger:      elog.DefaultLogger,
 		client:      http.DefaultClient,
 		appId:       appId,
@@ -55,7 +57,9 @@ func NewWechatService(cache ecache.Cache, appId, appSecret, redirectURL string) 
 }
 
 func (s *WechatWebOAuth2Service) AuthURL(ctx context.Context, a AuthParams) (string, error) {
-	return fmt.Sprintf(authURLPattern, s.appId, s.redirectURL, s.getState(ctx, a)), nil
+	internalApp, _ := ectx.AppFromCtx(ctx)
+	redirectURL := fmt.Sprintf(s.redirectURL, internalApp)
+	return fmt.Sprintf(authURLPattern, s.appId, url.PathEscape(redirectURL), s.getState(ctx, a)), nil
 }
 
 func (s *WechatWebOAuth2Service) getState(ctx context.Context, a AuthParams) string {
