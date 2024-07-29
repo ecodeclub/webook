@@ -66,7 +66,7 @@ func (c *CollectionHandlerTestSuite) SetupSuite() {
 			return slice.Map(ids, func(idx int, src int64) baguwen.Question {
 				return baguwen.Question{
 					Id:    src,
-					Title: "这是问题" + strconv.FormatInt(src, 10),
+					Title: "这是题目" + strconv.FormatInt(src, 10),
 				}
 			}), nil
 		}).AnyTimes()
@@ -135,7 +135,7 @@ func (c *CollectionHandlerTestSuite) Test_Handler() {
 		}))
 	req.Header.Set("content-type", "application/json")
 	require.NoError(t, err)
-	recorder := test.NewJSONResponseRecorder[int64]()
+	recorder := test.NewJSONResponseRecorder[[]web.CollectionRecord]()
 	c.server.ServeHTTP(recorder, req)
 	require.Equal(t, 200, recorder.Code)
 	assert.Equal(t, []web.CollectionRecord{

@@ -8,14 +8,14 @@ package bff
 
 import (
 	"github.com/ecodeclub/webook/internal/bff/internal/web"
-	service2 "github.com/ecodeclub/webook/internal/cases/internal/service"
-	"github.com/ecodeclub/webook/internal/interactive/internal/service"
-	service3 "github.com/ecodeclub/webook/internal/question/internal/service"
+	service2 "github.com/ecodeclub/webook/internal/cases"
+	service "github.com/ecodeclub/webook/internal/interactive"
+	service3 "github.com/ecodeclub/webook/internal/question"
 )
 
 // Injectors from wire.go:
 
-func InitHandler(intrSvc service.Service, caseSvc service2.Service, queSvc service3.Service, queSetSvc service3.QuestionSetService, examSvc service3.ExamineService) (*web.Handler, error) {
+func InitHandler(intrSvc service.Service, caseSvc service2.Service, queSvc service3.Service, queSetSvc service3.QuestionSetService, examSvc service3.ExamService) (*web.Handler, error) {
 	handler := web.NewHandler(intrSvc, caseSvc, queSvc, queSetSvc, examSvc)
 	return handler, nil
 }
