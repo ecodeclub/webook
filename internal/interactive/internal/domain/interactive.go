@@ -30,3 +30,11 @@ type Collection struct {
 	Uid  int64
 	Name string
 }
+
+type CollectionRecord struct {
+	// 用于分发的
+	Biz         string
+	Case        int64
+	Question    int64
+	QuestionSet int64
+}
