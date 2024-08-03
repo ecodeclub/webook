@@ -17,12 +17,15 @@ package dao
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/ego-component/egorm"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
+
+var ErrDeleteOtherCollection = errors.New("删除非本人的收藏夹")
 
 type InteractiveDAO interface {
 	IncrViewCnt(ctx context.Context, biz string, bizId int64) error
@@ -34,16 +37,115 @@ type InteractiveDAO interface {
 		biz string, id int64, uid int64) (UserCollectionBiz, error)
 	Get(ctx context.Context, biz string, id int64) (Interactive, error)
 	GetByIds(ctx context.Context, biz string, ids []int64) ([]Interactive, error)
+
+	// 创建收藏夹
+	SaveCollection(ctx context.Context, collection Collection) (int64, error)
+	// 删除收藏夹
+	DeleteCollection(ctx context.Context, uid, collectionId int64) error
+	// 收藏夹列表
+	CollectionList(ctx context.Context, uid int64, offset, limit int) ([]Collection, error)
+	// 收藏夹下的收藏内容带分页
+	CollectionInfoWithPage(ctx context.Context, uid, collectionId int64, offset, limit int) ([]UserCollectionBiz, error)
+	// 收藏夹下的所有内容
+	CollectionInfo(ctx context.Context, collectionId int64) ([]UserCollectionBiz, error)
+	// 收藏转移
+	MoveCollection(ctx context.Context, biz string, bizid, uid, collectionId int64) error
+	// 减少计数
+	DecrCollectCount(ctx context.Context, biz string, bizid int64) error
 }
 
 type GORMInteractiveDAO struct {
 	db *egorm.Component
 }
 
+func (g *GORMInteractiveDAO) DecrCollectCount(ctx context.Context, biz string, bizid int64) error {
+	return g.db.WithContext(ctx).
+		Model(&Interactive{}).
+		Where("biz = ? AND biz_id = ? and collect_cnt > 0", biz, bizid).
+		Update("collect_cnt", gorm.Expr("`collect_cnt` - 1")).Error
+}
+
 func NewInteractiveDAO(db *egorm.Component) *GORMInteractiveDAO {
 	return &GORMInteractiveDAO{
 		db: db,
 	}
+}
+
+func (g *GORMInteractiveDAO) SaveCollection(ctx context.Context, collection Collection) (int64, error) {
+	now := time.Now()
+	ctime := now.UnixMilli()
+	utime := now.UnixMilli()
+	collection.Utime = utime
+	collection.Ctime = ctime
+	err := g.db.WithContext(ctx).Clauses(
+		clause.OnConflict{
+			Columns: []clause.Column{
+				{
+					Name: "id",
+				},
+			},
+			DoUpdates: clause.Assignments(map[string]any{
+				"name":  collection.Name,
+				"utime": collection.Utime,
+			}),
+		},
+	).Create(&collection).Error
+	if err != nil {
+		return 0, err
+	}
+	return collection.Id, nil
+}
+
+func (g *GORMInteractiveDAO) DeleteCollection(ctx context.Context, uid, collectionId int64) error {
+	return g.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		// 删除收藏夹
+		res := tx.Model(&Collection{}).Where("uid = ? AND id = ?", uid, collectionId).Delete(&Collection{})
+		if res.Error != nil {
+			return res.Error
+		}
+		if res.RowsAffected < 1 {
+			return fmt.Errorf("%w", ErrDeleteOtherCollection)
+		}
+		// 删除收藏内容
+		return tx.Model(&UserCollectionBiz{}).Where("cid = ? AND uid = ?", collectionId, uid).Delete(&UserCollectionBiz{}).Error
+	})
+}
+
+func (g *GORMInteractiveDAO) CollectionList(ctx context.Context, uid int64, offset, limit int) ([]Collection, error) {
+	var collections []Collection
+	err := g.db.WithContext(ctx).
+		Model(&Collection{}).
+		Where("uid = ?", uid).
+		Order("id DESC").
+		Limit(limit).
+		Offset(offset).Scan(&collections).Error
+	return collections, err
+}
+
+func (g *GORMInteractiveDAO) CollectionInfoWithPage(ctx context.Context, uid, collectionId int64, offset, limit int) ([]UserCollectionBiz, error) {
+	records := make([]UserCollectionBiz, 0, 32)
+	err := g.db.WithContext(ctx).
+		Model(&UserCollectionBiz{}).
+		Where("cid = ? AND uid = ? ", collectionId, uid).
+		Order("id DESC").
+		Offset(offset).
+		Limit(limit).
+		Find(&records).Error
+	return records, err
+}
+
+func (g *GORMInteractiveDAO) CollectionInfo(ctx context.Context, collectionId int64) ([]UserCollectionBiz, error) {
+	records := make([]UserCollectionBiz, 0, 32)
+	err := g.db.WithContext(ctx).Where("cid = ?", collectionId).Find(&records).Error
+	return records, err
+}
+
+func (g *GORMInteractiveDAO) MoveCollection(ctx context.Context, biz string, bizid, uid, collectionId int64) error {
+	err := g.db.WithContext(ctx).
+		Model(&UserCollectionBiz{}).
+		Where("biz = ? AND biz_id = ? AND uid = ?", biz, bizid, uid).
+		Update("cid", collectionId).Error
+	return err
 }
 
 func (g *GORMInteractiveDAO) LikeToggle(ctx context.Context, biz string, id int64, uid int64) error {

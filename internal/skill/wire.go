@@ -47,6 +47,8 @@ func InitHandler(
 	wire.Build(
 		InitSkillDAO,
 		wire.FieldsOf(new(*baguwen.Module), "Svc"),
+		wire.FieldsOf(new(*baguwen.Module), "SetSvc"),
+		wire.FieldsOf(new(*baguwen.Module), "ExamSvc"),
 		wire.FieldsOf(new(*cases.Module), "Svc"),
 		cache.NewSkillCache,
 		repository.NewSkillRepo,

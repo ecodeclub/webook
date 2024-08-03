@@ -14,6 +14,8 @@
 
 package dao
 
+import "database/sql"
+
 // Interactive 汇总表
 type Interactive struct {
 	Id         int64  `gorm:"primaryKey,autoIncrement"`
@@ -42,6 +44,9 @@ type UserCollectionBiz struct {
 	Uid   int64  `gorm:"uniqueIndex:uid_biz_type_id"`
 	BizId int64  `gorm:"uniqueIndex:uid_biz_type_id"`
 	Biz   string `gorm:"type:varchar(128);uniqueIndex:uid_biz_type_id"`
+
+	// Cid 收藏夹id
+	Cid   sql.NullInt64 `gorm:"index"`
 	Utime int64
 	Ctime int64
 }
@@ -50,7 +55,7 @@ type Collection struct {
 	Id int64 `gorm:"primaryKey,autoIncrement"`
 	// 在 Uid 和 Name 上创建唯一索引，确保用户不会创建同名收藏夹
 	Uid   int64  `gorm:"uniqueIndex:uid_name"`
-	Name  string `gorm:"uniqueIndex:uid_name"`
+	Name  string `gorm:"type:varchar(256);uniqueIndex:uid_name"`
 	Utime int64
 	Ctime int64
 }

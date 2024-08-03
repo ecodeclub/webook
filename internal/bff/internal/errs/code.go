@@ -12,18 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package interactive
+package errs
 
-import (
-	"github.com/ecodeclub/webook/internal/interactive/internal/domain"
-	"github.com/ecodeclub/webook/internal/interactive/internal/service"
-	"github.com/ecodeclub/webook/internal/interactive/internal/web"
+var (
+	SystemError = ErrorCode{Code: 503014, Msg: "系统错误"}
 )
 
-type Handler = web.Handler
-
-type Service = service.Service
-
-type Interactive = domain.Interactive
-
-type CollectionRecord = domain.CollectionRecord
+type ErrorCode struct {
+	Code int
+	Msg  string
+}

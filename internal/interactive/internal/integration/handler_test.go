@@ -18,11 +18,15 @@ package integration
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 	"testing"
 	"time"
+
+	"github.com/ecodeclub/webook/internal/interactive/internal/domain"
 
 	"github.com/ecodeclub/webook/internal/interactive"
 
@@ -66,6 +70,8 @@ func (i *InteractiveTestSuite) TearDownSuite() {
 	require.NoError(i.T(), err)
 	err = i.db.Exec("DROP TABLE `user_collection_bizs`").Error
 	require.NoError(i.T(), err)
+	err = i.db.Exec("DROP TABLE `collections`").Error
+	require.NoError(i.T(), err)
 }
 
 func (i *InteractiveTestSuite) TearDownTest() {
@@ -74,6 +80,8 @@ func (i *InteractiveTestSuite) TearDownTest() {
 	err = i.db.Exec("TRUNCATE TABLE `user_like_bizs`").Error
 	require.NoError(i.T(), err)
 	err = i.db.Exec("TRUNCATE TABLE `user_collection_bizs`").Error
+	require.NoError(i.T(), err)
+	err = i.db.Exec("TRUNCATE TABLE `collections`").Error
 	require.NoError(i.T(), err)
 }
 
@@ -472,6 +480,345 @@ func (i *InteractiveTestSuite) Test_Event() {
 			time.Sleep(10 * time.Second)
 			tc.after(t)
 
+		})
+	}
+}
+
+func (i *InteractiveTestSuite) TestCollection_Save() {
+	testcases := []struct {
+		name     string
+		req      web.Collection
+		before   func(t *testing.T)
+		after    func(t *testing.T, id int64)
+		wantCode int
+	}{
+		{
+			name: "新建",
+			req: web.Collection{
+				Name: "收藏夹",
+			},
+			before: func(t *testing.T) {
+			},
+			after: func(t *testing.T, id int64) {
+				var collection dao.Collection
+				err := i.db.WithContext(context.Background()).
+					Where("id = ?", id).First(&collection).Error
+				require.NoError(t, err)
+				require.True(t, collection.Utime > 0)
+				require.True(t, collection.Ctime > 0)
+				collection.Utime = 0
+				collection.Ctime = 0
+				assert.Equal(t, dao.Collection{
+					Id:   id,
+					Uid:  uid,
+					Name: "收藏夹",
+				}, collection)
+			},
+			wantCode: 200,
+		},
+		{
+			name: "编辑",
+			req: web.Collection{
+				Id:   2,
+				Name: "旧收藏夹",
+			},
+			before: func(t *testing.T) {
+				err := i.db.WithContext(context.Background()).Create(&dao.Collection{
+					Id:    2,
+					Uid:   uid,
+					Name:  "新收藏夹",
+					Ctime: 123,
+					Utime: 123,
+				}).Error
+				require.NoError(t, err)
+			},
+			after: func(t *testing.T, id int64) {
+				var collection dao.Collection
+				err := i.db.WithContext(context.Background()).
+					Where("id = ?", id).First(&collection).Error
+				require.NoError(t, err)
+				require.True(t, collection.Utime > 0)
+				require.True(t, collection.Ctime > 0)
+				collection.Utime = 0
+				collection.Ctime = 0
+				assert.Equal(t, dao.Collection{
+					Id:   id,
+					Uid:  uid,
+					Name: "旧收藏夹",
+				}, collection)
+			},
+			wantCode: 200,
+		},
+	}
+	for _, tc := range testcases {
+		i.T().Run(tc.name, func(t *testing.T) {
+			tc.before(t)
+			req, err := http.NewRequest(http.MethodPost,
+				"/interactive/collection/save", iox.NewJSONReader(tc.req))
+			req.Header.Set("content-type", "application/json")
+			require.NoError(t, err)
+			recorder := test.NewJSONResponseRecorder[int64]()
+			i.server.ServeHTTP(recorder, req)
+			require.Equal(t, tc.wantCode, recorder.Code)
+			tc.after(t, recorder.MustScan().Data)
+		})
+	}
+}
+
+func (i *InteractiveTestSuite) TestCollection_Delete() {
+	testcases := []struct {
+		name   string
+		before func(t *testing.T) int64
+		after  func(t *testing.T, id int64)
+		code   int
+	}{
+		{
+			name: "删除收藏夹及其收藏的记录",
+			before: func(t *testing.T) int64 {
+				// 收藏1
+				id, err := i.svc.SaveCollection(context.Background(), domain.Collection{
+					Uid:  uid,
+					Name: "case收藏夹",
+				})
+				require.NoError(t, err)
+				err = i.svc.CollectToggle(context.Background(), "case", 1, uid)
+				require.NoError(t, err)
+				err = i.svc.CollectToggle(context.Background(), "case", 2, uid)
+				require.NoError(t, err)
+				err = i.svc.MoveToCollection(context.Background(), "case", 1, uid, id)
+				require.NoError(t, err)
+				err = i.svc.MoveToCollection(context.Background(), "case", 2, uid, id)
+				require.NoError(t, err)
+				records, err := i.svc.CollectionInfo(context.Background(), uid, id, 0, 10)
+				require.NoError(t, err)
+				assert.ElementsMatch(t, []domain.CollectionRecord{
+					{
+						Biz:  "case",
+						Case: 1,
+					},
+					{
+						Biz:  "case",
+						Case: 2,
+					},
+				}, records)
+				case1Interactive, err := i.svc.Get(context.Background(), "case", 1, uid)
+				require.NoError(t, err)
+				case2Interactive, err := i.svc.Get(context.Background(), "case", 2, uid)
+				require.NoError(t, err)
+				assert.Equal(t, 1, case1Interactive.CollectCnt)
+				assert.Equal(t, 1, case2Interactive.CollectCnt)
+				return id
+			},
+			after: func(t *testing.T, id int64) {
+				case1Interactive, err := i.svc.Get(context.Background(), "case", 1, uid)
+				require.NoError(t, err)
+				case2Interactive, err := i.svc.Get(context.Background(), "case", 2, uid)
+				require.NoError(t, err)
+				assert.Equal(t, 0, case1Interactive.CollectCnt)
+				assert.Equal(t, 0, case2Interactive.CollectCnt)
+				var count int64
+				err = i.db.WithContext(context.Background()).
+					Model(&dao.UserCollectionBiz{}).
+					Where("biz_id IN ? AND biz = ?", []int64{1, 2}, "case").Count(&count).Error
+				require.NoError(t, err)
+				require.Equal(t, int64(0), count)
+				var collection dao.Collection
+				err = i.db.WithContext(context.Background()).
+					Where("id = ?", id).First(&collection).Error
+				assert.Equal(t, gorm.ErrRecordNotFound, err)
+			},
+			code: 200,
+		},
+		{
+			name: "删除别人文件夹",
+			before: func(t *testing.T) int64 {
+				// 收藏1
+				id, err := i.svc.SaveCollection(context.Background(), domain.Collection{
+					Uid:  456,
+					Name: "case收藏夹",
+				})
+				require.NoError(t, err)
+				return id
+			},
+			code: 500,
+			after: func(t *testing.T, id int64) {
+				var collection dao.Collection
+				err := i.db.WithContext(context.Background()).
+					Where("id = ?", id).First(&collection).Error
+				require.NoError(t, err)
+				collection.Utime = 0
+				collection.Ctime = 0
+				assert.Equal(t, dao.Collection{
+					Id:   id,
+					Name: "case收藏夹",
+					Uid:  456,
+				}, collection)
+			},
+		},
+	}
+	for _, tc := range testcases {
+		i.T().Run(tc.name, func(t *testing.T) {
+			id := tc.before(t)
+			req, err := http.NewRequest(http.MethodPost,
+				"/interactive/collection/delete", iox.NewJSONReader(web.IdReq{
+					Id: id,
+				}))
+			req.Header.Set("content-type", "application/json")
+			require.NoError(t, err)
+			recorder := test.NewJSONResponseRecorder[int64]()
+			i.server.ServeHTTP(recorder, req)
+			require.Equal(t, tc.code, recorder.Code)
+			time.Sleep(1 * time.Second)
+			tc.after(t, id)
+		})
+	}
+}
+
+func (i *InteractiveTestSuite) TestCollection_List() {
+	for j := 1; j <= 4; j++ {
+		err := i.db.Create(&dao.Collection{
+			Id:   int64(j),
+			Uid:  uid,
+			Name: fmt.Sprintf("%d", j),
+		}).Error
+		require.NoError(i.T(), err)
+	}
+	err := i.db.Create(&dao.Collection{
+		Id:   int64(33),
+		Uid:  222,
+		Name: fmt.Sprintf("%d", 33),
+	}).Error
+	require.NoError(i.T(), err)
+
+	testcases := []struct {
+		name     string
+		offset   int
+		limit    int
+		wantVal  []web.Collection
+		wantCode int
+	}{
+		{
+			name:     "偏移2",
+			offset:   2,
+			limit:    2,
+			wantCode: 200,
+			wantVal: []web.Collection{
+				{
+					Id:   2,
+					Name: "2",
+				},
+				{
+					Id:   1,
+					Name: "1",
+				},
+			},
+		},
+		{
+			name:     "不包含别人的",
+			offset:   0,
+			limit:    10,
+			wantCode: 200,
+			wantVal: []web.Collection{
+				{
+					Id:   4,
+					Name: "4",
+				},
+				{
+					Id:   3,
+					Name: "3",
+				},
+				{
+					Id:   2,
+					Name: "2",
+				},
+				{
+					Id:   1,
+					Name: "1",
+				},
+			},
+		},
+	}
+	for _, tc := range testcases {
+		i.T().Run(tc.name, func(t *testing.T) {
+			req, err := http.NewRequest(http.MethodPost,
+				"/interactive/collection/list", iox.NewJSONReader(web.Page{
+					Offset: tc.offset,
+					Limit:  tc.limit,
+				}))
+			req.Header.Set("content-type", "application/json")
+			require.NoError(t, err)
+			recorder := test.NewJSONResponseRecorder[[]web.Collection]()
+			i.server.ServeHTTP(recorder, req)
+			require.Equal(t, tc.wantCode, recorder.Code)
+			assert.Equal(t, tc.wantVal, recorder.MustScan().Data)
+		})
+	}
+}
+
+func (i *InteractiveTestSuite) TestCollection_Move() {
+	testcases := []struct {
+		name     string
+		before   func(t *testing.T) int64
+		after    func(t *testing.T, id int64)
+		req      web.MoveCollectionReq
+		wantCode int
+	}{
+		{
+			req: web.MoveCollectionReq{
+				Biz:   "case",
+				BizId: 1,
+			},
+			name: "转移收藏夹",
+			before: func(t *testing.T) int64 {
+				// 收藏1
+				id, err := i.svc.SaveCollection(context.Background(), domain.Collection{
+					Uid:  uid,
+					Name: "case收藏夹",
+				})
+				require.NoError(t, err)
+				err = i.svc.CollectToggle(context.Background(), "case", 1, uid)
+				require.NoError(t, err)
+				return id
+			},
+			after: func(t *testing.T, id int64) {
+				var collectionRecords []dao.UserCollectionBiz
+				err := i.db.WithContext(context.Background()).
+					Model(&dao.UserCollectionBiz{}).
+					Where("biz_id IN ? AND biz = ? and uid = ?", []int64{1}, "case", uid).Find(&collectionRecords).Error
+				require.NoError(t, err)
+				for idx, _ := range collectionRecords {
+					collectionRecords[idx].Ctime = 0
+					collectionRecords[idx].Utime = 0
+				}
+				require.Equal(t, []dao.UserCollectionBiz{
+					{
+						Id:    1,
+						Uid:   uid,
+						Biz:   "case",
+						BizId: 1,
+						Cid: sql.NullInt64{
+							Valid: true,
+							Int64: id,
+						},
+					},
+				}, collectionRecords)
+
+			},
+			wantCode: 200,
+		},
+	}
+	for _, tc := range testcases {
+		i.T().Run(tc.name, func(t *testing.T) {
+			id := tc.before(t)
+			tc.req.CollectionId = id
+			req, err := http.NewRequest(http.MethodPost,
+				"/interactive/collection/move", iox.NewJSONReader(tc.req))
+			req.Header.Set("content-type", "application/json")
+			require.NoError(t, err)
+			recorder := test.NewJSONResponseRecorder[int64]()
+			i.server.ServeHTTP(recorder, req)
+			require.Equal(t, tc.wantCode, recorder.Code)
+			tc.after(t, id)
 		})
 	}
 }

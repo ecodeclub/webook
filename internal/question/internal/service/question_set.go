@@ -40,6 +40,7 @@ type QuestionSetService interface {
 	GetByIds(ctx context.Context, ids []int64) ([]domain.QuestionSet, error)
 	DetailByBiz(ctx context.Context, biz string, bizId int64) (domain.QuestionSet, error)
 	GetCandidates(ctx context.Context, id int64, offset int, limit int) ([]domain.Question, int64, error)
+	GetByIDsWithQuestion(ctx context.Context, ids []int64) ([]domain.QuestionSet, error)
 }
 
 type questionSetService struct {
@@ -49,6 +50,10 @@ type questionSetService struct {
 	intrProducer event.InteractiveEventProducer
 	logger       *elog.Component
 	syncTimeout  time.Duration
+}
+
+func (q *questionSetService) GetByIDsWithQuestion(ctx context.Context, ids []int64) ([]domain.QuestionSet, error) {
+	return q.repo.GetByIDsWithQuestion(ctx, ids)
 }
 
 func (q *questionSetService) GetCandidates(ctx context.Context, id int64, offset int, limit int) ([]domain.Question, int64, error) {

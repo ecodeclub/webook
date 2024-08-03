@@ -32,6 +32,17 @@ type Service interface {
 	CollectToggle(ctx context.Context, biz string, bizId, uid int64) error
 	Get(ctx context.Context, biz string, id int64, uid int64) (domain.Interactive, error)
 	GetByIds(ctx context.Context, biz string, ids []int64) (map[int64]domain.Interactive, error)
+
+	// SaveCollection 修改收藏夹
+	SaveCollection(ctx context.Context, collection domain.Collection) (int64, error)
+	// DeleteCollection 删除收藏夹
+	DeleteCollection(ctx context.Context, uid, id int64) error
+	// CollectionList 收藏夹列表
+	CollectionList(ctx context.Context, uid int64, offset, limit int) ([]domain.Collection, error)
+	// CollectionInfo 收藏详情带分页
+	CollectionInfo(ctx context.Context, uid, id int64, offset, limit int) ([]domain.CollectionRecord, error)
+	// MoveToCollection 将收藏内容转移到另一个收藏夹，前一个id是收藏记录的，collectionId收藏夹id
+	MoveToCollection(ctx context.Context, biz string, bizid, uid, collectionId int64) error
 }
 
 type interactiveService struct {
@@ -42,6 +53,25 @@ func NewService(repo repository.InteractiveRepository) Service {
 	return &interactiveService{
 		repo: repo,
 	}
+}
+func (i *interactiveService) CollectionInfo(ctx context.Context, uid, id int64, offset, limit int) ([]domain.CollectionRecord, error) {
+	return i.repo.CollectionInfo(ctx, uid, id, offset, limit)
+}
+
+func (i *interactiveService) SaveCollection(ctx context.Context, collection domain.Collection) (int64, error) {
+	return i.repo.SaveCollection(ctx, collection)
+}
+
+func (i *interactiveService) DeleteCollection(ctx context.Context, uid, id int64) error {
+	return i.repo.DeleteCollection(ctx, uid, id)
+}
+
+func (i *interactiveService) CollectionList(ctx context.Context, uid int64, offset, limit int) ([]domain.Collection, error) {
+	return i.repo.CollectionList(ctx, uid, offset, limit)
+}
+
+func (i *interactiveService) MoveToCollection(ctx context.Context, biz string, bizid, uid, collectionId int64) error {
+	return i.repo.MoveCollection(ctx, biz, bizid, uid, collectionId)
 }
 
 func (i *interactiveService) IncrReadCnt(ctx context.Context, biz string, bizId int64) error {

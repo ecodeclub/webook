@@ -39,12 +39,13 @@ func (s Skill) questionLen() int {
 }
 
 type SkillLevel struct {
-	Id        int64
-	Desc      string
-	Ctime     time.Time
-	Utime     time.Time
-	Questions []int64
-	Cases     []int64
+	Id           int64
+	Desc         string
+	Ctime        time.Time
+	Utime        time.Time
+	Questions    []int64
+	Cases        []int64
+	QuestionSets []int64
 }
 
 //type SkillPreRequest struct {

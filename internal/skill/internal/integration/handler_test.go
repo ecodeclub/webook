@@ -62,6 +62,9 @@ func (s *HandlerTestSuite) TearDownTest() {
 func (s *HandlerTestSuite) SetupSuite() {
 	ctrl := gomock.NewController(s.T())
 	queSvc := quemocks.NewMockService(ctrl)
+	queSetSvc := quemocks.NewMockQuestionSetService(ctrl)
+	examSvc := quemocks.NewMockExamineService(ctrl)
+
 	queSvc.EXPECT().GetPubByIDs(gomock.Any(), gomock.Any()).
 		DoAndReturn(func(ctx context.Context, ids []int64) ([]baguwen.Question, error) {
 			return slice.Map(ids, func(idx int, src int64) baguwen.Question {
@@ -71,6 +74,37 @@ func (s *HandlerTestSuite) SetupSuite() {
 				}
 			}), nil
 		}).AnyTimes()
+	queSetSvc.EXPECT().GetByIDsWithQuestion(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, ids []int64) ([]baguwen.QuestionSet, error) {
+		return slice.Map(ids, func(idx int, src int64) baguwen.QuestionSet {
+			return baguwen.QuestionSet{
+				Id:    src,
+				Title: fmt.Sprintf("这是题集%d", src),
+				Questions: []baguwen.Question{
+					{
+						Id:    src*10 + src,
+						Title: fmt.Sprintf("这是题目%d", src*10+src),
+					},
+					{
+						Id:    src*11 + src,
+						Title: fmt.Sprintf("这是题目%d", src*11+src),
+					},
+				},
+			}
+		}), nil
+	}).AnyTimes()
+	examSvc.EXPECT().GetResults(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, uid int64, ids []int64) (map[int64]baguwen.ExamResult, error) {
+		res := slice.Map(ids, func(idx int, src int64) baguwen.ExamResult {
+			return baguwen.ExamResult{
+				Qid:    src,
+				Result: baguwen.ExamRes(src % 4),
+			}
+		})
+		resMap := make(map[int64]baguwen.ExamResult, len(res))
+		for _, examRes := range res {
+			resMap[examRes.Qid] = examRes
+		}
+		return resMap, nil
+	}).AnyTimes()
 
 	caseSvc := casemocks.NewMockService(ctrl)
 	caseSvc.EXPECT().GetPubByIDs(gomock.Any(), gomock.Any()).DoAndReturn(
@@ -85,7 +119,7 @@ func (s *HandlerTestSuite) SetupSuite() {
 	s.ctrl = ctrl
 	s.producer = evemocks.NewMockSyncEventProducer(s.ctrl)
 	handler, err := startup.InitHandler(
-		&baguwen.Module{Svc: queSvc},
+		&baguwen.Module{Svc: queSvc, SetSvc: queSetSvc, ExamSvc: examSvc},
 		&cases.Module{Svc: caseSvc},
 		s.producer,
 	)
@@ -361,6 +395,12 @@ func (s *HandlerTestSuite) TestSaveRefs() {
 					},
 					{
 						Sid:   1,
+						Slid:  2,
+						Rid:   66,
+						Rtype: "question_set",
+					},
+					{
+						Sid:   1,
 						Slid:  3,
 						Rid:   67,
 						Rtype: "case",
@@ -395,6 +435,11 @@ func (s *HandlerTestSuite) TestSaveRefs() {
 						},
 						Cases: []web.Case{
 							{Id: 45},
+						},
+						QuestionSets: []web.QuestionSet{
+							{
+								ID: 66,
+							},
 						},
 					},
 					Advanced: web.SkillLevel{
@@ -621,6 +666,7 @@ func (s *HandlerTestSuite) TestDetail() {
 			Cases: []web.Case{
 				{Id: 1},
 			},
+			QuestionSets: []web.QuestionSet{},
 		},
 		Intermediate: web.SkillLevel{
 			Id:   2,
@@ -628,11 +674,13 @@ func (s *HandlerTestSuite) TestDetail() {
 			Questions: []web.Question{
 				{Id: 1},
 			},
-			Cases: []web.Case{},
+			Cases:        []web.Case{},
+			QuestionSets: []web.QuestionSet{},
 		},
 		Advanced: web.SkillLevel{
-			Questions: []web.Question{},
-			Cases:     []web.Case{},
+			Questions:    []web.Question{},
+			Cases:        []web.Case{},
+			QuestionSets: []web.QuestionSet{},
 		},
 	}, resp)
 }
@@ -728,6 +776,7 @@ func (s *HandlerTestSuite) TestDetailRef() {
 			Cases: []web.Case{
 				{Id: 1, Title: "这是案例1"},
 			},
+			QuestionSets: []web.QuestionSet{},
 		},
 		Intermediate: web.SkillLevel{
 			Id:   2,
@@ -735,11 +784,13 @@ func (s *HandlerTestSuite) TestDetailRef() {
 			Questions: []web.Question{
 				{Id: 1, Title: "这是问题1"},
 			},
-			Cases: []web.Case{},
+			QuestionSets: []web.QuestionSet{},
+			Cases:        []web.Case{},
 		},
 		Advanced: web.SkillLevel{
-			Questions: []web.Question{},
-			Cases:     []web.Case{},
+			Questions:    []web.Question{},
+			Cases:        []web.Case{},
+			QuestionSets: []web.QuestionSet{},
 		},
 	}, resp)
 }
@@ -788,16 +839,19 @@ func (s *HandlerTestSuite) TestList() {
 							},
 							Utime: time.Unix(0, 0).Format(time.DateTime),
 							Basic: web.SkillLevel{
-								Questions: []web.Question{},
-								Cases:     []web.Case{},
+								Questions:    []web.Question{},
+								Cases:        []web.Case{},
+								QuestionSets: []web.QuestionSet{},
 							},
 							Intermediate: web.SkillLevel{
-								Questions: []web.Question{},
-								Cases:     []web.Case{},
+								Questions:    []web.Question{},
+								Cases:        []web.Case{},
+								QuestionSets: []web.QuestionSet{},
 							},
 							Advanced: web.SkillLevel{
-								Questions: []web.Question{},
-								Cases:     []web.Case{},
+								Questions:    []web.Question{},
+								Cases:        []web.Case{},
+								QuestionSets: []web.QuestionSet{},
 							},
 						},
 						{
@@ -809,16 +863,19 @@ func (s *HandlerTestSuite) TestList() {
 							},
 							Utime: time.Unix(0, 0).Format(time.DateTime),
 							Basic: web.SkillLevel{
-								Questions: []web.Question{},
-								Cases:     []web.Case{},
+								Questions:    []web.Question{},
+								Cases:        []web.Case{},
+								QuestionSets: []web.QuestionSet{},
 							},
 							Intermediate: web.SkillLevel{
-								Questions: []web.Question{},
-								Cases:     []web.Case{},
+								Questions:    []web.Question{},
+								Cases:        []web.Case{},
+								QuestionSets: []web.QuestionSet{},
 							},
 							Advanced: web.SkillLevel{
-								Questions: []web.Question{},
-								Cases:     []web.Case{},
+								Questions:    []web.Question{},
+								Cases:        []web.Case{},
+								QuestionSets: []web.QuestionSet{},
 							},
 						},
 					},
@@ -845,16 +902,19 @@ func (s *HandlerTestSuite) TestList() {
 							},
 							Utime: time.Unix(0, 0).Format(time.DateTime),
 							Basic: web.SkillLevel{
-								Questions: []web.Question{},
-								Cases:     []web.Case{},
+								Questions:    []web.Question{},
+								Cases:        []web.Case{},
+								QuestionSets: []web.QuestionSet{},
 							},
 							Intermediate: web.SkillLevel{
-								Questions: []web.Question{},
-								Cases:     []web.Case{},
+								Questions:    []web.Question{},
+								Cases:        []web.Case{},
+								QuestionSets: []web.QuestionSet{},
 							},
 							Advanced: web.SkillLevel{
-								Questions: []web.Question{},
-								Cases:     []web.Case{},
+								Questions:    []web.Question{},
+								Cases:        []web.Case{},
+								QuestionSets: []web.QuestionSet{},
 							},
 						},
 					},
@@ -932,13 +992,15 @@ func (s *HandlerTestSuite) TestRefsByLevelIDs() {
 						Cases: []web.Case{
 							{Id: 1, Title: "这是案例1"},
 						},
+						QuestionSets: []web.QuestionSet{},
 					},
 					{
 						Id: 2,
 						Questions: []web.Question{
 							{Id: 1, Title: "这是问题1"},
 						},
-						Cases: []web.Case{},
+						Cases:        []web.Case{},
+						QuestionSets: []web.QuestionSet{},
 					},
 				},
 			},
@@ -959,6 +1021,7 @@ func (s *HandlerTestSuite) TestRefsByLevelIDs() {
 		})
 	}
 }
+
 func (s *HandlerTestSuite) TestEvent() {
 	t := s.T()
 	mu := &sync.RWMutex{}
@@ -1111,6 +1174,89 @@ func (s *HandlerTestSuite) TestEvent() {
 		ans[idx] = s.formatSkill(ans[idx])
 	}
 	assert.Equal(t, wantAns, ans)
+}
+
+func (s *HandlerTestSuite) TestEventLevelInfo() {
+	t := s.T()
+	err := s.db.Create([]*dao.SkillLevel{
+		{
+			Id:    1,
+			Sid:   2,
+			Level: "basic",
+			Desc:  "mysql_desc_basic",
+			Ctime: time.Now().UnixMilli(),
+			Utime: time.Now().UnixMilli(),
+		},
+	}).Error
+	require.NoError(t, err)
+	s.db.Create([]*dao.SkillRef{
+		{
+			Id:    1,
+			Slid:  1,
+			Sid:   2,
+			Rtype: "case",
+			Rid:   1,
+			Ctime: time.Now().UnixMilli(),
+			Utime: time.Now().UnixMilli(),
+		},
+		{
+			Id:    2,
+			Slid:  1,
+			Sid:   2,
+			Rtype: "question",
+			Rid:   2,
+			Ctime: time.Now().UnixMilli(),
+			Utime: time.Now().UnixMilli(),
+		},
+		{
+			Id:    3,
+			Slid:  1,
+			Sid:   2,
+			Rtype: "question_set",
+			Rid:   3,
+			Ctime: time.Now().UnixMilli(),
+			Utime: time.Now().UnixMilli(),
+		},
+	})
+	sid := web.LevelInfoReq{
+		ID: 1,
+	}
+	req, err := http.NewRequest(http.MethodPost,
+		"/skill/level/detail", iox.NewJSONReader(sid))
+	req.Header.Set("content-type", "application/json")
+	require.NoError(t, err)
+	recorder := test.NewJSONResponseRecorder[web.SkillLevel]()
+	s.server.ServeHTTP(recorder, req)
+	require.Equal(t, 200, recorder.Code)
+	resp := recorder.MustScan().Data
+	assert.Equal(t, web.SkillLevel{
+		Id:   1,
+		Desc: "mysql_desc_basic",
+		Questions: []web.Question{
+			{Id: 2, Title: "这是问题2", Result: 2},
+		},
+		Cases: []web.Case{
+			{Id: 1, Title: "这是案例1"},
+		},
+		QuestionSets: []web.QuestionSet{
+			{
+				ID:    3,
+				Title: "这是题集3",
+				Questions: []web.Question{
+					{
+						Id:     33,
+						Title:  "这是题目33",
+						Result: 33 % 4,
+					},
+					{
+						Id:     36,
+						Title:  "这是题目36",
+						Result: 36 % 4,
+					},
+				},
+			},
+		},
+	}, resp)
 }
 
 func (s *HandlerTestSuite) formatSkill(sk event.Skill) event.Skill {
