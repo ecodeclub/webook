@@ -37,6 +37,8 @@ func NewExamineHandler(svc service.ExamineService) *ExamineHandler {
 func (h *ExamineHandler) MemberRoutes(server *gin.Engine) {
 	g := server.Group("/question/examine")
 	g.POST("", ginx.BS(h.Examine))
+	// 觉得 AI 的评价不准确，那么可以调用这个接口来修正，这是直接暴露给用户使用的
+	g.POST("/correct", ginx.BS[CorrectReq](h.Correct))
 }
 
 func (h *ExamineHandler) Examine(ctx *ginx.Context, req ExamineReq, sess session.Session) (ginx.Result, error) {
@@ -55,4 +57,9 @@ func (h *ExamineHandler) Examine(ctx *ginx.Context, req ExamineReq, sess session
 	default:
 		return systemErrorResult, err
 	}
+}
+
+func (h *ExamineHandler) Correct(ctx *ginx.Context, req CorrectReq, sess session.Session) (ginx.Result, error) {
+	// 实现这个接口
+	panic("implement me")
 }
