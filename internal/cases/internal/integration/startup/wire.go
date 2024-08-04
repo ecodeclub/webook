@@ -20,6 +20,7 @@ import (
 	"github.com/ecodeclub/webook/internal/cases"
 	"github.com/ecodeclub/webook/internal/cases/internal/event"
 	"github.com/ecodeclub/webook/internal/cases/internal/repository"
+	"github.com/ecodeclub/webook/internal/cases/internal/repository/dao"
 	"github.com/ecodeclub/webook/internal/cases/internal/service"
 	"github.com/ecodeclub/webook/internal/cases/internal/web"
 	"github.com/ecodeclub/webook/internal/interactive"
@@ -32,10 +33,14 @@ func InitModule(
 	intrModule *interactive.Module) (*cases.Module, error) {
 	wire.Build(cases.InitCaseDAO,
 		testioc.BaseSet,
+		dao.NewCaseSetDAO,
 		repository.NewCaseRepo,
+		repository.NewCaseSetRepo,
 		event.NewInteractiveEventProducer,
 		service.NewService,
+		service.NewCaseSetService,
 		web.NewHandler,
+		web.NewAdminCaseSetHandler,
 		wire.FieldsOf(new(*interactive.Module), "Svc"),
 		wire.Struct(new(cases.Module), "*"),
 	)

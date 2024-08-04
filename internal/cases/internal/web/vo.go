@@ -1,6 +1,7 @@
 package web
 
 import (
+	"github.com/ecodeclub/ekit/slice"
 	"github.com/ecodeclub/webook/internal/cases/internal/domain"
 	"github.com/ecodeclub/webook/internal/interactive"
 )
@@ -76,5 +77,45 @@ func newInteractive(intr interactive.Interactive) Interactive {
 		LikeCnt:    intr.LikeCnt,
 		Liked:      intr.Liked,
 		Collected:  intr.Collected,
+	}
+}
+
+
+type CaseSet struct {
+	Id          int64       `json:"id,omitempty"`
+	Title       string      `json:"title,omitempty"`
+	Description string      `json:"description,omitempty"`
+	Cases       []Case      `json:"cases,omitempty"`
+	Biz         string      `json:"biz"`
+	BizId       int64       `json:"bizId"`
+	Utime       int64       `json:"utime,omitempty"`
+}
+
+type UpdateCases struct {
+	CSID int64   `json:"csid"`
+	CIDs []int64 `json:"cids,omitempty"`
+}
+
+type CaseSetList struct {
+	Total int64  `json:"total,omitempty"`
+	CaseSets []CaseSet `json:"caseSets,omitempty"`
+}
+
+type CaseSetID struct {
+	ID int64 `json:"id"`
+}
+
+func newCaseSet(src domain.CaseSet) CaseSet {
+	return CaseSet{
+		Id: src.ID,
+		Title: src.Title,
+
+		Description: src.Description,
+		Cases: slice.Map(src.Cases , func(idx int, src domain.Case) Case {
+			return newCase(src)
+		}),
+		Biz: src.Biz,
+		BizId: src.BizId,
+		Utime: src.Utime,
 	}
 }

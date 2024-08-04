@@ -17,4 +17,5 @@ package cases
 type Module struct {
 	Svc Service
 	Hdl *Handler
+	AdminSetHandler *AdminCaseSetHandler
 }

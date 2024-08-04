@@ -25,11 +25,15 @@ func InitModule(db *egorm.Component,
 	intrModule *interactive.Module,
 	q mq.MQ) (*Module, error) {
 	wire.Build(InitCaseDAO,
+		dao.NewCaseSetDAO,
 		repository.NewCaseRepo,
+		repository.NewCaseSetRepo,
 		event.NewSyncEventProducer,
 		event.NewInteractiveEventProducer,
+		service.NewCaseSetService,
 		service.NewService,
 		web.NewHandler,
+		web.NewAdminCaseSetHandler,
 		wire.FieldsOf(new(*interactive.Module), "Svc"),
 		wire.Struct(new(Module), "*"),
 	)
@@ -55,3 +59,4 @@ func InitCaseDAO(db *egorm.Component) dao.CaseDAO {
 type Handler = web.Handler
 type Service = service.Service
 type Case = domain.Case
+type AdminCaseSetHandler = web.AdminCaseSetHandler
