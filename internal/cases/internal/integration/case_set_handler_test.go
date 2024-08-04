@@ -76,6 +76,8 @@ func (s *CaseSetTestSuite) TearDownTest() {
 	require.NoError(s.T(), err)
 	err = s.db.Exec("TRUNCATE TABLE `case_set_cases`").Error
 	require.NoError(s.T(), err)
+	err = s.db.Exec("TRUNCATE TABLE `cases`").Error
+	require.NoError(s.T(), err)
 }
 
 func (s *CaseSetTestSuite) TestSave() {
@@ -612,6 +614,78 @@ func (s *CaseSetTestSuite) Test_Detail() {
 			require.True(t, res.Utime != 0)
 			res.Utime = 0
 			assert.Equal(t, tc.wantResp, res)
+		})
+	}
+}
+
+func (s *CaseSetTestSuite) TestQuestionSet_Candidates() {
+	testCases := []struct {
+		name string
+
+		before func(t *testing.T)
+		req    web.CandidateReq
+
+		wantCode int
+		wantResp test.Result[web.CasesList]
+	}{
+		{
+			name: "获取成功",
+			before: func(t *testing.T) {
+				// 准备数据
+				// 创建一个空案例集
+				id, err := s.dao.Create(context.Background(), dao.CaseSet{
+					Id:          1,
+					Uid:         uid,
+					Title:       "Go",
+					Description: "Go题集",
+					Biz:         "roadmap",
+					BizId:       2,
+					Utime:       123,
+				})
+				require.NoError(t, err)
+				// 添加案例
+				cases := []dao.Case{
+					getTestCase(1),
+					getTestCase(2),
+					getTestCase(3),
+					getTestCase(4),
+					getTestCase(5),
+					getTestCase(6),
+				}
+				err = s.db.WithContext(context.Background()).Create(&cases).Error
+				require.NoError(t, err)
+				cids := []int64{1, 2, 3}
+				require.NoError(t, s.dao.UpdateCasesByID(context.Background(), id, cids))
+			},
+			req: web.CandidateReq{
+				CSID:   1,
+				Offset: 1,
+				Limit:  2,
+			},
+			wantCode: 200,
+			wantResp: test.Result[web.CasesList]{
+				Data: web.CasesList{
+					Total: 3,
+					Cases: []web.Case{
+						getCase(5),
+						getCase(4),
+					},
+				},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		s.T().Run(tc.name, func(t *testing.T) {
+			tc.before(t)
+			req, err := http.NewRequest(http.MethodPost,
+				"/case-sets/candidate", iox.NewJSONReader(tc.req))
+			req.Header.Set("content-type", "application/json")
+			require.NoError(t, err)
+			recorder := test.NewJSONResponseRecorder[web.CasesList]()
+			s.server.ServeHTTP(recorder, req)
+			require.Equal(t, tc.wantCode, recorder.Code)
+			assert.Equal(t, tc.wantResp, recorder.MustScan())
 		})
 	}
 }

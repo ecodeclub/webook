@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"golang.org/x/sync/errgroup"
 	"time"
 
 	"github.com/ecodeclub/ekit/slice"
@@ -23,10 +24,37 @@ type CaseRepo interface {
 	Total(ctx context.Context) (int64, error)
 	Save(ctx context.Context, ca domain.Case) (int64, error)
 	GetById(ctx context.Context, caseId int64) (domain.Case, error)
+
+
+	// ExcludeQuestions 分页接口，不含这些 id 的问题
+	ExcludeCases(ctx context.Context, ids []int64, offset int, limit int) ([]domain.Case, int64, error)
 }
 
 type caseRepo struct {
 	caseDao dao.CaseDAO
+}
+
+func (c *caseRepo) ExcludeCases(ctx context.Context, ids []int64, offset int, limit int) ([]domain.Case, int64, error) {
+	var (
+		eg   errgroup.Group
+		cnt  int64
+		data []dao.Case
+	)
+	eg.Go(func() error {
+		var err error
+		cnt, err = c.caseDao.NotInTotal(ctx, ids)
+		return err
+	})
+
+	eg.Go(func() error {
+		var err error
+		data, err = c.caseDao.NotIn(ctx, ids, offset, limit)
+		return err
+	})
+	err := eg.Wait()
+	return slice.Map(data, func(idx int, src dao.Case) domain.Case{
+		return c.toDomain(src)
+	}), cnt, err
 }
 
 func (c *caseRepo) PubList(ctx context.Context, offset int, limit int) ([]domain.Case, error) {

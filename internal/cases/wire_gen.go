@@ -38,7 +38,7 @@ func InitModule(db *gorm.DB, intrModule *interactive.Module, q mq.MQ) (*Module, 
 	handler := web.NewHandler(serviceService, service2)
 	caseSetDAO := dao.NewCaseSetDAO(db)
 	caseSetRepository := repository.NewCaseSetRepo(caseSetDAO)
-	caseSetService := service.NewCaseSetService(caseSetRepository)
+	caseSetService := service.NewCaseSetService(caseSetRepository, caseRepo)
 	adminCaseSetHandler := web.NewAdminCaseSetHandler(caseSetService)
 	module := &Module{
 		Svc:             serviceService,

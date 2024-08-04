@@ -26,6 +26,18 @@ func (a *AdminCaseSetHandler) PrivateRoutes(server *gin.Engine) {
 	g.POST("/cases/save", ginx.B[UpdateCases](a.UpdateCases))
 	g.POST("/list", ginx.B[Page](a.ListCaseSets))
 	g.POST("/detail", ginx.B[CaseSetID](a.RetrieveCaseSetDetail))
+	g.POST("/candidate", ginx.B[CandidateReq](a.Candidate))
+}
+
+func (a *AdminCaseSetHandler) Candidate(ctx *ginx.Context, req CandidateReq) (ginx.Result, error) {
+	data, cnt, err := a.svc.GetCandidates(ctx, req.CSID, req.Offset, req.Limit)
+	if err != nil {
+		return systemErrorResult, err
+	}
+	castList := toCaseList(data, cnt)
+	return ginx.Result{
+		Data: castList,
+	}, nil
 }
 
 func (a *AdminCaseSetHandler) SaveCaseSet(ctx *ginx.Context,
@@ -89,4 +101,26 @@ func (a *AdminCaseSetHandler) RetrieveCaseSetDetail(ctx *ginx.Context, req CaseS
 		Data: newCaseSet(detail),
 	}, nil
 
+}
+
+func toCaseList(data []domain.Case, cnt int64) CasesList {
+	return CasesList{
+		Total: cnt,
+		Cases: slice.Map(data, func(idx int, src domain.Case) Case {
+			return Case{
+				Id:           src.Id,
+				Title:        src.Title,
+				Content:      src.Content,
+				Labels:       src.Labels,
+				CodeRepo:     src.CodeRepo,
+				Keywords:     src.Keywords,
+				Shorthand:    src.Shorthand,
+				Introduction: src.Introduction,
+				Highlight:    src.Highlight,
+				Guidance:     src.Guidance,
+				Status:       src.Status.ToUint8(),
+				Utime:        src.Utime.UnixMilli(),
+			}
+		}),
+	}
 }

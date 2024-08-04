@@ -105,6 +105,12 @@ type CaseSetID struct {
 	ID int64 `json:"id"`
 }
 
+type CandidateReq struct {
+	CSID   int64 `json:"csid"`
+	Offset int   `json:"offset,omitempty"`
+	Limit  int   `json:"limit,omitempty"`
+}
+
 func newCaseSet(src domain.CaseSet) CaseSet {
 	return CaseSet{
 		Id: src.ID,
@@ -119,3 +125,4 @@ func newCaseSet(src domain.CaseSet) CaseSet {
 		Utime: src.Utime,
 	}
 }
+

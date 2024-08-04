@@ -33,7 +33,7 @@ func InitModule(syncProducer event.SyncEventProducer, intrModule *interactive.Mo
 	handler := web.NewHandler(serviceService, service2)
 	caseSetDAO := dao.NewCaseSetDAO(db)
 	caseSetRepository := repository.NewCaseSetRepo(caseSetDAO)
-	caseSetService := service.NewCaseSetService(caseSetRepository)
+	caseSetService := service.NewCaseSetService(caseSetRepository, caseRepo)
 	adminCaseSetHandler := web.NewAdminCaseSetHandler(caseSetService)
 	module := &cases.Module{
 		Svc:             serviceService,
