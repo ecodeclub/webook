@@ -27,6 +27,7 @@ func (a *AdminCaseSetHandler) PrivateRoutes(server *gin.Engine) {
 	g.POST("/list", ginx.B[Page](a.ListCaseSets))
 	g.POST("/detail", ginx.B[CaseSetID](a.RetrieveCaseSetDetail))
 	g.POST("/candidate", ginx.B[CandidateReq](a.Candidate))
+
 }
 
 func (a *AdminCaseSetHandler) Candidate(ctx *ginx.Context, req CandidateReq) (ginx.Result, error) {
@@ -66,7 +67,7 @@ func (a *AdminCaseSetHandler) UpdateCases(ctx *ginx.Context, req UpdateCases) (g
 			Id: src,
 		}
 	})
-	err := a.svc.UpdateCases(ctx, domain.CaseSet{
+	err := a.svc.UpdateCases(ctx.Request.Context(), domain.CaseSet{
 		ID:    req.CSID,
 		Cases: cs,
 	})
@@ -118,6 +119,8 @@ func toCaseList(data []domain.Case, cnt int64) CasesList {
 				Introduction: src.Introduction,
 				Highlight:    src.Highlight,
 				Guidance:     src.Guidance,
+				Biz:          src.Biz,
+				BizId:        src.BizId,
 				Status:       src.Status.ToUint8(),
 				Utime:        src.Utime.UnixMilli(),
 			}

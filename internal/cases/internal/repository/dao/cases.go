@@ -144,6 +144,6 @@ func NewCaseDao(db *egorm.Component) CaseDAO {
 		updateColumns: []string{
 			"introduction", "labels", "title", "content",
 			"code_repo", "keywords", "shorthand", "highlight",
-			"guidance", "status", "utime"},
+			"guidance", "status", "utime","biz","biz_id"},
 	}
 }

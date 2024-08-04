@@ -8,6 +8,7 @@ package cases
 
 import (
 	"github.com/ecodeclub/mq-api"
+	"github.com/ecodeclub/webook/internal/ai"
 	"github.com/ecodeclub/webook/internal/cases/internal/domain"
 	"github.com/ecodeclub/webook/internal/cases/internal/event"
 	"github.com/ecodeclub/webook/internal/cases/internal/repository"
@@ -22,7 +23,7 @@ import (
 
 // Injectors from wire.go:
 
-func InitModule(db *gorm.DB, intrModule *interactive.Module, q mq.MQ) (*Module, error) {
+func InitModule(db *gorm.DB, intrModule *interactive.Module, aiModule *ai.Module, q mq.MQ) (*Module, error) {
 	caseDAO := InitCaseDAO(db)
 	caseRepo := repository.NewCaseRepo(caseDAO)
 	interactiveEventProducer, err := event.NewInteractiveEventProducer(q)
@@ -40,10 +41,18 @@ func InitModule(db *gorm.DB, intrModule *interactive.Module, q mq.MQ) (*Module, 
 	caseSetRepository := repository.NewCaseSetRepo(caseSetDAO)
 	caseSetService := service.NewCaseSetService(caseSetRepository, caseRepo)
 	adminCaseSetHandler := web.NewAdminCaseSetHandler(caseSetService)
+	examineDAO := dao.NewGORMExamineDAO(db)
+	examineRepository := repository.NewCachedExamineRepository(examineDAO)
+	llmService := aiModule.Svc
+	examineService := service.NewLLMExamineService(caseRepo, examineRepository, llmService)
+	examineHandler := web.NewExamineHandler(examineService)
+	caseSetHandler := web.NewCaseSetHandler(caseSetService, examineService, service2)
 	module := &Module{
 		Svc:             serviceService,
 		Hdl:             handler,
 		AdminSetHandler: adminCaseSetHandler,
+		ExamineHdl:      examineHandler,
+		CsHdl:           caseSetHandler,
 	}
 	return module, nil
 }
@@ -73,3 +82,7 @@ type Service = service.Service
 type Case = domain.Case
 
 type AdminCaseSetHandler = web.AdminCaseSetHandler
+
+type ExamineHandler = web.ExamineHandler
+
+type CaseSetHandler = web.CaseSetHandler

@@ -3,6 +3,7 @@
 package cases
 
 import (
+	"github.com/ecodeclub/webook/internal/ai"
 	"sync"
 
 	"github.com/ecodeclub/webook/internal/interactive"
@@ -23,18 +24,25 @@ import (
 
 func InitModule(db *egorm.Component,
 	intrModule *interactive.Module,
+	aiModule *ai.Module,
 	q mq.MQ) (*Module, error) {
 	wire.Build(InitCaseDAO,
 		dao.NewCaseSetDAO,
+		dao.NewGORMExamineDAO,
 		repository.NewCaseRepo,
 		repository.NewCaseSetRepo,
+		repository.NewCachedExamineRepository,
 		event.NewSyncEventProducer,
 		event.NewInteractiveEventProducer,
 		service.NewCaseSetService,
 		service.NewService,
+		service.NewLLMExamineService,
 		web.NewHandler,
 		web.NewAdminCaseSetHandler,
+		web.NewExamineHandler,
+		web.NewCaseSetHandler,
 		wire.FieldsOf(new(*interactive.Module), "Svc"),
+		wire.FieldsOf(new(*ai.Module), "Svc"),
 		wire.Struct(new(Module), "*"),
 	)
 	return new(Module), nil
@@ -60,3 +68,5 @@ type Handler = web.Handler
 type Service = service.Service
 type Case = domain.Case
 type AdminCaseSetHandler = web.AdminCaseSetHandler
+type ExamineHandler = web.ExamineHandler
+type CaseSetHandler = web.CaseSetHandler

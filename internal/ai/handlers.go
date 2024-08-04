@@ -59,6 +59,16 @@ func InitQuestionExamineHandler(
 	res := biz.NewCombinedBizHandler("question_examine", common, platform)
 	return res
 }
+func InitCaseExamineHandler(
+	common []handler.Builder,
+// platform 就是真正的出口
+	platform handler.Handler) *biz.CompositionHandler {
+	builder := biz.NewCaseExamineBizHandlerBuilder()
+	common = append(common, builder)
+	res := biz.NewCombinedBizHandler("case_examine", common, platform)
+	return res
+}
+
 
 func InitCommonHandlers(log *log.HandlerBuilder,
 	cfg *config.HandlerBuilder,

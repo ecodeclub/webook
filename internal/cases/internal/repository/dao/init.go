@@ -8,5 +8,9 @@ func InitTables(db *egorm.Component) error {
 		&PublishCase{},
 		&CaseSet{},
 		&CaseSetCase{},
+		&CaseResult{},
+		&CaseExamineRecord{},
+		&CaseExamineRecord{},
+		&CaseResult{},
 	)
 }

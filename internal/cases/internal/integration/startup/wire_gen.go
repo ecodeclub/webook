@@ -7,6 +7,7 @@
 package startup
 
 import (
+	"github.com/ecodeclub/webook/internal/ai"
 	"github.com/ecodeclub/webook/internal/cases"
 	"github.com/ecodeclub/webook/internal/cases/internal/event"
 	"github.com/ecodeclub/webook/internal/cases/internal/repository"
@@ -39,6 +40,38 @@ func InitModule(syncProducer event.SyncEventProducer, intrModule *interactive.Mo
 		Svc:             serviceService,
 		Hdl:             handler,
 		AdminSetHandler: adminCaseSetHandler,
+	}
+	return module, nil
+}
+
+func InitExamModule(syncProducer event.SyncEventProducer, intrModule *interactive.Module, aiModule *ai.Module) (*cases.Module, error) {
+	db := testioc.InitDB()
+	caseDAO := cases.InitCaseDAO(db)
+	caseRepo := repository.NewCaseRepo(caseDAO)
+	mq := testioc.InitMQ()
+	interactiveEventProducer, err := event.NewInteractiveEventProducer(mq)
+	if err != nil {
+		return nil, err
+	}
+	serviceService := service.NewService(caseRepo, interactiveEventProducer, syncProducer)
+	service2 := intrModule.Svc
+	handler := web.NewHandler(serviceService, service2)
+	caseSetDAO := dao.NewCaseSetDAO(db)
+	caseSetRepository := repository.NewCaseSetRepo(caseSetDAO)
+	caseSetService := service.NewCaseSetService(caseSetRepository, caseRepo)
+	adminCaseSetHandler := web.NewAdminCaseSetHandler(caseSetService)
+	examineDAO := dao.NewGORMExamineDAO(db)
+	examineRepository := repository.NewCachedExamineRepository(examineDAO)
+	llmService := aiModule.Svc
+	examineService := service.NewLLMExamineService(caseRepo, examineRepository, llmService)
+	examineHandler := web.NewExamineHandler(examineService)
+	caseSetHandler := web.NewCaseSetHandler(caseSetService, examineService, service2)
+	module := &cases.Module{
+		Svc:             serviceService,
+		Hdl:             handler,
+		AdminSetHandler: adminCaseSetHandler,
+		ExamineHdl:      examineHandler,
+		CsHdl:           caseSetHandler,
 	}
 	return module, nil
 }

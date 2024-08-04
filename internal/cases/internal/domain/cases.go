@@ -24,6 +24,8 @@ type Case struct {
 	// 引导点
 	Guidance string
 	Status   CaseStatus
+	Biz      string
+	BizId    int64
 	Ctime    time.Time
 	Utime    time.Time
 }

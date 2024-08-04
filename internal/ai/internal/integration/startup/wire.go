@@ -51,7 +51,9 @@ func InitModule(db *egorm.Component,
 
 func InitHandlerFacade(common []handler.Builder, llm handler.Handler) *biz.FacadeHandler {
 	que := ai.InitQuestionExamineHandler(common, llm)
+	ca := ai.InitCaseExamineHandler(common,llm)
 	return biz.NewHandler(map[string]handler.Handler{
+		ca.Biz(): ca,
 		que.Biz(): que,
 	})
 }

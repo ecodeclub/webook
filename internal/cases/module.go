@@ -18,4 +18,6 @@ type Module struct {
 	Svc Service
 	Hdl *Handler
 	AdminSetHandler *AdminCaseSetHandler
+	ExamineHdl  *ExamineHandler
+	CsHdl       *CaseSetHandler
 }

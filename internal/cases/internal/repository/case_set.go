@@ -5,7 +5,6 @@ import (
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/ecodeclub/webook/internal/cases/internal/domain"
 	"github.com/ecodeclub/webook/internal/cases/internal/repository/dao"
-	"github.com/gotomicro/ego/core/elog"
 	"time"
 )
 
@@ -23,8 +22,7 @@ type CaseSetRepository interface {
 }
 
 type caseSetRepo struct {
-	dao    dao.CaseSetDAO
-	logger *elog.Component
+	dao dao.CaseSetDAO
 }
 
 func NewCaseSetRepo(caseSetDao dao.CaseSetDAO) CaseSetRepository {
@@ -161,6 +159,8 @@ func (c *caseSetRepo) toDomainCase(caseDao dao.Case) domain.Case {
 		Highlight:    caseDao.Highlight,
 		Guidance:     caseDao.Guidance,
 		Status:       domain.CaseStatus(caseDao.Status),
+		Biz:          caseDao.Biz,
+		BizId:        caseDao.BizId,
 		Utime:        time.UnixMilli(caseDao.Utime),
 		Ctime:        time.UnixMilli(caseDao.Ctime),
 	}

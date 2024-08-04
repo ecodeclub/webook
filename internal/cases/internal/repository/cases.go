@@ -25,7 +25,6 @@ type CaseRepo interface {
 	Save(ctx context.Context, ca domain.Case) (int64, error)
 	GetById(ctx context.Context, caseId int64) (domain.Case, error)
 
-
 	// ExcludeQuestions 分页接口，不含这些 id 的问题
 	ExcludeCases(ctx context.Context, ids []int64, offset int, limit int) ([]domain.Case, int64, error)
 }
@@ -52,7 +51,7 @@ func (c *caseRepo) ExcludeCases(ctx context.Context, ids []int64, offset int, li
 		return err
 	})
 	err := eg.Wait()
-	return slice.Map(data, func(idx int, src dao.Case) domain.Case{
+	return slice.Map(data, func(idx int, src dao.Case) domain.Case {
 		return c.toDomain(src)
 	}), cnt, err
 }
@@ -134,6 +133,8 @@ func (c *caseRepo) toEntity(caseDomain domain.Case) dao.Case {
 		Shorthand:    caseDomain.Shorthand,
 		Highlight:    caseDomain.Highlight,
 		Guidance:     caseDomain.Guidance,
+		Biz:          caseDomain.Biz,
+		BizId:        caseDomain.BizId,
 		Status:       caseDomain.Status.ToUint8(),
 	}
 }
@@ -151,6 +152,8 @@ func (c *caseRepo) toDomain(caseDao dao.Case) domain.Case {
 		Shorthand:    caseDao.Shorthand,
 		Highlight:    caseDao.Highlight,
 		Guidance:     caseDao.Guidance,
+		Biz:          caseDao.Biz,
+		BizId:        caseDao.BizId,
 		Utime:        time.UnixMilli(caseDao.Utime),
 		Ctime:        time.UnixMilli(caseDao.Ctime),
 		Status:       domain.CaseStatus(caseDao.Status),

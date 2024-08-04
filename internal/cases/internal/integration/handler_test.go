@@ -161,6 +161,8 @@ func (s *HandlerTestSuite) TestSave() {
 						Valid: true,
 						Val:   []string{"MySQL"},
 					},
+					BizId:     11,
+					Biz:       "question",
 					Status:    domain.UnPublishedStatus.ToUint8(),
 					CodeRepo:  "www.github.com",
 					Keywords:  "mysql_keywords",
@@ -179,6 +181,8 @@ func (s *HandlerTestSuite) TestSave() {
 					Keywords:     "mysql_keywords",
 					Shorthand:    "mysql_shorthand",
 					Highlight:    "mysql_highlight",
+					BizId:        11,
+					Biz:          "question",
 					Guidance:     "mysql_guidance",
 				},
 			},
@@ -202,7 +206,8 @@ func (s *HandlerTestSuite) TestSave() {
 						Valid: true,
 						Val:   []string{"old-MySQL"},
 					},
-
+					BizId:     12,
+					Biz:       "xxx",
 					CodeRepo:  "old-github.com",
 					Keywords:  "old_mysql_keywords",
 					Shorthand: "old_mysql_shorthand",
@@ -235,6 +240,8 @@ func (s *HandlerTestSuite) TestSave() {
 					Shorthand: "mysql_shorthand",
 					Highlight: "mysql_highlight",
 					Guidance:  "mysql_guidance",
+					BizId:     11,
+					Biz:       "question",
 				}, ca)
 			},
 			req: web.SaveReq{
@@ -249,6 +256,8 @@ func (s *HandlerTestSuite) TestSave() {
 					Shorthand:    "mysql_shorthand",
 					Highlight:    "mysql_highlight",
 					Guidance:     "mysql_guidance",
+					BizId:        11,
+					Biz:          "question",
 				},
 			},
 			wantCode: 200,
@@ -387,6 +396,8 @@ func (s *HandlerTestSuite) TestDetail() {
 		Shorthand: "redis_shorthand",
 		Highlight: "redis_highlight",
 		Guidance:  "redis_guidance",
+		Biz:       "case",
+		BizId:     11,
 		Ctime:     12,
 		Utime:     12,
 	}).Error
@@ -416,6 +427,8 @@ func (s *HandlerTestSuite) TestDetail() {
 					Shorthand: "redis_shorthand",
 					Highlight: "redis_highlight",
 					Guidance:  "redis_guidance",
+					Biz:       "case",
+					BizId:     11,
 					Utime:     12,
 				},
 			},
@@ -473,6 +486,8 @@ func (s *HandlerTestSuite) TestPublish() {
 					Shorthand: "mysql_shorthand",
 					Highlight: "mysql_highlight",
 					Guidance:  "mysql_guidance",
+					Biz:       "case",
+					BizId:     11,
 				}
 				s.assertCase(t, wantCase, ca)
 				publishCase, err := s.dao.GetPublishCase(ctx, 1)
@@ -490,6 +505,8 @@ func (s *HandlerTestSuite) TestPublish() {
 					Shorthand:    "mysql_shorthand",
 					Highlight:    "mysql_highlight",
 					Guidance:     "mysql_guidance",
+					Biz:          "case",
+					BizId:        11,
 				},
 			},
 			wantCode: 200,
@@ -521,6 +538,8 @@ func (s *HandlerTestSuite) TestPublish() {
 					Shorthand: "old_mysql_shorthand",
 					Highlight: "old_mysql_highlight",
 					Guidance:  "old_mysql_guidance",
+					Biz:       "case",
+					BizId:     11,
 					Ctime:     123,
 					Utime:     234,
 				}).Error
@@ -546,6 +565,8 @@ func (s *HandlerTestSuite) TestPublish() {
 					Shorthand: "mysql_shorthand",
 					Highlight: "mysql_highlight",
 					Guidance:  "mysql_guidance",
+					Biz:       "question",
+					BizId:     12,
 				}
 				s.assertCase(t, wantCase, ca)
 				publishCase, err := s.dao.GetPublishCase(ctx, 2)
@@ -565,6 +586,8 @@ func (s *HandlerTestSuite) TestPublish() {
 					Shorthand:    "mysql_shorthand",
 					Highlight:    "mysql_highlight",
 					Guidance:     "mysql_guidance",
+					Biz:          "question",
+					BizId:        12,
 				},
 			},
 			wantCode: 200,
@@ -596,6 +619,8 @@ func (s *HandlerTestSuite) TestPublish() {
 					Shorthand: "old_mysql_shorthand",
 					Highlight: "old_mysql_highlight",
 					Guidance:  "old_mysql_guidance",
+					Biz:       "question",
+					BizId:     12,
 					Ctime:     123,
 					Utime:     234,
 				}
@@ -625,6 +650,8 @@ func (s *HandlerTestSuite) TestPublish() {
 					Shorthand: "mysql_shorthand",
 					Highlight: "mysql_highlight",
 					Guidance:  "mysql_guidance",
+					Biz:       "ai",
+					BizId:     13,
 				}
 				s.assertCase(t, wantCase, ca)
 				publishCase, err := s.dao.GetPublishCase(ctx, 3)
@@ -644,6 +671,8 @@ func (s *HandlerTestSuite) TestPublish() {
 					Shorthand:    "mysql_shorthand",
 					Highlight:    "mysql_highlight",
 					Guidance:     "mysql_guidance",
+					Biz:          "ai",
+					BizId:        13,
 				},
 			},
 			wantCode: 200,
@@ -793,6 +822,8 @@ func (s *HandlerTestSuite) TestPubDetail() {
 		Shorthand: "redis_shorthand",
 		Highlight: "redis_highlight",
 		Guidance:  "redis_guidance",
+		Biz:       "ai",
+		BizId:     13,
 		Utime:     13,
 	}).Error
 	require.NoError(s.T(), err)
@@ -822,6 +853,8 @@ func (s *HandlerTestSuite) TestPubDetail() {
 					Shorthand:    "redis_shorthand",
 					Highlight:    "redis_highlight",
 					Guidance:     "redis_guidance",
+					Biz:          "ai",
+					BizId:        13,
 					Utime:        13,
 					Interactive: web.Interactive{
 						Liked:      true,

@@ -6,8 +6,9 @@ import (
 	"context"
 	"fmt"
 	"github.com/ecodeclub/ekit/iox"
-	"github.com/ecodeclub/ekit/sqlx"
 	"github.com/ecodeclub/ginx/session"
+	"github.com/ecodeclub/webook/internal/ai"
+	"github.com/ecodeclub/webook/internal/cases/internal/domain"
 	eveMocks "github.com/ecodeclub/webook/internal/cases/internal/event/mocks"
 	"github.com/ecodeclub/webook/internal/cases/internal/integration/startup"
 	"github.com/ecodeclub/webook/internal/cases/internal/repository/dao"
@@ -41,19 +42,44 @@ type CaseSetTestSuite struct {
 	producer *eveMocks.MockSyncEventProducer
 }
 
-func (s *CaseSetTestSuite) SetupSuite() {
-	s.ctrl = gomock.NewController(s.T())
-	s.producer = eveMocks.NewMockSyncEventProducer(s.ctrl)
-	intrSvc := intrmocks.NewMockService(s.ctrl)
+func (c *CaseSetTestSuite) SetupSuite() {
+	ctrl := gomock.NewController(c.T())
+	c.producer = eveMocks.NewMockSyncEventProducer(ctrl)
+
+	intrSvc := intrmocks.NewMockService(ctrl)
 	intrModule := &interactive.Module{
 		Svc: intrSvc,
 	}
-	module, err := startup.InitModule(s.producer, intrModule)
-	require.NoError(s.T(), err)
-	adminHandler := module.AdminSetHandler
+
+	// 模拟返回的数据
+	// 使用如下规律:
+	// 1. liked == id % 2 == 1 (奇数为 true)
+	// 2. collected = id %2 == 0 (偶数为 true)
+	// 3. viewCnt = id + 1
+	// 4. likeCnt = id + 2
+	// 5. collectCnt = id + 3
+	intrSvc.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+		AnyTimes().DoAndReturn(func(ctx context.Context,
+		biz string, id int64, uid int64) (interactive.Interactive, error) {
+		intr := c.mockInteractive(biz, id)
+		return intr, nil
+	})
+	intrSvc.EXPECT().GetByIds(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context,
+		biz string, ids []int64) (map[int64]interactive.Interactive, error) {
+		res := make(map[int64]interactive.Interactive, len(ids))
+		for _, id := range ids {
+			intr := c.mockInteractive(biz, id)
+			res[id] = intr
+		}
+		return res, nil
+	}).AnyTimes()
+
+	module, err := startup.InitExamModule(c.producer, intrModule, &ai.Module{})
+	require.NoError(c.T(), err)
 	econf.Set("server", map[string]any{"contextTimeout": "1s"})
 	server := egin.Load("server").Build()
 
+	module.CsHdl.PublicRoutes(server.Engine)
 	server.Use(func(ctx *gin.Context) {
 		ctx.Set("_session", session.NewMemorySession(session.Claims{
 			Uid: uid,
@@ -63,466 +89,533 @@ func (s *CaseSetTestSuite) SetupSuite() {
 			},
 		}))
 	})
-	adminHandler.PrivateRoutes(server.Engine)
-	s.server = server
+	module.CsHdl.PrivateRoutes(server.Engine)
 	server.Use(middleware.NewCheckMembershipMiddlewareBuilder(nil).Build())
-	s.db = testioc.InitDB()
-	s.dao = dao.NewCaseSetDAO(s.db)
-	s.caseDao = dao.NewCaseDao(s.db)
+
+	c.server = server
+	c.db = testioc.InitDB()
+	err = dao.InitTables(c.db)
+	require.NoError(c.T(), err)
+	c.dao = dao.NewCaseSetDAO(c.db)
+	c.caseDao = dao.NewCaseDao(c.db)
 }
 
-func (s *CaseSetTestSuite) TearDownTest() {
-	err := s.db.Exec("TRUNCATE TABLE `case_sets`").Error
-	require.NoError(s.T(), err)
-	err = s.db.Exec("TRUNCATE TABLE `case_set_cases`").Error
-	require.NoError(s.T(), err)
-	err = s.db.Exec("TRUNCATE TABLE `cases`").Error
-	require.NoError(s.T(), err)
+func (c *CaseSetTestSuite) TearDownTest() {
+	err := c.db.Exec("TRUNCATE TABLE `case_sets`").Error
+	require.NoError(c.T(), err)
+	err = c.db.Exec("TRUNCATE TABLE `case_set_cases`").Error
+	require.NoError(c.T(), err)
+	err = c.db.Exec("TRUNCATE TABLE `cases`").Error
+	require.NoError(c.T(), err)
+	err = c.db.Exec("TRUNCATE TABLE `case_examine_records`").Error
+	require.NoError(c.T(), err)
+	err = c.db.Exec("TRUNCATE TABLE `case_results`").Error
+	require.NoError(c.T(), err)
 }
 
-func (s *CaseSetTestSuite) TestSave() {
-	testcases := []struct {
-		name     string
-		before   func(t *testing.T)
-		after    func(t *testing.T, id int64)
-		req      web.CaseSet
+func (s *CaseSetTestSuite) TestCaseSetDetailByBiz() {
+	var now int64 = 123
+	testCases := []struct {
+		name   string
+		before func(t *testing.T)
+		after  func(t *testing.T)
+		req    web.BizReq
+
 		wantCode int
-		wantResp test.Result[int64]
+		wantResp test.Result[web.CaseSet]
 	}{
 		{
-			name: "保存",
+			name: "空案例集",
 			before: func(t *testing.T) {
+				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+				defer cancel()
 
-			},
-			after: func(t *testing.T, id int64) {
-				set, err := s.dao.GetByID(context.Background(), id)
-				require.NoError(s.T(), err)
-				assert.True(t, set.Ctime != 0)
-				assert.True(t, set.Utime != 0)
-				set.Ctime = 0
-				set.Utime = 0
-				assert.Equal(t, dao.CaseSet{
-					Id:          1,
+				// 创建一个空题集
+				id, err := s.dao.Create(ctx, dao.CaseSet{
+					Id:          321,
 					Uid:         uid,
-					Title:       "test title",
-					Description: "test description",
-					Biz:         "baguwen",
-					BizId:       22,
-				}, set)
-
+					Title:       "Go",
+					Biz:         "roadmap",
+					BizId:       2,
+					Description: "Go的desc",
+				})
+				require.NoError(t, err)
+				require.Equal(t, int64(321), id)
 			},
-			req: web.CaseSet{
-
-				Title:       "test title",
-				Description: "test description",
-				Biz:         "baguwen",
-				BizId:       22,
+			after: func(t *testing.T) {
+			},
+			req: web.BizReq{
+				Biz:   "roadmap",
+				BizId: 2,
 			},
 			wantCode: 200,
+			wantResp: test.Result[web.CaseSet]{
+				Data: web.CaseSet{
+					Id:          321,
+					Title:       "Go",
+					Description: "Go的desc",
+					Biz:         "roadmap",
+					BizId:       2,
+					Interactive: web.Interactive{
+						ViewCnt:    322,
+						LikeCnt:    323,
+						CollectCnt: 324,
+						Liked:      true,
+						Collected:  false,
+					},
+				},
+			},
 		},
 		{
-			name: "编辑",
+			name: "非空案例集",
 			before: func(t *testing.T) {
-				_, err := s.dao.Create(context.Background(), dao.CaseSet{
-					Id:          1,
+				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+				defer cancel()
+
+				id, err := s.dao.Create(ctx, dao.CaseSet{
+					Id:          322,
 					Uid:         uid,
-					Title:       "test title",
-					Description: "test description",
-					Biz:         "baguwen",
-					BizId:       23,
-					Ctime:       123,
-					Utime:       234,
+					Title:       "Go",
+					Description: "Go案例集",
+					Biz:         "roadmap",
+					BizId:       3,
 				})
-				require.NoError(s.T(), err)
+				require.NoError(t, err)
+				require.Equal(t, int64(322), id)
 
-			},
-			after: func(t *testing.T, id int64) {
-				set, err := s.dao.GetByID(context.Background(), id)
-				require.NoError(s.T(), err)
-				assert.True(t, set.Ctime != 0)
-				assert.True(t, set.Utime != 0)
-				set.Ctime = 0
-				set.Utime = 0
-				assert.Equal(t, dao.CaseSet{
-					Id:          1,
-					Uid:         uid,
-					Title:       "new title",
-					Description: "new description",
-					Biz:         "jijibo",
-					BizId:       66,
-				}, set)
+				// 添加案例
+				cases := []dao.Case{
+					{
+						Id:      614,
+						Uid:     uid + 1,
+						Biz:     "project",
+						BizId:   1,
+						Title:   "Go案例1",
+						Content: "Go案例1",
+						Ctime:   now,
+						Utime:   now,
+					},
+					{
+						Id:      615,
+						Uid:     uid + 2,
+						Biz:     "project",
+						BizId:   1,
+						Title:   "Go案例2",
+						Content: "Go案例2",
+						Ctime:   now,
+						Utime:   now,
+					},
+					{
+						Id:      616,
+						Uid:     uid + 3,
+						Biz:     "project",
+						BizId:   1,
+						Title:   "Go案例3",
+						Content: "Go案例3",
+						Ctime:   now,
+						Utime:   now,
+					},
+				}
+				err = s.db.WithContext(ctx).Create(&cases).Error
+				require.NoError(t, err)
+				cids := []int64{614, 615, 616}
+				require.NoError(t, s.dao.UpdateCasesByID(ctx, id, cids))
 
+				// 添加用户答题记录，只需要添加一个就可以
+				err = s.db.WithContext(ctx).Create(&dao.CaseResult{
+					Uid:    uid,
+					Cid:    614,
+					Result: domain.ResultAdvanced.ToUint8(),
+					Ctime:  now,
+					Utime:  now,
+				}).Error
+				require.NoError(t, err)
+
+				// 题集中题目为1
+				cs, err := s.dao.GetCasesByID(ctx, id)
+				require.NoError(t, err)
+				require.Equal(t, len(cids), len(cs))
 			},
-			req: web.CaseSet{
-				Id:          1,
-				Title:       "new title",
-				Description: "new description",
-				Biz:         "jijibo",
-				BizId:       66,
+			after: func(t *testing.T) {
+			},
+			req: web.BizReq{
+				Biz:   "roadmap",
+				BizId: 3,
 			},
 			wantCode: 200,
+			wantResp: test.Result[web.CaseSet]{
+				Data: web.CaseSet{
+					Id:          322,
+					Biz:         "roadmap",
+					BizId:       3,
+					Title:       "Go",
+					Description: "Go案例集",
+					Interactive: web.Interactive{
+						ViewCnt:    323,
+						LikeCnt:    324,
+						CollectCnt: 325,
+						Liked:      false,
+						Collected:  true,
+					},
+					Cases: []web.Case{
+						{
+							Id:            614,
+							Biz:           "project",
+							BizId:         1,
+							Title:         "Go案例1",
+							Content:       "Go案例1",
+							ExamineResult: domain.ResultAdvanced.ToUint8(),
+							Utime:         now,
+						},
+						{
+							Id:      615,
+							Biz:     "project",
+							BizId:   1,
+							Title:   "Go案例2",
+							Content: "Go案例2",
+							Utime:   now,
+						},
+						{
+							Id:      616,
+							Biz:     "project",
+							BizId:   1,
+							Title:   "Go案例3",
+							Content: "Go案例3",
+							Utime:   now,
+						},
+					},
+				},
+			},
 		},
 	}
-	for _, tc := range testcases {
+
+	for _, tc := range testCases {
+		tc := tc
 		s.T().Run(tc.name, func(t *testing.T) {
 			tc.before(t)
 			req, err := http.NewRequest(http.MethodPost,
-				"/case-sets/save", iox.NewJSONReader(tc.req))
+				"/case-sets/detail/biz", iox.NewJSONReader(tc.req))
 			req.Header.Set("content-type", "application/json")
 			require.NoError(t, err)
-			recorder := test.NewJSONResponseRecorder[int64]()
+			recorder := test.NewJSONResponseRecorder[web.CaseSet]()
 			s.server.ServeHTTP(recorder, req)
 			require.Equal(t, tc.wantCode, recorder.Code)
-			tc.after(t, recorder.MustScan().Data)
-			// 清理掉 123 的数据
-			err = s.db.Exec("TRUNCATE table `case_sets`").Error
-			require.NoError(t, err)
-
+			data := recorder.MustScan()
+			assert.True(t, data.Data.Utime != 0)
+			data.Data.Utime = 0
+			assert.Equal(t, tc.wantResp, data)
+			tc.after(t)
 		})
 	}
 }
 
-func (s *CaseSetTestSuite) Test_UpdateCases() {
-	testcases := []struct {
-		name     string
-		before   func(t *testing.T) int64
-		after    func(t *testing.T, id int64)
-		req      web.UpdateCases
+func (s *CaseSetTestSuite) TestCaseSet_Detail() {
+	var now int64 = 123
+	testCases := []struct {
+		name   string
+		before func(t *testing.T)
+		after  func(t *testing.T)
+		req    web.CaseSetID
+
 		wantCode int
-		wantResp test.Result[int64]
+		wantResp test.Result[web.CaseSet]
 	}{
 		{
-			name: "空案例集_添加多个案例",
-			before: func(t *testing.T) int64 {
-				id, err := s.dao.Create(context.Background(), dao.CaseSet{
+			name: "空案例集",
+			before: func(t *testing.T) {
+				t.Helper()
+
+				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+				defer cancel()
+
+				// 创建一个空案例集
+				id, err := s.dao.Create(ctx, dao.CaseSet{
+					Id:          321,
 					Uid:         uid,
-					Title:       "test title",
-					Description: "test description",
-					Biz:         "baguwen",
-					BizId:       23,
-					Ctime:       123,
-					Utime:       234,
+					Title:       "Go",
+					Biz:         "roadmap",
+					BizId:       2,
+					Description: "Go案例集",
+					Utime:       now,
 				})
 				require.NoError(t, err)
-				_, err = s.caseDao.Save(context.Background(), getTestCase(1))
-				require.NoError(t, err)
-				_, err = s.caseDao.Save(context.Background(), getTestCase(2))
-				require.NoError(t, err)
-				return id
+				require.Equal(t, int64(321), id)
 			},
-			req: web.UpdateCases{
-				CIDs: []int64{1, 2},
+			after: func(t *testing.T) {
 			},
-			after: func(t *testing.T, id int64) {
-				cases, err := s.dao.GetCasesByID(context.Background(), id)
-				require.NoError(t, err)
-				for idx, ca := range cases {
-					require.True(t, ca.Ctime != 0)
-					require.True(t, ca.Utime != 0)
-					ca.Ctime = 0
-					ca.Utime = 0
-					cases[idx] = ca
-				}
-				assert.Equal(t, []dao.Case{
-					getTestCase(1),
-					getTestCase(2),
-				}, cases)
+			req: web.CaseSetID{
+				ID: 321,
 			},
 			wantCode: 200,
-		},
-		{
-			name: "非空案例集_添加多个案例",
-			before: func(t *testing.T) int64 {
-				id, err := s.dao.Create(context.Background(), dao.CaseSet{
-					Uid:         uid,
-					Title:       "test title",
-					Description: "test description",
-					Biz:         "baguwen",
-					BizId:       23,
-					Ctime:       123,
-					Utime:       234,
-				})
-				require.NoError(t, err)
-				_, err = s.caseDao.Save(context.Background(), getTestCase(1))
-				require.NoError(t, err)
-				_, err = s.caseDao.Save(context.Background(), getTestCase(2))
-				require.NoError(t, err)
-				_, err = s.caseDao.Save(context.Background(), getTestCase(3))
-				require.NoError(t, err)
-				_, err = s.caseDao.Save(context.Background(), getTestCase(4))
-				require.NoError(t, err)
-				_, err = s.caseDao.Save(context.Background(), getTestCase(5))
-				require.NoError(t, err)
-				err = s.dao.UpdateCasesByID(context.Background(), id, []int64{1, 2})
-				require.NoError(t, err)
-				return id
-			},
-			req: web.UpdateCases{
-				CIDs: []int64{1, 2, 3, 4, 5},
-			},
-			wantCode: 200,
-			after: func(t *testing.T, id int64) {
-				cases, err := s.dao.GetCasesByID(context.Background(), id)
-				require.NoError(t, err)
-				for idx, ca := range cases {
-					require.True(t, ca.Ctime != 0)
-					require.True(t, ca.Utime != 0)
-					ca.Ctime = 0
-					ca.Utime = 0
-					cases[idx] = ca
-				}
-				assert.Equal(t, []dao.Case{
-					getTestCase(1),
-					getTestCase(2),
-					getTestCase(3),
-					getTestCase(4),
-					getTestCase(5),
-				}, cases)
+			wantResp: test.Result[web.CaseSet]{
+				Data: web.CaseSet{
+					Id:          321,
+					Title:       "Go",
+					Description: "Go案例集",
+					Biz:         "roadmap",
+					BizId:       2,
+					Interactive: web.Interactive{
+						ViewCnt:    322,
+						LikeCnt:    323,
+						CollectCnt: 324,
+						Liked:      true,
+						Collected:  false,
+					},
+				},
 			},
 		},
 		{
-			name: "删除部分案例",
-			before: func(t *testing.T) int64 {
-				id, err := s.dao.Create(context.Background(), dao.CaseSet{
+			name: "非空案例集",
+			before: func(t *testing.T) {
+				t.Helper()
+
+				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+				defer cancel()
+
+				// 创建一个空题集
+				id, err := s.dao.Create(ctx, dao.CaseSet{
+					Id:          322,
 					Uid:         uid,
-					Title:       "test title",
-					Description: "test description",
-					Biz:         "baguwen",
-					BizId:       23,
-					Ctime:       123,
-					Utime:       234,
+					Title:       "Go",
+					Description: "Go案例集",
+					Biz:         "roadmap",
+					BizId:       2,
 				})
 				require.NoError(t, err)
-				_, err = s.caseDao.Save(context.Background(), getTestCase(1))
+				require.Equal(t, int64(322), id)
+
+				// 添加问题
+				questions := []dao.Case{
+					{
+						Id:      614,
+						Uid:     uid + 1,
+						Biz:     "project",
+						BizId:   1,
+						Title:   "Go案例1",
+						Content: "Go案例1",
+						Ctime:   now,
+						Utime:   now,
+					},
+					{
+						Id:      615,
+						Uid:     uid + 2,
+						Biz:     "project",
+						BizId:   1,
+						Title:   "Go案例2",
+						Content: "Go案例2",
+						Ctime:   now,
+						Utime:   now,
+					},
+					{
+						Id:      616,
+						Uid:     uid + 3,
+						Biz:     "project",
+						BizId:   1,
+						Title:   "Go案例3",
+						Content: "Go案例3",
+						Ctime:   now,
+						Utime:   now,
+					},
+				}
+				err = s.db.WithContext(ctx).Create(&questions).Error
 				require.NoError(t, err)
-				_, err = s.caseDao.Save(context.Background(), getTestCase(2))
+				cids := []int64{614, 615, 616}
+				require.NoError(t, s.dao.UpdateCasesByID(ctx, id, cids))
+
+				// 添加用户答题记录，只需要添加一个就可以
+				err = s.db.WithContext(ctx).Create(&dao.CaseResult{
+					Uid:    uid,
+					Cid:    614,
+					Result: domain.ResultAdvanced.ToUint8(),
+					Ctime:  now,
+					Utime:  now,
+				}).Error
 				require.NoError(t, err)
-				_, err = s.caseDao.Save(context.Background(), getTestCase(3))
+
+				// 题集中题目为1
+				qs, err := s.dao.GetCasesByID(ctx, id)
 				require.NoError(t, err)
-				_, err = s.caseDao.Save(context.Background(), getTestCase(4))
-				require.NoError(t, err)
-				_, err = s.caseDao.Save(context.Background(), getTestCase(5))
-				require.NoError(t, err)
-				err = s.dao.UpdateCasesByID(context.Background(), id, []int64{1, 2, 3, 4, 5})
-				require.NoError(t, err)
-				return id
+				require.Equal(t, len(cids), len(qs))
 			},
-			req: web.UpdateCases{
-				CIDs: []int64{1, 2, 3},
+			after: func(t *testing.T) {
+			},
+			req: web.CaseSetID{
+				ID: 322,
 			},
 			wantCode: 200,
-			after: func(t *testing.T, id int64) {
-				cases, err := s.dao.GetCasesByID(context.Background(), id)
-				require.NoError(t, err)
-				for idx, ca := range cases {
-					require.True(t, ca.Ctime != 0)
-					require.True(t, ca.Utime != 0)
-					ca.Ctime = 0
-					ca.Utime = 0
-					cases[idx] = ca
-				}
-				assert.Equal(t, []dao.Case{
-					getTestCase(1),
-					getTestCase(2),
-					getTestCase(3),
-				}, cases)
+			wantResp: test.Result[web.CaseSet]{
+				Data: web.CaseSet{
+					Id:          322,
+					Biz:         "roadmap",
+					BizId:       2,
+					Title:       "Go",
+					Description: "Go案例集",
+					Interactive: web.Interactive{
+						ViewCnt:    323,
+						LikeCnt:    324,
+						CollectCnt: 325,
+						Liked:      false,
+						Collected:  true,
+					},
+					Cases: []web.Case{
+						{
+							Id:            614,
+							Biz:           "project",
+							BizId:         1,
+							Title:         "Go案例1",
+							Content:       "Go案例1",
+							ExamineResult: domain.ResultAdvanced.ToUint8(),
+							Utime:         now,
+						},
+						{
+							Id:      615,
+							Biz:     "project",
+							BizId:   1,
+							Title:   "Go案例2",
+							Content: "Go案例2",
+							Utime:   now,
+						},
+						{
+							Id:      616,
+							Biz:     "project",
+							BizId:   1,
+							Title:   "Go案例3",
+							Content: "Go案例3",
+							Utime:   now,
+						},
+					},
+				},
 			},
-		},
-		{
-			name: "删除全部案例",
-			before: func(t *testing.T) int64 {
-				id, err := s.dao.Create(context.Background(), dao.CaseSet{
-					Uid:         uid,
-					Title:       "test title",
-					Description: "test description",
-					Biz:         "baguwen",
-					BizId:       23,
-					Ctime:       123,
-					Utime:       234,
-				})
-				require.NoError(t, err)
-				_, err = s.caseDao.Save(context.Background(), getTestCase(1))
-				require.NoError(t, err)
-				_, err = s.caseDao.Save(context.Background(), getTestCase(2))
-				require.NoError(t, err)
-				_, err = s.caseDao.Save(context.Background(), getTestCase(3))
-				require.NoError(t, err)
-				_, err = s.caseDao.Save(context.Background(), getTestCase(4))
-				require.NoError(t, err)
-				_, err = s.caseDao.Save(context.Background(), getTestCase(5))
-				require.NoError(t, err)
-				err = s.dao.UpdateCasesByID(context.Background(), id, []int64{1, 2, 3, 4, 5})
-				require.NoError(t, err)
-				return id
-			},
-			req: web.UpdateCases{
-				CIDs: []int64{},
-			},
-			wantCode: 200,
-			after: func(t *testing.T, id int64) {
-				cases, err := s.dao.GetCasesByID(context.Background(), id)
-				require.NoError(t, err)
-				for idx, ca := range cases {
-					require.True(t, ca.Ctime != 0)
-					require.True(t, ca.Utime != 0)
-					ca.Ctime = 0
-					ca.Utime = 0
-					cases[idx] = ca
-				}
-				assert.Equal(t, 0, len(cases))
-			},
-		},
-		{
-			name: "同时添加/删除部分案例",
-			before: func(t *testing.T) int64 {
-				id, err := s.dao.Create(context.Background(), dao.CaseSet{
-					Uid:         uid,
-					Title:       "test title",
-					Description: "test description",
-					Biz:         "baguwen",
-					BizId:       23,
-					Ctime:       123,
-					Utime:       234,
-				})
-				require.NoError(t, err)
-				_, err = s.caseDao.Save(context.Background(), getTestCase(1))
-				require.NoError(t, err)
-				_, err = s.caseDao.Save(context.Background(), getTestCase(2))
-				require.NoError(t, err)
-				_, err = s.caseDao.Save(context.Background(), getTestCase(3))
-				require.NoError(t, err)
-				_, err = s.caseDao.Save(context.Background(), getTestCase(4))
-				require.NoError(t, err)
-				_, err = s.caseDao.Save(context.Background(), getTestCase(5))
-				require.NoError(t, err)
-				err = s.dao.UpdateCasesByID(context.Background(), id, []int64{1, 2, 3})
-				require.NoError(t, err)
-				return id
-			},
-			req: web.UpdateCases{
-				CIDs: []int64{1, 2, 4},
-			},
-			wantCode: 200,
-			after: func(t *testing.T, id int64) {
-				cases, err := s.dao.GetCasesByID(context.Background(), id)
-				require.NoError(t, err)
-				for idx, ca := range cases {
-					require.True(t, ca.Ctime != 0)
-					require.True(t, ca.Utime != 0)
-					ca.Ctime = 0
-					ca.Utime = 0
-					cases[idx] = ca
-				}
-				assert.Equal(t, []dao.Case{
-					getTestCase(1),
-					getTestCase(2),
-					getTestCase(4),
-				}, cases)
-			},
-		},
-		{
-			name: "案例集不存在",
-			before: func(t *testing.T) int64 {
-				return 3
-			},
-			after: func(t *testing.T, id int64) {
-			},
-			req: web.UpdateCases{
-				CIDs: []int64{1, 2, 3},
-			},
-			wantCode: 500,
-			wantResp: test.Result[int64]{Code: 502001, Msg: "系统错误"},
 		},
 	}
-	for _, tc := range testcases {
+
+	for _, tc := range testCases {
+		tc := tc
 		s.T().Run(tc.name, func(t *testing.T) {
-			id := tc.before(t)
-			tc.req.CSID = id
+			tc.before(t)
 			req, err := http.NewRequest(http.MethodPost,
-				"/case-sets/cases/save", iox.NewJSONReader(tc.req))
+				"/case-sets/detail", iox.NewJSONReader(tc.req))
 			req.Header.Set("content-type", "application/json")
 			require.NoError(t, err)
-			recorder := test.NewJSONResponseRecorder[int64]()
+			recorder := test.NewJSONResponseRecorder[web.CaseSet]()
 			s.server.ServeHTTP(recorder, req)
 			require.Equal(t, tc.wantCode, recorder.Code)
-			tc.after(t, id)
-			// 清理掉 123 的数据
-			err = s.db.Exec("TRUNCATE table `case_sets`").Error
-			err = s.db.Exec("TRUNCATE table `case_set_cases`").Error
-			require.NoError(t, err)
-
+			data := recorder.MustScan()
+			assert.True(t, data.Data.Utime != 0)
+			data.Data.Utime = 0
+			assert.Equal(t, tc.wantResp, data)
+			tc.after(t)
 		})
 	}
 }
 
-func (s *CaseSetTestSuite) Test_List() {
-	for i := 1; i < 20; i++ {
-		_, err := s.dao.Create(context.Background(), getTestCaseSet(int64(i)))
-		require.NoError(s.T(), err)
+func (s *CaseSetTestSuite) TestCaseSet_ListAllQuestionSets() {
+	// 插入一百条
+	total := 100
+	data := make([]dao.CaseSet, 0, total)
+
+	for idx := 0; idx < total; idx++ {
+		// 空题集
+		data = append(data, dao.CaseSet{
+			Uid:         int64(uid + idx),
+			Title:       fmt.Sprintf("案例集标题 %d", idx),
+			Description: fmt.Sprintf("案例集简介 %d", idx),
+			Utime:       123,
+		})
 	}
-	testcases := []struct {
-		name     string
-		after    func(t *testing.T, id int64)
-		req      web.Page
+	// 这个接口是不会查询到这些数据的
+	data = append(data, dao.CaseSet{
+		Uid:         200,
+		Title:       fmt.Sprintf("案例集标题 %d", 200),
+		Description: fmt.Sprintf("案例集简介 %d", 200),
+		Biz:         "project",
+		BizId:       200,
+		Utime:       123,
+	})
+	err := s.db.Create(&data).Error
+	require.NoError(s.T(), err)
+
+	testCases := []struct {
+		name string
+		req  web.Page
+
 		wantCode int
-		wantResp web.CaseSetList
+		wantResp test.Result[web.CaseSetList]
 	}{
 		{
-			name: "列表",
+			name: "获取成功",
 			req: web.Page{
-				Offset: 0,
 				Limit:  2,
+				Offset: 0,
 			},
 			wantCode: 200,
-			wantResp: web.CaseSetList{
-				Total: 19,
-				CaseSets: []web.CaseSet{
-					{
-						Id:          19,
-						Title:       "title19",
-						Description: "description19",
-						Biz:         "baguwen",
-						BizId:       49,
-					},
-					{
-						Id:          18,
-						Title:       "title18",
-						Description: "description18",
-						Biz:         "baguwen",
-						BizId:       48,
+			wantResp: test.Result[web.CaseSetList]{
+				Data: web.CaseSetList{
+					CaseSets: []web.CaseSet{
+						{
+							Id:          100,
+							Title:       "案例集标题 99",
+							Description: "案例集简介 99",
+							Biz:         "baguwen",
+							Utime:       123,
+							Interactive: web.Interactive{
+								ViewCnt:    101,
+								LikeCnt:    102,
+								CollectCnt: 103,
+								Liked:      false,
+								Collected:  true,
+							},
+						},
+						{
+							Id:          99,
+							Title:       "案例集标题 98",
+							Description: "案例集简介 98",
+							Biz:         "baguwen",
+							Utime:       123,
+							Interactive: web.Interactive{
+								ViewCnt:    100,
+								LikeCnt:    101,
+								CollectCnt: 102,
+								Liked:      true,
+								Collected:  false,
+							},
+						},
 					},
 				},
 			},
 		},
 		{
-			name: "列表--分页",
+			name: "获取部分",
 			req: web.Page{
-				Offset: 2,
 				Limit:  2,
+				Offset: 99,
 			},
 			wantCode: 200,
-			wantResp: web.CaseSetList{
-				Total: 19,
-				CaseSets: []web.CaseSet{
-					{
-						Id:          17,
-						Title:       "title17",
-						Description: "description17",
-						Biz:         "baguwen",
-						BizId:       47,
-					},
-					{
-						Id:          16,
-						Title:       "title16",
-						Description: "description16",
-						Biz:         "baguwen",
-						BizId:       46,
+			wantResp: test.Result[web.CaseSetList]{
+				Data: web.CaseSetList{
+					CaseSets: []web.CaseSet{
+						{
+							Id:          1,
+							Title:       "案例集标题 0",
+							Description: "案例集简介 0",
+							Biz:         "baguwen",
+							Utime:       123,
+							Interactive: web.Interactive{
+								ViewCnt:    2,
+								LikeCnt:    3,
+								CollectCnt: 4,
+								Liked:      true,
+								Collected:  false,
+							},
+						},
 					},
 				},
 			},
 		},
 	}
-	for _, tc := range testcases {
+
+	for _, tc := range testCases {
+		tc := tc
 		s.T().Run(tc.name, func(t *testing.T) {
 			req, err := http.NewRequest(http.MethodPost,
 				"/case-sets/list", iox.NewJSONReader(tc.req))
@@ -531,213 +624,67 @@ func (s *CaseSetTestSuite) Test_List() {
 			recorder := test.NewJSONResponseRecorder[web.CaseSetList]()
 			s.server.ServeHTTP(recorder, req)
 			require.Equal(t, tc.wantCode, recorder.Code)
-			res := recorder.MustScan().Data
-			for idx, ca := range res.CaseSets {
-				require.True(t, ca.Utime != 0)
-				ca.Utime = 0
-				res.CaseSets[idx] = ca
-			}
-			assert.Equal(t, tc.wantResp, res)
-		})
-	}
-}
-
-func (s *CaseSetTestSuite) Test_Detail() {
-	testcases := []struct {
-		name     string
-		before   func(t *testing.T) int64
-		wantCode int
-		wantResp web.CaseSet
-	}{
-		{
-			name: "题集详情",
-			before: func(t *testing.T) int64 {
-				id, err := s.dao.Create(context.Background(), dao.CaseSet{
-					Uid:         uid,
-					Title:       "test title",
-					Description: "test description",
-					Biz:         "baguwen",
-					BizId:       23,
-					Ctime:       123,
-					Utime:       234,
-				})
-				require.NoError(t, err)
-				_, err = s.caseDao.Save(context.Background(), getTestCase(1))
-				require.NoError(t, err)
-				_, err = s.caseDao.Save(context.Background(), getTestCase(2))
-				require.NoError(t, err)
-				_, err = s.caseDao.Save(context.Background(), getTestCase(3))
-				require.NoError(t, err)
-				_, err = s.caseDao.Save(context.Background(), getTestCase(4))
-				require.NoError(t, err)
-				_, err = s.caseDao.Save(context.Background(), getTestCase(5))
-				require.NoError(t, err)
-				err = s.dao.UpdateCasesByID(context.Background(), id, []int64{1, 2, 3, 4, 5})
-				require.NoError(t, err)
-				return id
-			},
-			wantCode: 200,
-			wantResp: web.CaseSet{
-				Title:       "test title",
-				Description: "test description",
-				Biz:         "baguwen",
-				Cases: []web.Case{
-					getCase(1),
-					getCase(2),
-					getCase(3),
-					getCase(4),
-					getCase(5),
-				},
-				BizId: 23,
-			},
-		},
-	}
-	for _, tc := range testcases {
-		s.T().Run(tc.name, func(t *testing.T) {
-			id := tc.before(t)
-			req, err := http.NewRequest(http.MethodPost,
-				"/case-sets/detail", iox.NewJSONReader(web.CaseSetID{
-					ID: id,
-				}))
-			req.Header.Set("content-type", "application/json")
-			require.NoError(t, err)
-			recorder := test.NewJSONResponseRecorder[web.CaseSet]()
-			s.server.ServeHTTP(recorder, req)
-			require.Equal(t, tc.wantCode, recorder.Code)
-			res := recorder.MustScan().Data
-			for idx, ca := range res.Cases {
-				require.True(t, ca.Utime != 0)
-				ca.Utime = 0
-				res.Cases[idx] = ca
-			}
-			tc.wantResp.Id = id
-			require.True(t, res.Utime != 0)
-			res.Utime = 0
-			assert.Equal(t, tc.wantResp, res)
-		})
-	}
-}
-
-func (s *CaseSetTestSuite) TestQuestionSet_Candidates() {
-	testCases := []struct {
-		name string
-
-		before func(t *testing.T)
-		req    web.CandidateReq
-
-		wantCode int
-		wantResp test.Result[web.CasesList]
-	}{
-		{
-			name: "获取成功",
-			before: func(t *testing.T) {
-				// 准备数据
-				// 创建一个空案例集
-				id, err := s.dao.Create(context.Background(), dao.CaseSet{
-					Id:          1,
-					Uid:         uid,
-					Title:       "Go",
-					Description: "Go题集",
-					Biz:         "roadmap",
-					BizId:       2,
-					Utime:       123,
-				})
-				require.NoError(t, err)
-				// 添加案例
-				cases := []dao.Case{
-					getTestCase(1),
-					getTestCase(2),
-					getTestCase(3),
-					getTestCase(4),
-					getTestCase(5),
-					getTestCase(6),
-				}
-				err = s.db.WithContext(context.Background()).Create(&cases).Error
-				require.NoError(t, err)
-				cids := []int64{1, 2, 3}
-				require.NoError(t, s.dao.UpdateCasesByID(context.Background(), id, cids))
-			},
-			req: web.CandidateReq{
-				CSID:   1,
-				Offset: 1,
-				Limit:  2,
-			},
-			wantCode: 200,
-			wantResp: test.Result[web.CasesList]{
-				Data: web.CasesList{
-					Total: 3,
-					Cases: []web.Case{
-						getCase(5),
-						getCase(4),
-					},
-				},
-			},
-		},
-	}
-
-	for _, tc := range testCases {
-		s.T().Run(tc.name, func(t *testing.T) {
-			tc.before(t)
-			req, err := http.NewRequest(http.MethodPost,
-				"/case-sets/candidate", iox.NewJSONReader(tc.req))
-			req.Header.Set("content-type", "application/json")
-			require.NoError(t, err)
-			recorder := test.NewJSONResponseRecorder[web.CasesList]()
-			s.server.ServeHTTP(recorder, req)
-			require.Equal(t, tc.wantCode, recorder.Code)
 			assert.Equal(t, tc.wantResp, recorder.MustScan())
 		})
 	}
 }
 
-func TestCaseSetAdminHandler(t *testing.T) {
-	suite.Run(t, new(CaseSetTestSuite))
-}
+func (s *CaseSetTestSuite) TestQuestionSet_RetrieveQuestionSetDetail_Failed() {
+	testCases := []struct {
+		name   string
+		before func(t *testing.T)
+		after  func(t *testing.T)
+		req    web.CaseSetID
 
-func getTestCase(id int64) dao.Case {
-	return dao.Case{
-		Id:           id,
-		Uid:          uid,
-		Introduction: fmt.Sprintf("intr%d", id),
-		Title:        fmt.Sprintf("title%d", id),
-		Content:      fmt.Sprintf("content%d", id),
-		Labels: sqlx.JsonColumn[[]string]{
-			Valid: true,
-			Val:   []string{"case", "mysql"},
+		wantCode int
+		wantResp test.Result[int64]
+	}{
+		{
+			name: "题集ID非法_题集ID不存在",
+			before: func(t *testing.T) {
+				t.Helper()
+			},
+			after: func(t *testing.T) {
+				t.Helper()
+			},
+			req: web.CaseSetID{
+				ID: 10000,
+			},
+			wantCode: 500,
+			wantResp: test.Result[int64]{Code: 505001, Msg: "系统错误"},
 		},
-		CodeRepo:  fmt.Sprintf("coderepo%d", id),
-		Keywords:  fmt.Sprintf("keywords%d", id),
-		Shorthand: fmt.Sprintf("shorthand%d", id),
-		Highlight: fmt.Sprintf("highlight%d", id),
-		Guidance:  fmt.Sprintf("guidance%d", id),
-		Status:    2,
+	}
+	for _, tc := range testCases {
+		tc := tc
+		s.T().Run(tc.name, func(t *testing.T) {
+			tc.before(t)
+			req, err := http.NewRequest(http.MethodPost,
+				"/case-sets/detail", iox.NewJSONReader(tc.req))
+			req.Header.Set("content-type", "application/json")
+			require.NoError(t, err)
+			recorder := test.NewJSONResponseRecorder[int64]()
+			s.server.ServeHTTP(recorder, req)
+			require.Equal(t, tc.wantCode, recorder.Code)
+			assert.Equal(t, tc.wantResp, recorder.MustScan())
+			tc.after(t)
+		})
 	}
 }
 
-func getTestCaseSet(id int64) dao.CaseSet {
-	return dao.CaseSet{
-		Id:          id,
-		Uid:         uid,
-		Title:       fmt.Sprintf("title%d", id),
-		Description: fmt.Sprintf("description%d", id),
-		Biz:         "baguwen",
-		BizId:       id + 30,
+func (s *CaseSetTestSuite) mockInteractive(biz string, id int64) interactive.Interactive {
+	liked := id%2 == 1
+	collected := id%2 == 0
+	return interactive.Interactive{
+		Biz:        biz,
+		BizId:      id,
+		ViewCnt:    int(id + 1),
+		LikeCnt:    int(id + 2),
+		CollectCnt: int(id + 3),
+		Liked:      liked,
+		Collected:  collected,
 	}
 }
 
-func getCase(id int64) web.Case {
-	ca := web.Case{
-		Id:           id,
-		Introduction: fmt.Sprintf("intr%d", id),
-		Title:        fmt.Sprintf("title%d", id),
-		Content:      fmt.Sprintf("content%d", id),
-		Labels:       []string{"case", "mysql"},
-		CodeRepo:     fmt.Sprintf("coderepo%d", id),
-		Keywords:     fmt.Sprintf("keywords%d", id),
-		Shorthand:    fmt.Sprintf("shorthand%d", id),
-		Highlight:    fmt.Sprintf("highlight%d", id),
-		Guidance:     fmt.Sprintf("guidance%d", id),
-		Status:       2,
-	}
-	return ca
+func TestCaseSetHandler(t *testing.T) {
+	suite.Run(t, new(CaseSetTestSuite))
 }

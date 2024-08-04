@@ -192,6 +192,8 @@ func newCase(ca domain.Case) Case {
 		Shorthand:    ca.Shorthand,
 		Highlight:    ca.Highlight,
 		Guidance:     ca.Guidance,
+		Biz:          ca.Biz,
+		BizId:        ca.BizId,
 		Status:       ca.Status.ToUint8(),
 		Utime:        ca.Utime.UnixMilli(),
 	}
