@@ -9,8 +9,8 @@ type CaseSet struct {
 	Title string
 	// 描述
 	Description string
-	Biz string
-	BizId int64
+	Biz         string
+	BizId       int64
 	Cases       []Case
 	Utime       int64
 }

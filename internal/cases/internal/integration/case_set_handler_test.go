@@ -5,6 +5,11 @@ package integration
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"strconv"
+	"testing"
+	"time"
+
 	"github.com/ecodeclub/ekit/iox"
 	"github.com/ecodeclub/ginx/session"
 	"github.com/ecodeclub/webook/internal/ai"
@@ -26,10 +31,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"go.uber.org/mock/gomock"
-	"net/http"
-	"strconv"
-	"testing"
-	"time"
 )
 
 type CaseSetTestSuite struct {

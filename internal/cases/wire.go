@@ -3,8 +3,9 @@
 package cases
 
 import (
-	"github.com/ecodeclub/webook/internal/ai"
 	"sync"
+
+	"github.com/ecodeclub/webook/internal/ai"
 
 	"github.com/ecodeclub/webook/internal/interactive"
 

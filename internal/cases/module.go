@@ -15,9 +15,9 @@
 package cases
 
 type Module struct {
-	Svc Service
-	Hdl *Handler
+	Svc             Service
+	Hdl             *Handler
 	AdminSetHandler *AdminCaseSetHandler
-	ExamineHdl  *ExamineHandler
-	CsHdl       *CaseSetHandler
+	ExamineHdl      *ExamineHandler
+	CsHdl           *CaseSetHandler
 }

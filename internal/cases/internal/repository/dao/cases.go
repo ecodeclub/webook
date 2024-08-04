@@ -25,7 +25,6 @@ type CaseDAO interface {
 	GetPublishCase(ctx context.Context, caseId int64) (PublishCase, error)
 	GetPubByIDs(ctx context.Context, ids []int64) ([]PublishCase, error)
 
-
 	NotInTotal(ctx context.Context, ids []int64) (int64, error)
 	NotIn(ctx context.Context, ids []int64, offset int, limit int) ([]Case, error)
 }
@@ -144,6 +143,6 @@ func NewCaseDao(db *egorm.Component) CaseDAO {
 		updateColumns: []string{
 			"introduction", "labels", "title", "content",
 			"code_repo", "keywords", "shorthand", "highlight",
-			"guidance", "status", "utime","biz","biz_id"},
+			"guidance", "status", "utime", "biz", "biz_id"},
 	}
 }

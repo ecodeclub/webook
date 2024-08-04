@@ -1,6 +1,5 @@
 package domain
 
-
 type ExamineCaseResult struct {
 	Cid    int64
 	Result CaseResult
@@ -30,4 +29,3 @@ const (
 	// ResultAdvanced 回答出来了 35K 部分
 	ResultAdvanced
 )
-

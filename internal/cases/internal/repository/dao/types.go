@@ -22,9 +22,9 @@ type Case struct {
 	Highlight string
 	// 引导点
 	Guidance string
-	Status   uint8 `gorm:"type:tinyint(3);comment:0-未知 1-未发表 2-已发表"`
-	Biz   string `gorm:"type=varchar(256);index:biz;not null;default:'baguwen';"`
-	BizId int64  `gorm:"index:biz;not null;default:0;"`
+	Status   uint8  `gorm:"type:tinyint(3);comment:0-未知 1-未发表 2-已发表"`
+	Biz      string `gorm:"type=varchar(256);index:biz;not null;default:'baguwen';"`
+	BizId    int64  `gorm:"index:biz;not null;default:0;"`
 	Ctime    int64
 	Utime    int64 `gorm:"index"`
 }

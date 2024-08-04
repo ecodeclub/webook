@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/ecodeclub/webook/internal/cases/internal/domain"
 	"github.com/ecodeclub/webook/internal/cases/internal/repository"
@@ -21,16 +22,14 @@ type CaseSetService interface {
 	GetCandidates(ctx context.Context, id int64, offset int, limit int) ([]domain.Case, int64, error)
 }
 
-
 type casSetSvc struct {
-	repo repository.CaseSetRepository
+	repo   repository.CaseSetRepository
 	caRepo repository.CaseRepo
 }
 
-
-func NewCaseSetService(repo repository.CaseSetRepository,caRepo repository.CaseRepo) CaseSetService {
+func NewCaseSetService(repo repository.CaseSetRepository, caRepo repository.CaseRepo) CaseSetService {
 	return &casSetSvc{
-		repo: repo,
+		repo:   repo,
 		caRepo: caRepo,
 	}
 }
@@ -59,12 +58,12 @@ func (c *casSetSvc) GetByBiz(ctx context.Context, biz string, bizId int64) (doma
 }
 
 func (c *casSetSvc) Save(ctx context.Context, set domain.CaseSet) (int64, error) {
-	var id =set.ID
+	var id = set.ID
 	var err error
 	if set.ID > 0 {
-		err  = c.repo.UpdateNonZero(ctx, set)
-	}else {
-		id ,err = c.repo.Create(ctx, set)
+		err = c.repo.UpdateNonZero(ctx, set)
+	} else {
+		id, err = c.repo.Create(ctx, set)
 	}
 	return id, err
 }
@@ -79,16 +78,16 @@ func (c *casSetSvc) List(ctx context.Context, offset, limit int) ([]domain.CaseS
 	var total int64
 	eg.Go(func() error {
 		var eerr error
-		sets,eerr = c.repo.List(ctx, offset, limit)
+		sets, eerr = c.repo.List(ctx, offset, limit)
 		return eerr
 	})
 	eg.Go(func() error {
 		var eerr error
-		total,eerr = c.repo.Total(ctx)
+		total, eerr = c.repo.Total(ctx)
 		return eerr
 	})
 
-	if err := eg.Wait();err != nil {
+	if err := eg.Wait(); err != nil {
 		return nil, 0, err
 	}
 	return sets, total, nil
@@ -101,4 +100,3 @@ func (c *casSetSvc) Detail(ctx context.Context, id int64) (domain.CaseSet, error
 func (c *casSetSvc) GetByIds(ctx context.Context, ids []int64) ([]domain.CaseSet, error) {
 	return c.repo.GetByIDs(ctx, ids)
 }
-

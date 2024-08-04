@@ -2,8 +2,8 @@ package dao
 
 // ExamineRecord 业务层面上记录
 type CaseExamineRecord struct {
-	Id   int64
-	Uid  int64
+	Id  int64
+	Uid int64
 	Cid int64
 	// 代表这一次测试的 ID
 	// 这个主要是为了和 AI 打交道，有一个唯一凭证
@@ -25,7 +25,7 @@ type CaseResult struct {
 	Id int64
 	// 目前来看，查询至少会有一个 uid，所以我们把 uid 放在唯一索引最前面
 	Uid    int64 `gorm:"uniqueIndex:uid_cid"`
-	Cid   int64 `gorm:"uniqueIndex:uid_cid"`
+	Cid    int64 `gorm:"uniqueIndex:uid_cid"`
 	Result uint8
 	Ctime  int64
 	Utime  int64

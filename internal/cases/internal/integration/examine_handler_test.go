@@ -4,6 +4,10 @@ package integration
 
 import (
 	"context"
+	"net/http"
+	"testing"
+	"time"
+
 	"github.com/ecodeclub/ekit/iox"
 	"github.com/ecodeclub/ginx/session"
 	"github.com/ecodeclub/webook/internal/ai"
@@ -25,9 +29,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"go.uber.org/mock/gomock"
-	"net/http"
-	"testing"
-	"time"
 )
 
 type ExamineHandlerTest struct {

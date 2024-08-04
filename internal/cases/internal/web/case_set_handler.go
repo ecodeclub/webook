@@ -2,6 +2,7 @@ package web
 
 import (
 	"context"
+
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/ecodeclub/ginx"
 	"github.com/ecodeclub/ginx/session"
@@ -95,8 +96,6 @@ func (h *CaseSetHandler) GetDetailByBiz(
 	return h.getDetail(ctx, sess.Claims().Uid, data)
 }
 
-
-
 func (h *CaseSetHandler) getDetail(
 	ctx context.Context,
 	uid int64,
@@ -140,7 +139,7 @@ func (h *CaseSetHandler) toCaseSetVO(
 }
 
 func (h *CaseSetHandler) toCaseVO(cases []domain.Case, results map[int64]domain.ExamineCaseResult) []Case {
-	return slice.Map(cases, func(idx int, src domain.Case) Case{
+	return slice.Map(cases, func(idx int, src domain.Case) Case {
 		ca := newCase(src)
 		res := results[ca.Id]
 		ca.ExamineResult = res.Result.ToUint8()

@@ -2,8 +2,9 @@ package repository
 
 import (
 	"context"
-	"golang.org/x/sync/errgroup"
 	"time"
+
+	"golang.org/x/sync/errgroup"
 
 	"github.com/ecodeclub/ekit/slice"
 
