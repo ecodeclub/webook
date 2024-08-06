@@ -10,7 +10,7 @@ import (
 )
 
 type CaseSetRepository interface {
-	Create(ctx context.Context, set domain.CaseSet) (int64, error)
+	CreateCaseSet(ctx context.Context, set domain.CaseSet) (int64, error)
 	UpdateCases(ctx context.Context, set domain.CaseSet) error
 	GetByID(ctx context.Context, id int64) (domain.CaseSet, error)
 	Total(ctx context.Context) (int64, error)
@@ -63,7 +63,7 @@ func (c *caseSetRepo) GetByBiz(ctx context.Context, biz string, bizId int64) (do
 	}, nil
 }
 
-func (c *caseSetRepo) Create(ctx context.Context, set domain.CaseSet) (int64, error) {
+func (c *caseSetRepo) CreateCaseSet(ctx context.Context, set domain.CaseSet) (int64, error) {
 	return c.dao.Create(ctx, c.toEntityQuestionSet(set))
 }
 
@@ -154,7 +154,8 @@ func (c *caseSetRepo) toDomainCase(caseDao dao.Case) domain.Case {
 		Labels:       caseDao.Labels.Val,
 		Title:        caseDao.Title,
 		Content:      caseDao.Content,
-		CodeRepo:     caseDao.CodeRepo,
+		GiteeRepo:    caseDao.GiteeRepo,
+		GithubRepo:   caseDao.GithubRepo,
 		Keywords:     caseDao.Keywords,
 		Shorthand:    caseDao.Shorthand,
 		Highlight:    caseDao.Highlight,

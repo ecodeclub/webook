@@ -42,7 +42,7 @@ func (c *casSetSvc) GetCandidates(ctx context.Context, id int64, offset int, lim
 	cids := slice.Map(cs.Cases, func(idx int, src domain.Case) int64 {
 		return src.Id
 	})
-	return c.caRepo.ExcludeCases(ctx, cids, offset, limit)
+	return c.caRepo.Exclude(ctx, cids, offset, limit)
 }
 
 func (c *casSetSvc) ListDefault(ctx context.Context, offset, limit int) ([]domain.CaseSet, error) {
@@ -63,7 +63,7 @@ func (c *casSetSvc) Save(ctx context.Context, set domain.CaseSet) (int64, error)
 	if set.ID > 0 {
 		err = c.repo.UpdateNonZero(ctx, set)
 	} else {
-		id, err = c.repo.Create(ctx, set)
+		id, err = c.repo.CreateCaseSet(ctx, set)
 	}
 	return id, err
 }

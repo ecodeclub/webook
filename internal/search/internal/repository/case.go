@@ -46,18 +46,19 @@ func (c *caseRepository) SearchCase(ctx context.Context, offset, limit int, keyw
 
 func (*caseRepository) toDomain(p dao.Case) domain.Case {
 	return domain.Case{
-		Id:        p.Id,
-		Uid:       p.Uid,
-		Labels:    p.Labels,
-		Title:     p.Title,
-		Content:   p.Content,
-		Keywords:  p.Keywords,
-		CodeRepo:  p.CodeRepo,
-		Shorthand: p.Shorthand,
-		Highlight: p.Highlight,
-		Guidance:  p.Guidance,
-		Status:    domain.CaseStatus(p.Status),
-		Ctime:     time.UnixMilli(p.Ctime),
-		Utime:     time.UnixMilli(p.Utime),
+		Id:         p.Id,
+		Uid:        p.Uid,
+		Labels:     p.Labels,
+		Title:      p.Title,
+		Content:    p.Content,
+		Keywords:   p.Keywords,
+		GithubRepo: p.GithubRepo,
+		GiteeRepo:  p.GiteeRepo,
+		Shorthand:  p.Shorthand,
+		Highlight:  p.Highlight,
+		Guidance:   p.Guidance,
+		Status:     domain.CaseStatus(p.Status),
+		Ctime:      time.UnixMilli(p.Ctime),
+		Utime:      time.UnixMilli(p.Utime),
 	}
 }

@@ -43,7 +43,7 @@ func (s *LLMServiceSuite) SetupSuite() {
 	db := testioc.InitDB()
 	s.db = db
 	err := dao.InitTables(db)
-	require.NoError(s.T(), err)
+	s.NoError(err)
 	s.logDao = dao.NewGORMLLMLogDAO(db)
 
 	// 先插入 BizConfig
@@ -56,7 +56,7 @@ func (s *LLMServiceSuite) SetupSuite() {
 		Ctime:          now,
 		Utime:          now,
 	}).Error
-	assert.NoError(s.T(), err)
+	s.NoError(err)
 	err = s.db.Create(&dao.BizConfig{
 		Biz:            domain.BizCaseExamine,
 		MaxInput:       100,
@@ -65,7 +65,7 @@ func (s *LLMServiceSuite) SetupSuite() {
 		Ctime:          now,
 		Utime:          now,
 	}).Error
-	assert.NoError(s.T(), err)
+	s.NoError(err)
 }
 
 func (s *LLMServiceSuite) TearDownSuite() {

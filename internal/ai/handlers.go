@@ -56,8 +56,8 @@ func InitQuestionExamineHandler(
 	// log -> cfg -> credit -> record -> question_examine -> platform
 	builder := biz.NewQuestionExamineBizHandlerBuilder()
 	common = append(common, builder)
-	res := biz.NewCombinedBizHandler("question_examine", common, platform)
-	return res
+	return biz.NewCombinedBizHandler("question_examine", common, platform)
+
 }
 func InitCaseExamineHandler(
 	common []handler.Builder,
@@ -65,8 +65,7 @@ func InitCaseExamineHandler(
 	platform handler.Handler) *biz.CompositionHandler {
 	builder := biz.NewCaseExamineBizHandlerBuilder()
 	common = append(common, builder)
-	res := biz.NewCombinedBizHandler("case_examine", common, platform)
-	return res
+	return biz.NewCombinedBizHandler("case_examine", common, platform)
 }
 
 func InitCommonHandlers(log *log.HandlerBuilder,

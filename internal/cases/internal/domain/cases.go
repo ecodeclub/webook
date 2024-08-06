@@ -14,7 +14,8 @@ type Case struct {
 	Introduction string
 	Title        string
 	Content      string
-	CodeRepo     string
+	GithubRepo   string
+	GiteeRepo    string
 	// 关键字，辅助记忆，提取重点
 	Keywords string
 	// 速记，口诀

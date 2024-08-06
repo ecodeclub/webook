@@ -13,7 +13,8 @@ type Case struct {
 	// Case 内容
 	Content string
 	// 代码仓库地址
-	CodeRepo string
+	GithubRepo string
+	GiteeRepo  string
 	// 关键字，辅助记忆，提取重点
 	Keywords string
 	// 速记，口诀

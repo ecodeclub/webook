@@ -26,19 +26,20 @@ const CaseIndexName = "case_index"
 
 // todo 添加分词器
 type Case struct {
-	Id        int64    `json:"id"`
-	Uid       int64    `json:"uid"`
-	Labels    []string `json:"labels"`
-	Title     string   `json:"title"`
-	Content   string   `json:"content"`
-	CodeRepo  string   `json:"code_repo"`
-	Keywords  string   `json:"keywords"`
-	Shorthand string   `json:"shorthand"`
-	Highlight string   `json:"highlight"`
-	Guidance  string   `json:"guidance"`
-	Status    uint8    `json:"status"`
-	Ctime     int64    `json:"ctime"`
-	Utime     int64    `json:"utime"`
+	Id         int64    `json:"id"`
+	Uid        int64    `json:"uid"`
+	Labels     []string `json:"labels"`
+	Title      string   `json:"title"`
+	Content    string   `json:"content"`
+	GithubRepo string   `json:"github_repo"`
+	GiteeRepo  string   `json:"gitee_repo"`
+	Keywords   string   `json:"keywords"`
+	Shorthand  string   `json:"shorthand"`
+	Highlight  string   `json:"highlight"`
+	Guidance   string   `json:"guidance"`
+	Status     uint8    `json:"status"`
+	Ctime      int64    `json:"ctime"`
+	Utime      int64    `json:"utime"`
 }
 type CaseElasticDAO struct {
 	client *elastic.Client

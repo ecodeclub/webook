@@ -30,8 +30,8 @@ func (h *ExamineHandler) Examine(ctx *ginx.Context, req ExamineReq, sess session
 	switch {
 	case errors.Is(err, service.ErrInsufficientCredit):
 		return ginx.Result{
-			Code: errs.InsufficientCredit.Code,
-			Msg:  errs.InsufficientCredit.Msg,
+			Code: errs.InsufficientCredits.Code,
+			Msg:  errs.InsufficientCredits.Msg,
 		}, nil
 
 	case err == nil:

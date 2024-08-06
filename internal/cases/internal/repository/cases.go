@@ -26,15 +26,15 @@ type CaseRepo interface {
 	Save(ctx context.Context, ca domain.Case) (int64, error)
 	GetById(ctx context.Context, caseId int64) (domain.Case, error)
 
-	// ExcludeQuestions 分页接口，不含这些 id 的问题
-	ExcludeCases(ctx context.Context, ids []int64, offset int, limit int) ([]domain.Case, int64, error)
+	// Exclude 分页接口，不含这些 id 的问题
+	Exclude(ctx context.Context, ids []int64, offset int, limit int) ([]domain.Case, int64, error)
 }
 
 type caseRepo struct {
 	caseDao dao.CaseDAO
 }
 
-func (c *caseRepo) ExcludeCases(ctx context.Context, ids []int64, offset int, limit int) ([]domain.Case, int64, error) {
+func (c *caseRepo) Exclude(ctx context.Context, ids []int64, offset int, limit int) ([]domain.Case, int64, error) {
 	var (
 		eg   errgroup.Group
 		cnt  int64
@@ -129,7 +129,8 @@ func (c *caseRepo) toEntity(caseDomain domain.Case) dao.Case {
 		Introduction: caseDomain.Introduction,
 		Title:        caseDomain.Title,
 		Content:      caseDomain.Content,
-		CodeRepo:     caseDomain.CodeRepo,
+		GithubRepo:   caseDomain.GithubRepo,
+		GiteeRepo:    caseDomain.GiteeRepo,
 		Keywords:     caseDomain.Keywords,
 		Shorthand:    caseDomain.Shorthand,
 		Highlight:    caseDomain.Highlight,
@@ -148,7 +149,8 @@ func (c *caseRepo) toDomain(caseDao dao.Case) domain.Case {
 		Labels:       caseDao.Labels.Val,
 		Title:        caseDao.Title,
 		Content:      caseDao.Content,
-		CodeRepo:     caseDao.CodeRepo,
+		GithubRepo:   caseDao.GithubRepo,
+		GiteeRepo:    caseDao.GiteeRepo,
 		Keywords:     caseDao.Keywords,
 		Shorthand:    caseDao.Shorthand,
 		Highlight:    caseDao.Highlight,

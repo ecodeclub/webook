@@ -24,8 +24,9 @@ type Case struct {
 
 	Labels []string `json:"labels,omitempty"`
 	// 面试案例内容
-	Content  string `json:"content,omitempty"`
-	CodeRepo string `json:"codeRepo,omitempty"`
+	Content    string `json:"content,omitempty"`
+	GithubRepo string `json:"githubRepo,omitempty"`
+	GiteeRepo  string `json:"giteeRepo,omitempty"`
 	// 关键字，辅助记忆，提取重点
 	Keywords string `json:"keywords,omitempty"`
 	// 速记，口诀
@@ -56,7 +57,8 @@ func (c Case) toDomain() domain.Case {
 		Title:        c.Title,
 		Labels:       c.Labels,
 		Content:      c.Content,
-		CodeRepo:     c.CodeRepo,
+		GithubRepo:   c.GithubRepo,
+		GiteeRepo:    c.GiteeRepo,
 		Keywords:     c.Keywords,
 		Shorthand:    c.Shorthand,
 		Introduction: c.Introduction,
