@@ -4,6 +4,8 @@ import (
 	"context"
 	"time"
 
+	"golang.org/x/sync/errgroup"
+
 	"github.com/ecodeclub/ekit/slice"
 
 	"github.com/ecodeclub/ekit/sqlx"
@@ -23,10 +25,36 @@ type CaseRepo interface {
 	Total(ctx context.Context) (int64, error)
 	Save(ctx context.Context, ca domain.Case) (int64, error)
 	GetById(ctx context.Context, caseId int64) (domain.Case, error)
+
+	// Exclude 分页接口，不含这些 id 的问题
+	Exclude(ctx context.Context, ids []int64, offset int, limit int) ([]domain.Case, int64, error)
 }
 
 type caseRepo struct {
 	caseDao dao.CaseDAO
+}
+
+func (c *caseRepo) Exclude(ctx context.Context, ids []int64, offset int, limit int) ([]domain.Case, int64, error) {
+	var (
+		eg   errgroup.Group
+		cnt  int64
+		data []dao.Case
+	)
+	eg.Go(func() error {
+		var err error
+		cnt, err = c.caseDao.NotInTotal(ctx, ids)
+		return err
+	})
+
+	eg.Go(func() error {
+		var err error
+		data, err = c.caseDao.NotIn(ctx, ids, offset, limit)
+		return err
+	})
+	err := eg.Wait()
+	return slice.Map(data, func(idx int, src dao.Case) domain.Case {
+		return c.toDomain(src)
+	}), cnt, err
 }
 
 func (c *caseRepo) PubList(ctx context.Context, offset int, limit int) ([]domain.Case, error) {
@@ -101,11 +129,14 @@ func (c *caseRepo) toEntity(caseDomain domain.Case) dao.Case {
 		Introduction: caseDomain.Introduction,
 		Title:        caseDomain.Title,
 		Content:      caseDomain.Content,
-		CodeRepo:     caseDomain.CodeRepo,
+		GithubRepo:   caseDomain.GithubRepo,
+		GiteeRepo:    caseDomain.GiteeRepo,
 		Keywords:     caseDomain.Keywords,
 		Shorthand:    caseDomain.Shorthand,
 		Highlight:    caseDomain.Highlight,
 		Guidance:     caseDomain.Guidance,
+		Biz:          caseDomain.Biz,
+		BizId:        caseDomain.BizId,
 		Status:       caseDomain.Status.ToUint8(),
 	}
 }
@@ -118,11 +149,14 @@ func (c *caseRepo) toDomain(caseDao dao.Case) domain.Case {
 		Labels:       caseDao.Labels.Val,
 		Title:        caseDao.Title,
 		Content:      caseDao.Content,
-		CodeRepo:     caseDao.CodeRepo,
+		GithubRepo:   caseDao.GithubRepo,
+		GiteeRepo:    caseDao.GiteeRepo,
 		Keywords:     caseDao.Keywords,
 		Shorthand:    caseDao.Shorthand,
 		Highlight:    caseDao.Highlight,
 		Guidance:     caseDao.Guidance,
+		Biz:          caseDao.Biz,
+		BizId:        caseDao.BizId,
 		Utime:        time.UnixMilli(caseDao.Utime),
 		Ctime:        time.UnixMilli(caseDao.Ctime),
 		Status:       domain.CaseStatus(caseDao.Status),

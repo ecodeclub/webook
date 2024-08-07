@@ -14,7 +14,8 @@ type Case struct {
 	Introduction string
 	Title        string
 	Content      string
-	CodeRepo     string
+	GithubRepo   string
+	GiteeRepo    string
 	// 关键字，辅助记忆，提取重点
 	Keywords string
 	// 速记，口诀
@@ -24,6 +25,8 @@ type Case struct {
 	// 引导点
 	Guidance string
 	Status   CaseStatus
+	Biz      string
+	BizId    int64
 	Ctime    time.Time
 	Utime    time.Time
 }

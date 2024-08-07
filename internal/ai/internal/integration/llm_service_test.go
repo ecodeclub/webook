@@ -43,7 +43,7 @@ func (s *LLMServiceSuite) SetupSuite() {
 	db := testioc.InitDB()
 	s.db = db
 	err := dao.InitTables(db)
-	require.NoError(s.T(), err)
+	s.NoError(err)
 	s.logDao = dao.NewGORMLLMLogDAO(db)
 
 	// 先插入 BizConfig
@@ -56,7 +56,16 @@ func (s *LLMServiceSuite) SetupSuite() {
 		Ctime:          now,
 		Utime:          now,
 	}).Error
-	assert.NoError(s.T(), err)
+	s.NoError(err)
+	err = s.db.Create(&dao.BizConfig{
+		Biz:            domain.BizCaseExamine,
+		MaxInput:       100,
+		PromptTemplate: "这是案例 %s，这是用户输入 %s",
+		KnowledgeId:    knowledgeId,
+		Ctime:          now,
+		Utime:          now,
+	}).Error
+	s.NoError(err)
 }
 
 func (s *LLMServiceSuite) TearDownSuite() {
@@ -149,6 +158,82 @@ func (s *LLMServiceSuite) TestService() {
 					Tid:    "11",
 					Uid:    123,
 					Biz:    domain.BizQuestionExamine,
+					Amount: 100,
+					Status: 1,
+				}, creditLogModel)
+			},
+		},
+		{
+			name: "案例测试-成功",
+			req: domain.LLMRequest{
+				Biz: domain.BizCaseExamine,
+				Uid: 123,
+				Tid: "13",
+				Input: []string{
+					"案例1",
+					"用户输入1",
+				},
+			},
+			assertFunc: assert.NoError,
+			before: func(t *testing.T,
+				ctrl *gomock.Controller) (llmHandler.Handler, credit.Service) {
+				llmHdl := hdlmocks.NewMockHandler(ctrl)
+				llmHdl.EXPECT().Handle(gomock.Any(), gomock.Any()).
+					Return(domain.LLMResponse{
+						Tokens: 100,
+						Amount: 100,
+						Answer: "aians",
+					}, nil)
+				creditSvc := creditmocks.NewMockService(ctrl)
+				creditSvc.EXPECT().GetCreditsByUID(gomock.Any(), gomock.Any()).Return(credit.Credit{
+					TotalAmount: 1000,
+				}, nil)
+				creditSvc.EXPECT().TryDeductCredits(gomock.Any(), gomock.Any()).Return(11, nil)
+				creditSvc.EXPECT().ConfirmDeductCredits(gomock.Any(), int64(123), int64(11)).Return(nil)
+				return llmHdl, creditSvc
+			},
+			after: func(t *testing.T, resp domain.LLMResponse) {
+				ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+				defer cancel()
+				// 校验response写入的内容是否正确
+				assert.Equal(t, domain.LLMResponse{
+					Tokens: 100,
+					Amount: 100,
+					Answer: "aians",
+				}, resp)
+				var logModel dao.LLMRecord
+				err := s.db.WithContext(ctx).Where("tid = ?", "13").First(&logModel).Error
+				require.NoError(t, err)
+				logModel.Id = 0
+				s.assertLog(dao.LLMRecord{
+					Id:          0,
+					Tid:         "13",
+					Uid:         123,
+					Biz:         domain.BizCaseExamine,
+					Tokens:      100,
+					Amount:      100,
+					KnowledgeId: knowledgeId,
+					Input: sqlx.JsonColumn[[]string]{
+						Valid: true,
+						Val: []string{
+							"案例1",
+							"用户输入1",
+						},
+					},
+					Status:         1,
+					PromptTemplate: sqlx.NewNullString("这是案例 %s，这是用户输入 %s"),
+					Answer:         sqlx.NewNullString("aians"),
+				}, logModel)
+				// 校验credit写入的内容是否正确
+				var creditLogModel dao.LLMCredit
+				err = s.db.WithContext(ctx).Where("tid = ?", "13").First(&creditLogModel).Error
+				require.NoError(t, err)
+				assert.True(t, creditLogModel.Id != 0)
+				creditLogModel.Id = 0
+				s.assertCreditLog(dao.LLMCredit{
+					Tid:    "13",
+					Uid:    123,
+					Biz:    domain.BizCaseExamine,
 					Amount: 100,
 					Status: 1,
 				}, creditLogModel)
