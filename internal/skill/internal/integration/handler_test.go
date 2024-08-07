@@ -958,12 +958,31 @@ func (s *HandlerTestSuite) TestRefsByLevelIDs() {
 			Ctime: time.Now().UnixMilli(),
 			Utime: time.Now().UnixMilli(),
 		},
+
 		{
 			Id:    3,
 			Slid:  2,
 			Sid:   2,
 			Rtype: "question",
 			Rid:   1,
+			Ctime: time.Now().UnixMilli(),
+			Utime: time.Now().UnixMilli(),
+		},
+		{
+			Id:    4,
+			Slid:  1,
+			Sid:   2,
+			Rtype: "question_set",
+			Rid:   1,
+			Ctime: time.Now().UnixMilli(),
+			Utime: time.Now().UnixMilli(),
+		},
+		{
+			Id:    5,
+			Slid:  2,
+			Sid:   2,
+			Rtype: "question_set",
+			Rid:   6,
 			Ctime: time.Now().UnixMilli(),
 			Utime: time.Now().UnixMilli(),
 		},
@@ -987,20 +1006,54 @@ func (s *HandlerTestSuite) TestRefsByLevelIDs() {
 					{
 						Id: 1,
 						Questions: []web.Question{
-							{Id: 2, Title: "这是问题2"},
+							{Id: 2, Title: "这是问题2", Result: 2 % 4},
 						},
 						Cases: []web.Case{
 							{Id: 1, Title: "这是案例1"},
 						},
-						QuestionSets: []web.QuestionSet{},
+						QuestionSets: []web.QuestionSet{
+							{
+								ID:    1,
+								Title: "这是题集1",
+								Questions: []web.Question{
+									{
+										Id:     11,
+										Title:  "这是题目11",
+										Result: 11 % 4,
+									},
+									{
+										Id:     12,
+										Title:  "这是题目12",
+										Result: 12 % 4,
+									},
+								},
+							},
+						},
 					},
 					{
 						Id: 2,
 						Questions: []web.Question{
-							{Id: 1, Title: "这是问题1"},
+							{Id: 1, Title: "这是问题1", Result: 1 % 4},
 						},
-						Cases:        []web.Case{},
-						QuestionSets: []web.QuestionSet{},
+						Cases: []web.Case{},
+						QuestionSets: []web.QuestionSet{
+							{
+								ID:    6,
+								Title: "这是题集6",
+								Questions: []web.Question{
+									{
+										Id:     66,
+										Title:  "这是题目66",
+										Result: 66 % 4,
+									},
+									{
+										Id:     72,
+										Title:  "这是题目72",
+										Result: 72 % 4,
+									},
+								},
+							},
+						},
 					},
 				},
 			},
@@ -1017,7 +1070,8 @@ func (s *HandlerTestSuite) TestRefsByLevelIDs() {
 			recorder := test.NewJSONResponseRecorder[[]web.SkillLevel]()
 			s.server.ServeHTTP(recorder, req)
 			require.Equal(t, tc.wantCode, recorder.Code)
-			assert.Equal(t, tc.wantResp, recorder.MustScan())
+			data := recorder.MustScan()
+			assert.Equal(t, tc.wantResp, data)
 		})
 	}
 }
