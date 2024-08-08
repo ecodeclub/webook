@@ -101,10 +101,10 @@ func (h *CaseSetHandler) getDetail(
 	uid int64,
 	cs domain.CaseSet) (ginx.Result, error) {
 	var (
-		eg        errgroup.Group
-		intr      interactive.Interactive
+		eg          errgroup.Group
+		intr        interactive.Interactive
 		caseIntrMap map[int64]interactive.Interactive
-		resultMap map[int64]domain.ExamineCaseResult
+		resultMap   map[int64]domain.ExamineCaseResult
 	)
 
 	eg.Go(func() error {
@@ -115,7 +115,7 @@ func (h *CaseSetHandler) getDetail(
 	eg.Go(func() error {
 		var err error
 		cids := cs.Cids()
-		caseIntrMap,err =  h.intrSvc.GetByIds(ctx,"case",cids)
+		caseIntrMap, err = h.intrSvc.GetByIds(ctx, "case", cids)
 		return err
 	})
 
@@ -131,7 +131,7 @@ func (h *CaseSetHandler) getDetail(
 	}
 
 	return ginx.Result{
-		Data: h.toCaseSetVO(cs, intr, caseIntrMap,resultMap),
+		Data: h.toCaseSetVO(cs, intr, caseIntrMap, resultMap),
 	}, nil
 }
 
@@ -141,7 +141,7 @@ func (h *CaseSetHandler) toCaseSetVO(
 	caseIntrMap map[int64]interactive.Interactive,
 	results map[int64]domain.ExamineCaseResult) CaseSet {
 	cs := newCaseSet(set)
-	cs.Cases = h.toCaseVO(set.Cases, results,caseIntrMap)
+	cs.Cases = h.toCaseVO(set.Cases, results, caseIntrMap)
 	cs.Interactive = newInteractive(intr)
 	return cs
 }
