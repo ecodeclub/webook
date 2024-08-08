@@ -18,6 +18,7 @@ package ioc
 
 import (
 	"github.com/ecodeclub/webook/internal/ai"
+	"github.com/ecodeclub/webook/internal/bff"
 	"github.com/ecodeclub/webook/internal/cases"
 	"github.com/ecodeclub/webook/internal/cos"
 	"github.com/ecodeclub/webook/internal/credit"
@@ -55,7 +56,9 @@ func InitApp() (*App, error) {
 		InitUserHandler,
 		label.InitHandler,
 		cases.InitModule,
-		wire.FieldsOf(new(*cases.Module), "Hdl"),
+		wire.FieldsOf(new(*cases.Module),
+			"CsHdl",
+			"Hdl", "AdminSetHandler"),
 		skill.InitHandler,
 		feedback.InitHandler,
 		member.InitModule,
@@ -85,6 +88,8 @@ func InitApp() (*App, error) {
 		roadmap.InitModule,
 		wire.FieldsOf(new(*roadmap.Module), "Hdl", "AdminHdl"),
 		ai.InitModule,
+		bff.InitModule,
+		wire.FieldsOf(new(*bff.Module), "Hdl"),
 		initLocalActiveLimiterBuilder,
 		initCronJobs,
 		// 这两个顺序不要换

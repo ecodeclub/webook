@@ -79,7 +79,7 @@ type IdReq struct {
 	Id int64 `json:"id"`
 }
 type MoveCollectionReq struct {
-	Biz          string `json:"biz"`
-	BizId        int64  `json:"biz_id"`
-	CollectionId int64  `json:"collection_id"`
+	Biz   string `json:"biz"`
+	BizId int64  `json:"bizId"`
+	Cid   int64  `json:"cid"`
 }

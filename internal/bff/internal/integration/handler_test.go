@@ -128,7 +128,7 @@ func (c *CollectionHandlerTestSuite) SetupSuite() {
 func (c *CollectionHandlerTestSuite) Test_Handler() {
 	t := c.T()
 	req, err := http.NewRequest(http.MethodPost,
-		"/interactive/collection/info", iox.NewJSONReader(web.CollectionInfoReq{
+		"/interactive/collection/records", iox.NewJSONReader(web.CollectionInfoReq{
 			ID:     1,
 			Offset: 0,
 			Limit:  10,
@@ -147,9 +147,9 @@ func (c *CollectionHandlerTestSuite) Test_Handler() {
 		},
 		{
 			Question: web.Question{
-				ID:     2,
-				Title:  "这是题目2",
-				Result: 2 % 4,
+				ID:            2,
+				Title:         "这是题目2",
+				ExamineResult: 2 % 4,
 			},
 		},
 		{
@@ -158,14 +158,14 @@ func (c *CollectionHandlerTestSuite) Test_Handler() {
 				Title: "这是题集3",
 				Questions: []web.Question{
 					{
-						ID:     33,
-						Title:  "这是题目33",
-						Result: 33 % 4,
+						ID:            33,
+						Title:         "这是题目33",
+						ExamineResult: 33 % 4,
 					},
 					{
-						ID:     36,
-						Title:  "这是题目36",
-						Result: 36 % 4,
+						ID:            36,
+						Title:         "这是题目36",
+						ExamineResult: 36 % 4,
 					},
 				},
 			},
@@ -176,14 +176,14 @@ func (c *CollectionHandlerTestSuite) Test_Handler() {
 				Title: "这是题集4",
 				Questions: []web.Question{
 					{
-						ID:     44,
-						Title:  "这是题目44",
-						Result: 44 % 4,
+						ID:            44,
+						Title:         "这是题目44",
+						ExamineResult: 44 % 4,
 					},
 					{
-						ID:     48,
-						Title:  "这是题目48",
-						Result: 48 % 4,
+						ID:            48,
+						Title:         "这是题目48",
+						ExamineResult: 48 % 4,
 					},
 				},
 			},

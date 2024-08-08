@@ -119,7 +119,7 @@ func (h *Handler) CollectionDelete(ctx *ginx.Context, req IdReq, sess session.Se
 
 func (h *Handler) MoveCollection(ctx *ginx.Context, req MoveCollectionReq, sess session.Session) (ginx.Result, error) {
 	uid := sess.Claims().Uid
-	err := h.svc.MoveToCollection(ctx, req.Biz, req.BizId, uid, req.CollectionId)
+	err := h.svc.MoveToCollection(ctx, req.Biz, req.BizId, uid, req.Cid)
 	if err != nil {
 		return systemErrorResult, err
 	}

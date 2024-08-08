@@ -10,15 +10,17 @@ import (
 	"github.com/google/wire"
 )
 
-func InitHandler(intrSvc interactive.Service,
-	caseSvc cases.Service,
-	queSvc baguwen.Service,
-	queSetSvc baguwen.QuestionSetService,
-	examSvc baguwen.ExamService) (*web.Handler, error) {
+func InitModule(intrModule *interactive.Module,
+	caseModule *cases.Module,
+	queModule *baguwen.Module) (*Module, error) {
 	wire.Build(
 		web.NewHandler,
+		wire.FieldsOf(new(*baguwen.Module), "Svc", "SetSvc", "ExamSvc"),
+		wire.FieldsOf(new(*interactive.Module), "Svc"),
+		wire.FieldsOf(new(*cases.Module), "Svc"),
+		wire.Struct(new(Module), "*"),
 	)
-	return new(web.Handler), nil
+	return new(Module), nil
 }
 
-type Hdl web.Handler
+type Handler = web.Handler

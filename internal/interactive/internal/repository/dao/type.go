@@ -14,8 +14,6 @@
 
 package dao
 
-import "database/sql"
-
 // Interactive 汇总表
 type Interactive struct {
 	Id         int64  `gorm:"primaryKey,autoIncrement"`
@@ -46,7 +44,7 @@ type UserCollectionBiz struct {
 	Biz   string `gorm:"type:varchar(128);uniqueIndex:uid_biz_type_id"`
 
 	// Cid 收藏夹id
-	Cid   sql.NullInt64 `gorm:"index"`
+	Cid   int64 `gorm:"index;not null;default(0)"`
 	Utime int64
 	Ctime int64
 }

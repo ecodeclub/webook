@@ -13,10 +13,10 @@ import (
 const (
 	CaseBiz        = "case"
 	QuestionBiz    = "question"
-	QuestionSetBiz = "question_set"
+	QuestionSetBiz = "questionSet"
 )
 
-func (h *Handler) CollectionInfo(ctx *ginx.Context, req CollectionInfoReq, sess session.Session) (ginx.Result, error) {
+func (h *Handler) CollectionRecords(ctx *ginx.Context, req CollectionInfoReq, sess session.Session) (ginx.Result, error) {
 	uid := sess.Claims().Uid
 	// 获取收藏记录
 	records, err := h.intrSvc.CollectionInfo(ctx, uid, req.ID, req.Offset, req.Limit)

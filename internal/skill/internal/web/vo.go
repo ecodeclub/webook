@@ -68,10 +68,11 @@ func (s *SkillLevel) setQuestions(qm map[int64]baguwen.Question) {
 		return src
 	})
 }
+
 func (s *SkillLevel) setQuestionsWithExam(qm map[int64]baguwen.Question, resultMap map[int64]baguwen.ExamResult) {
 	s.Questions = slice.Map(s.Questions, func(idx int, src Question) Question {
 		src.Title = qm[src.Id].Title
-		src.Result = resultMap[src.Id].Result.ToUint8()
+		src.ExamineResult = resultMap[src.Id].Result.ToUint8()
 		return src
 	})
 }
@@ -84,9 +85,9 @@ func (s *SkillLevel) setQuestionSet(qsm map[int64]baguwen.QuestionSet, resultMap
 		for _, q := range qs.Questions {
 			exam := resultMap[q.Id]
 			res = append(res, Question{
-				Id:     q.Id,
-				Title:  q.Title,
-				Result: exam.Result.ToUint8(),
+				Id:            q.Id,
+				Title:         q.Title,
+				ExamineResult: exam.Result.ToUint8(),
 			})
 		}
 		src.Questions = res
@@ -137,6 +138,13 @@ func newSkill(s domain.Skill) Skill {
 	}
 	return res
 }
+
+func (s *Skill) setQuestionSets(qm map[int64]baguwen.QuestionSet) {
+	res := map[int64]baguwen.ExamResult{}
+	s.Basic.setQuestionSet(qm, res)
+	s.Intermediate.setQuestionSet(qm, res)
+	s.Advanced.setQuestionSet(qm, res)
+}
 func (s *Skill) setQuestions(qm map[int64]baguwen.Question) {
 	s.Basic.setQuestions(qm)
 	s.Intermediate.setQuestions(qm)
@@ -172,9 +180,9 @@ func newSkillLevel(s domain.SkillLevel) SkillLevel {
 }
 
 type Question struct {
-	Id     int64  `json:"id,omitempty"`
-	Title  string `json:"title,omitempty"`
-	Result uint8  `json:"result,omitempty"`
+	Id            int64  `json:"id,omitempty"`
+	Title         string `json:"title,omitempty"`
+	ExamineResult uint8  `json:"examineResult,omitempty"`
 }
 
 type Case struct {

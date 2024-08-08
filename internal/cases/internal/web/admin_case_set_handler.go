@@ -17,9 +17,6 @@ func NewAdminCaseSetHandler(svc service.CaseSetService) *AdminCaseSetHandler {
 	return &AdminCaseSetHandler{svc: svc}
 }
 
-func (a *AdminCaseSetHandler) PublicRoutes(server *gin.Engine) {
-}
-
 func (a *AdminCaseSetHandler) PrivateRoutes(server *gin.Engine) {
 	g := server.Group("/case-sets")
 	g.POST("/save", ginx.BS[CaseSet](a.SaveCaseSet))
