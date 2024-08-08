@@ -267,6 +267,13 @@ func (s *CaseSetTestSuite) TestCaseSetDetailByBiz() {
 							Content:       "Go案例1",
 							ExamineResult: domain.ResultAdvanced.ToUint8(),
 							Utime:         now,
+							Interactive: web.Interactive{
+								ViewCnt:    615,
+								LikeCnt:    616,
+								CollectCnt: 617,
+								Liked:      false,
+								Collected:  true,
+							},
 						},
 						{
 							Id:      615,
@@ -275,6 +282,13 @@ func (s *CaseSetTestSuite) TestCaseSetDetailByBiz() {
 							Title:   "Go案例2",
 							Content: "Go案例2",
 							Utime:   now,
+							Interactive: web.Interactive{
+								ViewCnt:    616,
+								LikeCnt:    617,
+								CollectCnt: 618,
+								Liked:      true,
+								Collected:  false,
+							},
 						},
 						{
 							Id:      616,
@@ -283,6 +297,13 @@ func (s *CaseSetTestSuite) TestCaseSetDetailByBiz() {
 							Title:   "Go案例3",
 							Content: "Go案例3",
 							Utime:   now,
+							Interactive: web.Interactive{
+								ViewCnt:    617,
+								LikeCnt:    618,
+								CollectCnt: 619,
+								Liked:      false,
+								Collected:  true,
+							},
 						},
 					},
 				},
@@ -467,6 +488,13 @@ func (s *CaseSetTestSuite) TestCaseSet_Detail() {
 							Content:       "Go案例1",
 							ExamineResult: domain.ResultAdvanced.ToUint8(),
 							Utime:         now,
+							Interactive: web.Interactive{
+								ViewCnt:    615,
+								LikeCnt:    616,
+								CollectCnt: 617,
+								Liked:      false,
+								Collected:  true,
+							},
 						},
 						{
 							Id:      615,
@@ -475,6 +503,13 @@ func (s *CaseSetTestSuite) TestCaseSet_Detail() {
 							Title:   "Go案例2",
 							Content: "Go案例2",
 							Utime:   now,
+							Interactive: web.Interactive{
+								ViewCnt:    616,
+								LikeCnt:    617,
+								CollectCnt: 618,
+								Liked:      true,
+								Collected:  false,
+							},
 						},
 						{
 							Id:      616,
@@ -483,6 +518,13 @@ func (s *CaseSetTestSuite) TestCaseSet_Detail() {
 							Title:   "Go案例3",
 							Content: "Go案例3",
 							Utime:   now,
+							Interactive: web.Interactive{
+								ViewCnt:    617,
+								LikeCnt:    618,
+								CollectCnt: 619,
+								Liked:      false,
+								Collected:  true,
+							},
 						},
 					},
 				},
@@ -510,7 +552,7 @@ func (s *CaseSetTestSuite) TestCaseSet_Detail() {
 	}
 }
 
-func (s *CaseSetTestSuite) TestCaseSet_ListAllQuestionSets() {
+func (s *CaseSetTestSuite) TestCaseSet_ListAllCaseSets() {
 	// 插入一百条
 	total := 100
 	data := make([]dao.CaseSet, 0, total)
