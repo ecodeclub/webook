@@ -258,18 +258,22 @@ func (i *InteractiveTestSuite) TestCollection_Info() {
 			},
 			wantVal: []domain.CollectionRecord{
 				{
+					Id:          4,
 					Biz:         repository.QuestionSetBiz,
 					QuestionSet: 1,
 				},
 				{
+					Id:       3,
 					Biz:      repository.QuestionBiz,
 					Question: 1,
 				},
 				{
+					Id:   2,
 					Biz:  repository.CaseBiz,
 					Case: 2,
 				},
 				{
+					Id:   1,
 					Biz:  repository.CaseBiz,
 					Case: 1,
 				},
@@ -301,10 +305,12 @@ func (i *InteractiveTestSuite) TestCollection_Info() {
 			},
 			wantVal: []domain.CollectionRecord{
 				{
+					Id:       6,
 					Biz:      repository.QuestionBiz,
 					Question: 2,
 				},
 				{
+					Id:   5,
 					Biz:  repository.CaseBiz,
 					Case: 3,
 				},

@@ -42,6 +42,12 @@ func (c *casSetSvc) GetCandidates(ctx context.Context, id int64, offset int, lim
 	cids := slice.Map(cs.Cases, func(idx int, src domain.Case) int64 {
 		return src.Id
 	})
+	// 在 NOT IN 查询里面，如果要是 cids 没有元素，那么会变成 NOT IN （NULL）
+	// 结果就是一个都查询不到，所以这是一个 tricky 的写法
+	// 不然走 if-else 代码就很难看
+	if len(cids) == 0 {
+		cids = append(cids, -1)
+	}
 	return c.caRepo.Exclude(ctx, cids, offset, limit)
 }
 

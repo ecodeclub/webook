@@ -64,6 +64,10 @@ func (q *questionSetService) GetCandidates(ctx context.Context, id int64, offset
 	qids := slice.Map(qs.Questions, func(idx int, src domain.Question) int64 {
 		return src.Id
 	})
+	if len(qids) == 0 {
+		// 这是一种很 tricky 的写法，可以简化代码
+		qids = append(qids, -1)
+	}
 	return q.queRepo.ExcludeQuestions(ctx, qids, offset, limit)
 }
 

@@ -34,5 +34,5 @@ func NewHandler(
 
 func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g := server.Group("/interactive")
-	g.POST("/collection/info", ginx.BS[CollectionInfoReq](h.CollectionInfo))
+	g.POST("/collection/records", ginx.BS[CollectionInfoReq](h.CollectionRecords))
 }

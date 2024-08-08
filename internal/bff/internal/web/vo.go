@@ -13,9 +13,10 @@ type CollectionInfoReq struct {
 }
 
 type CollectionRecord struct {
-	Case        Case        `json:"case"`
-	Question    Question    `json:"question"`
-	QuestionSet QuestionSet `json:"questionSet"`
+	Id          int64       `json:"id"`
+	Case        Case        `json:"case,omitempty"`
+	Question    Question    `json:"question,omitempty"`
+	QuestionSet QuestionSet `json:"questionSet,omitempty"`
 }
 
 type Case struct {
@@ -24,9 +25,9 @@ type Case struct {
 }
 
 type Question struct {
-	ID     int64  `json:"id"`
-	Title  string `json:"title"`
-	Result uint8  `json:"Result"`
+	ID            int64  `json:"id"`
+	Title         string `json:"title"`
+	ExamineResult uint8  `json:"examineResult"`
 }
 
 type QuestionSet struct {
@@ -44,14 +45,17 @@ func newCollectionRecord(record interactive.CollectionRecord,
 	switch record.Biz {
 	case CaseBiz:
 		return CollectionRecord{
+			Id:   record.Id,
 			Case: setCases(record, cm),
 		}
 	case QuestionBiz:
 		return CollectionRecord{
+			Id:       record.Id,
 			Question: setQuestion(record, qm, examMap),
 		}
 	case QuestionSetBiz:
 		return CollectionRecord{
+			Id:          record.Id,
 			QuestionSet: setQuestionSet(record, qsm, examMap),
 		}
 	}
@@ -70,9 +74,9 @@ func setQuestion(record interactive.CollectionRecord, qm map[int64]baguwen.Quest
 	q := qm[record.Question]
 	exam := examMap[record.Question]
 	return Question{
-		ID:     q.Id,
-		Title:  q.Title,
-		Result: exam.Result.ToUint8(),
+		ID:            q.Id,
+		Title:         q.Title,
+		ExamineResult: exam.Result.ToUint8(),
 	}
 }
 
@@ -82,9 +86,9 @@ func setQuestionSet(record interactive.CollectionRecord, qsm map[int64]baguwen.Q
 	for _, q := range qs.Questions {
 		exam := examMap[q.Id]
 		questions = append(questions, Question{
-			ID:     q.Id,
-			Title:  q.Title,
-			Result: exam.Result.ToUint8(),
+			ID:            q.Id,
+			Title:         q.Title,
+			ExamineResult: exam.Result.ToUint8(),
 		})
 	}
 	return QuestionSet{
@@ -92,5 +96,4 @@ func setQuestionSet(record interactive.CollectionRecord, qsm map[int64]baguwen.Q
 		Title:     qs.Title,
 		Questions: questions,
 	}
-
 }

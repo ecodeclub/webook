@@ -43,13 +43,11 @@ func NewHandler(svc service.SkillService,
 }
 
 func (h *Handler) PrivateRoutes(server *gin.Engine) {
-	server.POST("/skill/save", ginx.S(h.Permission), ginx.B[SaveReq](h.Save))
 	server.POST("/skill/list", ginx.B[Page](h.List))
-	server.POST("/skill/detail", ginx.B[Sid](h.Detail))
 	server.POST("/skill/detail-refs", ginx.S(h.Permission), ginx.B[Sid](h.DetailRefs))
+	server.POST("/skill/save", ginx.S(h.Permission), ginx.B[SaveReq](h.Save))
 	server.POST("/skill/save-refs", ginx.S(h.Permission), ginx.B(h.SaveRefs))
 	server.POST("/skill/level-refs", ginx.S(h.Permission), ginx.BS(h.RefsByLevelIDs))
-	server.POST("/skill/level/detail", ginx.BS[LevelInfoReq](h.LevelInfo))
 }
 
 func (h *Handler) PublicRoutes(server *gin.Engine) {
@@ -84,17 +82,6 @@ func (h *Handler) SaveRefs(ctx *ginx.Context, req SaveReq) (ginx.Result, error) 
 	}, nil
 }
 
-func (h *Handler) Detail(ctx *ginx.Context, req Sid) (ginx.Result, error) {
-	skill, err := h.svc.Info(ctx, req.Sid)
-	if err != nil {
-		return systemErrorResult, err
-	}
-	skillView := newSkill(skill)
-	return ginx.Result{
-		Data: skillView,
-	}, nil
-}
-
 func (h *Handler) List(ctx *ginx.Context, page Page) (ginx.Result, error) {
 	skills, count, err := h.svc.List(ctx, page.Offset, page.Limit)
 	if err != nil {
@@ -125,6 +112,9 @@ func (h *Handler) DetailRefs(ctx *ginx.Context, req Sid) (ginx.Result, error) {
 	var eg errgroup.Group
 	eg.Go(func() error {
 		qids := skill.Questions()
+		if len(qids) == 0 {
+			return nil
+		}
 		qs, err1 := h.queSvc.GetPubByIDs(ctx, qids)
 		if err1 != nil {
 			return err1
@@ -138,6 +128,9 @@ func (h *Handler) DetailRefs(ctx *ginx.Context, req Sid) (ginx.Result, error) {
 
 	eg.Go(func() error {
 		cids := skill.Cases()
+		if len(cids) == 0 {
+			return nil
+		}
 		cs, err1 := h.caseSvc.GetPubByIDs(ctx, cids)
 		if err1 != nil {
 			return err1
@@ -146,6 +139,22 @@ func (h *Handler) DetailRefs(ctx *ginx.Context, req Sid) (ginx.Result, error) {
 			return ele.Id
 		})
 		res.setCases(cms)
+		return nil
+	})
+
+	eg.Go(func() error {
+		cids := skill.QuestionSets()
+		if len(cids) == 0 {
+			return nil
+		}
+		cs, err1 := h.queSetSvc.GetByIDsWithQuestion(ctx, cids)
+		if err1 != nil {
+			return err1
+		}
+		cms := slice.ToMap(cs, func(ele baguwen.QuestionSet) int64 {
+			return ele.Id
+		})
+		res.setQuestionSets(cms)
 		return nil
 	})
 	return ginx.Result{
@@ -162,7 +171,7 @@ func (h *Handler) RefsByLevelIDs(ctx *ginx.Context, req IDs, sess session.Sessio
 	if err != nil {
 		return systemErrorResult, err
 	}
-	csm, qsm, qssmap, examResMap, err := h.getmap(ctx, uid, res)
+	csm, qsm, qssmap, examResMap, err := h.skillLevels(ctx, uid, res)
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -178,26 +187,7 @@ func (h *Handler) RefsByLevelIDs(ctx *ginx.Context, req IDs, sess session.Sessio
 	}, nil
 }
 
-func (h *Handler) LevelInfo(ctx *ginx.Context, req LevelInfoReq, sess session.Session) (ginx.Result, error) {
-	uid := sess.Claims().Uid
-	res, err := h.svc.LevelInfo(ctx, req.ID)
-	if err != nil {
-		return systemErrorResult, err
-	}
-	csm, qsm, qssmap, examResMap, err := h.getmap(ctx, uid, []domain.SkillLevel{res})
-	if err != nil {
-		return systemErrorResult, err
-	}
-	sl := newSkillLevel(res)
-	sl.setCases(csm)
-	sl.setQuestionsWithExam(qsm, examResMap)
-	sl.setQuestionSet(qssmap, examResMap)
-	return ginx.Result{
-		Data: sl,
-	}, nil
-}
-
-func (h *Handler) getmap(ctx context.Context, uid int64, levels []domain.SkillLevel) (map[int64]cases.Case,
+func (h *Handler) skillLevels(ctx context.Context, uid int64, levels []domain.SkillLevel) (map[int64]cases.Case,
 	map[int64]baguwen.Question,
 	map[int64]baguwen.QuestionSet,
 	map[int64]baguwen.ExamResult,
@@ -247,9 +237,7 @@ func (h *Handler) getmap(ctx context.Context, uid int64, levels []domain.SkillLe
 			return element.Id
 		})
 		for _, qs := range qsets {
-			qid2s = append(qid2s, slice.Map(qs.Questions, func(idx int, src baguwen.Question) int64 {
-				return src.Id
-			})...)
+			qid2s = append(qid2s, qs.Qids()...)
 		}
 		return nil
 	})

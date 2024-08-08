@@ -22,6 +22,18 @@ func (s Skill) Cases() []int64 {
 	return res
 }
 
+func (s Skill) QuestionSets() []int64 {
+	res := make([]int64, 0, s.questionSetLen())
+	res = append(res, s.Basic.QuestionSets...)
+	res = append(res, s.Intermediate.Questions...)
+	res = append(res, s.Advanced.QuestionSets...)
+	return res
+}
+
+func (s Skill) questionSetLen() int {
+	return len(s.Basic.QuestionSets) + len(s.Intermediate.QuestionSets) + len(s.Advanced.QuestionSets)
+}
+
 func (s Skill) caseLen() int {
 	return len(s.Basic.Cases) + len(s.Intermediate.Cases) + len(s.Advanced.Cases)
 }
@@ -47,15 +59,3 @@ type SkillLevel struct {
 	Cases        []int64
 	QuestionSets []int64
 }
-
-//type SkillPreRequest struct {
-//	Id    int64
-//	Slid int64
-//	Rid   int64
-//	Rtype string
-//}
-
-//const (
-//	RTypeQuestion = "question"
-//	RTypeCase = "case"
-//)

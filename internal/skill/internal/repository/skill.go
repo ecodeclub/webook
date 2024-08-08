@@ -232,10 +232,14 @@ func (s *skillRepo) skillToInfoDomain(skill dao.Skill,
 		dsl := s.skillLevelToDomain(sl)
 		slQues, _ := reqsMap.Get(fmt.Sprintf("%d_%s", sl.Id, dao.RTypeQuestion))
 		slCases, _ := reqsMap.Get(fmt.Sprintf("%d_%s", sl.Id, dao.RTypeCase))
+		slQueSets, _ := reqsMap.Get(fmt.Sprintf("%d_%s", sl.Id, dao.RTypeQuestionSet))
 		dsl.Questions = slice.Map(slQues, func(idx int, src dao.SkillRef) int64 {
 			return src.Rid
 		})
 		dsl.Cases = slice.Map(slCases, func(idx int, src dao.SkillRef) int64 {
+			return src.Rid
+		})
+		dsl.QuestionSets = slice.Map(slQueSets, func(idx int, src dao.SkillRef) int64 {
 			return src.Rid
 		})
 		switch sl.Level {

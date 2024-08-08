@@ -57,7 +57,7 @@ const (
 	LevelAdvanced     = "advanced"
 	RTypeQuestion     = "question"
 	RTypeCase         = "case"
-	RTypeQuestionSet  = "question_set"
+	RTypeQuestionSet  = "questionSet"
 )
 
 func (SkillRef) TableName() string {
