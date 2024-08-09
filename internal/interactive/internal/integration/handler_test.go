@@ -91,7 +91,6 @@ func (i *InteractiveTestSuite) SetupSuite() {
 	server := egin.Load("server").Build()
 	handler := module.Hdl
 	i.svc = module.Svc
-	handler.PublicRoutes(server.Engine)
 	server.Use(func(ctx *gin.Context) {
 		ctx.Set("_session", session.NewMemorySession(session.Claims{
 			Uid: uid,

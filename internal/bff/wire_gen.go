@@ -18,10 +18,11 @@ import (
 func InitModule(intrModule *interactive.Module, caseModule *cases.Module, queModule *baguwen.Module) (*Module, error) {
 	service := intrModule.Svc
 	serviceService := caseModule.Svc
+	caseSetService := caseModule.SetSvc
 	service2 := queModule.Svc
 	questionSetService := queModule.SetSvc
 	examineService := queModule.ExamSvc
-	handler := web.NewHandler(service, serviceService, service2, questionSetService, examineService)
+	handler := web.NewHandler(service, serviceService, caseSetService, service2, questionSetService, examineService)
 	module := &Module{
 		Hdl: handler,
 	}

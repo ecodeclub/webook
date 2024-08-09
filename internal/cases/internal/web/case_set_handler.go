@@ -109,13 +109,13 @@ func (h *CaseSetHandler) getDetail(
 
 	eg.Go(func() error {
 		var err error
-		intr, err = h.intrSvc.Get(ctx, "caseSet", cs.ID, uid)
+		intr, err = h.intrSvc.Get(ctx, domain.BizCaseSet, cs.ID, uid)
 		return err
 	})
 	eg.Go(func() error {
 		var err error
 		cids := cs.Cids()
-		caseIntrMap, err = h.intrSvc.GetByIds(ctx, "case", cids)
+		caseIntrMap, err = h.intrSvc.GetByIds(ctx, domain.BizCase, cids)
 		return err
 	})
 

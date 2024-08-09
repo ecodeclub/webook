@@ -17,6 +17,7 @@ type CollectionRecord struct {
 	Case        Case        `json:"case,omitempty"`
 	Question    Question    `json:"question,omitempty"`
 	QuestionSet QuestionSet `json:"questionSet,omitempty"`
+	CaseSet     CaseSet     `json:"caseSet,omitempty"`
 }
 
 type Case struct {
@@ -30,6 +31,12 @@ type Question struct {
 	ExamineResult uint8  `json:"examineResult"`
 }
 
+type CaseSet struct {
+	ID    int64  `json:"id"`
+	Title string `json:"title"`
+	Cases []Case `json:"cases"`
+}
+
 type QuestionSet struct {
 	ID        int64      `json:"id"`
 	Title     string     `json:"title"`
@@ -38,28 +45,33 @@ type QuestionSet struct {
 
 func newCollectionRecord(record interactive.CollectionRecord,
 	cm map[int64]cases.Case,
+	csm map[int64]cases.CaseSet,
 	qm map[int64]baguwen.Question,
 	qsm map[int64]baguwen.QuestionSet,
 	examMap map[int64]baguwen.ExamResult,
 ) CollectionRecord {
+	res := CollectionRecord{
+		Id: record.Id,
+	}
 	switch record.Biz {
 	case CaseBiz:
-		return CollectionRecord{
-			Id:   record.Id,
-			Case: setCases(record, cm),
-		}
+		res.Case = setCases(record, cm)
 	case QuestionBiz:
-		return CollectionRecord{
-			Id:       record.Id,
-			Question: setQuestion(record, qm, examMap),
-		}
+		res.Question = setQuestion(record, qm, examMap)
 	case QuestionSetBiz:
-		return CollectionRecord{
-			Id:          record.Id,
-			QuestionSet: setQuestionSet(record, qsm, examMap),
-		}
+		res.QuestionSet = setQuestionSet(record, qsm, examMap)
+	case CaseSetBiz:
+		res.CaseSet = setCaseSet(record, csm)
 	}
-	return CollectionRecord{}
+	return res
+}
+
+func setCaseSet(ca interactive.CollectionRecord, csm map[int64]cases.CaseSet) CaseSet {
+	cs := csm[ca.CaseSet]
+	return CaseSet{
+		ID:    cs.ID,
+		Title: cs.Title,
+	}
 }
 
 func setCases(ca interactive.CollectionRecord, qm map[int64]cases.Case) Case {
