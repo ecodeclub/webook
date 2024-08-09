@@ -15,8 +15,10 @@
 package web
 
 import (
+	"github.com/ecodeclub/ekit/slice"
 	"github.com/ecodeclub/ginx"
 	"github.com/ecodeclub/ginx/session"
+	"github.com/ecodeclub/webook/internal/interactive/internal/domain"
 	"github.com/ecodeclub/webook/internal/interactive/internal/service"
 	"github.com/gin-gonic/gin"
 )
@@ -42,6 +44,7 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g.POST("/collection/save", ginx.BS[Collection](h.CollectionSave))
 	g.POST("/collection/list", ginx.BS[Page](h.CollectionList))
 	g.POST("/collection/delete", ginx.BS[IdReq](h.CollectionDelete))
+	g.POST("/collection/move", ginx.BS[MoveCollectionReq](h.MoveCollection))
 
 	g.POST("/like/toggle", ginx.BS[LikeReq](h.Like))
 }
@@ -70,22 +73,55 @@ func (h *Handler) Like(ctx *ginx.Context, req LikeReq, sess session.Session) (gi
 
 func (h *Handler) CollectionSave(ctx *ginx.Context, req Collection, sess session.Session) (ginx.Result, error) {
 	// 把 ID 返回回来
+	uid := sess.Claims().Uid
+	id, err := h.svc.SaveCollection(ctx, domain.Collection{
+		Id:   req.Id,
+		Name: req.Name,
+		Uid:  uid,
+	})
+	if err != nil {
+		return systemErrorResult, err
+	}
 	return ginx.Result{
-		Data: 123,
+		Data: id,
 	}, nil
 }
 
 func (h *Handler) CollectionList(ctx *ginx.Context, req Page, sess session.Session) (ginx.Result, error) {
 	// 根据 ID 倒序返回数据
+	uid := sess.Claims().Uid
+	collections, err := h.svc.CollectionList(ctx, uid, req.Offset, req.Limit)
+	if err != nil {
+		return systemErrorResult, err
+	}
 	return ginx.Result{
-		Data: []Collection{},
+		Data: slice.Map(collections, func(idx int, src domain.Collection) Collection {
+			return Collection{
+				Id:   src.Id,
+				Name: src.Name,
+			}
+		}),
 	}, nil
 }
 
 func (h *Handler) CollectionDelete(ctx *ginx.Context, req IdReq, sess session.Session) (ginx.Result, error) {
 	// 删除这个 id 的 collection
 	// 要注意， Uid 必须是这个人。也就是说 A 用户不能删了 B 用户的收藏夹
+	uid := sess.Claims().Uid
+	err := h.svc.DeleteCollection(ctx, uid, req.Id)
+	if err != nil {
+		return systemErrorResult, err
+	}
 	return ginx.Result{
 		Data: "OK",
 	}, nil
+}
+
+func (h *Handler) MoveCollection(ctx *ginx.Context, req MoveCollectionReq, sess session.Session) (ginx.Result, error) {
+	uid := sess.Claims().Uid
+	err := h.svc.MoveToCollection(ctx, req.Biz, req.BizId, uid, req.Cid)
+	if err != nil {
+		return systemErrorResult, err
+	}
+	return ginx.Result{}, nil
 }

@@ -16,7 +16,10 @@
       "content": {
         "type": "text"
       },
-      "code_repo": {
+      "github_repo": {
+        "type": "keyword"
+      },
+      "gitee_repo": {
         "type": "keyword"
       },
       "keywords": {

@@ -40,10 +40,29 @@ type QuestionDAO interface {
 	PubCount(ctx context.Context) (int64, error)
 	GetPubByID(ctx context.Context, qid int64) (PublishQuestion, []PublishAnswerElement, error)
 	GetPubByIDs(ctx context.Context, qids []int64) ([]PublishQuestion, error)
+	NotInTotal(ctx context.Context, ids []int64) (int64, error)
+	NotIn(ctx context.Context, ids []int64, offset int, limit int) ([]Question, error)
 }
 
 type GORMQuestionDAO struct {
 	db *egorm.Component
+}
+
+func (g *GORMQuestionDAO) NotInTotal(ctx context.Context, ids []int64) (int64, error) {
+	var res int64
+	err := g.db.WithContext(ctx).
+		Model(&Question{}).
+		Where("id NOT IN ?", ids).Count(&res).Error
+	return res, err
+}
+
+func (g *GORMQuestionDAO) NotIn(ctx context.Context, ids []int64, offset int, limit int) ([]Question, error) {
+	var res []Question
+	err := g.db.WithContext(ctx).
+		Model(&Question{}).
+		Where("id NOT IN ?", ids).Order("utime DESC").
+		Offset(offset).Limit(limit).Find(&res).Error
+	return res, err
 }
 
 func (g *GORMQuestionDAO) GetPubByIDs(ctx context.Context, qids []int64) ([]PublishQuestion, error) {

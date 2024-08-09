@@ -15,17 +15,16 @@
 package web
 
 import (
-	"github.com/ecodeclub/ekit/slice"
 	"github.com/ecodeclub/ginx"
 	"github.com/ecodeclub/ginx/session"
 	"github.com/ecodeclub/webook/internal/interactive"
-	"github.com/ecodeclub/webook/internal/question/internal/domain"
 	"github.com/ecodeclub/webook/internal/question/internal/service"
 	"github.com/gin-gonic/gin"
 )
 
 // AdminHandler 制作库
 type AdminHandler struct {
+	AdminBaseHandler
 	svc service.Service
 }
 
@@ -78,7 +77,6 @@ func (h *AdminHandler) Publish(ctx *ginx.Context, req SaveReq, sess session.Sess
 }
 
 func (h *AdminHandler) List(ctx *ginx.Context, req Page) (ginx.Result, error) {
-	// 制作库不需要统计总数
 	data, cnt, err := h.svc.List(ctx, req.Offset, req.Limit)
 	if err != nil {
 		return systemErrorResult, err
@@ -86,22 +84,6 @@ func (h *AdminHandler) List(ctx *ginx.Context, req Page) (ginx.Result, error) {
 	return ginx.Result{
 		Data: h.toQuestionList(data, cnt),
 	}, nil
-}
-
-func (h *AdminHandler) toQuestionList(data []domain.Question, cnt int64) QuestionList {
-	return QuestionList{
-		Total: cnt,
-		Questions: slice.Map(data, func(idx int, src domain.Question) Question {
-			return Question{
-				Id:      src.Id,
-				Title:   src.Title,
-				Content: src.Content,
-				Labels:  src.Labels,
-				Status:  src.Status.ToUint8(),
-				Utime:   src.Utime.UnixMilli(),
-			}
-		}),
-	}
 }
 
 func (h *AdminHandler) Detail(ctx *ginx.Context, req Qid) (ginx.Result, error) {

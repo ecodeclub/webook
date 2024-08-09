@@ -18,6 +18,8 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/ecodeclub/webook/internal/cases"
+
 	baguwen "github.com/ecodeclub/webook/internal/question"
 
 	"github.com/ecodeclub/webook/internal/roadmap"
@@ -39,6 +41,7 @@ func InitAdminServer(prj *project.AdminHandler,
 	rm *roadmap.AdminHandler,
 	que *baguwen.AdminHandler,
 	queSet *baguwen.AdminQuestionSetHandler,
+	caseHdl *cases.AdminCaseSetHandler,
 	mark *marketing.AdminHandler) AdminServer {
 	res := egin.Load("admin").Build()
 	res.Use(cors.New(cors.Config{
@@ -67,6 +70,7 @@ func InitAdminServer(prj *project.AdminHandler,
 	mark.PrivateRoutes(res.Engine)
 	rm.PrivateRoutes(res.Engine)
 	que.PrivateRoutes(res.Engine)
+	caseHdl.PrivateRoutes(res.Engine)
 	return res
 }
 

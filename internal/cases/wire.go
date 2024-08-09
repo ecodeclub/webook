@@ -5,12 +5,12 @@ package cases
 import (
 	"sync"
 
+	"github.com/ecodeclub/webook/internal/ai"
+
 	"github.com/ecodeclub/webook/internal/interactive"
 
 	"github.com/ecodeclub/mq-api"
 	"github.com/ecodeclub/webook/internal/cases/internal/event"
-
-	"github.com/ecodeclub/webook/internal/cases/internal/domain"
 
 	"github.com/ecodeclub/webook/internal/cases/internal/repository"
 	"github.com/ecodeclub/webook/internal/cases/internal/repository/dao"
@@ -23,14 +23,25 @@ import (
 
 func InitModule(db *egorm.Component,
 	intrModule *interactive.Module,
+	aiModule *ai.Module,
 	q mq.MQ) (*Module, error) {
 	wire.Build(InitCaseDAO,
+		dao.NewCaseSetDAO,
+		dao.NewGORMExamineDAO,
 		repository.NewCaseRepo,
+		repository.NewCaseSetRepo,
+		repository.NewCachedExamineRepository,
 		event.NewSyncEventProducer,
 		event.NewInteractiveEventProducer,
+		service.NewCaseSetService,
 		service.NewService,
+		service.NewLLMExamineService,
 		web.NewHandler,
+		web.NewAdminCaseSetHandler,
+		web.NewExamineHandler,
+		web.NewCaseSetHandler,
 		wire.FieldsOf(new(*interactive.Module), "Svc"),
+		wire.FieldsOf(new(*ai.Module), "Svc"),
 		wire.Struct(new(Module), "*"),
 	)
 	return new(Module), nil
@@ -51,7 +62,3 @@ func InitCaseDAO(db *egorm.Component) dao.CaseDAO {
 	InitTableOnce(db)
 	return dao.NewCaseDao(db)
 }
-
-type Handler = web.Handler
-type Service = service.Service
-type Case = domain.Case

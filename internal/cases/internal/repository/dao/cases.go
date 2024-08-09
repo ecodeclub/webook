@@ -24,12 +24,32 @@ type CaseDAO interface {
 	PublishCaseCount(ctx context.Context) (int64, error)
 	GetPublishCase(ctx context.Context, caseId int64) (PublishCase, error)
 	GetPubByIDs(ctx context.Context, ids []int64) ([]PublishCase, error)
+
+	NotInTotal(ctx context.Context, ids []int64) (int64, error)
+	NotIn(ctx context.Context, ids []int64, offset int, limit int) ([]Case, error)
 }
 
 type caseDAO struct {
 	db            *egorm.Component
 	listColumns   []string
 	updateColumns []string
+}
+
+func (ca *caseDAO) NotInTotal(ctx context.Context, ids []int64) (int64, error) {
+	var res int64
+	err := ca.db.WithContext(ctx).
+		Model(&Case{}).
+		Where("id NOT IN ?", ids).Count(&res).Error
+	return res, err
+}
+
+func (ca *caseDAO) NotIn(ctx context.Context, ids []int64, offset int, limit int) ([]Case, error) {
+	var res []Case
+	err := ca.db.WithContext(ctx).
+		Model(&Case{}).
+		Where("id NOT IN ?", ids).Order("utime DESC").
+		Offset(offset).Limit(limit).Find(&res).Error
+	return res, err
 }
 
 func (ca *caseDAO) Count(ctx context.Context) (int64, error) {
@@ -122,7 +142,7 @@ func NewCaseDao(db *egorm.Component) CaseDAO {
 		listColumns: []string{"id", "labels", "status", "introduction", "title", "utime"},
 		updateColumns: []string{
 			"introduction", "labels", "title", "content",
-			"code_repo", "keywords", "shorthand", "highlight",
-			"guidance", "status", "utime"},
+			"github_repo", "gitee_repo", "keywords", "shorthand", "highlight",
+			"guidance", "status", "utime", "biz", "biz_id"},
 	}
 }

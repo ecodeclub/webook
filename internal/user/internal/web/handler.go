@@ -20,6 +20,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/ecodeclub/webook/internal/pkg/middleware"
+
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/ecodeclub/ginx"
 	"github.com/ecodeclub/ginx/session"
@@ -72,19 +74,20 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 }
 
 func (h *Handler) PublicRoutes(server *gin.Engine) {
+	appidFunc := middleware.NewCheckAppIdBuilder().Build()
 	oauth2 := server.Group("/oauth2")
-	oauth2.GET("/wechat/auth_url", ginx.W(h.WechatAuthURL))
-	oauth2.GET("/mock/login", ginx.W(h.MockLogin))
+	oauth2.GET("/wechat/auth_url", appidFunc, ginx.W(h.WechatAuthURL))
+	oauth2.GET("/mock/login", appidFunc, ginx.W(h.MockLogin))
 	// 扫码登录回调
-	oauth2.Any("/wechat/callback", ginx.B[WechatCallback](h.Callback))
+	oauth2.Any("/wechat/callback", appidFunc, ginx.B[WechatCallback](h.Callback))
 	// 小程序登录回调
-	oauth2.Any("/wechat/mini/callback", ginx.B[WechatCallback](h.MiniCallback))
-	oauth2.Any("/wechat/token/refresh", ginx.W(h.RefreshAccessToken))
+	oauth2.Any("/wechat/mini/callback", appidFunc, ginx.B[WechatCallback](h.MiniCallback))
+	oauth2.Any("/wechat/token/refresh", appidFunc, ginx.W(h.RefreshAccessToken))
 }
 
 func (h *Handler) WechatAuthURL(ctx *ginx.Context) (ginx.Result, error) {
 	code, _ := ctx.GetQuery("code")
-	res, err := h.weSvc.AuthURL(ctx.Request.Context(), service.AuthParams{
+	res, err := h.weSvc.AuthURL(ctx, service.AuthParams{
 		InvitationCode: code,
 	})
 	if err != nil {
@@ -159,6 +162,7 @@ func (h *Handler) Edit(ctx *ginx.Context, req EditReq, sess session.Session) (gi
 }
 
 func (h *Handler) Callback(ctx *ginx.Context, req WechatCallback) (ginx.Result, error) {
+
 	info, err := h.weSvc.Verify(ctx, service.CallbackParams{
 		Code:  req.Code,
 		State: req.State,

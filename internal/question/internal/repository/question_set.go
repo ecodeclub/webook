@@ -32,6 +32,7 @@ type QuestionSetRepository interface {
 	List(ctx context.Context, offset int, limit int) ([]domain.QuestionSet, error)
 	UpdateNonZero(ctx context.Context, set domain.QuestionSet) error
 	GetByIDs(ctx context.Context, ids []int64) ([]domain.QuestionSet, error)
+	GetByIDsWithQuestion(ctx context.Context, ids []int64) ([]domain.QuestionSet, error)
 	ListByBiz(ctx context.Context, offset, limit int, biz string) ([]domain.QuestionSet, error)
 	GetByBiz(ctx context.Context, biz string, bizId int64) (domain.QuestionSet, error)
 }
@@ -41,6 +42,29 @@ var _ QuestionSetRepository = &questionSetRepository{}
 type questionSetRepository struct {
 	dao    dao.QuestionSetDAO
 	logger *elog.Component
+}
+
+func (q *questionSetRepository) GetByIDsWithQuestion(ctx context.Context, ids []int64) ([]domain.QuestionSet, error) {
+	qsets, questionMap, err := q.dao.GetByIDsWithQuestions(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+	res := slice.Map(qsets, func(idx int, src dao.QuestionSet) domain.QuestionSet {
+		qids := questionMap[src.Id]
+		set := domain.QuestionSet{
+			Id:    src.Id,
+			Title: src.Title,
+		}
+		questions := slice.Map(qids, func(idx int, src dao.Question) domain.Question {
+			return domain.Question{
+				Id:    src.Id,
+				Title: src.Title,
+			}
+		})
+		set.Questions = questions
+		return set
+	})
+	return res, nil
 }
 
 func (q *questionSetRepository) GetByBiz(ctx context.Context, biz string, bizId int64) (domain.QuestionSet, error) {

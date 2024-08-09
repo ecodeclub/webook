@@ -27,12 +27,34 @@ type SkillRepo interface {
 	Info(ctx context.Context, id int64) (domain.Skill, error)
 	Count(ctx context.Context) (int64, error)
 	RefsByLevelIDs(ctx context.Context, ids []int64) ([]domain.SkillLevel, error)
+	LevelInfo(ctx context.Context, id int64) (domain.SkillLevel, error)
 }
 type skillRepo struct {
 	skillDao dao.SkillDAO
 	// 暂时没用上
 	cache  cache.SkillCache
 	logger *elog.Component
+}
+
+func (s *skillRepo) LevelInfo(ctx context.Context, id int64) (domain.SkillLevel, error) {
+	sk, err := s.skillDao.SkillLevelFirst(ctx, id)
+	if err != nil {
+		return domain.SkillLevel{}, err
+	}
+	levels, err := s.RefsByLevelIDs(ctx, []int64{id})
+	if err != nil {
+		return domain.SkillLevel{}, err
+	}
+	level := domain.SkillLevel{
+		Id:   sk.Id,
+		Desc: sk.Desc,
+	}
+	if len(levels) > 0 {
+		level.Cases = levels[0].Cases
+		level.Questions = levels[0].Questions
+		level.QuestionSets = levels[0].QuestionSets
+	}
+	return level, nil
 }
 
 func (s *skillRepo) RefsByLevelIDs(ctx context.Context, ids []int64) ([]domain.SkillLevel, error) {
@@ -48,10 +70,12 @@ func (s *skillRepo) RefsByLevelIDs(ctx context.Context, ids []int64) ([]domain.S
 	return slice.Map(ids, func(idx int, src int64) domain.SkillLevel {
 		ques, _ := m.Get(fmt.Sprintf(keyPattern, dao.RTypeQuestion, src))
 		cs, _ := m.Get(fmt.Sprintf(keyPattern, dao.RTypeCase, src))
+		questionSets, _ := m.Get(fmt.Sprintf(keyPattern, dao.RTypeQuestionSet, src))
 		return domain.SkillLevel{
-			Id:        src,
-			Questions: ques,
-			Cases:     cs,
+			Id:           src,
+			Questions:    ques,
+			Cases:        cs,
+			QuestionSets: questionSets,
 		}
 	}), nil
 }
@@ -107,6 +131,18 @@ func (s *skillRepo) toRef(sid int64, level domain.SkillLevel) []dao.SkillRef {
 			Utime: now,
 		})
 	}
+
+	for i := 0; i < len(level.QuestionSets); i++ {
+		res = append(res, dao.SkillRef{
+			Rid:   level.QuestionSets[i],
+			Rtype: dao.RTypeQuestionSet,
+			Sid:   sid,
+			Slid:  level.Id,
+			Ctime: now,
+			Utime: now,
+		})
+	}
+
 	return res
 }
 
@@ -196,10 +232,14 @@ func (s *skillRepo) skillToInfoDomain(skill dao.Skill,
 		dsl := s.skillLevelToDomain(sl)
 		slQues, _ := reqsMap.Get(fmt.Sprintf("%d_%s", sl.Id, dao.RTypeQuestion))
 		slCases, _ := reqsMap.Get(fmt.Sprintf("%d_%s", sl.Id, dao.RTypeCase))
+		slQueSets, _ := reqsMap.Get(fmt.Sprintf("%d_%s", sl.Id, dao.RTypeQuestionSet))
 		dsl.Questions = slice.Map(slQues, func(idx int, src dao.SkillRef) int64 {
 			return src.Rid
 		})
 		dsl.Cases = slice.Map(slCases, func(idx int, src dao.SkillRef) int64 {
+			return src.Rid
+		})
+		dsl.QuestionSets = slice.Map(slQueSets, func(idx int, src dao.SkillRef) int64 {
 			return src.Rid
 		})
 		switch sl.Level {

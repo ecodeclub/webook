@@ -18,6 +18,8 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/ecodeclub/webook/internal/bff"
+
 	"github.com/ecodeclub/webook/internal/roadmap"
 
 	"github.com/ecodeclub/webook/internal/search"
@@ -78,6 +80,8 @@ func initGinxServer(sp session.Provider,
 	intrHdl *interactive.Handler,
 	searchHdl *search.Handler,
 	roadmapHdl *roadmap.Handler,
+	bffHdl *bff.Handler,
+	csHdl *cases.CaseSetHandler,
 ) *egin.Component {
 	session.SetDefaultProvider(sp)
 	res := egin.Load("web").Build()
@@ -86,7 +90,9 @@ func initGinxServer(sp session.Provider,
 	res.Use(cors.New(cors.Config{
 		ExposeHeaders:    []string{"X-Refresh-Token", "X-Access-Token"},
 		AllowCredentials: true,
-		AllowHeaders:     []string{"X-Timestamp", "Authorization", "Content-Type"},
+		AllowHeaders: []string{"X-Timestamp",
+			"X-APP",
+			"Authorization", "Content-Type"},
 		AllowOriginFunc: func(origin string) bool {
 			if strings.HasPrefix(origin, "http://localhost") {
 				return true
@@ -98,6 +104,9 @@ func initGinxServer(sp session.Provider,
 	res.GET("/hello", func(ctx *gin.Context) {
 		ctx.String(http.StatusOK, "hello, world!")
 	})
+
+	// 放到这里统一管理，后续扩展性更加好
+	res.Use(middleware.NewCheckAppIdBuilder().Build())
 
 	// 微信支付的回调不需要安全校验机制
 	paymentHdl.PublicRoutes(res.Engine)
@@ -113,6 +122,7 @@ func initGinxServer(sp session.Provider,
 	cosHdl.PublicRoutes(res.Engine)
 	caseHdl.PublicRoutes(res.Engine)
 	skillHdl.PublicRoutes(res.Engine)
+	csHdl.PublicRoutes(res.Engine)
 	// 登录校验
 	res.Use(session.CheckLoginMiddleware())
 	user.PrivateRoutes(res.Engine)
@@ -132,6 +142,8 @@ func initGinxServer(sp session.Provider,
 
 	// 权限校验
 	prjHdl.PrivateRoutes(res.Engine)
+	bffHdl.PrivateRoutes(res.Engine)
+	csHdl.PrivateRoutes(res.Engine)
 
 	// 会员校验
 	res.Use(checkMembershipMiddleware.Build())

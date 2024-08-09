@@ -32,7 +32,8 @@ type Case struct {
 	Labels       []string `json:"labels"`
 	Title        string   `json:"title"`
 	Content      string   `json:"content"`
-	CodeRepo     string   `json:"code_repo"`
+	GithubRepo   string   `json:"github_repo"`
+	GiteeRepo    string   `json:"gitee_repo"`
 	Keywords     string   `json:"keywords"`
 	Shorthand    string   `json:"shorthand"`
 	Highlight    string   `json:"highlight"`
@@ -59,7 +60,8 @@ func newCase(ca domain.Case) Case {
 		Labels:       ca.Labels,
 		Title:        ca.Title,
 		Content:      ca.Content,
-		CodeRepo:     ca.CodeRepo,
+		GithubRepo:   ca.GithubRepo,
+		GiteeRepo:    ca.GiteeRepo,
 		Keywords:     ca.Keywords,
 		Shorthand:    ca.Shorthand,
 		Highlight:    ca.Highlight,

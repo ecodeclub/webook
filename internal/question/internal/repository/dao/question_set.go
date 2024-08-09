@@ -18,6 +18,8 @@ import (
 	"context"
 	"time"
 
+	"github.com/ecodeclub/ekit/slice"
+
 	"github.com/ego-component/egorm"
 	"gorm.io/gorm"
 )
@@ -35,10 +37,51 @@ type QuestionSetDAO interface {
 	GetByIDs(ctx context.Context, ids []int64) ([]QuestionSet, error)
 	ListByBiz(ctx context.Context, offset int, limit int, biz string) ([]QuestionSet, error)
 	GetByBiz(ctx context.Context, biz string, bizId int64) (QuestionSet, error)
+	//  GetByIDsWithQuestions 返回题集和题集对应的题目id
+	GetByIDsWithQuestions(ctx context.Context, ids []int64) ([]QuestionSet, map[int64][]Question, error)
 }
 
 type GORMQuestionSetDAO struct {
 	db *egorm.Component
+}
+
+func (g *GORMQuestionSetDAO) GetByIDsWithQuestions(ctx context.Context, ids []int64) ([]QuestionSet, map[int64][]Question, error) {
+	var sets []QuestionSet
+	db := g.db.WithContext(ctx)
+	err := db.Where("id IN ?", ids).Find(&sets).Error
+	if err != nil {
+		return nil, nil, err
+	}
+	var questions []QuestionSetQuestion
+	err = db.Model(&QuestionSetQuestion{}).Where("qs_id IN ?", ids).Find(&questions).Error
+	if err != nil {
+		return nil, nil, err
+	}
+	qids := slice.Map(questions, func(idx int, src QuestionSetQuestion) int64 {
+		return src.QID
+	})
+	var qs []Question
+	err = db.Model(&Question{}).Where("id IN ?", qids).Find(&qs).Error
+	if err != nil {
+		return nil, nil, err
+	}
+	qmap := slice.ToMap(qs, func(element Question) int64 {
+		return element.Id
+	})
+	questionMap := make(map[int64][]Question, len(ids))
+	for _, q := range questions {
+		questionList, ok := questionMap[q.QSID]
+		question := qmap[q.QID]
+		if ok {
+			questionList = append(questionList, question)
+			questionMap[q.QSID] = questionList
+		} else {
+			questionMap[q.QSID] = []Question{
+				question,
+			}
+		}
+	}
+	return sets, questionMap, nil
 }
 
 func (g *GORMQuestionSetDAO) GetByBiz(ctx context.Context, biz string, bizId int64) (QuestionSet, error) {

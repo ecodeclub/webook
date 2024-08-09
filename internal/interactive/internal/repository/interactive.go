@@ -17,11 +17,22 @@ package repository
 import (
 	"context"
 	"errors"
+	"time"
+
+	"github.com/gotomicro/ego/core/elog"
 
 	"github.com/ecodeclub/webook/internal/interactive/internal/domain"
 	"github.com/ecodeclub/webook/internal/interactive/internal/repository/dao"
 )
 
+const (
+	CaseBiz        = "case"
+	CaseSetBiz     = "caseSet"
+	QuestionBiz    = "question"
+	QuestionSetBiz = "questionSet"
+)
+
+var defaultTimeout = 1 * time.Second
 var ErrRecordNotFound = dao.ErrRecordNotFound
 
 type InteractiveRepository interface {
@@ -32,10 +43,71 @@ type InteractiveRepository interface {
 	GetByIds(ctx context.Context, biz string, ids []int64) ([]domain.Interactive, error)
 	Liked(ctx context.Context, biz string, id int64, uid int64) (bool, error)
 	Collected(ctx context.Context, biz string, id int64, uid int64) (bool, error)
+
+	// 保存收藏夹
+	SaveCollection(ctx context.Context, collection domain.Collection) (int64, error)
+	// 删除收藏夹
+	DeleteCollection(ctx context.Context, uid, collectionId int64) error
+	// 收藏夹列表
+	CollectionList(ctx context.Context, uid int64, offset, limit int) ([]domain.Collection, error)
+	// CollectionInfo 收藏夹收藏记录
+	CollectionInfo(ctx context.Context, uid, collectionId int64, offset, limit int) ([]domain.CollectionRecord, error)
+	// MoveCollection 转移收藏夹
+	MoveCollection(ctx context.Context, biz string, bizid, uid, collectionId int64) error
 }
 
 type interactiveRepository struct {
 	interactiveDao dao.InteractiveDAO
+	logger         *elog.Component
+}
+
+func (i *interactiveRepository) MoveCollection(ctx context.Context, biz string, bizid, uid, collectionId int64) error {
+	return i.interactiveDao.MoveCollection(ctx, biz, bizid, uid, collectionId)
+}
+
+func (i *interactiveRepository) SaveCollection(ctx context.Context, collection domain.Collection) (int64, error) {
+	collectionEntity := i.collectionToEntity(collection)
+	return i.interactiveDao.SaveCollection(ctx, collectionEntity)
+}
+
+func (i *interactiveRepository) DeleteCollection(ctx context.Context, uid, collectionId int64) error {
+	// 查询删除收藏夹的详情
+	collectionRecords, err := i.interactiveDao.CollectionInfo(ctx, collectionId)
+	if err != nil {
+		return err
+	}
+	err = i.interactiveDao.DeleteCollection(ctx, uid, collectionId)
+	if err != nil {
+		return err
+	}
+	// 减少计数
+	go i.decrCollectionCount(collectionRecords)
+	return nil
+}
+
+func (i *interactiveRepository) CollectionList(ctx context.Context, uid int64, offset, limit int) ([]domain.Collection, error) {
+	clist, err := i.interactiveDao.CollectionList(ctx, uid, offset, limit)
+	if err != nil {
+		return nil, err
+	}
+	collections := make([]domain.Collection, 0)
+	for _, c := range clist {
+		collections = append(collections, i.collectionToDomain(c))
+	}
+	return collections, nil
+}
+
+func (i *interactiveRepository) CollectionInfo(ctx context.Context, uid, collectionId int64, offset, limit int) ([]domain.CollectionRecord, error) {
+	userBizs, err := i.interactiveDao.CollectionInfoWithPage(ctx, uid, collectionId, offset, limit)
+	if err != nil {
+		return nil, err
+	}
+	records := make([]domain.CollectionRecord, 0, len(userBizs))
+	for _, userBiz := range userBizs {
+		record := i.toCollectionRecord(userBiz)
+		records = append(records, record)
+	}
+	return records, nil
 }
 
 func (i *interactiveRepository) IncrViewCnt(ctx context.Context, biz string, bizId int64) error {
@@ -102,7 +174,10 @@ func (i *interactiveRepository) GetByIds(ctx context.Context, biz string, ids []
 }
 
 func NewCachedInteractiveRepository(interactiveDao dao.InteractiveDAO) InteractiveRepository {
-	return &interactiveRepository{interactiveDao: interactiveDao}
+	return &interactiveRepository{
+		interactiveDao: interactiveDao,
+		logger:         elog.DefaultLogger,
+	}
 }
 
 func (i *interactiveRepository) toDomain(ie dao.Interactive) domain.Interactive {
@@ -112,5 +187,51 @@ func (i *interactiveRepository) toDomain(ie dao.Interactive) domain.Interactive 
 		LikeCnt:    ie.LikeCnt,
 		CollectCnt: ie.CollectCnt,
 		ViewCnt:    ie.ViewCnt,
+	}
+}
+
+func (i *interactiveRepository) collectionToDomain(collectionDao dao.Collection) domain.Collection {
+	return domain.Collection{
+		Id:   collectionDao.Id,
+		Uid:  collectionDao.Uid,
+		Name: collectionDao.Name,
+	}
+}
+
+func (i *interactiveRepository) collectionToEntity(ie domain.Collection) dao.Collection {
+	return dao.Collection{
+		Id:   ie.Id,
+		Uid:  ie.Uid,
+		Name: ie.Name,
+	}
+}
+
+func (i *interactiveRepository) toCollectionRecord(collectBiz dao.UserCollectionBiz) domain.CollectionRecord {
+	record := domain.CollectionRecord{
+		Id:  collectBiz.Id,
+		Biz: collectBiz.Biz,
+	}
+	switch collectBiz.Biz {
+	case CaseBiz:
+		record.Case = collectBiz.BizId
+	case CaseSetBiz:
+		record.CaseSet = collectBiz.BizId
+	case QuestionBiz:
+		record.Question = collectBiz.BizId
+	case QuestionSetBiz:
+		record.QuestionSet = collectBiz.BizId
+	}
+	return record
+
+}
+
+func (i *interactiveRepository) decrCollectionCount(collectionRecords []dao.UserCollectionBiz) {
+	for _, record := range collectionRecords {
+		ctx, cancel := context.WithTimeout(context.Background(), defaultTimeout)
+		err := i.interactiveDao.DecrCollectCount(ctx, record.Biz, record.BizId)
+		if err != nil {
+			i.logger.Error("减少收藏计数失败", elog.FieldErr(err))
+		}
+		cancel()
 	}
 }

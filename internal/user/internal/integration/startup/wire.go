@@ -54,6 +54,18 @@ func iniHandler(
 	permissionSvc permission.Service, creators []string) *web.Handler {
 	return web.NewHandler(weSvc, weMiniSvc, userSvc, memberSvc, permissionSvc, creators)
 }
+func InitModule() *user.Module {
+	wire.Build(
+		testioc.BaseSet,
+		initRegistrationEventProducer,
+		service.NewUserService,
+		dao.NewGORMUserDAO,
+		cache.NewUserECache,
+		repository.NewCachedUserRepository,
+		wire.Struct(new(user.Module), "Svc"),
+	)
+	return new(user.Module)
+}
 
 func initRegistrationEventProducer(q mq.MQ) event.RegistrationEventProducer {
 	p, err := event.NewRegistrationEventProducer(q)

@@ -28,6 +28,8 @@ import (
 var ErrInsufficientCredit = ai.ErrInsufficientCredit
 
 // ExamineService 测试服务
+//
+//go:generate mockgen -source=./examine.go -destination=../../mocks/examine.mock.go -package=quemocks -typed=true ExamineService
 type ExamineService interface {
 	// Examine 测试服务
 	// input 是用户输入的内容

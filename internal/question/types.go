@@ -29,7 +29,9 @@ type ExamineHandler = web.ExamineHandler
 
 type Service = service.Service
 type QuestionSetService = service.QuestionSetService
+type ExamService = service.ExamineService
 type Question = domain.Question
 type QuestionSet = domain.QuestionSet
-
+type ExamResult = domain.ExamineResult
+type ExamRes = domain.Result
 type KnowledgeJobStarter = job.KnowledgeJobStarter

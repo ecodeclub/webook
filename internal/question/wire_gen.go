@@ -44,14 +44,14 @@ func InitModule(db *gorm.DB, intrModule *interactive.Module, ec ecache.Cache, pe
 	serviceService := service.NewService(repositoryRepository, syncDataToSearchEventProducer, interactiveEventProducer)
 	questionSetDAO := InitQuestionSetDAO(db)
 	questionSetRepository := repository.NewQuestionSetRepository(questionSetDAO)
-	questionSetService := service.NewQuestionSetService(questionSetRepository, interactiveEventProducer, syncDataToSearchEventProducer)
-	adminHandler := web.NewAdminHandler(serviceService)
-	adminQuestionSetHandler := web.NewAdminQuestionSetHandler(questionSetService)
-	service2 := intrModule.Svc
+	questionSetService := service.NewQuestionSetService(questionSetRepository, repositoryRepository, interactiveEventProducer, syncDataToSearchEventProducer)
 	examineDAO := dao.NewGORMExamineDAO(db)
 	examineRepository := repository.NewCachedExamineRepository(examineDAO)
 	llmService := aiModule.Svc
 	examineService := service.NewLLMExamineService(repositoryRepository, examineRepository, llmService)
+	adminHandler := web.NewAdminHandler(serviceService)
+	adminQuestionSetHandler := web.NewAdminQuestionSetHandler(questionSetService)
+	service2 := intrModule.Svc
 	service3 := perm.Svc
 	handler := web.NewHandler(service2, examineService, service3, serviceService)
 	questionSetHandler := web.NewQuestionSetHandler(questionSetService, examineService, service2)
@@ -60,6 +60,7 @@ func InitModule(db *gorm.DB, intrModule *interactive.Module, ec ecache.Cache, pe
 	module := &Module{
 		Svc:                 serviceService,
 		SetSvc:              questionSetService,
+		ExamSvc:             examineService,
 		AdminHdl:            adminHandler,
 		AdminSetHdl:         adminQuestionSetHandler,
 		Hdl:                 handler,

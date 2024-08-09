@@ -21,6 +21,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ecodeclub/webook/internal/interactive/internal/repository"
+	"github.com/stretchr/testify/assert"
+
 	"github.com/ecodeclub/webook/internal/interactive/internal/domain"
 	"github.com/ecodeclub/webook/internal/interactive/internal/repository/dao"
 	"github.com/ecodeclub/webook/internal/interactive/internal/web"
@@ -216,4 +219,116 @@ func (i *InteractiveTestSuite) TestGetByIds() {
 			CollectCnt: 3,
 		},
 	}, res)
+}
+
+func (i *InteractiveTestSuite) TestCollection_Info() {
+	testcases := []struct {
+		name    string
+		before  func(t *testing.T) int64
+		wantVal []domain.CollectionRecord
+		offset  int
+		limit   int
+		wantErr error
+	}{
+		{
+			name: "收藏记录",
+			before: func(t *testing.T) int64 {
+				id, err := i.svc.SaveCollection(context.Background(), domain.Collection{
+					Uid:  uid,
+					Name: "收藏夹",
+				})
+				require.NoError(t, err)
+				err = i.svc.CollectToggle(context.Background(), "case", 1, uid)
+				require.NoError(t, err)
+				err = i.svc.CollectToggle(context.Background(), "case", 2, uid)
+				require.NoError(t, err)
+				err = i.svc.MoveToCollection(context.Background(), "case", 1, uid, id)
+				require.NoError(t, err)
+				err = i.svc.MoveToCollection(context.Background(), "case", 2, uid, id)
+				require.NoError(t, err)
+				err = i.svc.CollectToggle(context.Background(), repository.QuestionBiz, 1, uid)
+				require.NoError(t, err)
+				err = i.svc.MoveToCollection(context.Background(), repository.QuestionBiz, 1, uid, id)
+				require.NoError(t, err)
+				err = i.svc.CollectToggle(context.Background(), repository.QuestionSetBiz, 1, uid)
+				require.NoError(t, err)
+				err = i.svc.MoveToCollection(context.Background(), repository.QuestionSetBiz, 1, uid, id)
+				require.NoError(t, err)
+				return id
+			},
+			wantVal: []domain.CollectionRecord{
+				{
+					Id:          4,
+					Biz:         repository.QuestionSetBiz,
+					QuestionSet: 1,
+				},
+				{
+					Id:       3,
+					Biz:      repository.QuestionBiz,
+					Question: 1,
+				},
+				{
+					Id:   2,
+					Biz:  repository.CaseBiz,
+					Case: 2,
+				},
+				{
+					Id:   1,
+					Biz:  repository.CaseBiz,
+					Case: 1,
+				},
+			},
+			offset: 0,
+			limit:  10,
+		},
+		{
+			name: "收藏记录分页",
+			before: func(t *testing.T) int64 {
+				id, err := i.svc.SaveCollection(context.Background(), domain.Collection{
+					Uid:  uid,
+					Name: "收藏夹2",
+				})
+				require.NoError(t, err)
+				err = i.svc.CollectToggle(context.Background(), "case", 3, uid)
+				require.NoError(t, err)
+				err = i.svc.MoveToCollection(context.Background(), "case", 3, uid, id)
+				require.NoError(t, err)
+				err = i.svc.CollectToggle(context.Background(), repository.QuestionBiz, 2, uid)
+				require.NoError(t, err)
+				err = i.svc.MoveToCollection(context.Background(), repository.QuestionBiz, 2, uid, id)
+				require.NoError(t, err)
+				err = i.svc.CollectToggle(context.Background(), repository.QuestionSetBiz, 2, uid)
+				require.NoError(t, err)
+				err = i.svc.MoveToCollection(context.Background(), repository.QuestionSetBiz, 2, uid, id)
+				require.NoError(t, err)
+				return id
+			},
+			wantVal: []domain.CollectionRecord{
+				{
+					Id:       6,
+					Biz:      repository.QuestionBiz,
+					Question: 2,
+				},
+				{
+					Id:   5,
+					Biz:  repository.CaseBiz,
+					Case: 3,
+				},
+			},
+			offset: 1,
+			limit:  2,
+		},
+	}
+	for _, tc := range testcases {
+		i.T().Run(tc.name, func(t *testing.T) {
+			id := tc.before(t)
+			res, err := i.svc.CollectionInfo(context.Background(), uid, id, tc.offset, tc.limit)
+			assert.Equal(t, err, tc.wantErr)
+			if err != nil {
+				return
+			}
+			assert.Equal(t, tc.wantVal, res)
+		})
+	}
+
 }

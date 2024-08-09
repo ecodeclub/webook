@@ -20,6 +20,8 @@ type SkillService interface {
 	List(ctx context.Context, offset, limit int) ([]domain.Skill, int64, error)
 	Info(ctx context.Context, id int64) (domain.Skill, error)
 	RefsByLevelIDs(ctx context.Context, ids []int64) ([]domain.SkillLevel, error)
+
+	LevelInfo(ctx context.Context, slid int64) (domain.SkillLevel, error)
 }
 
 type skillService struct {
@@ -27,6 +29,10 @@ type skillService struct {
 	producer    event.SyncEventProducer
 	logger      *elog.Component
 	syncTimeout time.Duration
+}
+
+func (s *skillService) LevelInfo(ctx context.Context, slid int64) (domain.SkillLevel, error) {
+	return s.repo.LevelInfo(ctx, slid)
 }
 
 func (s *skillService) RefsByLevelIDs(ctx context.Context, ids []int64) ([]domain.SkillLevel, error) {

@@ -25,3 +25,5 @@ type Handler = web.Handler
 type Service = service.Service
 
 type Interactive = domain.Interactive
+
+type CollectionRecord = domain.CollectionRecord

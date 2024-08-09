@@ -126,6 +126,12 @@ type Page struct {
 	Limit  int `json:"limit,omitempty"`
 }
 
+type CandidateReq struct {
+	QSID   int64 `json:"qsid"`
+	Offset int   `json:"offset,omitempty"`
+	Limit  int   `json:"limit,omitempty"`
+}
+
 type Qid struct {
 	Qid int64 `json:"qid"`
 }
@@ -193,4 +199,10 @@ func newInteractive(intr interactive.Interactive) Interactive {
 type BizReq struct {
 	Biz   string `json:"biz"`
 	BizId int64  `json:"bizId"`
+}
+
+type CorrectReq struct {
+	Qid int64 `json:"qid"`
+	// 修正结果，对应 domain.Result
+	Result uint8 `json:"result"`
 }

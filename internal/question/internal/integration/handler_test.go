@@ -247,7 +247,7 @@ func (s *HandlerTestSuite) TestPubList() {
 		tc := tc
 		s.T().Run(tc.name, func(t *testing.T) {
 			req, err := http.NewRequest(http.MethodPost,
-				"/question/pub/list", iox.NewJSONReader(tc.req))
+				"/question/list", iox.NewJSONReader(tc.req))
 			req.Header.Set("content-type", "application/json")
 			require.NoError(t, err)
 			recorder := test.NewJSONResponseRecorder[[]web.Question]()

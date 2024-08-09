@@ -1,6 +1,7 @@
 package domain
 
 const BizQuestionExamine = "question_examine"
+const BizCaseExamine = "case_examine"
 
 type LLMRequest struct {
 	Biz string

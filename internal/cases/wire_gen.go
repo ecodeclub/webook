@@ -10,7 +10,7 @@ import (
 	"sync"
 
 	"github.com/ecodeclub/mq-api"
-	"github.com/ecodeclub/webook/internal/cases/internal/domain"
+	"github.com/ecodeclub/webook/internal/ai"
 	"github.com/ecodeclub/webook/internal/cases/internal/event"
 	"github.com/ecodeclub/webook/internal/cases/internal/repository"
 	"github.com/ecodeclub/webook/internal/cases/internal/repository/dao"
@@ -23,7 +23,7 @@ import (
 
 // Injectors from wire.go:
 
-func InitModule(db *gorm.DB, intrModule *interactive.Module, q mq.MQ) (*Module, error) {
+func InitModule(db *gorm.DB, intrModule *interactive.Module, aiModule *ai.Module, q mq.MQ) (*Module, error) {
 	caseDAO := InitCaseDAO(db)
 	caseRepo := repository.NewCaseRepo(caseDAO)
 	interactiveEventProducer, err := event.NewInteractiveEventProducer(q)
@@ -35,11 +35,25 @@ func InitModule(db *gorm.DB, intrModule *interactive.Module, q mq.MQ) (*Module, 
 		return nil, err
 	}
 	serviceService := service.NewService(caseRepo, interactiveEventProducer, syncEventProducer)
+	caseSetDAO := dao.NewCaseSetDAO(db)
+	caseSetRepository := repository.NewCaseSetRepo(caseSetDAO)
+	caseSetService := service.NewCaseSetService(caseSetRepository, caseRepo, interactiveEventProducer)
 	service2 := intrModule.Svc
 	handler := web.NewHandler(serviceService, service2)
+	adminCaseSetHandler := web.NewAdminCaseSetHandler(caseSetService)
+	examineDAO := dao.NewGORMExamineDAO(db)
+	examineRepository := repository.NewCachedExamineRepository(examineDAO)
+	llmService := aiModule.Svc
+	examineService := service.NewLLMExamineService(caseRepo, examineRepository, llmService)
+	examineHandler := web.NewExamineHandler(examineService)
+	caseSetHandler := web.NewCaseSetHandler(caseSetService, examineService, service2)
 	module := &Module{
-		Svc: serviceService,
-		Hdl: handler,
+		Svc:             serviceService,
+		SetSvc:          caseSetService,
+		Hdl:             handler,
+		AdminSetHandler: adminCaseSetHandler,
+		ExamineHdl:      examineHandler,
+		CsHdl:           caseSetHandler,
 	}
 	return module, nil
 }
@@ -61,9 +75,3 @@ func InitCaseDAO(db *egorm.Component) dao.CaseDAO {
 	InitTableOnce(db)
 	return dao.NewCaseDao(db)
 }
-
-type Handler = web.Handler
-
-type Service = service.Service
-
-type Case = domain.Case

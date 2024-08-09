@@ -25,6 +25,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ecodeclub/webook/internal/question/internal/service"
+
 	"github.com/ecodeclub/webook/internal/ai"
 
 	"github.com/ecodeclub/webook/internal/permission"
@@ -58,6 +60,7 @@ type AdminSetHandlerTestSuite struct {
 	dao            dao.QuestionDAO
 	questionSetDAO dao.QuestionSetDAO
 	producer       *eveMocks.MockSyncEventProducer
+	setSvc         service.QuestionSetService
 }
 
 func (s *AdminSetHandlerTestSuite) SetupSuite() {
@@ -82,7 +85,7 @@ func (s *AdminSetHandlerTestSuite) SetupSuite() {
 	})
 	module.AdminSetHdl.PrivateRoutes(server.Engine)
 	server.Use(middleware.NewCheckMembershipMiddlewareBuilder(nil).Build())
-
+	s.setSvc = module.SetSvc
 	s.server = server
 	s.db = testioc.InitDB()
 	err = dao.InitTables(s.db)
@@ -193,6 +196,80 @@ func (s *AdminSetHandlerTestSuite) TestQuestionSet_Save() {
 			require.Equal(t, tc.wantCode, recorder.Code)
 			assert.Equal(t, tc.wantResp, recorder.MustScan())
 			tc.after(t)
+		})
+	}
+}
+
+func (s *AdminSetHandlerTestSuite) TestQuestionSet_Candidates() {
+	testCases := []struct {
+		name string
+
+		before func(t *testing.T)
+		req    web.CandidateReq
+
+		wantCode int
+		wantResp test.Result[web.QuestionList]
+	}{
+		{
+			name: "获取成功",
+			before: func(t *testing.T) {
+				// 准备数据
+				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+				defer cancel()
+				// 创建一个空题集
+				id, err := s.questionSetDAO.Create(ctx, dao.QuestionSet{
+					Id:          1,
+					Uid:         uid,
+					Title:       "Go",
+					Description: "Go题集",
+					Biz:         "roadmap",
+					BizId:       2,
+					Utime:       123,
+				})
+				require.NoError(t, err)
+				// 添加问题
+				questions := []dao.Question{
+					s.buildQuestion(1),
+					s.buildQuestion(2),
+					s.buildQuestion(3),
+					s.buildQuestion(4),
+					s.buildQuestion(5),
+					s.buildQuestion(6),
+				}
+				err = s.db.WithContext(ctx).Create(&questions).Error
+				require.NoError(t, err)
+				qids := []int64{1, 2, 3}
+				require.NoError(t, s.questionSetDAO.UpdateQuestionsByID(ctx, id, qids))
+			},
+			req: web.CandidateReq{
+				QSID:   1,
+				Offset: 1,
+				Limit:  2,
+			},
+			wantCode: 200,
+			wantResp: test.Result[web.QuestionList]{
+				Data: web.QuestionList{
+					Total: 3,
+					Questions: []web.Question{
+						s.buildWebQuestion(5),
+						s.buildWebQuestion(4),
+					},
+				},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		s.T().Run(tc.name, func(t *testing.T) {
+			tc.before(t)
+			req, err := http.NewRequest(http.MethodPost,
+				"/question-sets/candidate", iox.NewJSONReader(tc.req))
+			req.Header.Set("content-type", "application/json")
+			require.NoError(t, err)
+			recorder := test.NewJSONResponseRecorder[web.QuestionList]()
+			s.server.ServeHTTP(recorder, req)
+			require.Equal(t, tc.wantCode, recorder.Code)
+			assert.Equal(t, tc.wantResp, recorder.MustScan())
 		})
 	}
 }
@@ -989,6 +1066,191 @@ func (s *AdminSetHandlerTestSuite) TestQuestionSetEvent() {
 			Questions:   []int64{1, 2},
 		},
 	}, ans)
+}
+
+func (s *AdminSetHandlerTestSuite) TestGetQuestionSets() {
+	var now int64 = 123
+	testCases := []struct {
+		name   string
+		before func(t *testing.T)
+		after  func(t *testing.T, sets []domain.QuestionSet)
+		req    []int64
+	}{
+		{
+			name: "非空题集",
+			before: func(t *testing.T) {
+				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+				defer cancel()
+				// 创建两个空题集
+				id, err := s.questionSetDAO.Create(ctx, dao.QuestionSet{
+					Id:          322,
+					Uid:         uid,
+					Title:       "Go",
+					Description: "Go题集",
+					Biz:         "roadmap",
+					BizId:       2,
+					Utime:       now,
+				})
+				require.NoError(t, err)
+				require.Equal(t, int64(322), id)
+				id, err = s.questionSetDAO.Create(ctx, dao.QuestionSet{
+					Id:          323,
+					Uid:         uid,
+					Title:       "mysql",
+					Description: "mysql题集",
+					Biz:         "roadmap",
+					BizId:       3,
+					Utime:       now,
+				})
+				require.NoError(t, err)
+				require.Equal(t, int64(323), id)
+
+				// 为322添加问题
+				questions := []dao.Question{
+					{
+						Id:      614,
+						Uid:     uid + 1,
+						Biz:     "project",
+						BizId:   1,
+						Title:   "Go问题1",
+						Content: "Go问题1",
+						Ctime:   now,
+						Utime:   now,
+					},
+					{
+						Id:      615,
+						Uid:     uid + 2,
+						Biz:     "project",
+						BizId:   1,
+						Title:   "Go问题2",
+						Content: "Go问题2",
+						Ctime:   now,
+						Utime:   now,
+					},
+					{
+						Id:      616,
+						Uid:     uid + 3,
+						Biz:     "project",
+						BizId:   1,
+						Title:   "Go问题3",
+						Content: "Go问题3",
+						Ctime:   now,
+						Utime:   now,
+					},
+				}
+				err = s.db.WithContext(ctx).Create(&questions).Error
+				require.NoError(t, err)
+				qids := []int64{614, 615, 616}
+				require.NoError(t, s.questionSetDAO.UpdateQuestionsByID(ctx, 322, qids))
+				// 为333添加题目
+				questions = []dao.Question{
+					{
+						Id:      618,
+						Uid:     uid + 1,
+						Biz:     "project",
+						BizId:   1,
+						Title:   "Mysql问题1",
+						Content: "Mysql问题1",
+						Ctime:   now,
+						Utime:   now,
+					},
+					{
+						Id:      619,
+						Uid:     uid + 2,
+						Biz:     "project",
+						BizId:   1,
+						Title:   "Mysql问题2",
+						Content: "Mysql问题2",
+						Ctime:   now,
+						Utime:   now,
+					},
+					{
+						Id:      620,
+						Uid:     uid + 3,
+						Biz:     "project",
+						BizId:   1,
+						Title:   "Mysql问题4",
+						Content: "Mysql问题4",
+						Ctime:   now,
+						Utime:   now,
+					},
+				}
+				err = s.db.WithContext(ctx).Create(&questions).Error
+				require.NoError(t, err)
+				qids = []int64{618, 619, 620}
+				require.NoError(t, s.questionSetDAO.UpdateQuestionsByID(ctx, 323, qids))
+
+				// 添加用户答题记录，只需要添加一个就可以
+				err = s.db.WithContext(ctx).Create(&dao.QuestionResult{
+					Uid:    uid,
+					Qid:    614,
+					Result: domain.ResultAdvanced.ToUint8(),
+					Ctime:  now,
+					Utime:  now,
+				}).Error
+				require.NoError(t, err)
+
+				// 题集中题目为1
+				qs, err := s.questionSetDAO.GetQuestionsByID(ctx, 322)
+				require.NoError(t, err)
+				require.Equal(t, 3, len(qs))
+				qs, err = s.questionSetDAO.GetQuestionsByID(ctx, 323)
+				require.NoError(t, err)
+				require.Equal(t, 3, len(qs))
+			},
+			after: func(t *testing.T, sets []domain.QuestionSet) {
+				assert.Equal(t, []domain.QuestionSet{
+					{
+						Id:    322,
+						Title: "Go",
+						Questions: []domain.Question{
+							{
+								Id: 614,
+
+								Title: "Go问题1",
+							},
+							{
+								Id:    615,
+								Title: "Go问题2",
+							},
+							{
+								Id:    616,
+								Title: "Go问题3",
+							},
+						},
+					},
+					{
+						Id:    323,
+						Title: "mysql",
+						Questions: []domain.Question{
+							{
+								Id:    618,
+								Title: "Mysql问题1",
+							},
+							{
+								Id:    619,
+								Title: "Mysql问题2",
+							},
+							{
+								Id:    620,
+								Title: "Mysql问题4",
+							},
+						},
+					},
+				}, sets)
+
+			},
+			req: []int64{322, 323},
+		},
+	}
+	for _, tc := range testCases {
+		s.T().Run(tc.name, func(t *testing.T) {
+			tc.before(t)
+			sets, err := s.setSvc.GetByIDsWithQuestion(context.Background(), tc.req)
+			require.NoError(t, err)
+			tc.after(t, sets)
+		})
+	}
 }
 
 func TestAdminSetHandler(t *testing.T) {

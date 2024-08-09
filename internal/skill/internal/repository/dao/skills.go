@@ -26,10 +26,17 @@ type SkillDAO interface {
 	// RefsByLevelIDs ids 为 SkillLevel 的 ID
 	RefsByLevelIDs(ctx context.Context, ids []int64) ([]SkillRef, error)
 	Count(ctx context.Context) (int64, error)
+	SkillLevelFirst(ctx context.Context, id int64) (SkillLevel, error)
 }
 
 type skillDAO struct {
 	db *egorm.Component
+}
+
+func (s *skillDAO) SkillLevelFirst(ctx context.Context, id int64) (SkillLevel, error) {
+	var level SkillLevel
+	err := s.db.WithContext(ctx).Where("id = ?", id).First(&level).Error
+	return level, err
 }
 
 func (s *skillDAO) RefsByLevelIDs(ctx context.Context, ids []int64) ([]SkillRef, error) {
