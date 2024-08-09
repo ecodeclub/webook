@@ -59,6 +59,10 @@ func (c *CollectionHandlerTestSuite) SetupSuite() {
 				Biz:         web.QuestionSetBiz,
 				QuestionSet: 4,
 			},
+			{
+				Biz:     web.CaseSetBiz,
+				CaseSet: 5,
+			},
 		}, nil
 	}).AnyTimes()
 	queSvc.EXPECT().GetPubByIDs(gomock.Any(), gomock.Any()).
@@ -112,7 +116,19 @@ func (c *CollectionHandlerTestSuite) SetupSuite() {
 				}
 			}), nil
 		}).AnyTimes()
-	handler, _ := st.InitHandler(intrSvc, caseSvc, queSvc, queSetSvc, examSvc)
+	caseSetSvc := casemocks.NewMockCaseSetService(ctrl)
+	caseSetSvc.EXPECT().GetByIds(gomock.Any(), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, ids []int64) ([]cases.CaseSet, error) {
+			return slice.Map(ids, func(idx int, src int64) cases.CaseSet {
+				return cases.CaseSet{
+					ID:    src,
+					Title: fmt.Sprintf("这是案例集%d", src),
+				}
+			}), nil
+		}).AnyTimes()
+	handler, _ := st.InitHandler(&interactive.Module{Svc: intrSvc},
+		&cases.Module{Svc: caseSvc, SetSvc: caseSetSvc},
+		&baguwen.Module{Svc: queSvc, SetSvc: queSetSvc, ExamSvc: examSvc})
 	econf.Set("server", map[string]any{"contextTimeout": "1s"})
 	server := egin.Load("server").Build()
 	server.Use(func(ctx *gin.Context) {
@@ -186,6 +202,12 @@ func (c *CollectionHandlerTestSuite) Test_Handler() {
 						ExamineResult: 48 % 4,
 					},
 				},
+			},
+		},
+		{
+			CaseSet: web.CaseSet{
+				ID:    5,
+				Title: "这是案例集5",
 			},
 		},
 	}, recorder.MustScan().Data)

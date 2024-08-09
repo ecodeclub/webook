@@ -5,6 +5,7 @@ import (
 )
 
 const BizCase = "case"
+const BizCaseSet = "caseSet"
 
 type Case struct {
 	Id int64

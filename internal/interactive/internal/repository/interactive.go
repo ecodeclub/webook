@@ -27,6 +27,7 @@ import (
 
 const (
 	CaseBiz        = "case"
+	CaseSetBiz     = "caseSet"
 	QuestionBiz    = "question"
 	QuestionSetBiz = "questionSet"
 )
@@ -213,6 +214,8 @@ func (i *interactiveRepository) toCollectionRecord(collectBiz dao.UserCollection
 	switch collectBiz.Biz {
 	case CaseBiz:
 		record.Case = collectBiz.BizId
+	case CaseSetBiz:
+		record.CaseSet = collectBiz.BizId
 	case QuestionBiz:
 		record.Question = collectBiz.BizId
 	case QuestionSetBiz:

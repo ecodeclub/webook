@@ -12,8 +12,6 @@ import (
 	"github.com/ecodeclub/mq-api"
 	"github.com/ecodeclub/webook/internal/cases/internal/event"
 
-	"github.com/ecodeclub/webook/internal/cases/internal/domain"
-
 	"github.com/ecodeclub/webook/internal/cases/internal/repository"
 	"github.com/ecodeclub/webook/internal/cases/internal/repository/dao"
 	"github.com/ecodeclub/webook/internal/cases/internal/service"
@@ -64,10 +62,3 @@ func InitCaseDAO(db *egorm.Component) dao.CaseDAO {
 	InitTableOnce(db)
 	return dao.NewCaseDao(db)
 }
-
-type Handler = web.Handler
-type Service = service.Service
-type Case = domain.Case
-type AdminCaseSetHandler = web.AdminCaseSetHandler
-type ExamineHandler = web.ExamineHandler
-type CaseSetHandler = web.CaseSetHandler

@@ -14,10 +14,26 @@
 
 package cases
 
+import (
+	"github.com/ecodeclub/webook/internal/cases/internal/domain"
+	"github.com/ecodeclub/webook/internal/cases/internal/service"
+	"github.com/ecodeclub/webook/internal/cases/internal/web"
+)
+
 type Module struct {
 	Svc             Service
+	SetSvc          SetService
 	Hdl             *Handler
 	AdminSetHandler *AdminCaseSetHandler
 	ExamineHdl      *ExamineHandler
 	CsHdl           *CaseSetHandler
 }
+
+type Handler = web.Handler
+type Service = service.Service
+type SetService = service.CaseSetService
+type Case = domain.Case
+type CaseSet = domain.CaseSet
+type AdminCaseSetHandler = web.AdminCaseSetHandler
+type ExamineHandler = web.ExamineHandler
+type CaseSetHandler = web.CaseSetHandler
