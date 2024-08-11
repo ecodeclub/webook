@@ -397,7 +397,7 @@ func (s *HandlerTestSuite) TestSaveRefs() {
 						Sid:   1,
 						Slid:  2,
 						Rid:   66,
-						Rtype: "question_set",
+						Rtype: "questionSet",
 					},
 					{
 						Sid:   1,
@@ -573,116 +573,6 @@ func (s *HandlerTestSuite) TestSaveRefs() {
 			require.NoError(s.T(), err)
 		})
 	}
-}
-
-func (s *HandlerTestSuite) TestDetail() {
-	t := s.T()
-	err := s.db.Create(&dao.Skill{
-		Id: 2,
-		Labels: sqlx.JsonColumn[[]string]{
-			Val:   []string{"mysql"},
-			Valid: true,
-		},
-		Name:  "mysql",
-		Desc:  "mysql_desc",
-		Ctime: time.Now().UnixMilli(),
-		Utime: time.Now().UnixMilli(),
-	}).Error
-	require.NoError(t, err)
-	err = s.db.Create([]*dao.SkillLevel{
-		{
-			Id:    1,
-			Sid:   2,
-			Level: "basic",
-			Desc:  "mysql_desc_basic",
-			Ctime: time.Now().UnixMilli(),
-			Utime: time.Now().UnixMilli(),
-		},
-		{
-			Id:    2,
-			Sid:   2,
-			Level: "intermediate",
-			Desc:  "mysql_desc_inter",
-			Ctime: time.Now().UnixMilli(),
-			Utime: time.Now().UnixMilli(),
-		},
-	}).Error
-	require.NoError(t, err)
-	s.db.Create([]*dao.SkillRef{
-		{
-			Id:    1,
-			Slid:  1,
-			Sid:   2,
-			Rtype: "case",
-			Rid:   1,
-			Ctime: time.Now().UnixMilli(),
-			Utime: time.Now().UnixMilli(),
-		},
-		{
-			Id:    2,
-			Slid:  1,
-			Sid:   2,
-			Rtype: "question",
-			Rid:   2,
-			Ctime: time.Now().UnixMilli(),
-			Utime: time.Now().UnixMilli(),
-		},
-		{
-			Id:    3,
-			Slid:  2,
-			Sid:   2,
-			Rtype: "question",
-			Rid:   1,
-			Ctime: time.Now().UnixMilli(),
-			Utime: time.Now().UnixMilli(),
-		},
-	})
-	sid := web.Sid{
-		Sid: 2,
-	}
-	req, err := http.NewRequest(http.MethodPost,
-		"/skill/detail", iox.NewJSONReader(sid))
-	req.Header.Set("content-type", "application/json")
-	require.NoError(t, err)
-	recorder := test.NewJSONResponseRecorder[web.Skill]()
-	s.server.ServeHTTP(recorder, req)
-	require.Equal(t, 200, recorder.Code)
-	resp := recorder.MustScan().Data
-	assert.True(t, len(resp.Utime) > 0)
-	resp.Utime = ""
-	assert.Equal(t, web.Skill{
-		ID: 2,
-		Labels: []string{
-			"mysql",
-		},
-		Name: "mysql",
-		Desc: "mysql_desc",
-		Basic: web.SkillLevel{
-			Id:   1,
-			Desc: "mysql_desc_basic",
-			Questions: []web.Question{
-				{Id: 2},
-			},
-			Cases: []web.Case{
-				{Id: 1},
-			},
-			QuestionSets: []web.QuestionSet{},
-		},
-		Intermediate: web.SkillLevel{
-			Id:   2,
-			Desc: "mysql_desc_inter",
-			Questions: []web.Question{
-				{Id: 1},
-			},
-			Cases:        []web.Case{},
-			QuestionSets: []web.QuestionSet{},
-		},
-		Advanced: web.SkillLevel{
-			Questions:    []web.Question{},
-			Cases:        []web.Case{},
-			QuestionSets: []web.QuestionSet{},
-		},
-	}, resp)
 }
 
 func (s *HandlerTestSuite) TestDetailRef() {
@@ -958,12 +848,31 @@ func (s *HandlerTestSuite) TestRefsByLevelIDs() {
 			Ctime: time.Now().UnixMilli(),
 			Utime: time.Now().UnixMilli(),
 		},
+
 		{
 			Id:    3,
 			Slid:  2,
 			Sid:   2,
 			Rtype: "question",
 			Rid:   1,
+			Ctime: time.Now().UnixMilli(),
+			Utime: time.Now().UnixMilli(),
+		},
+		{
+			Id:    4,
+			Slid:  1,
+			Sid:   2,
+			Rtype: "questionSet",
+			Rid:   1,
+			Ctime: time.Now().UnixMilli(),
+			Utime: time.Now().UnixMilli(),
+		},
+		{
+			Id:    5,
+			Slid:  2,
+			Sid:   2,
+			Rtype: "questionSet",
+			Rid:   6,
 			Ctime: time.Now().UnixMilli(),
 			Utime: time.Now().UnixMilli(),
 		},
@@ -987,20 +896,54 @@ func (s *HandlerTestSuite) TestRefsByLevelIDs() {
 					{
 						Id: 1,
 						Questions: []web.Question{
-							{Id: 2, Title: "这是问题2"},
+							{Id: 2, Title: "这是问题2", ExamineResult: 2 % 4},
 						},
 						Cases: []web.Case{
 							{Id: 1, Title: "这是案例1"},
 						},
-						QuestionSets: []web.QuestionSet{},
+						QuestionSets: []web.QuestionSet{
+							{
+								ID:    1,
+								Title: "这是题集1",
+								Questions: []web.Question{
+									{
+										Id:            11,
+										Title:         "这是题目11",
+										ExamineResult: 11 % 4,
+									},
+									{
+										Id:            12,
+										Title:         "这是题目12",
+										ExamineResult: 12 % 4,
+									},
+								},
+							},
+						},
 					},
 					{
 						Id: 2,
 						Questions: []web.Question{
-							{Id: 1, Title: "这是问题1"},
+							{Id: 1, Title: "这是问题1", ExamineResult: 1 % 4},
 						},
-						Cases:        []web.Case{},
-						QuestionSets: []web.QuestionSet{},
+						Cases: []web.Case{},
+						QuestionSets: []web.QuestionSet{
+							{
+								ID:    6,
+								Title: "这是题集6",
+								Questions: []web.Question{
+									{
+										Id:            66,
+										Title:         "这是题目66",
+										ExamineResult: 66 % 4,
+									},
+									{
+										Id:            72,
+										Title:         "这是题目72",
+										ExamineResult: 72 % 4,
+									},
+								},
+							},
+						},
 					},
 				},
 			},
@@ -1017,7 +960,8 @@ func (s *HandlerTestSuite) TestRefsByLevelIDs() {
 			recorder := test.NewJSONResponseRecorder[[]web.SkillLevel]()
 			s.server.ServeHTTP(recorder, req)
 			require.Equal(t, tc.wantCode, recorder.Code)
-			assert.Equal(t, tc.wantResp, recorder.MustScan())
+			data := recorder.MustScan()
+			assert.Equal(t, tc.wantResp, data)
 		})
 	}
 }
@@ -1174,89 +1118,6 @@ func (s *HandlerTestSuite) TestEvent() {
 		ans[idx] = s.formatSkill(ans[idx])
 	}
 	assert.Equal(t, wantAns, ans)
-}
-
-func (s *HandlerTestSuite) TestEventLevelInfo() {
-	t := s.T()
-	err := s.db.Create([]*dao.SkillLevel{
-		{
-			Id:    1,
-			Sid:   2,
-			Level: "basic",
-			Desc:  "mysql_desc_basic",
-			Ctime: time.Now().UnixMilli(),
-			Utime: time.Now().UnixMilli(),
-		},
-	}).Error
-	require.NoError(t, err)
-	s.db.Create([]*dao.SkillRef{
-		{
-			Id:    1,
-			Slid:  1,
-			Sid:   2,
-			Rtype: "case",
-			Rid:   1,
-			Ctime: time.Now().UnixMilli(),
-			Utime: time.Now().UnixMilli(),
-		},
-		{
-			Id:    2,
-			Slid:  1,
-			Sid:   2,
-			Rtype: "question",
-			Rid:   2,
-			Ctime: time.Now().UnixMilli(),
-			Utime: time.Now().UnixMilli(),
-		},
-		{
-			Id:    3,
-			Slid:  1,
-			Sid:   2,
-			Rtype: "question_set",
-			Rid:   3,
-			Ctime: time.Now().UnixMilli(),
-			Utime: time.Now().UnixMilli(),
-		},
-	})
-	sid := web.LevelInfoReq{
-		ID: 1,
-	}
-	req, err := http.NewRequest(http.MethodPost,
-		"/skill/level/detail", iox.NewJSONReader(sid))
-	req.Header.Set("content-type", "application/json")
-	require.NoError(t, err)
-	recorder := test.NewJSONResponseRecorder[web.SkillLevel]()
-	s.server.ServeHTTP(recorder, req)
-	require.Equal(t, 200, recorder.Code)
-	resp := recorder.MustScan().Data
-	assert.Equal(t, web.SkillLevel{
-		Id:   1,
-		Desc: "mysql_desc_basic",
-		Questions: []web.Question{
-			{Id: 2, Title: "这是问题2", Result: 2},
-		},
-		Cases: []web.Case{
-			{Id: 1, Title: "这是案例1"},
-		},
-		QuestionSets: []web.QuestionSet{
-			{
-				ID:    3,
-				Title: "这是题集3",
-				Questions: []web.Question{
-					{
-						Id:     33,
-						Title:  "这是题目33",
-						Result: 33 % 4,
-					},
-					{
-						Id:     36,
-						Title:  "这是题目36",
-						Result: 36 % 4,
-					},
-				},
-			},
-		},
-	}, resp)
 }
 
 func (s *HandlerTestSuite) formatSkill(sk event.Skill) event.Skill {

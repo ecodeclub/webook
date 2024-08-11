@@ -106,7 +106,7 @@ func (h *Handler) PubList(ctx *ginx.Context, req Page) (ginx.Result, error) {
 			return src.Id
 		})
 		var err1 error
-		intrs, err1 = h.intrSvc.GetByIds(ctx, "question", ids)
+		intrs, err1 = h.intrSvc.GetByIds(ctx, "case", ids)
 		// 这个数据查询不到也不需要担心
 		if err1 != nil {
 			h.logger.Error("查询数据的点赞数据失败",
@@ -187,11 +187,14 @@ func newCase(ca domain.Case) Case {
 		Introduction: ca.Introduction,
 		Content:      ca.Content,
 		Labels:       ca.Labels,
-		CodeRepo:     ca.CodeRepo,
+		GiteeRepo:    ca.GiteeRepo,
+		GithubRepo:   ca.GithubRepo,
 		Keywords:     ca.Keywords,
 		Shorthand:    ca.Shorthand,
 		Highlight:    ca.Highlight,
 		Guidance:     ca.Guidance,
+		Biz:          ca.Biz,
+		BizId:        ca.BizId,
 		Status:       ca.Status.ToUint8(),
 		Utime:        ca.Utime.UnixMilli(),
 	}

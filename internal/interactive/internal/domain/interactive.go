@@ -32,9 +32,11 @@ type Collection struct {
 }
 
 type CollectionRecord struct {
+	Id int64
 	// 用于分发的
 	Biz         string
 	Case        int64
+	CaseSet     int64
 	Question    int64
 	QuestionSet int64
 }

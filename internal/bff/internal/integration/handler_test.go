@@ -59,6 +59,10 @@ func (c *CollectionHandlerTestSuite) SetupSuite() {
 				Biz:         web.QuestionSetBiz,
 				QuestionSet: 4,
 			},
+			{
+				Biz:     web.CaseSetBiz,
+				CaseSet: 5,
+			},
 		}, nil
 	}).AnyTimes()
 	queSvc.EXPECT().GetPubByIDs(gomock.Any(), gomock.Any()).
@@ -112,7 +116,19 @@ func (c *CollectionHandlerTestSuite) SetupSuite() {
 				}
 			}), nil
 		}).AnyTimes()
-	handler, _ := st.InitHandler(intrSvc, caseSvc, queSvc, queSetSvc, examSvc)
+	caseSetSvc := casemocks.NewMockCaseSetService(ctrl)
+	caseSetSvc.EXPECT().GetByIds(gomock.Any(), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, ids []int64) ([]cases.CaseSet, error) {
+			return slice.Map(ids, func(idx int, src int64) cases.CaseSet {
+				return cases.CaseSet{
+					ID:    src,
+					Title: fmt.Sprintf("这是案例集%d", src),
+				}
+			}), nil
+		}).AnyTimes()
+	handler, _ := st.InitHandler(&interactive.Module{Svc: intrSvc},
+		&cases.Module{Svc: caseSvc, SetSvc: caseSetSvc},
+		&baguwen.Module{Svc: queSvc, SetSvc: queSetSvc, ExamSvc: examSvc})
 	econf.Set("server", map[string]any{"contextTimeout": "1s"})
 	server := egin.Load("server").Build()
 	server.Use(func(ctx *gin.Context) {
@@ -128,7 +144,7 @@ func (c *CollectionHandlerTestSuite) SetupSuite() {
 func (c *CollectionHandlerTestSuite) Test_Handler() {
 	t := c.T()
 	req, err := http.NewRequest(http.MethodPost,
-		"/interactive/collection/info", iox.NewJSONReader(web.CollectionInfoReq{
+		"/interactive/collection/records", iox.NewJSONReader(web.CollectionInfoReq{
 			ID:     1,
 			Offset: 0,
 			Limit:  10,
@@ -147,9 +163,9 @@ func (c *CollectionHandlerTestSuite) Test_Handler() {
 		},
 		{
 			Question: web.Question{
-				ID:     2,
-				Title:  "这是题目2",
-				Result: 2 % 4,
+				ID:            2,
+				Title:         "这是题目2",
+				ExamineResult: 2 % 4,
 			},
 		},
 		{
@@ -158,14 +174,14 @@ func (c *CollectionHandlerTestSuite) Test_Handler() {
 				Title: "这是题集3",
 				Questions: []web.Question{
 					{
-						ID:     33,
-						Title:  "这是题目33",
-						Result: 33 % 4,
+						ID:            33,
+						Title:         "这是题目33",
+						ExamineResult: 33 % 4,
 					},
 					{
-						ID:     36,
-						Title:  "这是题目36",
-						Result: 36 % 4,
+						ID:            36,
+						Title:         "这是题目36",
+						ExamineResult: 36 % 4,
 					},
 				},
 			},
@@ -176,16 +192,22 @@ func (c *CollectionHandlerTestSuite) Test_Handler() {
 				Title: "这是题集4",
 				Questions: []web.Question{
 					{
-						ID:     44,
-						Title:  "这是题目44",
-						Result: 44 % 4,
+						ID:            44,
+						Title:         "这是题目44",
+						ExamineResult: 44 % 4,
 					},
 					{
-						ID:     48,
-						Title:  "这是题目48",
-						Result: 48 % 4,
+						ID:            48,
+						Title:         "这是题目48",
+						ExamineResult: 48 % 4,
 					},
 				},
+			},
+		},
+		{
+			CaseSet: web.CaseSet{
+				ID:    5,
+				Title: "这是案例集5",
 			},
 		},
 	}, recorder.MustScan().Data)

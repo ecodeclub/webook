@@ -27,8 +27,9 @@ import (
 
 const (
 	CaseBiz        = "case"
+	CaseSetBiz     = "caseSet"
 	QuestionBiz    = "question"
-	QuestionSetBiz = "question_set"
+	QuestionSetBiz = "questionSet"
 )
 
 var defaultTimeout = 1 * time.Second
@@ -49,9 +50,9 @@ type InteractiveRepository interface {
 	DeleteCollection(ctx context.Context, uid, collectionId int64) error
 	// 收藏夹列表
 	CollectionList(ctx context.Context, uid int64, offset, limit int) ([]domain.Collection, error)
-	// 收藏夹详情
+	// CollectionInfo 收藏夹收藏记录
 	CollectionInfo(ctx context.Context, uid, collectionId int64, offset, limit int) ([]domain.CollectionRecord, error)
-	// 转移收藏夹
+	// MoveCollection 转移收藏夹
 	MoveCollection(ctx context.Context, biz string, bizid, uid, collectionId int64) error
 }
 
@@ -207,11 +208,14 @@ func (i *interactiveRepository) collectionToEntity(ie domain.Collection) dao.Col
 
 func (i *interactiveRepository) toCollectionRecord(collectBiz dao.UserCollectionBiz) domain.CollectionRecord {
 	record := domain.CollectionRecord{
+		Id:  collectBiz.Id,
 		Biz: collectBiz.Biz,
 	}
 	switch collectBiz.Biz {
 	case CaseBiz:
 		record.Case = collectBiz.BizId
+	case CaseSetBiz:
+		record.CaseSet = collectBiz.BizId
 	case QuestionBiz:
 		record.Question = collectBiz.BizId
 	case QuestionSetBiz:

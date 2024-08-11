@@ -118,15 +118,22 @@ func (h *QuestionSetHandler) getDetail(
 	uid int64,
 	qs domain.QuestionSet) (ginx.Result, error) {
 	var (
-		eg        errgroup.Group
-		intr      interactive.Interactive
-		resultMap map[int64]domain.ExamineResult
+		eg         errgroup.Group
+		intr       interactive.Interactive
+		queIntrMap map[int64]interactive.Interactive
+		resultMap  map[int64]domain.ExamineResult
 	)
 
 	eg.Go(func() error {
 		var err error
 		intr, err = h.intrSvc.Get(ctx, "questionSet", qs.Id, uid)
 		return err
+	})
+
+	eg.Go(func() error {
+		var eerr error
+		queIntrMap, eerr = h.intrSvc.GetByIds(ctx, "question", qs.Qids())
+		return eerr
 	})
 
 	eg.Go(func() error {
@@ -141,23 +148,29 @@ func (h *QuestionSetHandler) getDetail(
 	}
 
 	return ginx.Result{
-		Data: h.toQuestionSetVO(qs, intr, resultMap),
+		Data: h.toQuestionSetVO(qs, intr, resultMap, queIntrMap),
 	}, nil
 }
 
 func (h *QuestionSetHandler) toQuestionSetVO(
 	set domain.QuestionSet,
 	intr interactive.Interactive,
-	results map[int64]domain.ExamineResult) QuestionSet {
+	results map[int64]domain.ExamineResult,
+	queIntrMap map[int64]interactive.Interactive,
+) QuestionSet {
 	qs := newQuestionSet(set)
-	qs.Questions = h.toQuestionVO(set.Questions, results)
+	qs.Questions = h.toQuestionVO(set.Questions, results, queIntrMap)
 	qs.Interactive = newInteractive(intr)
 	return qs
 }
 
-func (h *QuestionSetHandler) toQuestionVO(questions []domain.Question, results map[int64]domain.ExamineResult) []Question {
+func (h *QuestionSetHandler) toQuestionVO(
+	questions []domain.Question,
+	results map[int64]domain.ExamineResult,
+	queIntrMap map[int64]interactive.Interactive) []Question {
 	return slice.Map(questions, func(idx int, src domain.Question) Question {
-		que := newQuestion(src, interactive.Interactive{})
+		intr := queIntrMap[src.Id]
+		que := newQuestion(src, intr)
 		res := results[que.Id]
 		que.ExamineResult = res.Result.ToUint8()
 		return que

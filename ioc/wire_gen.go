@@ -8,6 +8,7 @@ package ioc
 
 import (
 	"github.com/ecodeclub/webook/internal/ai"
+	"github.com/ecodeclub/webook/internal/bff"
 	"github.com/ecodeclub/webook/internal/cases"
 	"github.com/ecodeclub/webook/internal/cos"
 	"github.com/ecodeclub/webook/internal/credit"
@@ -74,7 +75,7 @@ func InitApp() (*App, error) {
 	handler2 := InitUserHandler(db, cache, mq, module, permissionModule)
 	config := InitCosConfig()
 	handler3 := cos.InitHandler(config)
-	casesModule, err := cases.InitModule(db, interactiveModule, mq)
+	casesModule, err := cases.InitModule(db, interactiveModule, aiModule, mq)
 	if err != nil {
 		return nil, err
 	}
@@ -122,13 +123,20 @@ func InitApp() (*App, error) {
 	handler14 := searchModule.Hdl
 	roadmapModule := roadmap.InitModule(db, baguwenModule)
 	handler15 := roadmapModule.Hdl
-	component := initGinxServer(provider, checkMembershipMiddlewareBuilder, localActiveLimit, checkPermissionMiddlewareBuilder, handler, examineHandler, questionSetHandler, webHandler, handler2, handler3, handler4, handler5, handler6, handler7, handler8, handler9, handler10, handler11, handler12, handler13, handler14, handler15)
+	bffModule, err := bff.InitModule(interactiveModule, casesModule, baguwenModule)
+	if err != nil {
+		return nil, err
+	}
+	handler16 := bffModule.Hdl
+	caseSetHandler := casesModule.CsHdl
+	component := initGinxServer(provider, checkMembershipMiddlewareBuilder, localActiveLimit, checkPermissionMiddlewareBuilder, handler, examineHandler, questionSetHandler, webHandler, handler2, handler3, handler4, handler5, handler6, handler7, handler8, handler9, handler10, handler11, handler12, handler13, handler14, handler15, handler16, caseSetHandler)
 	adminHandler := projectModule.AdminHdl
 	webAdminHandler := roadmapModule.AdminHdl
 	adminHandler2 := baguwenModule.AdminHdl
 	adminQuestionSetHandler := baguwenModule.AdminSetHdl
+	adminCaseSetHandler := casesModule.AdminSetHandler
 	adminHandler3 := marketingModule.AdminHdl
-	adminServer := InitAdminServer(adminHandler, webAdminHandler, adminHandler2, adminQuestionSetHandler, adminHandler3)
+	adminServer := InitAdminServer(adminHandler, webAdminHandler, adminHandler2, adminQuestionSetHandler, adminCaseSetHandler, adminHandler3)
 	closeTimeoutOrdersJob := orderModule.CloseTimeoutOrdersJob
 	closeTimeoutLockedCreditsJob := creditModule.CloseTimeoutLockedCreditsJob
 	syncWechatOrderJob := paymentModule.SyncWechatOrderJob

@@ -12,11 +12,12 @@ import (
 
 const (
 	CaseBiz        = "case"
+	CaseSetBiz     = "caseSet"
 	QuestionBiz    = "question"
-	QuestionSetBiz = "question_set"
+	QuestionSetBiz = "questionSet"
 )
 
-func (h *Handler) CollectionInfo(ctx *ginx.Context, req CollectionInfoReq, sess session.Session) (ginx.Result, error) {
+func (h *Handler) CollectionRecords(ctx *ginx.Context, req CollectionInfoReq, sess session.Session) (ginx.Result, error) {
 	uid := sess.Claims().Uid
 	// 获取收藏记录
 	records, err := h.intrSvc.CollectionInfo(ctx, uid, req.ID, req.Offset, req.Limit)
@@ -26,15 +27,18 @@ func (h *Handler) CollectionInfo(ctx *ginx.Context, req CollectionInfoReq, sess 
 	var (
 		eg         errgroup.Group
 		csm        map[int64]cases.Case
+		cssmap     map[int64]cases.CaseSet
 		qsm        map[int64]baguwen.Question
 		qssmap     map[int64]baguwen.QuestionSet
 		examResMap map[int64]baguwen.ExamResult
 	)
-	var qids, cids, qsids, qid2s []int64
+	var qids, cids, csids, qsids, qid2s []int64
 	for _, record := range records {
 		switch record.Biz {
 		case CaseBiz:
 			cids = append(cids, record.Case)
+		case CaseSetBiz:
+			csids = append(csids, record.CaseSet)
 		case QuestionBiz:
 			qids = append(qids, record.Question)
 		case QuestionSetBiz:
@@ -60,18 +64,21 @@ func (h *Handler) CollectionInfo(ctx *ginx.Context, req CollectionInfoReq, sess 
 	})
 	eg.Go(func() error {
 		qsets, qerr := h.queSetSvc.GetByIDsWithQuestion(ctx, qsids)
-		if qerr != nil {
-			return qerr
-		}
 		qssmap = slice.ToMap(qsets, func(element baguwen.QuestionSet) int64 {
 			return element.Id
 		})
 		for _, qs := range qsets {
-			qid2s = append(qid2s, slice.Map(qs.Questions, func(idx int, src baguwen.Question) int64 {
-				return src.Id
-			})...)
+			qid2s = append(qid2s, qs.Qids()...)
 		}
-		return nil
+		return qerr
+	})
+
+	eg.Go(func() error {
+		csets, cserr := h.caseSetSvc.GetByIds(ctx, csids)
+		cssmap = slice.ToMap(csets, func(element cases.CaseSet) int64 {
+			return element.ID
+		})
+		return cserr
 	})
 	if err = eg.Wait(); err != nil {
 		return systemErrorResult, err
@@ -83,7 +90,7 @@ func (h *Handler) CollectionInfo(ctx *ginx.Context, req CollectionInfoReq, sess 
 	}
 
 	res := slice.Map(records, func(idx int, src interactive.CollectionRecord) CollectionRecord {
-		return newCollectionRecord(src, csm, qsm, qssmap, examResMap)
+		return newCollectionRecord(src, csm, cssmap, qsm, qssmap, examResMap)
 	})
 	return ginx.Result{
 		Data: res,

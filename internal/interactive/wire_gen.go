@@ -26,11 +26,11 @@ import (
 func InitModule(db *gorm.DB, q mq.MQ) (*Module, error) {
 	interactiveDAO := InitTablesOnce(db)
 	interactiveRepository := repository.NewCachedInteractiveRepository(interactiveDAO)
-	interactiveService := service.NewService(interactiveRepository)
-	consumer := initConsumer(interactiveService, q)
-	handler := web.NewHandler(interactiveService)
+	serviceService := service.NewService(interactiveRepository)
+	consumer := initConsumer(serviceService, q)
+	handler := web.NewHandler(serviceService)
 	module := &Module{
-		Svc: interactiveService,
+		Svc: serviceService,
 		c:   consumer,
 		Hdl: handler,
 	}

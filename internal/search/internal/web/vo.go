@@ -27,19 +27,20 @@ type SearchReq struct {
 }
 
 type Case struct {
-	Id        int64    `json:"id,omitempty"`
-	Uid       int64    `json:"uid,omitempty"`
-	Labels    []string `json:"labels,omitempty"`
-	Title     string   `json:"title,omitempty"`
-	Content   string   `json:"content,omitempty"`
-	CodeRepo  string   `json:"code_repo,omitempty"`
-	Keywords  string   `json:"keywords,omitempty"`
-	Shorthand string   `json:"shorthand,omitempty"`
-	Highlight string   `json:"highlight,omitempty"`
-	Guidance  string   `json:"guidance,omitempty"`
-	Status    uint8    `json:"status,omitempty"`
-	Ctime     string   `json:"ctime,omitempty"`
-	Utime     string   `json:"utime,omitempty"`
+	Id         int64    `json:"id,omitempty"`
+	Uid        int64    `json:"uid,omitempty"`
+	Labels     []string `json:"labels,omitempty"`
+	Title      string   `json:"title,omitempty"`
+	Content    string   `json:"content,omitempty"`
+	GithubRepo string   `json:"githubRepo,omitempty"`
+	GiteeRepo  string   `json:"giteeRepo,omitempty"`
+	Keywords   string   `json:"keywords,omitempty"`
+	Shorthand  string   `json:"shorthand,omitempty"`
+	Highlight  string   `json:"highlight,omitempty"`
+	Guidance   string   `json:"guidance,omitempty"`
+	Status     uint8    `json:"status,omitempty"`
+	Ctime      string   `json:"ctime,omitempty"`
+	Utime      string   `json:"utime,omitempty"`
 }
 
 type Question struct {
@@ -110,19 +111,20 @@ func NewSearchResult(res *domain.SearchResult) SearchResult {
 	var newResult SearchResult
 	for _, oldCase := range res.Cases {
 		newCase := Case{
-			Id:        oldCase.Id,
-			Uid:       oldCase.Uid,
-			Labels:    oldCase.Labels,
-			Title:     oldCase.Title,
-			Content:   oldCase.Content,
-			CodeRepo:  oldCase.CodeRepo,
-			Keywords:  oldCase.Keywords,
-			Shorthand: oldCase.Shorthand,
-			Highlight: oldCase.Highlight,
-			Guidance:  oldCase.Guidance,
-			Status:    oldCase.Status.ToUint8(),
-			Ctime:     oldCase.Ctime.Format(time.DateTime),
-			Utime:     oldCase.Utime.Format(time.DateTime),
+			Id:         oldCase.Id,
+			Uid:        oldCase.Uid,
+			Labels:     oldCase.Labels,
+			Title:      oldCase.Title,
+			Content:    oldCase.Content,
+			GithubRepo: oldCase.GithubRepo,
+			GiteeRepo:  oldCase.GiteeRepo,
+			Keywords:   oldCase.Keywords,
+			Shorthand:  oldCase.Shorthand,
+			Highlight:  oldCase.Highlight,
+			Guidance:   oldCase.Guidance,
+			Status:     oldCase.Status.ToUint8(),
+			Ctime:      oldCase.Ctime.Format(time.DateTime),
+			Utime:      oldCase.Utime.Format(time.DateTime),
 		}
 		newResult.Cases = append(newResult.Cases, newCase)
 	}

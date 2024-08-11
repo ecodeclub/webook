@@ -1,6 +1,7 @@
 package web
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 
@@ -42,13 +43,11 @@ func NewHandler(svc service.SkillService,
 }
 
 func (h *Handler) PrivateRoutes(server *gin.Engine) {
-	server.POST("/skill/save", ginx.S(h.Permission), ginx.B[SaveReq](h.Save))
 	server.POST("/skill/list", ginx.B[Page](h.List))
-	server.POST("/skill/detail", ginx.B[Sid](h.Detail))
 	server.POST("/skill/detail-refs", ginx.S(h.Permission), ginx.B[Sid](h.DetailRefs))
+	server.POST("/skill/save", ginx.S(h.Permission), ginx.B[SaveReq](h.Save))
 	server.POST("/skill/save-refs", ginx.S(h.Permission), ginx.B(h.SaveRefs))
-	server.POST("/skill/level-refs", ginx.S(h.Permission), ginx.B(h.RefsByLevelIDs))
-	server.POST("/skill/level/detail", ginx.BS[LevelInfoReq](h.LevelInfo))
+	server.POST("/skill/level-refs", ginx.S(h.Permission), ginx.BS(h.RefsByLevelIDs))
 }
 
 func (h *Handler) PublicRoutes(server *gin.Engine) {
@@ -83,17 +82,6 @@ func (h *Handler) SaveRefs(ctx *ginx.Context, req SaveReq) (ginx.Result, error) 
 	}, nil
 }
 
-func (h *Handler) Detail(ctx *ginx.Context, req Sid) (ginx.Result, error) {
-	skill, err := h.svc.Info(ctx, req.Sid)
-	if err != nil {
-		return systemErrorResult, err
-	}
-	skillView := newSkill(skill)
-	return ginx.Result{
-		Data: skillView,
-	}, nil
-}
-
 func (h *Handler) List(ctx *ginx.Context, page Page) (ginx.Result, error) {
 	skills, count, err := h.svc.List(ctx, page.Offset, page.Limit)
 	if err != nil {
@@ -124,6 +112,9 @@ func (h *Handler) DetailRefs(ctx *ginx.Context, req Sid) (ginx.Result, error) {
 	var eg errgroup.Group
 	eg.Go(func() error {
 		qids := skill.Questions()
+		if len(qids) == 0 {
+			return nil
+		}
 		qs, err1 := h.queSvc.GetPubByIDs(ctx, qids)
 		if err1 != nil {
 			return err1
@@ -137,6 +128,9 @@ func (h *Handler) DetailRefs(ctx *ginx.Context, req Sid) (ginx.Result, error) {
 
 	eg.Go(func() error {
 		cids := skill.Cases()
+		if len(cids) == 0 {
+			return nil
+		}
 		cs, err1 := h.caseSvc.GetPubByIDs(ctx, cids)
 		if err1 != nil {
 			return err1
@@ -147,12 +141,29 @@ func (h *Handler) DetailRefs(ctx *ginx.Context, req Sid) (ginx.Result, error) {
 		res.setCases(cms)
 		return nil
 	})
+
+	eg.Go(func() error {
+		cids := skill.QuestionSets()
+		if len(cids) == 0 {
+			return nil
+		}
+		cs, err1 := h.queSetSvc.GetByIDsWithQuestion(ctx, cids)
+		if err1 != nil {
+			return err1
+		}
+		cms := slice.ToMap(cs, func(ele baguwen.QuestionSet) int64 {
+			return ele.Id
+		})
+		res.setQuestionSets(cms)
+		return nil
+	})
 	return ginx.Result{
 		Data: res,
 	}, eg.Wait()
 }
 
-func (h *Handler) RefsByLevelIDs(ctx *ginx.Context, req IDs) (ginx.Result, error) {
+func (h *Handler) RefsByLevelIDs(ctx *ginx.Context, req IDs, sess session.Session) (ginx.Result, error) {
+	uid := sess.Claims().Uid
 	if len(req.IDs) == 0 {
 		return ginx.Result{}, nil
 	}
@@ -160,33 +171,7 @@ func (h *Handler) RefsByLevelIDs(ctx *ginx.Context, req IDs) (ginx.Result, error
 	if err != nil {
 		return systemErrorResult, err
 	}
-	var (
-		eg  errgroup.Group
-		csm map[int64]cases.Case
-		qsm map[int64]baguwen.Question
-	)
-	qids := make([]int64, 0, 32)
-	cids := make([]int64, 0, 16)
-	for _, sl := range res {
-		qids = append(qids, sl.Questions...)
-		cids = append(cids, sl.Cases...)
-	}
-	eg.Go(func() error {
-		cs, err1 := h.caseSvc.GetPubByIDs(ctx, cids)
-		csm = slice.ToMap(cs, func(element cases.Case) int64 {
-			return element.Id
-		})
-		return err1
-	})
-
-	eg.Go(func() error {
-		qs, err1 := h.queSvc.GetPubByIDs(ctx, qids)
-		qsm = slice.ToMap(qs, func(element baguwen.Question) int64 {
-			return element.Id
-		})
-		return err1
-	})
-	err = eg.Wait()
+	csm, qsm, qssmap, examResMap, err := h.skillLevels(ctx, uid, res)
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -195,30 +180,38 @@ func (h *Handler) RefsByLevelIDs(ctx *ginx.Context, req IDs) (ginx.Result, error
 		Data: slice.Map(res, func(idx int, src domain.SkillLevel) SkillLevel {
 			sl := newSkillLevel(src)
 			sl.setCases(csm)
-			sl.setQuestions(qsm)
+			sl.setQuestionsWithExam(qsm, examResMap)
+			sl.setQuestionSet(qssmap, examResMap)
 			return sl
 		}),
 	}, nil
 }
 
-func (h *Handler) LevelInfo(ctx *ginx.Context, req LevelInfoReq, sess session.Session) (ginx.Result, error) {
-	uid := sess.Claims().Uid
-	res, err := h.svc.LevelInfo(ctx, req.ID)
-	if err != nil {
-		return systemErrorResult, err
-	}
+func (h *Handler) skillLevels(ctx context.Context, uid int64, levels []domain.SkillLevel) (map[int64]cases.Case,
+	map[int64]baguwen.Question,
+	map[int64]baguwen.QuestionSet,
+	map[int64]baguwen.ExamResult,
+	error,
+) {
 	var (
+		err        error
 		eg         errgroup.Group
 		csm        map[int64]cases.Case
 		qsm        map[int64]baguwen.Question
 		qssmap     map[int64]baguwen.QuestionSet
 		examResMap map[int64]baguwen.ExamResult
 	)
+	qids := make([]int64, 0, 32)
+	cids := make([]int64, 0, 16)
+	qsids := make([]int64, 0, 16)
+	for _, sl := range levels {
+		qids = append(qids, sl.Questions...)
+		cids = append(cids, sl.Cases...)
+		qsids = append(qsids, sl.QuestionSets...)
+	}
 	var qid2s []int64
-	qids := res.Questions
-	cids := res.Cases
-	qsids := res.QuestionSets
 	qid2s = append(qid2s, qids...)
+	//  获取case
 	eg.Go(func() error {
 		cs, err1 := h.caseSvc.GetPubByIDs(ctx, cids)
 		csm = slice.ToMap(cs, func(element cases.Case) int64 {
@@ -226,7 +219,7 @@ func (h *Handler) LevelInfo(ctx *ginx.Context, req LevelInfoReq, sess session.Se
 		})
 		return err1
 	})
-
+	// 获取问题
 	eg.Go(func() error {
 		qs, err1 := h.queSvc.GetPubByIDs(ctx, qids)
 		qsm = slice.ToMap(qs, func(element baguwen.Question) int64 {
@@ -234,6 +227,7 @@ func (h *Handler) LevelInfo(ctx *ginx.Context, req LevelInfoReq, sess session.Se
 		})
 		return err1
 	})
+	// 获取问题集
 	eg.Go(func() error {
 		qsets, qerr := h.queSetSvc.GetByIDsWithQuestion(ctx, qsids)
 		if qerr != nil {
@@ -243,26 +237,18 @@ func (h *Handler) LevelInfo(ctx *ginx.Context, req LevelInfoReq, sess session.Se
 			return element.Id
 		})
 		for _, qs := range qsets {
-			qid2s = append(qid2s, slice.Map(qs.Questions, func(idx int, src baguwen.Question) int64 {
-				return src.Id
-			})...)
+			qid2s = append(qid2s, qs.Qids()...)
 		}
 		return nil
 	})
 	if err = eg.Wait(); err != nil {
-		return systemErrorResult, err
+		return nil, nil, nil, nil, err
 	}
 	// 获取进度
 	examResMap, err = h.examSvc.GetResults(ctx, uid, qid2s)
 	if err != nil {
-		return systemErrorResult, err
+		return nil, nil, nil, nil, err
 	}
-	// 组装 title
-	sl := newSkillLevel(res)
-	sl.setCases(csm)
-	sl.setQuestionsWithExam(qsm, examResMap)
-	sl.setQuestionSet(qssmap, examResMap)
-	return ginx.Result{
-		Data: sl,
-	}, nil
+	return csm, qsm, qssmap, examResMap, nil
+
 }

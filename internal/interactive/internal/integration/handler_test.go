@@ -18,7 +18,6 @@ package integration
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -92,7 +91,6 @@ func (i *InteractiveTestSuite) SetupSuite() {
 	server := egin.Load("server").Build()
 	handler := module.Hdl
 	i.svc = module.Svc
-	handler.PublicRoutes(server.Engine)
 	server.Use(func(ctx *gin.Context) {
 		ctx.Set("_session", session.NewMemorySession(session.Claims{
 			Uid: uid,
@@ -593,10 +591,12 @@ func (i *InteractiveTestSuite) TestCollection_Delete() {
 				require.NoError(t, err)
 				assert.ElementsMatch(t, []domain.CollectionRecord{
 					{
+						Id:   1,
 						Biz:  "case",
 						Case: 1,
 					},
 					{
+						Id:   2,
 						Biz:  "case",
 						Case: 2,
 					},
@@ -796,10 +796,7 @@ func (i *InteractiveTestSuite) TestCollection_Move() {
 						Uid:   uid,
 						Biz:   "case",
 						BizId: 1,
-						Cid: sql.NullInt64{
-							Valid: true,
-							Int64: id,
-						},
+						Cid:   id,
 					},
 				}, collectionRecords)
 
@@ -810,7 +807,7 @@ func (i *InteractiveTestSuite) TestCollection_Move() {
 	for _, tc := range testcases {
 		i.T().Run(tc.name, func(t *testing.T) {
 			id := tc.before(t)
-			tc.req.CollectionId = id
+			tc.req.Cid = id
 			req, err := http.NewRequest(http.MethodPost,
 				"/interactive/collection/move", iox.NewJSONReader(tc.req))
 			req.Header.Set("content-type", "application/json")

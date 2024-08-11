@@ -18,6 +18,8 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/ecodeclub/webook/internal/bff"
+
 	"github.com/ecodeclub/webook/internal/roadmap"
 
 	"github.com/ecodeclub/webook/internal/search"
@@ -78,6 +80,8 @@ func initGinxServer(sp session.Provider,
 	intrHdl *interactive.Handler,
 	searchHdl *search.Handler,
 	roadmapHdl *roadmap.Handler,
+	bffHdl *bff.Handler,
+	csHdl *cases.CaseSetHandler,
 ) *egin.Component {
 	session.SetDefaultProvider(sp)
 	res := egin.Load("web").Build()
@@ -118,6 +122,7 @@ func initGinxServer(sp session.Provider,
 	cosHdl.PublicRoutes(res.Engine)
 	caseHdl.PublicRoutes(res.Engine)
 	skillHdl.PublicRoutes(res.Engine)
+	csHdl.PublicRoutes(res.Engine)
 	// 登录校验
 	res.Use(session.CheckLoginMiddleware())
 	user.PrivateRoutes(res.Engine)
@@ -137,6 +142,8 @@ func initGinxServer(sp session.Provider,
 
 	// 权限校验
 	prjHdl.PrivateRoutes(res.Engine)
+	bffHdl.PrivateRoutes(res.Engine)
+	csHdl.PrivateRoutes(res.Engine)
 
 	// 会员校验
 	res.Use(checkMembershipMiddleware.Build())

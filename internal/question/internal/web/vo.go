@@ -200,3 +200,9 @@ type BizReq struct {
 	Biz   string `json:"biz"`
 	BizId int64  `json:"bizId"`
 }
+
+type CorrectReq struct {
+	Qid int64 `json:"qid"`
+	// 修正结果，对应 domain.Result
+	Result uint8 `json:"result"`
+}
