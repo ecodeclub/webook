@@ -16,9 +16,9 @@ package web
 
 import (
 	"errors"
-
 	"github.com/ecodeclub/ginx"
 	"github.com/ecodeclub/ginx/session"
+	"github.com/ecodeclub/webook/internal/question/internal/domain"
 	"github.com/ecodeclub/webook/internal/question/internal/errs"
 	"github.com/ecodeclub/webook/internal/question/internal/service"
 	"github.com/gin-gonic/gin"
@@ -37,6 +37,8 @@ func NewExamineHandler(svc service.ExamineService) *ExamineHandler {
 func (h *ExamineHandler) MemberRoutes(server *gin.Engine) {
 	g := server.Group("/question/examine")
 	g.POST("", ginx.BS(h.Examine))
+	// 觉得 AI 的评价不准确，那么可以调用这个接口来修正，这是直接暴露给用户使用的
+	g.POST("/correct", ginx.BS[CorrectReq](h.Correct))
 }
 
 func (h *ExamineHandler) Examine(ctx *ginx.Context, req ExamineReq, sess session.Session) (ginx.Result, error) {
@@ -55,4 +57,20 @@ func (h *ExamineHandler) Examine(ctx *ginx.Context, req ExamineReq, sess session
 	default:
 		return systemErrorResult, err
 	}
+}
+
+// 修改题目的结果
+func (h *ExamineHandler) Correct(ctx *ginx.Context, req CorrectReq, sess session.Session) (ginx.Result, error) {
+	// 实现这个接口
+	err := h.svc.Correct(ctx, sess.Claims().Uid, req.Qid, domain.Result(req.Result))
+	if err != nil {
+		return systemErrorResult, err
+	}
+	return ginx.Result{
+		Data: newExamineResult(domain.ExamineResult{
+			Qid:    req.Qid,
+			Result: domain.Result(req.Result),
+		}),
+	}, nil
+
 }

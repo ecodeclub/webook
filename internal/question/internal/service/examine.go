@@ -36,6 +36,7 @@ type ExamineService interface {
 	Examine(ctx context.Context, uid, qid int64, input string) (domain.ExamineResult, error)
 	QuestionResult(ctx context.Context, uid, qid int64) (domain.Result, error)
 	GetResults(ctx context.Context, uid int64, ids []int64) (map[int64]domain.ExamineResult, error)
+	Correct(ctx context.Context, uid int64, qid int64, questionResult domain.Result) error
 }
 
 var _ ExamineService = &LLMExamineService{}
@@ -90,6 +91,13 @@ func (svc *LLMExamineService) Examine(ctx context.Context,
 	// 开始记录结果
 	err = svc.repo.SaveResult(ctx, uid, qid, result)
 	return result, err
+}
+
+func (svc *LLMExamineService) Correct(ctx context.Context, uid int64,
+	qid int64, questionResult domain.Result) error {
+	// 更新结果
+	err := svc.repo.UpdateQuestionResult(ctx, uid, qid, questionResult)
+	return err
 }
 
 func (svc *LLMExamineService) parseExamineResult(answer string) domain.Result {

@@ -17,7 +17,6 @@ package repository
 import (
 	"context"
 	"errors"
-
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/ecodeclub/webook/internal/question/internal/domain"
 	"github.com/ecodeclub/webook/internal/question/internal/repository/dao"
@@ -27,6 +26,7 @@ type ExamineRepository interface {
 	SaveResult(ctx context.Context, uid, qid int64, result domain.ExamineResult) error
 	GetResultByUidAndQid(ctx context.Context, uid int64, qid int64) (domain.Result, error)
 	GetResultsByIds(ctx context.Context, uid int64, ids []int64) ([]domain.ExamineResult, error)
+	UpdateQuestionResult(ctx context.Context, uid int64, qid int64, result domain.Result) error
 }
 
 var _ ExamineRepository = &CachedExamineRepository{}
@@ -63,6 +63,15 @@ func (repo *CachedExamineRepository) SaveResult(ctx context.Context, uid, qid in
 		RawResult: result.RawResult,
 		Tokens:    result.Tokens,
 		Amount:    result.Amount,
+	})
+	return err
+}
+
+func (repo *CachedExamineRepository) UpdateQuestionResult(ctx context.Context, uid int64, qid int64, result domain.Result) error {
+	err := repo.dao.UpdateQuestionResult(ctx, dao.QuestionResult{
+		Uid:    uid,
+		Qid:    qid,
+		Result: result.ToUint8(),
 	})
 	return err
 }
