@@ -259,6 +259,81 @@ func (s *ExamineHandlerTest) TestExamine() {
 	}
 }
 
+func (s *ExamineHandlerTest) TestCorrect() {
+	testCases := []struct {
+		name   string
+		before func(t *testing.T)
+		after  func(t *testing.T)
+
+		req web.CorrectReq
+
+		wantCode int
+		wantResp test.Result[web.ExamineResult]
+	}{
+		{
+			name: "修改成通过",
+			before: func(t *testing.T) {
+				err := s.db.Create(&dao.QuestionResult{
+					Id:     2,
+					Uid:    uid,
+					Qid:    1,
+					Result: domain.ResultFailed.ToUint8(),
+					Ctime:  123,
+					Utime:  123,
+				}).Error
+				require.NoError(t, err)
+			},
+			after: func(t *testing.T) {
+				ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+				defer cancel()
+				var record dao.QuestionResult
+				err := s.db.WithContext(ctx).Where("uid = ? AND qid = ?", uid, 1).First(&record).Error
+
+				require.NoError(t, err)
+				assert.True(t, record.Utime > 0)
+				record.Utime = 0
+				assert.True(t, record.Ctime > 0)
+				record.Ctime = 0
+				assert.True(t, record.Id > 0)
+				record.Id = 0
+
+				assert.Equal(t, dao.QuestionResult{
+					Uid:    uid,
+					Qid:    1,
+					Result: domain.ResultBasic.ToUint8(),
+				}, record)
+
+			},
+			req: web.CorrectReq{
+				Qid:    1,
+				Result: domain.ResultBasic.ToUint8(),
+			},
+			wantCode: 200,
+			wantResp: test.Result[web.ExamineResult]{
+				Data: web.ExamineResult{
+					Qid:    1,
+					Result: domain.ResultBasic.ToUint8(),
+				},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		s.T().Run(tc.name, func(t *testing.T) {
+			tc.before(t)
+			req, err := http.NewRequest(http.MethodPost,
+				"/question/examine/correct", iox.NewJSONReader(tc.req))
+			req.Header.Set("content-type", "application/json")
+			require.NoError(t, err)
+			recorder := test.NewJSONResponseRecorder[web.ExamineResult]()
+			s.server.ServeHTTP(recorder, req)
+			require.Equal(t, tc.wantCode, recorder.Code)
+			assert.Equal(t, tc.wantResp, recorder.MustScan())
+			tc.after(t)
+		})
+	}
+}
+
 func TestExamineHandler(t *testing.T) {
 	suite.Run(t, new(ExamineHandlerTest))
 }

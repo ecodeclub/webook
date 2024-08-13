@@ -41,3 +41,9 @@ func newExamineResult(r domain.ExamineResult) ExamineResult {
 		Amount:    r.Amount,
 	}
 }
+
+type CorrectReq struct {
+	Qid int64 `json:"qid"`
+	// 修正结果，对应 domain.Result
+	Result uint8 `json:"result"`
+}

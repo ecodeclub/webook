@@ -156,3 +156,41 @@ func (c *MockExamineServiceQuestionResultCall) DoAndReturn(f func(context.Contex
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
+
+// Correct mocks base method.
+func (m *MockExamineService) Correct(ctx context.Context, uid, qid int64, questionResult domain.Result) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Correct", ctx, uid, qid, questionResult)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Correct indicates an expected call of Correct.
+func (mr *MockExamineServiceMockRecorder) Correct(ctx, uid, qid, questionResult any) *MockExamineServiceCorrectCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Correct", reflect.TypeOf((*MockExamineService)(nil).Correct), ctx, uid, qid, questionResult)
+	return &MockExamineServiceCorrectCall{Call: call}
+}
+
+// MockExamineServiceCorrectCall wraps *gomock.Call.
+type MockExamineServiceCorrectCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return for Correct.
+func (c *MockExamineServiceCorrectCall) Return(arg0 error) *MockExamineServiceCorrectCall {
+	c.Call = c.Call.Return(arg0)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do for Correct.
+func (c *MockExamineServiceCorrectCall) Do(f func(context.Context, int64, int64, domain.Result) error) *MockExamineServiceCorrectCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn for Correct.
+func (c *MockExamineServiceCorrectCall) DoAndReturn(f func(context.Context, int64, int64, domain.Result) error) *MockExamineServiceCorrectCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
