@@ -76,7 +76,6 @@ func (dao *GORMExamineDAO) SaveResult(ctx context.Context, record ExamineRecord)
 
 func (dao *GORMExamineDAO) UpdateQuestionResult(ctx context.Context, result QuestionResult) error {
 	now := time.Now().UnixMilli()
-	result.Utime = now
 	return dao.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		res := tx.Model(&result).Where("uid = ? and qid = ?", result.Uid, result.Qid).Updates(map[string]any{
 			"uid":    result.Uid,

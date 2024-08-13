@@ -96,8 +96,7 @@ func (svc *LLMExamineService) Examine(ctx context.Context,
 func (svc *LLMExamineService) Correct(ctx context.Context, uid int64,
 	qid int64, questionResult domain.Result) error {
 	// 更新结果
-	err := svc.repo.UpdateQuestionResult(ctx, uid, qid, questionResult)
-	return err
+	return svc.repo.UpdateQuestionResult(ctx, uid, qid, questionResult)
 }
 
 func (svc *LLMExamineService) parseExamineResult(answer string) domain.Result {
