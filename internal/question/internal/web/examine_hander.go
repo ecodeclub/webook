@@ -19,6 +19,7 @@ import (
 
 	"github.com/ecodeclub/ginx"
 	"github.com/ecodeclub/ginx/session"
+	"github.com/ecodeclub/webook/internal/question/internal/domain"
 	"github.com/ecodeclub/webook/internal/question/internal/errs"
 	"github.com/ecodeclub/webook/internal/question/internal/service"
 	"github.com/gin-gonic/gin"
@@ -59,7 +60,18 @@ func (h *ExamineHandler) Examine(ctx *ginx.Context, req ExamineReq, sess session
 	}
 }
 
+// 修改题目的结果
 func (h *ExamineHandler) Correct(ctx *ginx.Context, req CorrectReq, sess session.Session) (ginx.Result, error) {
 	// 实现这个接口
-	panic("implement me")
+	err := h.svc.Correct(ctx, sess.Claims().Uid, req.Qid, domain.Result(req.Result))
+	if err != nil {
+		return systemErrorResult, err
+	}
+	return ginx.Result{
+		Data: newExamineResult(domain.ExamineResult{
+			Qid:    req.Qid,
+			Result: domain.Result(req.Result),
+		}),
+	}, nil
+
 }

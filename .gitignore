@@ -24,6 +24,7 @@ go.work
 /go.work.sum
 /internal/user/internal/integration/logs/
 config/local.yaml
+config/.DS_Store
 logs/
 /internal/baguwen/internal/integration/logs/
 /**/**/logs
