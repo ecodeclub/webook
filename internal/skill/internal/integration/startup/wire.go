@@ -33,9 +33,8 @@ func initHandler(
 	p event.SyncEventProducer) (*web.Handler, error) {
 	wire.Build(
 		InitSkillDAO,
-		wire.FieldsOf(new(*baguwen.Module), "Svc"),
-		wire.FieldsOf(new(*cases.Module), "Svc"),
-		wire.FieldsOf(new(*baguwen.Module), "SetSvc"),
+		wire.FieldsOf(new(*baguwen.Module), "Svc", "SetSvc"),
+		wire.FieldsOf(new(*cases.Module), "Svc", "SetSvc"),
 		wire.FieldsOf(new(*baguwen.Module), "ExamSvc"),
 		cache.NewSkillCache,
 		repository.NewSkillRepo,
