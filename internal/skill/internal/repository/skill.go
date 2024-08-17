@@ -53,6 +53,7 @@ func (s *skillRepo) LevelInfo(ctx context.Context, id int64) (domain.SkillLevel,
 		level.Cases = levels[0].Cases
 		level.Questions = levels[0].Questions
 		level.QuestionSets = levels[0].QuestionSets
+		level.CaseSets = levels[0].CaseSets
 	}
 	return level, nil
 }
@@ -71,11 +72,13 @@ func (s *skillRepo) RefsByLevelIDs(ctx context.Context, ids []int64) ([]domain.S
 		ques, _ := m.Get(fmt.Sprintf(keyPattern, dao.RTypeQuestion, src))
 		cs, _ := m.Get(fmt.Sprintf(keyPattern, dao.RTypeCase, src))
 		questionSets, _ := m.Get(fmt.Sprintf(keyPattern, dao.RTypeQuestionSet, src))
+		caseSets, _ := m.Get(fmt.Sprintf(keyPattern, dao.RTypeCaseSet, src))
 		return domain.SkillLevel{
 			Id:           src,
 			Questions:    ques,
 			Cases:        cs,
 			QuestionSets: questionSets,
+			CaseSets:     caseSets,
 		}
 	}), nil
 }
@@ -136,6 +139,17 @@ func (s *skillRepo) toRef(sid int64, level domain.SkillLevel) []dao.SkillRef {
 		res = append(res, dao.SkillRef{
 			Rid:   level.QuestionSets[i],
 			Rtype: dao.RTypeQuestionSet,
+			Sid:   sid,
+			Slid:  level.Id,
+			Ctime: now,
+			Utime: now,
+		})
+	}
+
+	for i := 0; i < len(level.CaseSets); i++ {
+		res = append(res, dao.SkillRef{
+			Rid:   level.CaseSets[i],
+			Rtype: dao.RTypeCaseSet,
 			Sid:   sid,
 			Slid:  level.Id,
 			Ctime: now,
@@ -233,6 +247,7 @@ func (s *skillRepo) skillToInfoDomain(skill dao.Skill,
 		slQues, _ := reqsMap.Get(fmt.Sprintf("%d_%s", sl.Id, dao.RTypeQuestion))
 		slCases, _ := reqsMap.Get(fmt.Sprintf("%d_%s", sl.Id, dao.RTypeCase))
 		slQueSets, _ := reqsMap.Get(fmt.Sprintf("%d_%s", sl.Id, dao.RTypeQuestionSet))
+		slCaseSets, _ := reqsMap.Get(fmt.Sprintf("%d_%s", sl.Id, dao.RTypeCaseSet))
 		dsl.Questions = slice.Map(slQues, func(idx int, src dao.SkillRef) int64 {
 			return src.Rid
 		})
@@ -240,6 +255,9 @@ func (s *skillRepo) skillToInfoDomain(skill dao.Skill,
 			return src.Rid
 		})
 		dsl.QuestionSets = slice.Map(slQueSets, func(idx int, src dao.SkillRef) int64 {
+			return src.Rid
+		})
+		dsl.CaseSets = slice.Map(slCaseSets, func(idx int, src dao.SkillRef) int64 {
 			return src.Rid
 		})
 		switch sl.Level {

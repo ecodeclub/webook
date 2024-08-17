@@ -34,6 +34,18 @@ func (s Skill) questionSetLen() int {
 	return len(s.Basic.QuestionSets) + len(s.Intermediate.QuestionSets) + len(s.Advanced.QuestionSets)
 }
 
+func (s Skill) CaseSets() []int64 {
+	res := make([]int64, 0, s.caseSetLen())
+	res = append(res, s.Basic.CaseSets...)
+	res = append(res, s.Intermediate.CaseSets...)
+	res = append(res, s.Advanced.CaseSets...)
+	return res
+}
+
+func (s Skill) caseSetLen() int {
+	return len(s.Basic.CaseSets) + len(s.Intermediate.CaseSets) + len(s.Advanced.CaseSets)
+}
+
 func (s Skill) caseLen() int {
 	return len(s.Basic.Cases) + len(s.Intermediate.Cases) + len(s.Advanced.Cases)
 }
@@ -58,4 +70,5 @@ type SkillLevel struct {
 	Questions    []int64
 	Cases        []int64
 	QuestionSets []int64
+	CaseSets     []int64
 }

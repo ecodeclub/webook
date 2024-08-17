@@ -49,7 +49,7 @@ func InitHandler(
 		wire.FieldsOf(new(*baguwen.Module), "Svc"),
 		wire.FieldsOf(new(*baguwen.Module), "SetSvc"),
 		wire.FieldsOf(new(*baguwen.Module), "ExamSvc"),
-		wire.FieldsOf(new(*cases.Module), "Svc"),
+		wire.FieldsOf(new(*cases.Module), "Svc", "SetSvc"),
 		cache.NewSkillCache,
 		repository.NewSkillRepo,
 		event.NewSyncEventProducer,
