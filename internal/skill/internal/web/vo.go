@@ -31,12 +31,19 @@ type QuestionSet struct {
 	Questions []Question `json:"questions"`
 }
 
+type CaseSet struct {
+	ID    int64  `json:"id"`
+	Title string `json:"title"`
+	Cases []Case `json:"cases"`
+}
+
 type SkillLevel struct {
 	Id           int64         `json:"id,omitempty"`
 	Desc         string        `json:"desc,omitempty"`
 	Questions    []Question    `json:"questions"`
 	Cases        []Case        `json:"cases"`
 	QuestionSets []QuestionSet `json:"questionSets"`
+	CaseSets     []CaseSet     `json:"caseSets"`
 }
 
 func (s SkillLevel) toDomain() domain.SkillLevel {
@@ -50,6 +57,9 @@ func (s SkillLevel) toDomain() domain.SkillLevel {
 			return src.Id
 		}),
 		QuestionSets: slice.Map(s.QuestionSets, func(idx int, src QuestionSet) int64 {
+			return src.ID
+		}),
+		CaseSets: slice.Map(s.CaseSets, func(idx int, src CaseSet) int64 {
 			return src.ID
 		}),
 	}
@@ -91,6 +101,22 @@ func (s *SkillLevel) setQuestionSet(qsm map[int64]baguwen.QuestionSet, resultMap
 			})
 		}
 		src.Questions = res
+		return src
+	})
+}
+
+func (s *SkillLevel) setCaseSet(csm map[int64]cases.CaseSet) {
+	s.CaseSets = slice.Map(s.CaseSets, func(idx int, src CaseSet) CaseSet {
+		cs := csm[src.ID]
+		src.Title = cs.Title
+		res := make([]Case, 0, len(src.Cases))
+		for _, q := range cs.Cases {
+			res = append(res, Case{
+				Id:    q.Id,
+				Title: q.Title,
+			})
+		}
+		src.Cases = res
 		return src
 	})
 }
@@ -145,6 +171,13 @@ func (s *Skill) setQuestionSets(qm map[int64]baguwen.QuestionSet) {
 	s.Intermediate.setQuestionSet(qm, res)
 	s.Advanced.setQuestionSet(qm, res)
 }
+
+func (s *Skill) setCaseSets(qm map[int64]cases.CaseSet) {
+	s.Basic.setCaseSet(qm)
+	s.Intermediate.setCaseSet(qm)
+	s.Advanced.setCaseSet(qm)
+}
+
 func (s *Skill) setQuestions(qm map[int64]baguwen.Question) {
 	s.Basic.setQuestions(qm)
 	s.Intermediate.setQuestions(qm)
@@ -173,6 +206,11 @@ func newSkillLevel(s domain.SkillLevel) SkillLevel {
 		}),
 		QuestionSets: slice.Map(s.QuestionSets, func(idx int, src int64) QuestionSet {
 			return QuestionSet{
+				ID: src,
+			}
+		}),
+		CaseSets: slice.Map(s.CaseSets, func(idx int, src int64) CaseSet {
+			return CaseSet{
 				ID: src,
 			}
 		}),

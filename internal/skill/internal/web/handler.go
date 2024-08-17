@@ -19,26 +19,29 @@ import (
 )
 
 type Handler struct {
-	svc       service.SkillService
-	queSvc    baguwen.Service
-	caseSvc   cases.Service
-	queSetSvc baguwen.QuestionSetService
-	examSvc   baguwen.ExamService
-	logger    *elog.Component
+	svc        service.SkillService
+	queSvc     baguwen.Service
+	caseSvc    cases.Service
+	caseSetSvc cases.SetService
+	queSetSvc  baguwen.QuestionSetService
+	examSvc    baguwen.ExamService
+	logger     *elog.Component
 }
 
 func NewHandler(svc service.SkillService,
 	queSvc baguwen.Service,
 	caseSvc cases.Service,
+	caseSetSvc cases.SetService,
 	queSetSvc baguwen.QuestionSetService,
 	examSvc baguwen.ExamService) *Handler {
 	return &Handler{
-		svc:       svc,
-		logger:    elog.DefaultLogger,
-		queSvc:    queSvc,
-		queSetSvc: queSetSvc,
-		examSvc:   examSvc,
-		caseSvc:   caseSvc,
+		svc:        svc,
+		logger:     elog.DefaultLogger,
+		queSvc:     queSvc,
+		queSetSvc:  queSetSvc,
+		examSvc:    examSvc,
+		caseSvc:    caseSvc,
+		caseSetSvc: caseSetSvc,
 	}
 }
 
@@ -157,6 +160,22 @@ func (h *Handler) DetailRefs(ctx *ginx.Context, req Sid) (ginx.Result, error) {
 		res.setQuestionSets(cms)
 		return nil
 	})
+
+	eg.Go(func() error {
+		cids := skill.CaseSets()
+		if len(cids) == 0 {
+			return nil
+		}
+		cs, err1 := h.caseSetSvc.GetByIds(ctx, cids)
+		if err1 != nil {
+			return err1
+		}
+		cms := slice.ToMap(cs, func(ele cases.CaseSet) int64 {
+			return ele.ID
+		})
+		res.setCaseSets(cms)
+		return nil
+	})
 	return ginx.Result{
 		Data: res,
 	}, eg.Wait()
@@ -171,7 +190,7 @@ func (h *Handler) RefsByLevelIDs(ctx *ginx.Context, req IDs, sess session.Sessio
 	if err != nil {
 		return systemErrorResult, err
 	}
-	csm, qsm, qssmap, examResMap, err := h.skillLevels(ctx, uid, res)
+	csm, cssm, qsm, qssmap, examResMap, err := h.skillLevels(ctx, uid, res)
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -182,35 +201,41 @@ func (h *Handler) RefsByLevelIDs(ctx *ginx.Context, req IDs, sess session.Sessio
 			sl.setCases(csm)
 			sl.setQuestionsWithExam(qsm, examResMap)
 			sl.setQuestionSet(qssmap, examResMap)
+			sl.setCaseSet(cssm)
 			return sl
 		}),
 	}, nil
 }
 
-func (h *Handler) skillLevels(ctx context.Context, uid int64, levels []domain.SkillLevel) (map[int64]cases.Case,
+func (h *Handler) skillLevels(ctx context.Context, uid int64, levels []domain.SkillLevel) (
+	map[int64]cases.Case,
+	map[int64]cases.CaseSet,
 	map[int64]baguwen.Question,
 	map[int64]baguwen.QuestionSet,
 	map[int64]baguwen.ExamResult,
 	error,
 ) {
 	var (
-		err        error
 		eg         errgroup.Group
 		csm        map[int64]cases.Case
+		cssm       map[int64]cases.CaseSet
 		qsm        map[int64]baguwen.Question
 		qssmap     map[int64]baguwen.QuestionSet
 		examResMap map[int64]baguwen.ExamResult
 	)
 	qids := make([]int64, 0, 32)
 	cids := make([]int64, 0, 16)
+	csids := make([]int64, 0, 16)
 	qsids := make([]int64, 0, 16)
 	for _, sl := range levels {
 		qids = append(qids, sl.Questions...)
 		cids = append(cids, sl.Cases...)
+		csids = append(csids, sl.CaseSets...)
 		qsids = append(qsids, sl.QuestionSets...)
 	}
 	var qid2s []int64
 	qid2s = append(qid2s, qids...)
+
 	//  获取case
 	eg.Go(func() error {
 		cs, err1 := h.caseSvc.GetPubByIDs(ctx, cids)
@@ -218,6 +243,15 @@ func (h *Handler) skillLevels(ctx context.Context, uid int64, levels []domain.Sk
 			return element.Id
 		})
 		return err1
+	})
+
+	// 获取 caseSet
+	eg.Go(func() error {
+		sets, err := h.caseSetSvc.GetByIds(ctx, csids)
+		cssm = slice.ToMap(sets, func(element cases.CaseSet) int64 {
+			return element.ID
+		})
+		return err
 	})
 	// 获取问题
 	eg.Go(func() error {
@@ -241,14 +275,14 @@ func (h *Handler) skillLevels(ctx context.Context, uid int64, levels []domain.Sk
 		}
 		return nil
 	})
-	if err = eg.Wait(); err != nil {
-		return nil, nil, nil, nil, err
+	if err := eg.Wait(); err != nil {
+		return nil, nil, nil, nil, nil, err
 	}
 	// 获取进度
-	examResMap, err = h.examSvc.GetResults(ctx, uid, qid2s)
+	examResMap, err := h.examSvc.GetResults(ctx, uid, qid2s)
 	if err != nil {
-		return nil, nil, nil, nil, err
+		return nil, nil, nil, nil, nil, err
 	}
-	return csm, qsm, qssmap, examResMap, nil
+	return csm, cssm, qsm, qssmap, examResMap, nil
 
 }
