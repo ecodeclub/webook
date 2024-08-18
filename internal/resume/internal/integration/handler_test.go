@@ -8,7 +8,6 @@ import (
 	"github.com/ecodeclub/ginx/session"
 	"github.com/ecodeclub/webook/internal/cases"
 	casemocks "github.com/ecodeclub/webook/internal/cases/mocks"
-	baguwen "github.com/ecodeclub/webook/internal/question"
 	"github.com/ecodeclub/webook/internal/resume/internal/integration/startup"
 	"github.com/ecodeclub/webook/internal/resume/internal/repository/dao"
 	"github.com/ecodeclub/webook/internal/resume/internal/web"
@@ -22,11 +21,14 @@ import (
 	"go.uber.org/mock/gomock"
 )
 
+const uid = 123
+
 type TestSuite struct {
 	suite.Suite
 	db     *egorm.Component
 	server *egin.Component
 	hdl    *web.Handler
+	pdao   dao.ResumeProjectDAO
 }
 
 func (t *TestSuite) TearDownTest() {
@@ -57,7 +59,9 @@ func (s *TestSuite) SetupSuite() {
 		return resMap, nil
 	}).AnyTimes()
 
-	require.NoError(s.T(), err)
+	module := startup.InitModule(&cases.Module{
+		ExamService: examSvc,
+	})
 	econf.Set("server", map[string]any{"contextTimeout": "1s"})
 	server := egin.Load("server").Build()
 	server.Use(func(ctx *gin.Context) {
@@ -66,10 +70,10 @@ func (s *TestSuite) SetupSuite() {
 			Data: map[string]string{"creator": "true"},
 		}))
 	})
-	handler.PrivateRoutes(server.Engine)
+	module.Hdl.PrivateRoutes(server.Engine)
 	s.server = server
 	s.db = testioc.InitDB()
-	err = dao.InitTables(s.db)
+	err := dao.InitTables(s.db)
 	require.NoError(s.T(), err)
-	s.dao = dao.NewSkillDAO(s.db)
+	s.pdao = dao.NewResumeProjectDAO(s.db)
 }
