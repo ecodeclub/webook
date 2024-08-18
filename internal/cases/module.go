@@ -23,10 +23,12 @@ import (
 type Module struct {
 	Svc             Service
 	SetSvc          SetService
+	ExamService   ExamService
 	Hdl             *Handler
 	AdminSetHandler *AdminCaseSetHandler
 	ExamineHdl      *ExamineHandler
 	CsHdl           *CaseSetHandler
+
 }
 
 type Handler = web.Handler
@@ -37,3 +39,6 @@ type CaseSet = domain.CaseSet
 type AdminCaseSetHandler = web.AdminCaseSetHandler
 type ExamineHandler = web.ExamineHandler
 type CaseSetHandler = web.CaseSetHandler
+type ExamService = service.ExamineService
+type ExamineCaseResult = domain.ExamineCaseResult
+type CaseResult = domain.CaseResult
