@@ -4,7 +4,7 @@ type Project struct {
 	Id        int64
 	StartTime int64
 	EndTime   int64
-	Uid       string
+	Uid       int64
 	Name      string
 	// 项目背景，项目介绍
 	Introduction string

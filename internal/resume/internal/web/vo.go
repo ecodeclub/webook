@@ -10,26 +10,23 @@ type SaveProjectReq struct {
 	Project Project `json:"project"`
 }
 type SaveContributionReq struct {
-	ID int64 `json:"id"`
+	ID           int64        `json:"id"`
 	Contribution Contribution `json:"contribution"`
 }
 type SaveDifficultyReq struct {
-	ID int64 `json:"id"`
+	ID         int64      `json:"id"`
 	Difficulty Difficulty `json:"difficulty"`
 }
-
 
 type IDItem struct {
 	ID int64 `json:"id"`
 }
 
-
-
 type Project struct {
 	Id        int64  `json:"id"`
 	StartTime int64  `json:"startTime"`
 	EndTime   int64  `json:"endTime"`
-	Uid       string `json:"uid"`
+	Uid       int64  `json:"uid"`
 	Name      string `json:"name"`
 	// 项目背景，项目介绍
 	Introduction string `json:"introduction"`
@@ -73,7 +70,7 @@ type Difficulty struct {
 }
 
 func newProject(project domain.Project, examMap map[int64]cases.ExamineCaseResult) Project {
-	return  Project{
+	return Project{
 		Id:           project.Id,
 		StartTime:    project.StartTime,
 		EndTime:      project.EndTime,

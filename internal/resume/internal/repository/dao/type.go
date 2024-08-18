@@ -7,7 +7,7 @@ type ResumeProject struct {
 	StartTime int64 `gorm:"not null;comment:开始时间"`
 	// 项目的结束时间
 	EndTime int64  `gorm:"not null;comment:结束时间"`
-	Uid     string `gorm:"not null;index"`
+	Uid     int64 `gorm:"not null;index"`
 	// 项目名称
 	Name string `gorm:"not null"`
 	// 项目背景，项目介绍

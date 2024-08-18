@@ -54,11 +54,12 @@ func (h *Handler) DeleteDifficulty(ctx *ginx.Context, item IDItem) (ginx.Result,
 
 func (h *Handler) SaveProject(ctx *ginx.Context, req SaveProjectReq, sess session.Session) (ginx.Result, error) {
 	project := req.Project
+	uid := sess.Claims().Uid
 	id, err := h.svc.SaveProject(ctx, domain.Project{
 		Id:           project.Id,
 		StartTime:    project.StartTime,
 		EndTime:      project.EndTime,
-		Uid:          project.Uid,
+		Uid:          uid,
 		Name:         project.Name,
 		Introduction: project.Introduction,
 		Core:         project.Core,
