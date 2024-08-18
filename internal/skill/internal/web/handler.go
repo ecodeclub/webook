@@ -47,10 +47,10 @@ func NewHandler(svc service.SkillService,
 
 func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	server.POST("/skill/list", ginx.B[Page](h.List))
-	server.POST("/skill/detail-refs", ginx.S(h.Permission), ginx.B[Sid](h.DetailRefs))
+	server.POST("/skill/detail-refs", ginx.B[Sid](h.DetailRefs))
 	server.POST("/skill/save", ginx.S(h.Permission), ginx.B[SaveReq](h.Save))
 	server.POST("/skill/save-refs", ginx.S(h.Permission), ginx.B(h.SaveRefs))
-	server.POST("/skill/level-refs", ginx.S(h.Permission), ginx.BS(h.RefsByLevelIDs))
+	server.POST("/skill/level-refs", ginx.BS(h.RefsByLevelIDs))
 }
 
 func (h *Handler) PublicRoutes(server *gin.Engine) {
