@@ -6,7 +6,7 @@ type ResumeProject struct {
 	// 项目开始时间
 	StartTime int64 `gorm:"not null;comment:开始时间"`
 	// 项目的结束时间
-	EndTime int64  `gorm:"not null;comment:结束时间"`
+	EndTime int64 `gorm:"not null;comment:结束时间"`
 	Uid     int64 `gorm:"not null;index"`
 	// 项目名称
 	Name string `gorm:"not null"`
@@ -35,8 +35,8 @@ type Difficulty struct {
 	ProjectID int64  `gorm:"index"`
 	// 枚举 15k 20k ...
 	Level uint8 `gorm:"not null;default:0"`
-	Utime     int64
-	Ctime     int64
+	Utime int64
+	Ctime int64
 }
 
 type RefCase struct {

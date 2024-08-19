@@ -23,12 +23,11 @@ import (
 type Module struct {
 	Svc             Service
 	SetSvc          SetService
-	ExamService   ExamService
+	ExamService     ExamService
 	Hdl             *Handler
 	AdminSetHandler *AdminCaseSetHandler
 	ExamineHdl      *ExamineHandler
 	CsHdl           *CaseSetHandler
-
 }
 
 type Handler = web.Handler

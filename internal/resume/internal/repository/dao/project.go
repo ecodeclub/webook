@@ -3,41 +3,50 @@ package dao
 import (
 	"context"
 	"errors"
+	"time"
+
 	"github.com/ego-component/egorm"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
-	"time"
 )
 
 type ResumeProjectDAO interface {
 	Upsert(ctx context.Context, pro ResumeProject) (int64, error)
-	Delete(ctx context.Context, uid , id int64)  error
+	Delete(ctx context.Context, uid, id int64) error
 	Find(ctx context.Context, uid int64) ([]ResumeProject, error)
 	First(ctx context.Context, id int64) (ResumeProject, error)
 	SaveContribution(ctx context.Context, contribution Contribution, cases []RefCase) error
 	FindContributions(ctx context.Context, projectId int64) ([]Contribution, error)
 	FindRefCases(ctx context.Context, contributionIds []int64) (map[int64][]RefCase, error)
-	SaveDifficulty(ctx context.Context,difficulty Difficulty)error
-	FindDifficulties(ctx context.Context,projectId int64)([]Difficulty,error)
-	DeleteDifficulty(ctx context.Context,id int64)error
-	DeleteContribution(ctx context.Context,id int64)error
+	SaveDifficulty(ctx context.Context, difficulty Difficulty) error
+	FindDifficulties(ctx context.Context, projectId int64) ([]Difficulty, error)
+	DeleteDifficulty(ctx context.Context, id int64) error
+	DeleteContribution(ctx context.Context, id int64) error
 }
 
 type resumeProjectDAO struct {
 	db *egorm.Component
 }
-func NewResumeProjectDAO(db *egorm.Component)ResumeProjectDAO {
+
+func NewResumeProjectDAO(db *egorm.Component) ResumeProjectDAO {
 	return &resumeProjectDAO{
 		db: db,
 	}
 }
 
 func (r *resumeProjectDAO) DeleteContribution(ctx context.Context, id int64) error {
-	return  r.db.WithContext(ctx).Where("id = ?",id).Delete(&Contribution{}).Error
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		err := tx.WithContext(ctx).Where("id = ?", id).Delete(&Contribution{}).Error
+		if err != nil {
+			return err
+		}
+		err = tx.WithContext(ctx).Model(&RefCase{}).Where("contribution_id = ?", id).Delete(&RefCase{}).Error
+		return err
+	})
 }
 
 func (r *resumeProjectDAO) DeleteDifficulty(ctx context.Context, id int64) error {
-	return r.db.WithContext(ctx).Where("id = ? ",id).Delete(&Difficulty{}).Error
+	return r.db.WithContext(ctx).Where("id = ? ", id).Delete(&Difficulty{}).Error
 }
 
 func (r *resumeProjectDAO) FindDifficulties(ctx context.Context, projectId int64) ([]Difficulty, error) {
@@ -50,12 +59,12 @@ func (r *resumeProjectDAO) SaveDifficulty(ctx context.Context, difficulty Diffic
 	now := time.Now().UnixMilli()
 	difficulty.Utime = now
 	difficulty.Ctime = now
-	err := r.db.WithContext(ctx).Model(&ResumeProject{}).
+	err := r.db.WithContext(ctx).Model(&Difficulty{}).
 		Clauses(clause.OnConflict{
 			Columns:   []clause.Column{{Name: "id"}},
-			DoUpdates: clause.AssignmentColumns([]string{"desc","utime"}),
+			DoUpdates: clause.AssignmentColumns([]string{"desc", "utime", "case_id", "level"}),
 		}).Create(&difficulty).Error
-	return  err
+	return err
 }
 
 func (r *resumeProjectDAO) FindRefCases(ctx context.Context, contributionIds []int64) (map[int64][]RefCase, error) {
@@ -112,10 +121,14 @@ func (r *resumeProjectDAO) saveContribution(ctx context.Context, tx *gorm.DB, co
 
 func (r *resumeProjectDAO) saveContributionCases(ctx context.Context, tx *gorm.DB, contribution Contribution, cases []RefCase) error {
 	// 删除所有关联case
+
 	err := tx.WithContext(ctx).
 		Where("contribution_id=?", contribution.ID).Delete(&RefCase{}).Error
 	if err != nil {
 		return err
+	}
+	if len(cases) == 0 {
+		return nil
 	}
 	now := time.Now().UnixMilli()
 	for idx := range cases {
@@ -137,16 +150,15 @@ func (r *resumeProjectDAO) Upsert(ctx context.Context, pro ResumeProject) (int64
 	return pro.ID, err
 }
 
-func (r *resumeProjectDAO) Delete(ctx context.Context, uid , id int64)  error {
+func (r *resumeProjectDAO) Delete(ctx context.Context, uid, id int64) error {
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		res := tx.WithContext(ctx).Model(&ResumeProject{}).Where("id = ? and uid = ?", id,uid).Delete(&ResumeProject{})
+		res := tx.WithContext(ctx).Model(&ResumeProject{}).Where("id = ? and uid = ?", id, uid).Delete(&ResumeProject{})
 		if res.Error != nil {
 			return res.Error
 		}
 		if res.RowsAffected <= 0 {
 			return errors.New("删除失败")
 		}
-
 		var ids []int64
 		err := tx.WithContext(ctx).Model(&Contribution{}).Select("id").Where("project_id = ?", id).Find(&ids).Error
 		if err != nil {
@@ -156,13 +168,20 @@ func (r *resumeProjectDAO) Delete(ctx context.Context, uid , id int64)  error {
 		if err != nil {
 			return err
 		}
-		return  tx.WithContext(ctx).Model(&RefCase{}).Where("contribution_id in ?",ids).Delete(&RefCase{}).Error
+		err = tx.WithContext(ctx).Model(&Difficulty{}).Where("project_id = ?", id).Delete(&Difficulty{}).Error
+		if err != nil {
+			return err
+		}
+		return tx.WithContext(ctx).Model(&RefCase{}).Where("contribution_id in ?", ids).Delete(&RefCase{}).Error
 	})
 }
 
 func (r *resumeProjectDAO) Find(ctx context.Context, uid int64) ([]ResumeProject, error) {
 	var projects []ResumeProject
-	err := r.db.WithContext(ctx).Where("uid = ?", uid).Find(&projects).Error
+	err := r.db.WithContext(ctx).
+		Where("uid = ?", uid).
+		Order("id desc").
+		Find(&projects).Error
 	return projects, err
 }
 

@@ -33,7 +33,7 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	server.POST("/resume/project/contribution/save", ginx.B[SaveContributionReq](h.ProjectContributionSave))
 	server.POST("/resume/project/difficulty/save", ginx.B[SaveDifficultyReq](h.ProjectDifficultySave))
 	server.POST("/resume/project/difficulty/del", ginx.B[IDItem](h.DeleteDifficulty))
-	server.POST("/resume/project/contribution/del", ginx.B[IDItem](h.DeleteDifficulty))
+	server.POST("/resume/project/contribution/del", ginx.B[IDItem](h.DeleteContribution))
 }
 
 func (h *Handler) DeleteContribution(ctx *ginx.Context, item IDItem) (ginx.Result, error) {
@@ -45,7 +45,7 @@ func (h *Handler) DeleteContribution(ctx *ginx.Context, item IDItem) (ginx.Resul
 }
 
 func (h *Handler) DeleteDifficulty(ctx *ginx.Context, item IDItem) (ginx.Result, error) {
-	err := h.svc.DeleteDifficulty(ctx, item.ID)
+	err := h.svc.DeleteDifficulty(ctx.Request.Context(), item.ID)
 	if err != nil {
 		return systemErrorResult, err
 	}

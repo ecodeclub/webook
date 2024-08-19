@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/ecodeclub/webook/internal/resume/internal/domain"
 	"github.com/ecodeclub/webook/internal/resume/internal/repository/dao"
@@ -27,7 +28,7 @@ type resumeProjectRepo struct {
 	pdao dao.ResumeProjectDAO
 }
 
-func NewResumeProjectRepo(pdao dao.ResumeProjectDAO)ResumeProjectRepo {
+func NewResumeProjectRepo(pdao dao.ResumeProjectDAO) ResumeProjectRepo {
 	return &resumeProjectRepo{pdao: pdao}
 }
 

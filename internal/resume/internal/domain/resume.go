@@ -31,7 +31,7 @@ type Contribution struct {
 }
 
 type Difficulty struct {
-	ID int64
+	ID   int64
 	Desc string
 	// 适合用作难点的基本方案
 	Case Case

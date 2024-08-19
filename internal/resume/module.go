@@ -19,5 +19,5 @@ import "github.com/ecodeclub/webook/internal/resume/internal/web"
 type Handler = web.Handler
 
 type Module struct {
-	Hdl      *Handler
+	Hdl *Handler
 }

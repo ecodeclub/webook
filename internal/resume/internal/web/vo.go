@@ -91,6 +91,7 @@ func newContribution(contribution domain.Contribution, examMap map[int64]cases.E
 	con := Contribution{
 		ID:   contribution.ID,
 		Type: contribution.Type,
+		Desc: contribution.Desc,
 		RefCases: slice.Map(contribution.RefCases, func(idx int, src domain.Case) Case {
 			return newCase(src, examMap)
 		}),

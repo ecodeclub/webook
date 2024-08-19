@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+
 	"github.com/ecodeclub/webook/internal/resume/internal/domain"
 	"github.com/ecodeclub/webook/internal/resume/internal/repository"
 )
@@ -9,7 +10,7 @@ import (
 type Service interface {
 	SaveProject(ctx context.Context, pro domain.Project) (int64, error)
 	// 删除project及其所有关联数据
-	DeleteProject(ctx context.Context,uid, id int64) error
+	DeleteProject(ctx context.Context, uid, id int64) error
 	FindProjects(ctx context.Context, uid int64) ([]domain.Project, error)
 	ProjectInfo(ctx context.Context, id int64) (domain.Project, error)
 	SaveContribution(ctx context.Context, id int64, contribution domain.Contribution) error
@@ -25,7 +26,7 @@ type service struct {
 	repo repository.ResumeProjectRepo
 }
 
-func NewService(repo repository.ResumeProjectRepo)Service {
+func NewService(repo repository.ResumeProjectRepo) Service {
 	return &service{
 		repo: repo,
 	}
@@ -35,8 +36,8 @@ func (s *service) SaveProject(ctx context.Context, pro domain.Project) (int64, e
 	return s.repo.SaveProject(ctx, pro)
 }
 
-func (s *service) DeleteProject(ctx context.Context, uid,id int64) error {
-	return s.repo.DeleteProject(ctx,uid, id)
+func (s *service) DeleteProject(ctx context.Context, uid, id int64) error {
+	return s.repo.DeleteProject(ctx, uid, id)
 }
 
 func (s *service) FindProjects(ctx context.Context, uid int64) ([]domain.Project, error) {
