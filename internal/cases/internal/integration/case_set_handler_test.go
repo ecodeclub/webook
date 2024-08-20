@@ -43,9 +43,9 @@ type CaseSetTestSuite struct {
 	producer *eveMocks.MockSyncEventProducer
 }
 
-func (c *CaseSetTestSuite) SetupSuite() {
-	ctrl := gomock.NewController(c.T())
-	c.producer = eveMocks.NewMockSyncEventProducer(ctrl)
+func (s *CaseSetTestSuite) SetupSuite() {
+	ctrl := gomock.NewController(s.T())
+	s.producer = eveMocks.NewMockSyncEventProducer(ctrl)
 
 	intrSvc := intrmocks.NewMockService(ctrl)
 	intrModule := &interactive.Module{
@@ -62,21 +62,21 @@ func (c *CaseSetTestSuite) SetupSuite() {
 	intrSvc.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 		AnyTimes().DoAndReturn(func(ctx context.Context,
 		biz string, id int64, uid int64) (interactive.Interactive, error) {
-		intr := c.mockInteractive(biz, id)
+		intr := s.mockInteractive(biz, id)
 		return intr, nil
 	})
 	intrSvc.EXPECT().GetByIds(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context,
 		biz string, ids []int64) (map[int64]interactive.Interactive, error) {
 		res := make(map[int64]interactive.Interactive, len(ids))
 		for _, id := range ids {
-			intr := c.mockInteractive(biz, id)
+			intr := s.mockInteractive(biz, id)
 			res[id] = intr
 		}
 		return res, nil
 	}).AnyTimes()
 
-	module, err := startup.InitExamModule(c.producer, intrModule, &ai.Module{})
-	require.NoError(c.T(), err)
+	module, err := startup.InitExamModule(s.producer, intrModule, &ai.Module{})
+	require.NoError(s.T(), err)
 	econf.Set("server", map[string]any{"contextTimeout": "1s"})
 	server := egin.Load("server").Build()
 
@@ -93,25 +93,25 @@ func (c *CaseSetTestSuite) SetupSuite() {
 	module.CsHdl.PrivateRoutes(server.Engine)
 	server.Use(middleware.NewCheckMembershipMiddlewareBuilder(nil).Build())
 
-	c.server = server
-	c.db = testioc.InitDB()
-	err = dao.InitTables(c.db)
-	require.NoError(c.T(), err)
-	c.dao = dao.NewCaseSetDAO(c.db)
-	c.caseDao = dao.NewCaseDao(c.db)
+	s.server = server
+	s.db = testioc.InitDB()
+	err = dao.InitTables(s.db)
+	require.NoError(s.T(), err)
+	s.dao = dao.NewCaseSetDAO(s.db)
+	s.caseDao = dao.NewCaseDao(s.db)
 }
 
-func (c *CaseSetTestSuite) TearDownTest() {
-	err := c.db.Exec("TRUNCATE TABLE `case_sets`").Error
-	require.NoError(c.T(), err)
-	err = c.db.Exec("TRUNCATE TABLE `case_set_cases`").Error
-	require.NoError(c.T(), err)
-	err = c.db.Exec("TRUNCATE TABLE `cases`").Error
-	require.NoError(c.T(), err)
-	err = c.db.Exec("TRUNCATE TABLE `case_examine_records`").Error
-	require.NoError(c.T(), err)
-	err = c.db.Exec("TRUNCATE TABLE `case_results`").Error
-	require.NoError(c.T(), err)
+func (s *CaseSetTestSuite) TearDownTest() {
+	err := s.db.Exec("TRUNCATE TABLE `case_sets`").Error
+	require.NoError(s.T(), err)
+	err = s.db.Exec("TRUNCATE TABLE `case_set_cases`").Error
+	require.NoError(s.T(), err)
+	err = s.db.Exec("TRUNCATE TABLE `cases`").Error
+	require.NoError(s.T(), err)
+	err = s.db.Exec("TRUNCATE TABLE `case_examine_records`").Error
+	require.NoError(s.T(), err)
+	err = s.db.Exec("TRUNCATE TABLE `case_results`").Error
+	require.NoError(s.T(), err)
 }
 
 func (s *CaseSetTestSuite) TestCaseSetDetailByBiz() {
@@ -226,7 +226,7 @@ func (s *CaseSetTestSuite) TestCaseSetDetailByBiz() {
 				err = s.db.WithContext(ctx).Create(&dao.CaseResult{
 					Uid:    uid,
 					Cid:    614,
-					Result: domain.ResultAdvanced.ToUint8(),
+					Result: domain.ResultPassed.ToUint8(),
 					Ctime:  now,
 					Utime:  now,
 				}).Error
@@ -265,7 +265,7 @@ func (s *CaseSetTestSuite) TestCaseSetDetailByBiz() {
 							BizId:         1,
 							Title:         "Go案例1",
 							Content:       "Go案例1",
-							ExamineResult: domain.ResultAdvanced.ToUint8(),
+							ExamineResult: domain.ResultPassed.ToUint8(),
 							Utime:         now,
 							Interactive: web.Interactive{
 								ViewCnt:    615,
@@ -448,7 +448,7 @@ func (s *CaseSetTestSuite) TestCaseSet_Detail() {
 				err = s.db.WithContext(ctx).Create(&dao.CaseResult{
 					Uid:    uid,
 					Cid:    614,
-					Result: domain.ResultAdvanced.ToUint8(),
+					Result: domain.ResultPassed.ToUint8(),
 					Ctime:  now,
 					Utime:  now,
 				}).Error
@@ -486,7 +486,7 @@ func (s *CaseSetTestSuite) TestCaseSet_Detail() {
 							BizId:         1,
 							Title:         "Go案例1",
 							Content:       "Go案例1",
-							ExamineResult: domain.ResultAdvanced.ToUint8(),
+							ExamineResult: domain.ResultPassed.ToUint8(),
 							Utime:         now,
 							Interactive: web.Interactive{
 								ViewCnt:    615,

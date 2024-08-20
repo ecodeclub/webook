@@ -106,6 +106,20 @@ func (c *CollectionHandlerTestSuite) SetupSuite() {
 		return resMap, nil
 	}).AnyTimes()
 
+	caseExamSvc := casemocks.NewMockExamineService(ctrl)
+	caseExamSvc.EXPECT().GetResults(gomock.Any(), gomock.Any(), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, uid int64, ids []int64) (map[int64]cases.ExamineResult, error) {
+			res := make(map[int64]cases.ExamineResult, len(ids))
+			for _, id := range ids {
+				res[id] = cases.ExamineResult{
+					Cid: id,
+					// 偶数不通过，基数通过
+					Result: cases.ExamineResultEnum(id % 2),
+				}
+			}
+			return res, nil
+		}).AnyTimes()
+
 	caseSvc := casemocks.NewMockService(ctrl)
 	caseSvc.EXPECT().GetPubByIDs(gomock.Any(), gomock.Any()).DoAndReturn(
 		func(ctx context.Context, ids []int64) ([]cases.Case, error) {
@@ -117,17 +131,27 @@ func (c *CollectionHandlerTestSuite) SetupSuite() {
 			}), nil
 		}).AnyTimes()
 	caseSetSvc := casemocks.NewMockCaseSetService(ctrl)
-	caseSetSvc.EXPECT().GetByIds(gomock.Any(), gomock.Any()).
+	caseSetSvc.EXPECT().GetByIdsWithCases(gomock.Any(), gomock.Any()).
 		DoAndReturn(func(ctx context.Context, ids []int64) ([]cases.CaseSet, error) {
 			return slice.Map(ids, func(idx int, src int64) cases.CaseSet {
 				return cases.CaseSet{
 					ID:    src,
 					Title: fmt.Sprintf("这是案例集%d", src),
+					Cases: []cases.Case{
+						{
+							Id:    src*10 + 1,
+							Title: fmt.Sprintf("这是案例%d", src*10+1),
+						},
+						{
+							Id:    src*10 + 2,
+							Title: fmt.Sprintf("这是案例%d", src*10+2),
+						},
+					},
 				}
 			}), nil
 		}).AnyTimes()
 	handler, _ := st.InitHandler(&interactive.Module{Svc: intrSvc},
-		&cases.Module{Svc: caseSvc, SetSvc: caseSetSvc},
+		&cases.Module{Svc: caseSvc, SetSvc: caseSetSvc, ExamineSvc: caseExamSvc},
 		&baguwen.Module{Svc: queSvc, SetSvc: queSetSvc, ExamSvc: examSvc})
 	econf.Set("server", map[string]any{"contextTimeout": "1s"})
 	server := egin.Load("server").Build()
@@ -208,6 +232,15 @@ func (c *CollectionHandlerTestSuite) Test_Handler() {
 			CaseSet: web.CaseSet{
 				ID:    5,
 				Title: "这是案例集5",
+				Cases: []web.Case{
+					{
+						ID:            51,
+						ExamineResult: 1,
+					},
+					{
+						ID: 52,
+					},
+				},
 			},
 		},
 	}, recorder.MustScan().Data)

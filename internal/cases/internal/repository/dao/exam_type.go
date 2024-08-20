@@ -1,6 +1,6 @@
 package dao
 
-// ExamineRecord 业务层面上记录
+// CaseExamineRecord 业务层面上记录
 type CaseExamineRecord struct {
 	Id  int64
 	Uid int64

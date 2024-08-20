@@ -56,7 +56,7 @@ type CaseSet struct {
 	Utime int64 `gorm:"index"`
 }
 
-// QuestionSetQuestion 题集问题 —— 题集与题目的关联关系
+// CaseSetCase 案例集和案例的关联关系
 type CaseSetCase struct {
 	Id    int64 `gorm:"primaryKey,autoIncrement"`
 	CSID  int64 `gorm:"column:cs_id;uniqueIndex:csid_cid"`

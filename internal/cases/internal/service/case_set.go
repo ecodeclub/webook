@@ -19,6 +19,8 @@ type CaseSetService interface {
 	List(ctx context.Context, offset, limit int) ([]domain.CaseSet, int64, error)
 	Detail(ctx context.Context, id int64) (domain.CaseSet, error)
 	GetByIds(ctx context.Context, ids []int64) ([]domain.CaseSet, error)
+	// GetByIdsWithCases 会查询关联的 Case，但是目前只是发返回了 ID
+	GetByIdsWithCases(ctx context.Context, ids []int64) ([]domain.CaseSet, error)
 
 	ListByBiz(ctx context.Context, offset, limit int, biz string) ([]domain.CaseSet, error)
 	ListDefault(ctx context.Context, offset, limit int) ([]domain.CaseSet, error)
@@ -125,4 +127,8 @@ func (c *caseSetSvc) Detail(ctx context.Context, id int64) (domain.CaseSet, erro
 
 func (c *caseSetSvc) GetByIds(ctx context.Context, ids []int64) ([]domain.CaseSet, error) {
 	return c.repo.GetByIDs(ctx, ids)
+}
+
+func (c *caseSetSvc) GetByIdsWithCases(ctx context.Context, ids []int64) ([]domain.CaseSet, error) {
+	return c.repo.GetByIDsWithCases(ctx, ids)
 }
