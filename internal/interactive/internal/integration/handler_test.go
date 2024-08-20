@@ -62,17 +62,6 @@ type InteractiveTestSuite struct {
 	svc      interactive.Service
 }
 
-func (i *InteractiveTestSuite) TearDownSuite() {
-	err := i.db.Exec("DROP TABLE `interactives`").Error
-	require.NoError(i.T(), err)
-	err = i.db.Exec("DROP TABLE `user_like_bizs`").Error
-	require.NoError(i.T(), err)
-	err = i.db.Exec("DROP TABLE `user_collection_bizs`").Error
-	require.NoError(i.T(), err)
-	err = i.db.Exec("DROP TABLE `collections`").Error
-	require.NoError(i.T(), err)
-}
-
 func (i *InteractiveTestSuite) TearDownTest() {
 	err := i.db.Exec("TRUNCATE TABLE `interactives`").Error
 	require.NoError(i.T(), err)

@@ -10,6 +10,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ecodeclub/webook/internal/ai"
+
 	"github.com/ecodeclub/ekit/iox"
 	"github.com/ecodeclub/ekit/sqlx"
 	"github.com/ecodeclub/ginx/session"
@@ -49,7 +51,7 @@ func (s *AdminCaseSetTestSuite) SetupSuite() {
 	intrModule := &interactive.Module{
 		Svc: intrSvc,
 	}
-	module, err := startup.InitModule(s.producer, intrModule)
+	module, err := startup.InitModule(s.producer, &ai.Module{}, intrModule)
 	require.NoError(s.T(), err)
 	adminHandler := module.AdminSetHandler
 	econf.Set("server", map[string]any{"contextTimeout": "1s"})

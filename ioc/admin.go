@@ -41,7 +41,8 @@ func InitAdminServer(prj *project.AdminHandler,
 	rm *roadmap.AdminHandler,
 	que *baguwen.AdminHandler,
 	queSet *baguwen.AdminQuestionSetHandler,
-	caseHdl *cases.AdminCaseSetHandler,
+	caseHdl *cases.AdminCaseHandler,
+	caseSetHdl *cases.AdminCaseSetHandler,
 	mark *marketing.AdminHandler) AdminServer {
 	res := egin.Load("admin").Build()
 	res.Use(cors.New(cors.Config{
@@ -71,6 +72,7 @@ func InitAdminServer(prj *project.AdminHandler,
 	rm.PrivateRoutes(res.Engine)
 	que.PrivateRoutes(res.Engine)
 	caseHdl.PrivateRoutes(res.Engine)
+	caseSetHdl.PrivateRoutes(res.Engine)
 	return res
 }
 

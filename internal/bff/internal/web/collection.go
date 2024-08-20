@@ -25,12 +25,13 @@ func (h *Handler) CollectionRecords(ctx *ginx.Context, req CollectionInfoReq, se
 		return systemErrorResult, err
 	}
 	var (
-		eg         errgroup.Group
-		csm        map[int64]cases.Case
-		cssmap     map[int64]cases.CaseSet
-		qsm        map[int64]baguwen.Question
-		qssmap     map[int64]baguwen.QuestionSet
-		examResMap map[int64]baguwen.ExamResult
+		eg             errgroup.Group
+		csm            map[int64]cases.Case
+		cssmap         map[int64]cases.CaseSet
+		qsm            map[int64]baguwen.Question
+		qssmap         map[int64]baguwen.QuestionSet
+		queExamResMap  map[int64]baguwen.ExamResult
+		caseExamResMap map[int64]cases.ExamineResult
 	)
 	var qids, cids, csids, qsids, qid2s []int64
 	for _, record := range records {
@@ -74,23 +75,39 @@ func (h *Handler) CollectionRecords(ctx *ginx.Context, req CollectionInfoReq, se
 	})
 
 	eg.Go(func() error {
-		csets, cserr := h.caseSetSvc.GetByIds(ctx, csids)
+		csets, cserr := h.caseSetSvc.GetByIdsWithCases(ctx, csids)
 		cssmap = slice.ToMap(csets, func(element cases.CaseSet) int64 {
 			return element.ID
 		})
+		for _, cs := range csets {
+			cids = append(cids, cs.Cids()...)
+		}
 		return cserr
 	})
 	if err = eg.Wait(); err != nil {
 		return systemErrorResult, err
 	}
+
+	eg = errgroup.Group{}
+	eg.Go(func() error {
+		var err1 error
+		queExamResMap, err1 = h.queExamSvc.GetResults(ctx, uid, qid2s)
+		return err1
+	})
+
+	eg.Go(func() error {
+		var err1 error
+		caseExamResMap, err1 = h.caseExamSvc.GetResults(ctx, uid, cids)
+		return err1
+	})
 	// 获取进度
-	examResMap, err = h.examSvc.GetResults(ctx, uid, qid2s)
-	if err != nil {
+
+	if err = eg.Wait(); err != nil {
 		return systemErrorResult, err
 	}
 
 	res := slice.Map(records, func(idx int, src interactive.CollectionRecord) CollectionRecord {
-		return newCollectionRecord(src, csm, cssmap, qsm, qssmap, examResMap)
+		return newCollectionRecord(src, csm, cssmap, qsm, qssmap, queExamResMap, caseExamResMap)
 	})
 	return ginx.Result{
 		Data: res,

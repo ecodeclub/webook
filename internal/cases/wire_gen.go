@@ -38,20 +38,23 @@ func InitModule(db *gorm.DB, intrModule *interactive.Module, aiModule *ai.Module
 	caseSetDAO := dao.NewCaseSetDAO(db)
 	caseSetRepository := repository.NewCaseSetRepo(caseSetDAO)
 	caseSetService := service.NewCaseSetService(caseSetRepository, caseRepo, interactiveEventProducer)
-	service2 := intrModule.Svc
-	handler := web.NewHandler(serviceService, service2)
-	adminCaseSetHandler := web.NewAdminCaseSetHandler(caseSetService)
 	examineDAO := dao.NewGORMExamineDAO(db)
 	examineRepository := repository.NewCachedExamineRepository(examineDAO)
 	llmService := aiModule.Svc
 	examineService := service.NewLLMExamineService(caseRepo, examineRepository, llmService)
+	service2 := intrModule.Svc
+	handler := web.NewHandler(serviceService, examineService, service2)
+	adminCaseSetHandler := web.NewAdminCaseSetHandler(caseSetService)
+	adminCaseHandler := web.NewAdminCaseHandler(serviceService)
 	examineHandler := web.NewExamineHandler(examineService)
 	caseSetHandler := web.NewCaseSetHandler(caseSetService, examineService, service2)
 	module := &Module{
 		Svc:             serviceService,
 		SetSvc:          caseSetService,
+		ExamineSvc:      examineService,
 		Hdl:             handler,
 		AdminSetHandler: adminCaseSetHandler,
+		AdminHandler:    adminCaseHandler,
 		ExamineHdl:      examineHandler,
 		CsHdl:           caseSetHandler,
 	}

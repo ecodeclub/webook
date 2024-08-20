@@ -29,12 +29,12 @@ var ErrInsufficientCredit = ai.ErrInsufficientCredit
 
 // ExamineService 测试服务
 //
-//go:generate mockgen -source=./examine.go -destination=../../mocks/examine.mock.go -package=quemocks -typed=true ExamineService
+//go:generate mockgen -source=./examine.go -destination=../../mocks/examine.mock.go -package=casemocks -typed=true ExamineService
 type ExamineService interface {
 	// Examine 测试服务
 	// input 是用户输入的内容
 	Examine(ctx context.Context, uid, cid int64, input string) (domain.ExamineCaseResult, error)
-	QuestionResult(ctx context.Context, uid, cid int64) (domain.CaseResult, error)
+	GetResult(ctx context.Context, uid, cid int64) (domain.CaseResult, error)
 	GetResults(ctx context.Context, uid int64, ids []int64) (map[int64]domain.ExamineCaseResult, error)
 }
 
@@ -54,7 +54,7 @@ func (svc *LLMExamineService) GetResults(ctx context.Context, uid int64, ids []i
 	}), err
 }
 
-func (svc *LLMExamineService) QuestionResult(ctx context.Context, uid, qid int64) (domain.CaseResult, error) {
+func (svc *LLMExamineService) GetResult(ctx context.Context, uid, qid int64) (domain.CaseResult, error) {
 	return svc.repo.GetResultByUidAndQid(ctx, uid, qid)
 }
 
@@ -94,22 +94,10 @@ func (svc *LLMExamineService) Examine(ctx context.Context,
 
 func (svc *LLMExamineService) parseExamineResult(answer string) domain.CaseResult {
 	answer = strings.TrimSpace(answer)
-	// 获取第一行
-	segs := strings.SplitN(answer, "\n", 2)
-	if len(segs) < 1 {
-		return domain.ResultFailed
+	if strings.HasPrefix(answer, "通过") {
+		return domain.ResultPassed
 	}
-	result := segs[0]
-	switch {
-	case strings.Contains(result, "15K"):
-		return domain.ResultBasic
-	case strings.Contains(result, "25K"):
-		return domain.ResultIntermediate
-	case strings.Contains(result, "35K"):
-		return domain.ResultAdvanced
-	default:
-		return domain.ResultFailed
-	}
+	return domain.ResultFailed
 }
 
 func NewLLMExamineService(

@@ -4,6 +4,9 @@ import (
 	"context"
 	"time"
 
+	"github.com/ecodeclub/ekit/mapx"
+	"golang.org/x/sync/errgroup"
+
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/ecodeclub/webook/internal/cases/internal/domain"
 	"github.com/ecodeclub/webook/internal/cases/internal/repository/dao"
@@ -16,7 +19,10 @@ type CaseSetRepository interface {
 	Total(ctx context.Context) (int64, error)
 	List(ctx context.Context, offset int, limit int) ([]domain.CaseSet, error)
 	UpdateNonZero(ctx context.Context, set domain.CaseSet) error
+
 	GetByIDs(ctx context.Context, ids []int64) ([]domain.CaseSet, error)
+	// GetByIDsWithCases 会同步把关联的 Case 也找出来，但是只是找 id，具体内容没有找
+	GetByIDsWithCases(ctx context.Context, ids []int64) ([]domain.CaseSet, error)
 
 	ListByBiz(ctx context.Context, offset, limit int, biz string) ([]domain.CaseSet, error)
 	GetByBiz(ctx context.Context, biz string, bizId int64) (domain.CaseSet, error)
@@ -133,6 +139,40 @@ func (c *caseSetRepo) GetByIDs(ctx context.Context, ids []int64) ([]domain.CaseS
 	return slice.Map(qs, func(idx int, src dao.CaseSet) domain.CaseSet {
 		return c.toDomainCaseSet(src)
 	}), err
+}
+
+func (c *caseSetRepo) GetByIDsWithCases(ctx context.Context, ids []int64) ([]domain.CaseSet, error) {
+	var (
+		eg          errgroup.Group
+		qs          []dao.CaseSet
+		setCasesMap = mapx.NewMultiBuiltinMap[int64, int64](len(ids))
+	)
+
+	eg.Go(func() error {
+		var err error
+		qs, err = c.dao.GetByIDs(ctx, ids)
+		return err
+	})
+
+	eg.Go(func() error {
+		refs, err := c.dao.GetRefCasesByIDs(ctx, ids)
+		for _, ref := range refs {
+			_ = setCasesMap.Put(ref.CSID, ref.CID)
+		}
+		return err
+	})
+
+	if err := eg.Wait(); err != nil {
+		return nil, err
+	}
+	return slice.Map(qs, func(idx int, src dao.CaseSet) domain.CaseSet {
+		cs := c.toDomainCaseSet(src)
+		cases, _ := setCasesMap.Get(cs.ID)
+		cs.Cases = slice.Map(cases, func(idx int, src int64) domain.Case {
+			return domain.Case{Id: src}
+		})
+		return cs
+	}), nil
 }
 
 func (c *caseSetRepo) toEntityQuestionSet(d domain.CaseSet) dao.CaseSet {

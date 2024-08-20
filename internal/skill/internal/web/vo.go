@@ -105,15 +105,16 @@ func (s *SkillLevel) setQuestionSet(qsm map[int64]baguwen.QuestionSet, resultMap
 	})
 }
 
-func (s *SkillLevel) setCaseSet(csm map[int64]cases.CaseSet) {
+func (s *SkillLevel) setCaseSet(csm map[int64]cases.CaseSet, resultMap map[int64]cases.ExamineResult) {
 	s.CaseSets = slice.Map(s.CaseSets, func(idx int, src CaseSet) CaseSet {
 		cs := csm[src.ID]
 		src.Title = cs.Title
 		res := make([]Case, 0, len(src.Cases))
 		for _, q := range cs.Cases {
 			res = append(res, Case{
-				Id:    q.Id,
-				Title: q.Title,
+				Id:            q.Id,
+				Title:         q.Title,
+				ExamineResult: resultMap[q.Id].Result.ToUint8(),
 			})
 		}
 		src.Cases = res
@@ -172,12 +173,6 @@ func (s *Skill) setQuestionSets(qm map[int64]baguwen.QuestionSet) {
 	s.Advanced.setQuestionSet(qm, res)
 }
 
-func (s *Skill) setCaseSets(qm map[int64]cases.CaseSet) {
-	s.Basic.setCaseSet(qm)
-	s.Intermediate.setCaseSet(qm)
-	s.Advanced.setCaseSet(qm)
-}
-
 func (s *Skill) setQuestions(qm map[int64]baguwen.Question) {
 	s.Basic.setQuestions(qm)
 	s.Intermediate.setQuestions(qm)
@@ -224,8 +219,9 @@ type Question struct {
 }
 
 type Case struct {
-	Id    int64  `json:"id,omitempty"`
-	Title string `json:"title,omitempty"`
+	Id            int64  `json:"id,omitempty"`
+	Title         string `json:"title,omitempty"`
+	ExamineResult uint8  `json:"examineResult"`
 }
 
 type IDs struct {

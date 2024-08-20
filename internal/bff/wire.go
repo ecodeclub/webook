@@ -17,7 +17,7 @@ func InitModule(intrModule *interactive.Module,
 		web.NewHandler,
 		wire.FieldsOf(new(*baguwen.Module), "Svc", "SetSvc", "ExamSvc"),
 		wire.FieldsOf(new(*interactive.Module), "Svc"),
-		wire.FieldsOf(new(*cases.Module), "SetSvc", "Svc"),
+		wire.FieldsOf(new(*cases.Module), "SetSvc", "Svc", "ExamineSvc"),
 		wire.Struct(new(Module), "*"),
 	)
 	return new(Module), nil

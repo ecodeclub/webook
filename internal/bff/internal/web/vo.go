@@ -1,6 +1,7 @@
 package web
 
 import (
+	"github.com/ecodeclub/ekit/slice"
 	"github.com/ecodeclub/webook/internal/cases"
 	"github.com/ecodeclub/webook/internal/interactive"
 	baguwen "github.com/ecodeclub/webook/internal/question"
@@ -21,8 +22,9 @@ type CollectionRecord struct {
 }
 
 type Case struct {
-	ID    int64  `json:"id"`
-	Title string `json:"title"`
+	ID            int64  `json:"id"`
+	Title         string `json:"title"`
+	ExamineResult uint8  `json:"examineResult"`
 }
 
 type Question struct {
@@ -48,7 +50,8 @@ func newCollectionRecord(record interactive.CollectionRecord,
 	csm map[int64]cases.CaseSet,
 	qm map[int64]baguwen.Question,
 	qsm map[int64]baguwen.QuestionSet,
-	examMap map[int64]baguwen.ExamResult,
+	queExamMap map[int64]baguwen.ExamResult,
+	caseExamMap map[int64]cases.ExamineResult,
 ) CollectionRecord {
 	res := CollectionRecord{
 		Id: record.Id,
@@ -57,20 +60,30 @@ func newCollectionRecord(record interactive.CollectionRecord,
 	case CaseBiz:
 		res.Case = setCases(record, cm)
 	case QuestionBiz:
-		res.Question = setQuestion(record, qm, examMap)
+		res.Question = setQuestion(record, qm, queExamMap)
 	case QuestionSetBiz:
-		res.QuestionSet = setQuestionSet(record, qsm, examMap)
+		res.QuestionSet = setQuestionSet(record, qsm, queExamMap)
 	case CaseSetBiz:
-		res.CaseSet = setCaseSet(record, csm)
+		res.CaseSet = setCaseSet(record, csm, caseExamMap)
 	}
 	return res
 }
 
-func setCaseSet(ca interactive.CollectionRecord, csm map[int64]cases.CaseSet) CaseSet {
+func setCaseSet(
+	ca interactive.CollectionRecord,
+	csm map[int64]cases.CaseSet,
+	caseExamMap map[int64]cases.ExamineResult,
+) CaseSet {
 	cs := csm[ca.CaseSet]
 	return CaseSet{
 		ID:    cs.ID,
 		Title: cs.Title,
+		Cases: slice.Map(cs.Cases, func(idx int, src cases.Case) Case {
+			return Case{
+				ID:            src.Id,
+				ExamineResult: caseExamMap[src.Id].Result.ToUint8(),
+			}
+		}),
 	}
 }
 
