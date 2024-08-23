@@ -22,14 +22,17 @@ type CaseSetDAO interface {
 
 	ListByBiz(ctx context.Context, offset int, limit int, biz string) ([]CaseSet, error)
 	GetByBiz(ctx context.Context, biz string, bizId int64) (CaseSet, error)
+	GetRefCasesByIDs(ctx context.Context, ids []int64) ([]CaseSetCase, error)
 }
 
 type caseSetDAO struct {
 	db *egorm.Component
 }
 
-func NewCaseSetDAO(db *egorm.Component) CaseSetDAO {
-	return &caseSetDAO{db: db}
+func (c *caseSetDAO) GetRefCasesByIDs(ctx context.Context, ids []int64) ([]CaseSetCase, error) {
+	var res []CaseSetCase
+	err := c.db.WithContext(ctx).Where("cs_id IN ?", ids).Find(&res).Error
+	return res, err
 }
 
 func (c *caseSetDAO) ListByBiz(ctx context.Context, offset int, limit int, biz string) ([]CaseSet, error) {
@@ -135,4 +138,8 @@ func (c *caseSetDAO) GetByIDs(ctx context.Context, ids []int64) ([]CaseSet, erro
 	var res []CaseSet
 	err := c.db.Model(&CaseSet{}).WithContext(ctx).Where("id in (?)", ids).Find(&res).Error
 	return res, err
+}
+
+func NewCaseSetDAO(db *egorm.Component) CaseSetDAO {
+	return &caseSetDAO{db: db}
 }

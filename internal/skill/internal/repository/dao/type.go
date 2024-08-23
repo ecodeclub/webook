@@ -57,6 +57,7 @@ const (
 	LevelAdvanced     = "advanced"
 	RTypeQuestion     = "question"
 	RTypeCase         = "case"
+	RTypeCaseSet      = "caseSet"
 	RTypeQuestionSet  = "questionSet"
 )
 

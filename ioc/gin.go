@@ -82,6 +82,7 @@ func initGinxServer(sp session.Provider,
 	roadmapHdl *roadmap.Handler,
 	bffHdl *bff.Handler,
 	csHdl *cases.CaseSetHandler,
+	caseExamineHdl *cases.ExamineHandler,
 ) *egin.Component {
 	session.SetDefaultProvider(sp)
 	res := egin.Load("web").Build()
@@ -129,7 +130,6 @@ func initGinxServer(sp session.Provider,
 	lhdl.PrivateRoutes(res.Engine)
 	qsh.PrivateRoutes(res.Engine)
 	cosHdl.PrivateRoutes(res.Engine)
-	caseHdl.PrivateRoutes(res.Engine)
 	skillHdl.PrivateRoutes(res.Engine)
 	pHdl.PrivateRoutes(res.Engine)
 	orderHdl.PrivateRoutes(res.Engine)
@@ -151,5 +151,6 @@ func initGinxServer(sp session.Provider,
 	examineHdl.MemberRoutes(res.Engine)
 	caseHdl.MemberRoutes(res.Engine)
 	fbHdl.MemberRoutes(res.Engine)
+	caseExamineHdl.MemberRoutes(res.Engine)
 	return res
 }

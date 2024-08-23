@@ -31,19 +31,25 @@ import (
 
 func InitModule(
 	syncProducer event.SyncEventProducer,
+	aiModule *ai.Module,
 	intrModule *interactive.Module) (*cases.Module, error) {
 	wire.Build(cases.InitCaseDAO,
 		testioc.BaseSet,
 		dao.NewCaseSetDAO,
+		dao.NewGORMExamineDAO,
 		repository.NewCaseRepo,
 		repository.NewCaseSetRepo,
+		repository.NewCachedExamineRepository,
 		event.NewInteractiveEventProducer,
 		service.NewService,
 		service.NewCaseSetService,
+		service.NewLLMExamineService,
 		web.NewHandler,
 		web.NewAdminCaseSetHandler,
+		web.NewAdminCaseHandler,
 		wire.FieldsOf(new(*interactive.Module), "Svc"),
-		wire.Struct(new(cases.Module), "Svc", "Hdl", "AdminSetHandler"),
+		wire.FieldsOf(new(*ai.Module), "Svc"),
+		wire.Struct(new(cases.Module), "AdminHandler", "ExamineSvc", "Svc", "Hdl", "AdminSetHandler"),
 	)
 	return new(cases.Module), nil
 }
@@ -66,6 +72,7 @@ func InitExamModule(
 		service.NewLLMExamineService,
 		web.NewHandler,
 		web.NewAdminCaseSetHandler,
+		web.NewAdminCaseHandler,
 		web.NewExamineHandler,
 		web.NewCaseSetHandler,
 		wire.FieldsOf(new(*interactive.Module), "Svc"),

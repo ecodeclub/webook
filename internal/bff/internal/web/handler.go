@@ -9,29 +9,32 @@ import (
 )
 
 type Handler struct {
-	intrSvc    interactive.Service
-	caseSvc    cases.Service
-	caseSetSvc cases.SetService
-	queSvc     baguwen.Service
-	queSetSvc  baguwen.QuestionSetService
-	examSvc    baguwen.ExamService
+	intrSvc     interactive.Service
+	caseSvc     cases.Service
+	caseSetSvc  cases.SetService
+	caseExamSvc cases.ExamineService
+	queSvc      baguwen.Service
+	queSetSvc   baguwen.QuestionSetService
+	queExamSvc  baguwen.ExamService
 }
 
 func NewHandler(
 	intrSvc interactive.Service,
 	caseSvc cases.Service,
 	caseSetSvc cases.SetService,
+	caseExamineSvc cases.ExamineService,
 	queSvc baguwen.Service,
 	queSetSvc baguwen.QuestionSetService,
-	examSvc baguwen.ExamService,
+	queExamSvc baguwen.ExamService,
 ) *Handler {
 	return &Handler{
-		intrSvc:    intrSvc,
-		caseSvc:    caseSvc,
-		queSvc:     queSvc,
-		queSetSvc:  queSetSvc,
-		examSvc:    examSvc,
-		caseSetSvc: caseSetSvc,
+		intrSvc:     intrSvc,
+		caseSvc:     caseSvc,
+		queSvc:      queSvc,
+		queSetSvc:   queSetSvc,
+		queExamSvc:  queExamSvc,
+		caseSetSvc:  caseSetSvc,
+		caseExamSvc: caseExamineSvc,
 	}
 }
 

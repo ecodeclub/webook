@@ -15,9 +15,6 @@
 package web
 
 import (
-	"fmt"
-	"net/http"
-
 	"github.com/ecodeclub/webook/internal/interactive"
 	"golang.org/x/sync/errgroup"
 
@@ -31,67 +28,32 @@ import (
 )
 
 type Handler struct {
-	svc     service.Service
-	intrSvc interactive.Service
-	logger  *elog.Component
+	svc        service.Service
+	intrSvc    interactive.Service
+	examineSvc service.ExamineService
+	logger     *elog.Component
 }
 
-func NewHandler(svc service.Service, intrSvc interactive.Service) *Handler {
+func NewHandler(svc service.Service,
+	examineSvc service.ExamineService,
+	intrSvc interactive.Service) *Handler {
 	return &Handler{
-		svc:     svc,
-		intrSvc: intrSvc,
-		logger:  elog.DefaultLogger,
+		svc:        svc,
+		intrSvc:    intrSvc,
+		examineSvc: examineSvc,
+		logger:     elog.DefaultLogger,
 	}
 }
 
 func (h *Handler) PublicRoutes(server *gin.Engine) {
 	server.POST("/case/pub/list", ginx.B[Page](h.PubList))
-}
-
-func (h *Handler) PrivateRoutes(server *gin.Engine) {
-	server.POST("/case/save", ginx.S(h.Permission), ginx.BS[SaveReq](h.Save))
-	server.POST("/case/list", ginx.S(h.Permission), ginx.B[Page](h.List))
-	server.POST("/case/detail", ginx.S(h.Permission), ginx.B[CaseId](h.Detail))
-	server.POST("/case/publish", ginx.S(h.Permission), ginx.BS[SaveReq](h.Publish))
+	server.POST("/cases/list", ginx.B[Page](h.PubList))
 }
 
 func (h *Handler) MemberRoutes(server *gin.Engine) {
+	server.POST("/cases/detail", ginx.BS(h.PubDetail))
+	server.POST("/case/detail", ginx.BS(h.PubDetail))
 	server.POST("/case/pub/detail", ginx.BS(h.PubDetail))
-}
-
-func (h *Handler) Save(ctx *ginx.Context,
-	req SaveReq,
-	sess session.Session) (ginx.Result, error) {
-	ca := req.Case.toDomain()
-	ca.Uid = sess.Claims().Uid
-	id, err := h.svc.Save(ctx, ca)
-	if err != nil {
-		return systemErrorResult, err
-	}
-	return ginx.Result{
-		Data: id,
-	}, nil
-}
-
-func (h *Handler) List(ctx *ginx.Context, req Page) (ginx.Result, error) {
-	// 制作库不需要统计总数
-	data, cnt, err := h.svc.List(ctx, req.Offset, req.Limit)
-	if err != nil {
-		return systemErrorResult, err
-	}
-	return ginx.Result{
-		Data: h.toCaseList(data, cnt),
-	}, nil
-}
-
-func (h *Handler) Detail(ctx *ginx.Context, req CaseId) (ginx.Result, error) {
-	detail, err := h.svc.Detail(ctx, req.Cid)
-	if err != nil {
-		return systemErrorResult, err
-	}
-	return ginx.Result{
-		Data: newCase(detail),
-	}, err
 }
 
 func (h *Handler) PubList(ctx *ginx.Context, req Page) (ginx.Result, error) {
@@ -132,10 +94,13 @@ func (h *Handler) PubList(ctx *ginx.Context, req Page) (ginx.Result, error) {
 
 func (h *Handler) PubDetail(ctx *ginx.Context, req CaseId, sess session.Session) (ginx.Result, error) {
 	var (
-		eg     errgroup.Group
-		detail domain.Case
-		intr   interactive.Interactive
+		eg         errgroup.Group
+		detail     domain.Case
+		intr       interactive.Interactive
+		exmaineRes domain.CaseResult
 	)
+
+	uid := sess.Claims().Uid
 	eg.Go(func() error {
 		var err error
 		detail, err = h.svc.PubDetail(ctx, req.Cid)
@@ -144,7 +109,13 @@ func (h *Handler) PubDetail(ctx *ginx.Context, req CaseId, sess session.Session)
 
 	eg.Go(func() error {
 		var err error
-		intr, err = h.intrSvc.Get(ctx, domain.BizCase, req.Cid, sess.Claims().Uid)
+		intr, err = h.intrSvc.Get(ctx, domain.BizCase, req.Cid, uid)
+		return err
+	})
+
+	eg.Go(func() error {
+		var err error
+		exmaineRes, err = h.examineSvc.GetResult(ctx, uid, req.Cid)
 		return err
 	})
 
@@ -154,30 +125,10 @@ func (h *Handler) PubDetail(ctx *ginx.Context, req CaseId, sess session.Session)
 	}
 	res := newCase(detail)
 	res.Interactive = newInteractive(intr)
+	res.ExamineResult = exmaineRes.ToUint8()
 	return ginx.Result{
 		Data: res,
 	}, err
-}
-
-func (h *Handler) Publish(ctx *ginx.Context, req SaveReq, sess session.Session) (ginx.Result, error) {
-	ca := req.Case.toDomain()
-	ca.Uid = sess.Claims().Uid
-	id, err := h.svc.Publish(ctx, ca)
-	if err != nil {
-		return systemErrorResult, err
-	}
-	return ginx.Result{
-		Data: id,
-	}, nil
-}
-
-func (h *Handler) toCaseList(data []domain.Case, cnt int64) CasesList {
-	return CasesList{
-		Total: cnt,
-		Cases: slice.Map(data, func(idx int, ca domain.Case) Case {
-			return newCase(ca)
-		}),
-	}
 }
 
 func newCase(ca domain.Case) Case {
@@ -198,12 +149,4 @@ func newCase(ca domain.Case) Case {
 		Status:       ca.Status.ToUint8(),
 		Utime:        ca.Utime.UnixMilli(),
 	}
-}
-
-func (h *Handler) Permission(ctx *ginx.Context, sess session.Session) (ginx.Result, error) {
-	if sess.Claims().Get("creator").StringOrDefault("") != "true" {
-		ctx.AbortWithStatus(http.StatusInternalServerError)
-		return ginx.Result{}, fmt.Errorf("非法访问创作中心 uid: %d", sess.Claims().Uid)
-	}
-	return ginx.Result{}, ginx.ErrNoResponse
 }

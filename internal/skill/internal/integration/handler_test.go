@@ -116,11 +116,56 @@ func (s *HandlerTestSuite) SetupSuite() {
 				}
 			}), nil
 		}).AnyTimes()
+
+	caseSetSvc := casemocks.NewMockCaseSetService(ctrl)
+	caseSetSvc.EXPECT().GetByIdsWithCases(gomock.Any(), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, ids []int64) ([]cases.CaseSet, error) {
+			return slice.Map(ids, func(idx int, src int64) cases.CaseSet {
+				return cases.CaseSet{
+					ID:    src,
+					Title: fmt.Sprintf("这是案例集%d", src),
+					Cases: []cases.Case{
+						{
+							Id:    src*10 + 1,
+							Title: fmt.Sprintf("这是案例%d", src*10+1),
+						},
+						{
+							Id:    src*10 + 2,
+							Title: fmt.Sprintf("这是案例%d", src*10+2),
+						},
+					},
+				}
+			}), nil
+		}).AnyTimes()
+	caseSetSvc.EXPECT().GetByIds(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, ids []int64) ([]cases.CaseSet, error) {
+		return slice.Map(ids, func(idx int, src int64) cases.CaseSet {
+			return cases.CaseSet{
+				ID:    src,
+				Title: fmt.Sprintf("这是案例集%d", src),
+			}
+		}), nil
+	}).AnyTimes()
+
+	caseExamSvc := casemocks.NewMockExamineService(ctrl)
+	caseExamSvc.EXPECT().GetResults(gomock.Any(), gomock.Any(), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, uid int64, ids []int64) (map[int64]cases.ExamineResult, error) {
+			res := make(map[int64]cases.ExamineResult, len(ids))
+			for _, id := range ids {
+				res[id] = cases.ExamineResult{
+					Cid: id,
+					// 偶数不通过，基数通过
+					Result: cases.ExamineResultEnum(id % 2),
+				}
+			}
+			return res, nil
+		}).AnyTimes()
+
 	s.ctrl = ctrl
 	s.producer = evemocks.NewMockSyncEventProducer(s.ctrl)
+
 	handler, err := startup.InitHandler(
 		&baguwen.Module{Svc: queSvc, SetSvc: queSetSvc, ExamSvc: examSvc},
-		&cases.Module{Svc: caseSvc},
+		&cases.Module{Svc: caseSvc, SetSvc: caseSetSvc, ExamineSvc: caseExamSvc},
 		s.producer,
 	)
 	require.NoError(s.T(), err)
@@ -405,6 +450,12 @@ func (s *HandlerTestSuite) TestSaveRefs() {
 						Rid:   67,
 						Rtype: "case",
 					},
+					{
+						Sid:   1,
+						Slid:  3,
+						Rid:   78,
+						Rtype: "caseSet",
+					},
 				}
 				for idx := range refs {
 					ref := &(refs[idx])
@@ -446,6 +497,9 @@ func (s *HandlerTestSuite) TestSaveRefs() {
 						Id: 3,
 						Cases: []web.Case{
 							{Id: 67},
+						},
+						CaseSets: []web.CaseSet{
+							{ID: 78},
 						},
 					},
 				},
@@ -509,6 +563,12 @@ func (s *HandlerTestSuite) TestSaveRefs() {
 						Rid:   67,
 						Rtype: "case",
 					},
+					{
+						Sid:   1,
+						Slid:  3,
+						Rid:   78,
+						Rtype: "caseSet",
+					},
 				}
 				for idx := range refs {
 					ref := &(refs[idx])
@@ -545,6 +605,9 @@ func (s *HandlerTestSuite) TestSaveRefs() {
 						Id: 3,
 						Cases: []web.Case{
 							{Id: 67},
+						},
+						CaseSets: []web.CaseSet{
+							{ID: 78},
 						},
 					},
 				},
@@ -636,6 +699,26 @@ func (s *HandlerTestSuite) TestDetailRef() {
 			Ctime: time.Now().UnixMilli(),
 			Utime: time.Now().UnixMilli(),
 		},
+
+		{
+			Id:    4,
+			Slid:  2,
+			Sid:   2,
+			Rtype: "questionSet",
+			Rid:   1,
+			Ctime: time.Now().UnixMilli(),
+			Utime: time.Now().UnixMilli(),
+		},
+
+		{
+			Id:    5,
+			Slid:  2,
+			Sid:   2,
+			Rtype: "caseSet",
+			Rid:   1,
+			Ctime: time.Now().UnixMilli(),
+			Utime: time.Now().UnixMilli(),
+		},
 	})
 	sid := web.Sid{
 		Sid: 2,
@@ -667,6 +750,7 @@ func (s *HandlerTestSuite) TestDetailRef() {
 				{Id: 1, Title: "这是案例1"},
 			},
 			QuestionSets: []web.QuestionSet{},
+			CaseSets:     []web.CaseSet{},
 		},
 		Intermediate: web.SkillLevel{
 			Id:   2,
@@ -674,13 +758,22 @@ func (s *HandlerTestSuite) TestDetailRef() {
 			Questions: []web.Question{
 				{Id: 1, Title: "这是问题1"},
 			},
-			QuestionSets: []web.QuestionSet{},
-			Cases:        []web.Case{},
+			QuestionSets: []web.QuestionSet{
+				{ID: 1, Title: "这是题集1", Questions: []web.Question{
+					{Id: 11, Title: "这是题目11"},
+					{Id: 12, Title: "这是题目12"},
+				}},
+			},
+			Cases: []web.Case{},
+			CaseSets: []web.CaseSet{
+				{ID: 1, Title: "这是案例集1", Cases: []web.Case{}},
+			},
 		},
 		Advanced: web.SkillLevel{
 			Questions:    []web.Question{},
 			Cases:        []web.Case{},
 			QuestionSets: []web.QuestionSet{},
+			CaseSets:     []web.CaseSet{},
 		},
 	}, resp)
 }
@@ -732,16 +825,19 @@ func (s *HandlerTestSuite) TestList() {
 								Questions:    []web.Question{},
 								Cases:        []web.Case{},
 								QuestionSets: []web.QuestionSet{},
+								CaseSets:     []web.CaseSet{},
 							},
 							Intermediate: web.SkillLevel{
 								Questions:    []web.Question{},
 								Cases:        []web.Case{},
 								QuestionSets: []web.QuestionSet{},
+								CaseSets:     []web.CaseSet{},
 							},
 							Advanced: web.SkillLevel{
 								Questions:    []web.Question{},
 								Cases:        []web.Case{},
 								QuestionSets: []web.QuestionSet{},
+								CaseSets:     []web.CaseSet{},
 							},
 						},
 						{
@@ -756,16 +852,19 @@ func (s *HandlerTestSuite) TestList() {
 								Questions:    []web.Question{},
 								Cases:        []web.Case{},
 								QuestionSets: []web.QuestionSet{},
+								CaseSets:     []web.CaseSet{},
 							},
 							Intermediate: web.SkillLevel{
 								Questions:    []web.Question{},
 								Cases:        []web.Case{},
 								QuestionSets: []web.QuestionSet{},
+								CaseSets:     []web.CaseSet{},
 							},
 							Advanced: web.SkillLevel{
 								Questions:    []web.Question{},
 								Cases:        []web.Case{},
 								QuestionSets: []web.QuestionSet{},
+								CaseSets:     []web.CaseSet{},
 							},
 						},
 					},
@@ -795,16 +894,19 @@ func (s *HandlerTestSuite) TestList() {
 								Questions:    []web.Question{},
 								Cases:        []web.Case{},
 								QuestionSets: []web.QuestionSet{},
+								CaseSets:     []web.CaseSet{},
 							},
 							Intermediate: web.SkillLevel{
 								Questions:    []web.Question{},
 								Cases:        []web.Case{},
 								QuestionSets: []web.QuestionSet{},
+								CaseSets:     []web.CaseSet{},
 							},
 							Advanced: web.SkillLevel{
 								Questions:    []web.Question{},
 								Cases:        []web.Case{},
 								QuestionSets: []web.QuestionSet{},
+								CaseSets:     []web.CaseSet{},
 							},
 						},
 					},
@@ -876,6 +978,15 @@ func (s *HandlerTestSuite) TestRefsByLevelIDs() {
 			Ctime: time.Now().UnixMilli(),
 			Utime: time.Now().UnixMilli(),
 		},
+		{
+			Id:    6,
+			Slid:  2,
+			Sid:   2,
+			Rtype: "caseSet",
+			Rid:   7,
+			Ctime: time.Now().UnixMilli(),
+			Utime: time.Now().UnixMilli(),
+		},
 	}).Error
 	require.NoError(s.T(), err)
 	testCases := []struct {
@@ -919,6 +1030,7 @@ func (s *HandlerTestSuite) TestRefsByLevelIDs() {
 								},
 							},
 						},
+						CaseSets: []web.CaseSet{},
 					},
 					{
 						Id: 2,
@@ -940,6 +1052,23 @@ func (s *HandlerTestSuite) TestRefsByLevelIDs() {
 										Id:            72,
 										Title:         "这是题目72",
 										ExamineResult: 72 % 4,
+									},
+								},
+							},
+						},
+						CaseSets: []web.CaseSet{
+							{
+								ID:    7,
+								Title: "这是案例集7",
+								Cases: []web.Case{
+									{
+										Id:            71,
+										Title:         "这是案例71",
+										ExamineResult: 1,
+									},
+									{
+										Id:    72,
+										Title: "这是案例72",
 									},
 								},
 							},

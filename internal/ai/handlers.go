@@ -25,10 +25,13 @@ import (
 	"github.com/gotomicro/ego/core/econf"
 )
 
-func InitHandlerFacade(common []handler.Builder, zhipu *zhipu.Handler) *biz.FacadeHandler {
+func InitHandlerFacade(common []handler.Builder,
+	zhipu *zhipu.Handler) *biz.FacadeHandler {
 	que := InitQuestionExamineHandler(common, zhipu)
+	c := InitCaseExamineHandler(common, zhipu)
 	return biz.NewHandler(map[string]handler.Handler{
 		que.Biz(): que,
+		c.Biz():   c,
 	})
 }
 
