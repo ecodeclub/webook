@@ -53,14 +53,14 @@ func (s *TestSuite) TearDownTest() {
 func (s *TestSuite) SetupSuite() {
 	ctrl := gomock.NewController(s.T())
 	examSvc := casemocks.NewMockExamineService(ctrl)
-	examSvc.EXPECT().GetResults(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, uid int64, ids []int64) (map[int64]cases.ExamineCaseResult, error) {
-		res := slice.Map(ids, func(idx int, src int64) cases.ExamineCaseResult {
-			return cases.ExamineCaseResult{
+	examSvc.EXPECT().GetResults(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, uid int64, ids []int64) (map[int64]cases.ExamineResult, error) {
+		res := slice.Map(ids, func(idx int, src int64) cases.ExamineResult {
+			return cases.ExamineResult{
 				Cid:    src,
-				Result: cases.CaseResult(src % 4),
+				Result: cases.ExamineResultEnum(src % 4),
 			}
 		})
-		resMap := make(map[int64]cases.ExamineCaseResult, len(res))
+		resMap := make(map[int64]cases.ExamineResult, len(res))
 		for _, examRes := range res {
 			resMap[examRes.Cid] = examRes
 		}
@@ -68,7 +68,7 @@ func (s *TestSuite) SetupSuite() {
 	}).AnyTimes()
 
 	module := startup.InitModule(&cases.Module{
-		ExamService: examSvc,
+		ExamineSvc: examSvc,
 	})
 	econf.Set("server", map[string]any{"contextTimeout": "1s"})
 	server := egin.Load("server").Build()

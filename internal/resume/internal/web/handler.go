@@ -13,11 +13,11 @@ import (
 
 type Handler struct {
 	svc     service.Service
-	examSvc cases.ExamService
+	examSvc cases.ExamineService
 	logger  *elog.Component
 }
 
-func NewHandler(svc service.Service, examSvc cases.ExamService) *Handler {
+func NewHandler(svc service.Service, examSvc cases.ExamineService) *Handler {
 	return &Handler{
 		svc:     svc,
 		logger:  elog.DefaultLogger,

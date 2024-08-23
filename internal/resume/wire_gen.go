@@ -21,7 +21,7 @@ func InitModule(db *gorm.DB, caModule *cases.Module) *Module {
 	resumeProjectDAO := dao.NewResumeProjectDAO(db)
 	resumeProjectRepo := repository.NewResumeProjectRepo(resumeProjectDAO)
 	serviceService := service.NewService(resumeProjectRepo)
-	examineService := caModule.ExamService
+	examineService := caModule.ExamineSvc
 	handler := web.NewHandler(serviceService, examineService)
 	module := &Module{
 		Hdl: handler,

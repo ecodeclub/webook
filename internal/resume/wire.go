@@ -31,7 +31,7 @@ func InitModule(db *egorm.Component, caModule *cases.Module) *Module {
 		dao.NewResumeProjectDAO,
 		repository.NewResumeProjectRepo,
 		service.NewService,
-		wire.FieldsOf(new(*cases.Module), "ExamService"),
+		wire.FieldsOf(new(*cases.Module), "ExamineSvc"),
 		web.NewHandler,
 		wire.Struct(new(Module), "*"),
 	)

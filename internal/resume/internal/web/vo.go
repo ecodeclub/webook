@@ -69,7 +69,7 @@ type Difficulty struct {
 	Case Case `json:"case"`
 }
 
-func newProject(project domain.Project, examMap map[int64]cases.ExamineCaseResult) Project {
+func newProject(project domain.Project, examMap map[int64]cases.ExamineResult) Project {
 	return Project{
 		Id:           project.Id,
 		StartTime:    project.StartTime,
@@ -87,7 +87,7 @@ func newProject(project domain.Project, examMap map[int64]cases.ExamineCaseResul
 	}
 }
 
-func newContribution(contribution domain.Contribution, examMap map[int64]cases.ExamineCaseResult) Contribution {
+func newContribution(contribution domain.Contribution, examMap map[int64]cases.ExamineResult) Contribution {
 	con := Contribution{
 		ID:   contribution.ID,
 		Type: contribution.Type,
@@ -99,7 +99,7 @@ func newContribution(contribution domain.Contribution, examMap map[int64]cases.E
 	return con
 }
 
-func newDifficulty(difficulty domain.Difficulty, examMap map[int64]cases.ExamineCaseResult) Difficulty {
+func newDifficulty(difficulty domain.Difficulty, examMap map[int64]cases.ExamineResult) Difficulty {
 	return Difficulty{
 		ID:   difficulty.ID,
 		Desc: difficulty.Desc,
@@ -107,8 +107,8 @@ func newDifficulty(difficulty domain.Difficulty, examMap map[int64]cases.Examine
 	}
 }
 
-func newCase(refCase domain.Case, examMap map[int64]cases.ExamineCaseResult) Case {
-	var res cases.ExamineCaseResult
+func newCase(refCase domain.Case, examMap map[int64]cases.ExamineResult) Case {
+	var res cases.ExamineResult
 	if examMap != nil {
 		res = examMap[refCase.Id]
 	}
