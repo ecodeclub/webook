@@ -13,7 +13,7 @@ import (
 	"github.com/ecodeclub/webook/internal/resume/internal/repository/dao"
 	"github.com/ecodeclub/webook/internal/resume/internal/service"
 	"github.com/ecodeclub/webook/internal/resume/internal/web"
-	"github.com/ecodeclub/webook/internal/test/ioc"
+	testioc "github.com/ecodeclub/webook/internal/test/ioc"
 )
 
 // Injectors from wire.go:

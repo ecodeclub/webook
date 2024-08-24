@@ -81,10 +81,10 @@ func newProject(project domain.Project, examMap map[int64]cases.ExamineResult, c
 		Introduction: project.Introduction,
 		Core:         project.Core,
 		Contributions: slice.Map(project.Contributions, func(idx int, src domain.Contribution) Contribution {
-			return newContribution(src, examMap,caseMap)
+			return newContribution(src, examMap, caseMap)
 		}),
 		Difficulties: slice.Map(project.Difficulties, func(idx int, src domain.Difficulty) Difficulty {
-			return newDifficulty(src, examMap,caseMap)
+			return newDifficulty(src, examMap, caseMap)
 		}),
 	}
 }
@@ -95,7 +95,7 @@ func newContribution(contribution domain.Contribution, examMap map[int64]cases.E
 		Type: contribution.Type,
 		Desc: contribution.Desc,
 		RefCases: slice.Map(contribution.RefCases, func(idx int, src domain.Case) Case {
-			return newCase(src, examMap,caseMap)
+			return newCase(src, examMap, caseMap)
 		}),
 	}
 	return con
@@ -105,7 +105,7 @@ func newDifficulty(difficulty domain.Difficulty, examMap map[int64]cases.Examine
 	return Difficulty{
 		ID:   difficulty.ID,
 		Desc: difficulty.Desc,
-		Case: newCase(difficulty.Case, examMap,caseMap),
+		Case: newCase(difficulty.Case, examMap, caseMap),
 	}
 }
 
