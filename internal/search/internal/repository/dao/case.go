@@ -43,6 +43,7 @@ type Case struct {
 }
 type CaseElasticDAO struct {
 	client *elastic.Client
+	metas  map[string]Col
 }
 
 const (
@@ -53,15 +54,9 @@ const (
 	caseGuidanceBoost = 1
 )
 
-func (c *CaseElasticDAO) SearchCase(ctx context.Context, offset, limit int, keywords string) ([]Case, error) {
+func (c *CaseElasticDAO) SearchCase(ctx context.Context, offset, limit int, queryMetas []domain.QueryMeta) ([]Case, error) {
 	query := elastic.NewBoolQuery().Must(
-		elastic.NewBoolQuery().Should(
-			elastic.NewMatchQuery("title", keywords).Boost(caseTitleBoost),
-			elastic.NewMatchQuery("labels", keywords).Boost(caseLabelBoost),
-			elastic.NewMatchQuery("keywords", keywords).Boost(caseKeywordsBoost),
-			elastic.NewMatchQuery("shorthand", keywords).Boost(caseKeywordsBoost),
-			elastic.NewMatchQuery("content", keywords).Boost(caseContentBoost),
-			elastic.NewMatchQuery("guidance", keywords).Boost(caseGuidanceBoost)),
+		elastic.NewBoolQuery().Should(buildCols(c.metas, queryMetas)...),
 		elastic.NewTermQuery("status", domain.PublishedStatus))
 	resp, err := c.client.Search(CaseIndexName).
 		From(offset).
@@ -85,5 +80,31 @@ func (c *CaseElasticDAO) SearchCase(ctx context.Context, offset, limit int, keyw
 func NewCaseElasticDAO(client *elastic.Client) *CaseElasticDAO {
 	return &CaseElasticDAO{
 		client: client,
+		metas: map[string]Col{
+			"title": {
+				Name:  "title",
+				Boost: caseTitleBoost,
+			},
+			"labels": {
+				Name:  "labels",
+				Boost: caseLabelBoost,
+			},
+			"keywords": {
+				Name:  "keywords",
+				Boost: caseKeywordsBoost,
+			},
+			"shorthand": {
+				Name:  "shorthand",
+				Boost: caseKeywordsBoost,
+			},
+			"content": {
+				Name:  "content",
+				Boost: caseContentBoost,
+			},
+			"guidance": {
+				Name:  "guidance",
+				Boost: caseGuidanceBoost,
+			},
+		},
 	}
 }
