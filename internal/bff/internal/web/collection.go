@@ -33,6 +33,7 @@ func (h *Handler) CollectionRecords(ctx *ginx.Context, req CollectionInfoReq, se
 		qssmap         map[int64]baguwen.QuestionSet
 		queExamResMap  map[int64]baguwen.ExamResult
 		caseExamResMap map[int64]cases.ExamineResult
+		csets          []cases.CaseSet
 	)
 	var qids, cids, csids, qsids, qid2s []int64
 	for _, record := range records {
@@ -76,19 +77,20 @@ func (h *Handler) CollectionRecords(ctx *ginx.Context, req CollectionInfoReq, se
 	})
 
 	eg.Go(func() error {
-		csets, cserr := h.caseSetSvc.GetByIdsWithCases(recordCtx, csids)
+		var cserr error
+		csets, cserr = h.caseSetSvc.GetByIdsWithCases(recordCtx, csids)
 		cssmap = slice.ToMap(csets, func(element cases.CaseSet) int64 {
 			return element.ID
 		})
-		for _, cs := range csets {
-			cids = append(cids, cs.Cids()...)
-		}
 		return cserr
 	})
 	if err = eg.Wait(); err != nil {
 		return systemErrorResult, err
 	}
 
+	for _, cs := range csets {
+		cids = append(cids, cs.Cids()...)
+	}
 	eg = errgroup.Group{}
 	eg.Go(func() error {
 		var err1 error
