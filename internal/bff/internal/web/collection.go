@@ -19,8 +19,9 @@ const (
 
 func (h *Handler) CollectionRecords(ctx *ginx.Context, req CollectionInfoReq, sess session.Session) (ginx.Result, error) {
 	uid := sess.Claims().Uid
+	recordCtx := ctx.Request.Context()
 	// 获取收藏记录
-	records, err := h.intrSvc.CollectionInfo(ctx.Request.Context(), uid, req.ID, req.Offset, req.Limit)
+	records, err := h.intrSvc.CollectionInfo(recordCtx, uid, req.ID, req.Offset, req.Limit)
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -49,7 +50,7 @@ func (h *Handler) CollectionRecords(ctx *ginx.Context, req CollectionInfoReq, se
 	qid2s = append(qid2s, qids...)
 
 	eg.Go(func() error {
-		cs, err1 := h.caseSvc.GetPubByIDs(ctx.Request.Context(), cids)
+		cs, err1 := h.caseSvc.GetPubByIDs(recordCtx, cids)
 		csm = slice.ToMap(cs, func(element cases.Case) int64 {
 			return element.Id
 		})
@@ -57,14 +58,14 @@ func (h *Handler) CollectionRecords(ctx *ginx.Context, req CollectionInfoReq, se
 	})
 
 	eg.Go(func() error {
-		qs, err1 := h.queSvc.GetPubByIDs(ctx.Request.Context(), qids)
+		qs, err1 := h.queSvc.GetPubByIDs(recordCtx, qids)
 		qsm = slice.ToMap(qs, func(element baguwen.Question) int64 {
 			return element.Id
 		})
 		return err1
 	})
 	eg.Go(func() error {
-		qsets, qerr := h.queSetSvc.GetByIDsWithQuestion(ctx.Request.Context(), qsids)
+		qsets, qerr := h.queSetSvc.GetByIDsWithQuestion(recordCtx, qsids)
 		qssmap = slice.ToMap(qsets, func(element baguwen.QuestionSet) int64 {
 			return element.Id
 		})
@@ -75,7 +76,7 @@ func (h *Handler) CollectionRecords(ctx *ginx.Context, req CollectionInfoReq, se
 	})
 
 	eg.Go(func() error {
-		csets, cserr := h.caseSetSvc.GetByIdsWithCases(ctx.Request.Context(), csids)
+		csets, cserr := h.caseSetSvc.GetByIdsWithCases(recordCtx, csids)
 		cssmap = slice.ToMap(csets, func(element cases.CaseSet) int64 {
 			return element.ID
 		})
@@ -91,13 +92,13 @@ func (h *Handler) CollectionRecords(ctx *ginx.Context, req CollectionInfoReq, se
 	eg = errgroup.Group{}
 	eg.Go(func() error {
 		var err1 error
-		queExamResMap, err1 = h.queExamSvc.GetResults(ctx.Request.Context(), uid, qid2s)
+		queExamResMap, err1 = h.queExamSvc.GetResults(recordCtx, uid, qid2s)
 		return err1
 	})
 
 	eg.Go(func() error {
 		var err1 error
-		caseExamResMap, err1 = h.caseExamSvc.GetResults(ctx.Request.Context(), uid, cids)
+		caseExamResMap, err1 = h.caseExamSvc.GetResults(recordCtx, uid, cids)
 		return err1
 	})
 	// 获取进度
