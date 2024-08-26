@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strconv"
 	"testing"
 
 	"github.com/ecodeclub/ekit/iox"
@@ -66,9 +67,21 @@ func (s *TestSuite) SetupSuite() {
 		}
 		return resMap, nil
 	}).AnyTimes()
+	caseSvc := casemocks.NewMockService(ctrl)
+	caseSvc.EXPECT().GetPubByIDs(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(ctx context.Context, ids []int64) ([]cases.Case, error) {
+			return slice.Map(ids, func(idx int, src int64) cases.Case {
+				return cases.Case{
+					Id:           src,
+					Title:        "这是案例" + strconv.FormatInt(src, 10),
+					Introduction: "这是案例的简介" + strconv.FormatInt(src, 10),
+				}
+			}), nil
+		}).AnyTimes()
 
 	module := startup.InitModule(&cases.Module{
 		ExamineSvc: examSvc,
+		Svc:        caseSvc,
 	})
 	econf.Set("server", map[string]any{"contextTimeout": "1s"})
 	server := egin.Load("server").Build()
@@ -967,18 +980,22 @@ func (s *TestSuite) TestResumeInfo() {
 							ID:   1,
 							Desc: "desc",
 							Case: web.Case{
-								Id:     2,
-								Result: 2 % 4,
-								Level:  1,
+								Id:           2,
+								Result:       2 % 4,
+								Title:        "这是案例2",
+								Introduction: "这是案例的简介2",
+								Level:        1,
 							},
 						},
 						{
 							ID:   2,
 							Desc: "diff_desc",
 							Case: web.Case{
-								Id:     3,
-								Result: 3 % 4,
-								Level:  1,
+								Id:           3,
+								Result:       3 % 4,
+								Level:        1,
+								Title:        "这是案例3",
+								Introduction: "这是案例的简介3",
 							},
 						},
 					},
@@ -989,16 +1006,20 @@ func (s *TestSuite) TestResumeInfo() {
 							Desc: "desc",
 							RefCases: []web.Case{
 								{
-									Id:        2,
-									Result:    2 % 4,
-									Highlight: true,
-									Level:     1,
+									Id:           2,
+									Result:       2 % 4,
+									Highlight:    true,
+									Level:        1,
+									Title:        "这是案例2",
+									Introduction: "这是案例的简介2",
 								},
 								{
-									Id:        3,
-									Result:    3 % 4,
-									Highlight: false,
-									Level:     2,
+									Id:           3,
+									Result:       3 % 4,
+									Highlight:    false,
+									Level:        2,
+									Title:        "这是案例3",
+									Introduction: "这是案例的简介3",
 								},
 							},
 						},

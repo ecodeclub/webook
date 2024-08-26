@@ -40,7 +40,9 @@ type Project struct {
 
 type Case struct {
 	// 直接就是案例的 id
-	Id int64 `json:"id"`
+	Id           int64  `json:"id"`
+	Title        string `json:"title"`
+	Introduction string `json:"introduction"`
 	// 是否已经通过了测试
 	Result uint8 `json:"result"`
 
@@ -69,7 +71,7 @@ type Difficulty struct {
 	Case Case `json:"case"`
 }
 
-func newProject(project domain.Project, examMap map[int64]cases.ExamineResult) Project {
+func newProject(project domain.Project, examMap map[int64]cases.ExamineResult, caseMap map[int64]cases.Case) Project {
 	return Project{
 		Id:           project.Id,
 		StartTime:    project.StartTime,
@@ -79,43 +81,49 @@ func newProject(project domain.Project, examMap map[int64]cases.ExamineResult) P
 		Introduction: project.Introduction,
 		Core:         project.Core,
 		Contributions: slice.Map(project.Contributions, func(idx int, src domain.Contribution) Contribution {
-			return newContribution(src, examMap)
+			return newContribution(src, examMap, caseMap)
 		}),
 		Difficulties: slice.Map(project.Difficulties, func(idx int, src domain.Difficulty) Difficulty {
-			return newDifficulty(src, examMap)
+			return newDifficulty(src, examMap, caseMap)
 		}),
 	}
 }
 
-func newContribution(contribution domain.Contribution, examMap map[int64]cases.ExamineResult) Contribution {
+func newContribution(contribution domain.Contribution, examMap map[int64]cases.ExamineResult, caseMap map[int64]cases.Case) Contribution {
 	con := Contribution{
 		ID:   contribution.ID,
 		Type: contribution.Type,
 		Desc: contribution.Desc,
 		RefCases: slice.Map(contribution.RefCases, func(idx int, src domain.Case) Case {
-			return newCase(src, examMap)
+			return newCase(src, examMap, caseMap)
 		}),
 	}
 	return con
 }
 
-func newDifficulty(difficulty domain.Difficulty, examMap map[int64]cases.ExamineResult) Difficulty {
+func newDifficulty(difficulty domain.Difficulty, examMap map[int64]cases.ExamineResult, caseMap map[int64]cases.Case) Difficulty {
 	return Difficulty{
 		ID:   difficulty.ID,
 		Desc: difficulty.Desc,
-		Case: newCase(difficulty.Case, examMap),
+		Case: newCase(difficulty.Case, examMap, caseMap),
 	}
 }
 
-func newCase(refCase domain.Case, examMap map[int64]cases.ExamineResult) Case {
+func newCase(refCase domain.Case, examMap map[int64]cases.ExamineResult, caseMap map[int64]cases.Case) Case {
 	var res cases.ExamineResult
+	var ca cases.Case
 	if examMap != nil {
 		res = examMap[refCase.Id]
 	}
+	if caseMap != nil {
+		ca = caseMap[refCase.Id]
+	}
 	return Case{
-		Id:        refCase.Id,
-		Result:    res.Result.ToUint8(),
-		Highlight: refCase.Highlight,
-		Level:     refCase.Level,
+		Id:           refCase.Id,
+		Result:       res.Result.ToUint8(),
+		Highlight:    refCase.Highlight,
+		Level:        refCase.Level,
+		Title:        ca.Title,
+		Introduction: ca.Introduction,
 	}
 }

@@ -20,6 +20,7 @@ func InitModule(caModule *cases.Module) *resume.Module {
 		repository.NewResumeProjectRepo,
 		service.NewService,
 		wire.FieldsOf(new(*cases.Module), "ExamineSvc"),
+		wire.FieldsOf(new(*cases.Module), "Svc"),
 		web.NewHandler,
 		wire.Struct(new(resume.Module), "*"),
 	)

@@ -19,8 +19,9 @@ const (
 
 func (h *Handler) CollectionRecords(ctx *ginx.Context, req CollectionInfoReq, sess session.Session) (ginx.Result, error) {
 	uid := sess.Claims().Uid
+	recordCtx := ctx.Request.Context()
 	// 获取收藏记录
-	records, err := h.intrSvc.CollectionInfo(ctx, uid, req.ID, req.Offset, req.Limit)
+	records, err := h.intrSvc.CollectionInfo(recordCtx, uid, req.ID, req.Offset, req.Limit)
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -32,6 +33,7 @@ func (h *Handler) CollectionRecords(ctx *ginx.Context, req CollectionInfoReq, se
 		qssmap         map[int64]baguwen.QuestionSet
 		queExamResMap  map[int64]baguwen.ExamResult
 		caseExamResMap map[int64]cases.ExamineResult
+		csets          []cases.CaseSet
 	)
 	var qids, cids, csids, qsids, qid2s []int64
 	for _, record := range records {
@@ -49,7 +51,7 @@ func (h *Handler) CollectionRecords(ctx *ginx.Context, req CollectionInfoReq, se
 	qid2s = append(qid2s, qids...)
 
 	eg.Go(func() error {
-		cs, err1 := h.caseSvc.GetPubByIDs(ctx, cids)
+		cs, err1 := h.caseSvc.GetPubByIDs(recordCtx, cids)
 		csm = slice.ToMap(cs, func(element cases.Case) int64 {
 			return element.Id
 		})
@@ -57,14 +59,14 @@ func (h *Handler) CollectionRecords(ctx *ginx.Context, req CollectionInfoReq, se
 	})
 
 	eg.Go(func() error {
-		qs, err1 := h.queSvc.GetPubByIDs(ctx, qids)
+		qs, err1 := h.queSvc.GetPubByIDs(recordCtx, qids)
 		qsm = slice.ToMap(qs, func(element baguwen.Question) int64 {
 			return element.Id
 		})
 		return err1
 	})
 	eg.Go(func() error {
-		qsets, qerr := h.queSetSvc.GetByIDsWithQuestion(ctx, qsids)
+		qsets, qerr := h.queSetSvc.GetByIDsWithQuestion(recordCtx, qsids)
 		qssmap = slice.ToMap(qsets, func(element baguwen.QuestionSet) int64 {
 			return element.Id
 		})
@@ -75,29 +77,30 @@ func (h *Handler) CollectionRecords(ctx *ginx.Context, req CollectionInfoReq, se
 	})
 
 	eg.Go(func() error {
-		csets, cserr := h.caseSetSvc.GetByIdsWithCases(ctx, csids)
+		var cserr error
+		csets, cserr = h.caseSetSvc.GetByIdsWithCases(recordCtx, csids)
 		cssmap = slice.ToMap(csets, func(element cases.CaseSet) int64 {
 			return element.ID
 		})
-		for _, cs := range csets {
-			cids = append(cids, cs.Cids()...)
-		}
 		return cserr
 	})
 	if err = eg.Wait(); err != nil {
 		return systemErrorResult, err
 	}
 
+	for _, cs := range csets {
+		cids = append(cids, cs.Cids()...)
+	}
 	eg = errgroup.Group{}
 	eg.Go(func() error {
 		var err1 error
-		queExamResMap, err1 = h.queExamSvc.GetResults(ctx, uid, qid2s)
+		queExamResMap, err1 = h.queExamSvc.GetResults(recordCtx, uid, qid2s)
 		return err1
 	})
 
 	eg.Go(func() error {
 		var err1 error
-		caseExamResMap, err1 = h.caseExamSvc.GetResults(ctx, uid, cids)
+		caseExamResMap, err1 = h.caseExamSvc.GetResults(recordCtx, uid, cids)
 		return err1
 	})
 	// 获取进度

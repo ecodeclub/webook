@@ -9,19 +9,22 @@ import (
 	"github.com/ecodeclub/webook/internal/resume/internal/service"
 	"github.com/gin-gonic/gin"
 	"github.com/gotomicro/ego/core/elog"
+	"golang.org/x/sync/errgroup"
 )
 
 type Handler struct {
 	svc     service.Service
+	caseSvc cases.Service
 	examSvc cases.ExamineService
 	logger  *elog.Component
 }
 
-func NewHandler(svc service.Service, examSvc cases.ExamineService) *Handler {
+func NewHandler(svc service.Service, examSvc cases.ExamineService, caseSvc cases.Service) *Handler {
 	return &Handler{
 		svc:     svc,
 		logger:  elog.DefaultLogger,
 		examSvc: examSvc,
+		caseSvc: caseSvc,
 	}
 }
 
@@ -83,7 +86,7 @@ func (h *Handler) DeleteProject(ctx *ginx.Context, req IDItem, sess session.Sess
 
 func (h *Handler) ProjectInfo(ctx *ginx.Context, req IDItem, sess session.Session) (ginx.Result, error) {
 	uid := sess.Claims().Uid
-	pro, err := h.svc.ProjectInfo(ctx, req.ID)
+	pro, err := h.svc.ProjectInfo(ctx.Request.Context(), req.ID)
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -96,11 +99,32 @@ func (h *Handler) ProjectInfo(ctx *ginx.Context, req IDItem, sess session.Sessio
 			cids = append(cids, ca.Id)
 		}
 	}
-	resMap, err := h.examSvc.GetResults(ctx, uid, cids)
-	if err != nil {
+	var (
+		resMap map[int64]cases.ExamineResult
+		caMap  map[int64]cases.Case
+		eg     errgroup.Group
+	)
+	eg.Go(func() error {
+		var eerr error
+		resMap, eerr = h.examSvc.GetResults(ctx, uid, cids)
+		return eerr
+	})
+	eg.Go(func() error {
+		cas, eerr := h.caseSvc.GetPubByIDs(ctx, cids)
+		if eerr != nil {
+			return eerr
+		}
+		caMap = make(map[int64]cases.Case, len(cas))
+		for _, ca := range cas {
+			caMap[ca.Id] = ca
+		}
+		return nil
+	})
+	if err := eg.Wait(); err != nil {
 		return systemErrorResult, err
 	}
-	p := newProject(pro, resMap)
+
+	p := newProject(pro, resMap, caMap)
 	return ginx.Result{
 		Data: p,
 	}, nil
@@ -114,7 +138,7 @@ func (h *Handler) ProjectList(ctx *ginx.Context, sess session.Session) (ginx.Res
 		return systemErrorResult, err
 	}
 	ans := slice.Map(projects, func(idx int, src domain.Project) Project {
-		return newProject(src, nil)
+		return newProject(src, nil, nil)
 	})
 	return ginx.Result{
 		Data: ans,

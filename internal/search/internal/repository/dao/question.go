@@ -18,6 +18,8 @@ import (
 	"context"
 	"encoding/json"
 
+	"github.com/ecodeclub/webook/internal/search/internal/domain"
+
 	"github.com/olivere/elastic/v7"
 )
 
@@ -56,37 +58,80 @@ type AnswerElement struct {
 
 type questionElasticDAO struct {
 	client *elastic.Client
+	metas  map[string]Col
 }
 
 func NewQuestionDAO(client *elastic.Client) QuestionDAO {
 	return &questionElasticDAO{
 		client: client,
+		metas: map[string]Col{
+			"title": {
+				Name:  "title",
+				Boost: questionTitleBoost,
+			},
+			"labels": {
+				Name:  "labels",
+				Boost: questionLabelBoost,
+			},
+			"content": {
+				Name:  "content",
+				Boost: questionContentBoost,
+			},
+			"answer.analysis.keywords": {
+				Name: "answer.analysis.keywords",
+			},
+			"answer.analysis.shorthand": {
+				Name: "answer.analysis.shorthand",
+			},
+			"answer.analysis.highlight": {
+				Name: "answer.analysis.highlight",
+			},
+			"answer.analysis.guidance": {
+				Name: "answer.analysis.guidance",
+			},
+			"answer.basic.keywords": {
+				Name: "answer.basic.keywords",
+			},
+			"answer.basic.shorthand": {
+				Name: "answer.basic.shorthand",
+			},
+			"answer.basic.highlight": {
+				Name: "answer.basic.highlight",
+			},
+			"answer.basic.guidance": {
+				Name: "answer.basic.guidance",
+			},
+			"answer.intermediate.keywords": {
+				Name: "answer.intermediate.keywords",
+			},
+			"answer.intermediate.shorthand": {
+				Name: "answer.intermediate.shorthand",
+			},
+			"answer.intermediate.highlight": {
+				Name: "answer.intermediate.highlight",
+			},
+			"answer.intermediate.guidance": {
+				Name: "answer.intermediate.guidance",
+			},
+			"answer.advanced.keywords": {
+				Name: "answer.advanced.keywords",
+			},
+			"answer.advanced.shorthand": {
+				Name: "answer.advanced.shorthand",
+			},
+			"answer.advanced.highlight": {
+				Name: "answer.advanced.highlight",
+			},
+			"answer.advanced.guidance": {
+				Name: "answer.advanced.guidance",
+			},
+		},
 	}
 }
 
-func (q *questionElasticDAO) SearchQuestion(ctx context.Context, offset, limit int, keywords string) ([]Question, error) {
+func (q *questionElasticDAO) SearchQuestion(ctx context.Context, offset, limit int, queryMetas []domain.QueryMeta) ([]Question, error) {
 	query := elastic.NewBoolQuery().Must(
-		elastic.NewBoolQuery().Should(
-			// 给予更高权重
-			elastic.NewMatchQuery("title", keywords).Boost(questionTitleBoost),
-			elastic.NewMatchQuery("labels", keywords).Boost(questionLabelBoost),
-			elastic.NewMatchQuery("content", keywords).Boost(questionContentBoost),
-			elastic.NewMatchQuery("answer.analysis.keywords", keywords),
-			elastic.NewMatchQuery("answer.analysis.shorthand", keywords),
-			elastic.NewMatchQuery("answer.analysis.highlight", keywords),
-			elastic.NewMatchQuery("answer.analysis.guidance", keywords),
-			elastic.NewMatchQuery("answer.basic.keywords", keywords),
-			elastic.NewMatchQuery("answer.basic.shorthand", keywords),
-			elastic.NewMatchQuery("answer.basic.highlight", keywords),
-			elastic.NewMatchQuery("answer.basic.guidance", keywords),
-			elastic.NewMatchQuery("answer.intermediate.keywords", keywords),
-			elastic.NewMatchQuery("answer.intermediate.shorthand", keywords),
-			elastic.NewMatchQuery("answer.intermediate.highlight", keywords),
-			elastic.NewMatchQuery("answer.intermediate.guidance", keywords),
-			elastic.NewMatchQuery("answer.advanced.keywords", keywords),
-			elastic.NewMatchQuery("answer.advanced.shorthand", keywords),
-			elastic.NewMatchQuery("answer.advanced.highlight", keywords),
-			elastic.NewMatchQuery("answer.advanced.guidance", keywords)),
+		elastic.NewBoolQuery().Should(buildCols(q.metas, queryMetas)...),
 		elastic.NewTermQuery("status", 2))
 	resp, err := q.client.Search(QuestionIndexName).
 		From(offset).
