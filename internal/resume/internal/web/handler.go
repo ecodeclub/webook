@@ -99,28 +99,8 @@ func (h *Handler) ProjectInfo(ctx *ginx.Context, req IDItem, sess session.Sessio
 			cids = append(cids, ca.Id)
 		}
 	}
-	var (
-		resMap map[int64]cases.ExamineResult
-		caMap  map[int64]cases.Case
-		eg     errgroup.Group
-	)
-	eg.Go(func() error {
-		var eerr error
-		resMap, eerr = h.examSvc.GetResults(ctx, uid, cids)
-		return eerr
-	})
-	eg.Go(func() error {
-		cas, eerr := h.caseSvc.GetPubByIDs(ctx, cids)
-		if eerr != nil {
-			return eerr
-		}
-		caMap = make(map[int64]cases.Case, len(cas))
-		for _, ca := range cas {
-			caMap[ca.Id] = ca
-		}
-		return nil
-	})
-	if err := eg.Wait(); err != nil {
+	resMap,caMap,err := h.getCaMap(ctx,uid,cids)
+	if err != nil {
 		return systemErrorResult, err
 	}
 
@@ -137,8 +117,24 @@ func (h *Handler) ProjectList(ctx *ginx.Context, sess session.Session) (ginx.Res
 	if err != nil {
 		return systemErrorResult, err
 	}
+	cids := make([]int64,0,16)
+	for _,pro := range projects{
+		for _,d := range pro.Difficulties {
+			cids = append(cids,d.Case.Id)
+		}
+		for _,c := range pro.Contributions {
+			cs := slice.Map(c.RefCases, func(idx int, src domain.Case) int64 {
+				return src.Id
+			})
+			cids = append(cids,cs...)
+		}
+	}
+	examMap,caMap,err := h.getCaMap(ctx,uid,cids)
+	if err != nil {
+		return systemErrorResult, err
+	}
 	ans := slice.Map(projects, func(idx int, src domain.Project) Project {
-		return newProject(src, nil, nil)
+		return newProject(src, examMap, caMap)
 	})
 	return ginx.Result{
 		Data: ans,
@@ -178,4 +174,32 @@ func (h *Handler) ProjectDifficultySave(ctx *ginx.Context, req SaveDifficultyReq
 		return systemErrorResult, err
 	}
 	return ginx.Result{}, nil
+}
+
+func (h *Handler) getCaMap(ctx *ginx.Context, uid int64, cids []int64) (map[int64]cases.ExamineResult, map[int64]cases.Case, error) {
+	var (
+		resMap map[int64]cases.ExamineResult
+		caMap  map[int64]cases.Case
+		eg     errgroup.Group
+	)
+	eg.Go(func() error {
+		var eerr error
+		resMap, eerr = h.examSvc.GetResults(ctx, uid, cids)
+		return eerr
+	})
+	eg.Go(func() error {
+		cas, eerr := h.caseSvc.GetPubByIDs(ctx, cids)
+		if eerr != nil {
+			return eerr
+		}
+		caMap = make(map[int64]cases.Case, len(cas))
+		for _, ca := range cas {
+			caMap[ca.Id] = ca
+		}
+		return nil
+	})
+	if err := eg.Wait(); err != nil {
+		return nil, nil, err
+	}
+	return resMap, caMap, nil
 }

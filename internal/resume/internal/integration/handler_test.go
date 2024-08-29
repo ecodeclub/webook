@@ -1064,6 +1064,44 @@ func (s *TestSuite) TestReaumeList() {
 			Core:         i%2 == 1,
 		})
 		require.NoError(s.T(), err)
+		err = s.pdao.SaveDifficulty(context.Background(), dao.Difficulty{
+			ID:        int64(i*10 + i),
+			ProjectID: int64(i),
+			CaseID:    int64(i*10 + i),
+			Level:     1,
+			Desc:      fmt.Sprintf("desc_%d", i*10+i),
+		})
+		require.NoError(s.T(), err)
+		err = s.pdao.SaveDifficulty(context.Background(), dao.Difficulty{
+			ID:        int64(i*10 + i + 1),
+			ProjectID: int64(i),
+			CaseID:    int64(i*10 + i + 1),
+			Level:     1,
+			Desc:      fmt.Sprintf("desc_%d", i*10+i+1),
+		})
+		require.NoError(s.T(), err)
+		err = s.pdao.SaveContribution(context.Background(), dao.Contribution{
+			ID:        int64(i*20 + i),
+			Type:      "type",
+			ProjectID: int64(i),
+			Desc:      "desc",
+		}, []dao.RefCase{
+			{
+				ID:             int64(i*20 + i + 1),
+				CaseID:         int64(i*20 + i + 1),
+				Highlight:      true,
+				ContributionID: int64(i*20 + i),
+				Level:          1,
+			},
+			{
+				ID:             int64(i*20 + i + 2),
+				CaseID:         int64(i*20 + i + 2),
+				Highlight:      false,
+				ContributionID: int64(i*20 + i),
+				Level:          2,
+			},
+		})
+
 	}
 	_, err := s.pdao.Upsert(context.Background(), dao.ResumeProject{
 		ID:        int64(5),
@@ -1079,42 +1117,187 @@ func (s *TestSuite) TestReaumeList() {
 	require.NoError(s.T(), err)
 	recorder := test.NewJSONResponseRecorder[[]web.Project]()
 	s.server.ServeHTTP(recorder, req)
+
 	require.Equal(s.T(), 200, recorder.Code)
+	data := recorder.MustScan().Data
 	assert.Equal(s.T(), []web.Project{
 		{
-			Id:            3,
-			StartTime:     3,
-			EndTime:       1003,
-			Uid:           uid,
-			Introduction:  "introduction",
-			Name:          fmt.Sprintf("项目 %d", 3),
-			Core:          true,
-			Contributions: []web.Contribution{},
-			Difficulties:  []web.Difficulty{},
+			Id:           3,
+			StartTime:    3,
+			EndTime:      1003,
+			Uid:          uid,
+			Introduction: "introduction",
+			Name:         fmt.Sprintf("项目 %d", 3),
+			Core:         true,
+			Contributions: []web.Contribution{
+				{
+					ID:   63,
+					Type: "type",
+					Desc: "desc",
+					RefCases: []web.Case{
+						{
+							Id:           64,
+							Title:        "这是案例64",
+							Introduction: "这是案例的简介64",
+							Result:       64 % 4,
+							Highlight:    true,
+							Level:        1,
+						},
+						{
+							Id:           65,
+							Title:        "这是案例65",
+							Introduction: "这是案例的简介65",
+							Result:       65 % 4,
+							Highlight:    false,
+							Level:        2,
+						},
+					},
+				},
+			},
+			Difficulties: []web.Difficulty{
+				{
+					ID:   33,
+					Desc: "desc_33",
+					Case: web.Case{
+						Id:           33,
+						Title:        "这是案例33",
+						Introduction: "这是案例的简介33",
+						Result:       33 % 4,
+						Highlight:    false,
+						Level:        1,
+					},
+				},
+				{
+					ID:   34,
+					Desc: "desc_34",
+					Case: web.Case{
+						Id:           34,
+						Title:        "这是案例34",
+						Introduction: "这是案例的简介34",
+						Result:       34 % 4,
+						Highlight:    false,
+						Level:        1,
+					},
+				},
+			},
 		},
 		{
-			Id:            2,
-			StartTime:     2,
-			EndTime:       1002,
-			Introduction:  "introduction",
-			Uid:           uid,
-			Name:          fmt.Sprintf("项目 %d", 2),
-			Core:          false,
-			Contributions: []web.Contribution{},
-			Difficulties:  []web.Difficulty{},
+			Id:           2,
+			StartTime:    2,
+			EndTime:      1002,
+			Introduction: "introduction",
+			Uid:          uid,
+			Name:         fmt.Sprintf("项目 %d", 2),
+			Core:         false,
+			Contributions: []web.Contribution{
+				{
+					ID:   42,
+					Type: "type",
+					Desc: "desc",
+					RefCases: []web.Case{
+						{
+							Id:           43,
+							Title:        "这是案例43",
+							Introduction: "这是案例的简介43",
+							Result:       43 % 4,
+							Highlight:    true,
+							Level:        1,
+						},
+						{
+							Id:           44,
+							Title:        "这是案例44",
+							Introduction: "这是案例的简介44",
+							Result:       44 % 4,
+							Highlight:    false,
+							Level:        2,
+						},
+					},
+				},
+			},
+			Difficulties: []web.Difficulty{
+				{
+					ID:   22,
+					Desc: "desc_22",
+					Case: web.Case{
+						Id:           22,
+						Title:        "这是案例22",
+						Introduction: "这是案例的简介22",
+						Result:       22 % 4,
+						Level:        1,
+					},
+				},
+				{
+					ID:   23,
+					Desc: "desc_23",
+					Case: web.Case{
+						Id:           23,
+						Title:        "这是案例23",
+						Introduction: "这是案例的简介23",
+						Result:       23 % 4,
+						Level:        1,
+					},
+				},
+			},
 		},
 		{
-			Id:            1,
-			StartTime:     1,
-			EndTime:       1001,
-			Introduction:  "introduction",
-			Uid:           uid,
-			Name:          fmt.Sprintf("项目 %d", 1),
-			Core:          true,
-			Contributions: []web.Contribution{},
-			Difficulties:  []web.Difficulty{},
+			Id:           1,
+			StartTime:    1,
+			EndTime:      1001,
+			Introduction: "introduction",
+			Uid:          uid,
+			Name:         fmt.Sprintf("项目 %d", 1),
+			Core:         true,
+			Contributions: []web.Contribution{
+				{
+					ID:   21,
+					Type: "type",
+					Desc: "desc",
+					RefCases: []web.Case{
+						{
+							Id:           22,
+							Title:        "这是案例22",
+							Introduction: "这是案例的简介22",
+							Result:       22 % 4,
+							Highlight:    true,
+							Level:        1,
+						},
+						{
+							Id:           23,
+							Title:        "这是案例23",
+							Introduction: "这是案例的简介23",
+							Result:       23 % 4,
+							Highlight:    false,
+							Level:        2,
+						},
+					},
+				},
+			},
+			Difficulties: []web.Difficulty{
+				{
+					ID:   11,
+					Desc: "desc_11",
+					Case: web.Case{
+						Id:           11,
+						Title:        "这是案例11",
+						Introduction: "这是案例的简介11",
+						Result:       11 % 4,
+						Level:        1,
+					},
+				},
+				{
+					ID:   12,
+					Desc: "desc_12",
+					Case: web.Case{
+						Id:           12,
+						Title:        "这是案例12",
+						Introduction: "这是案例的简介12",
+						Result:       12 % 4,
+						Level:        1,
+					},
+				},
+			},
 		},
-	}, recorder.MustScan().Data)
+	}, data)
 	// 清理数据
 	err = s.db.Exec("TRUNCATE  TABLE `resume_projects`").Error
 	require.NoError(s.T(), err)
