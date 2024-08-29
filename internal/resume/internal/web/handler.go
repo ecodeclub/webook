@@ -99,7 +99,7 @@ func (h *Handler) ProjectInfo(ctx *ginx.Context, req IDItem, sess session.Sessio
 			cids = append(cids, ca.Id)
 		}
 	}
-	resMap,caMap,err := h.getCaMap(ctx,uid,cids)
+	resMap, caMap, err := h.getCaMap(ctx, uid, cids)
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -117,19 +117,19 @@ func (h *Handler) ProjectList(ctx *ginx.Context, sess session.Session) (ginx.Res
 	if err != nil {
 		return systemErrorResult, err
 	}
-	cids := make([]int64,0,16)
-	for _,pro := range projects{
-		for _,d := range pro.Difficulties {
-			cids = append(cids,d.Case.Id)
+	cids := make([]int64, 0, 16)
+	for _, pro := range projects {
+		for _, d := range pro.Difficulties {
+			cids = append(cids, d.Case.Id)
 		}
-		for _,c := range pro.Contributions {
+		for _, c := range pro.Contributions {
 			cs := slice.Map(c.RefCases, func(idx int, src domain.Case) int64 {
 				return src.Id
 			})
-			cids = append(cids,cs...)
+			cids = append(cids, cs...)
 		}
 	}
-	examMap,caMap,err := h.getCaMap(ctx,uid,cids)
+	examMap, caMap, err := h.getCaMap(ctx, uid, cids)
 	if err != nil {
 		return systemErrorResult, err
 	}

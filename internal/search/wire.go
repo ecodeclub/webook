@@ -18,8 +18,9 @@ package search
 
 import (
 	"context"
-	"github.com/ecodeclub/webook/internal/cases"
 	"sync"
+
+	"github.com/ecodeclub/webook/internal/cases"
 
 	"github.com/ecodeclub/mq-api"
 	"github.com/ecodeclub/webook/internal/search/internal/event"

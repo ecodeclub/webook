@@ -68,10 +68,7 @@ func (r *resumeProjectRepo) FindProjects(ctx context.Context, uid int64) ([]doma
 	if err != nil {
 		return nil, err
 	}
-	ans := make([]domain.Project, 0, len(pList))
-	for _, pro := range pList {
-		ans = append(ans, r.toProjectDomain(pro))
-	}
+
 	ids := slice.Map(pList, func(idx int, src dao.ResumeProject) int64 {
 		return src.ID
 	})

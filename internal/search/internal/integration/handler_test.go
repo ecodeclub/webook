@@ -19,14 +19,15 @@ package integration
 import (
 	"context"
 	"encoding/json"
-	"github.com/ecodeclub/ekit/slice"
-	"github.com/ecodeclub/webook/internal/cases"
-	casemocks "github.com/ecodeclub/webook/internal/cases/mocks"
-	"go.uber.org/mock/gomock"
 	"net/http"
 	"strconv"
 	"testing"
 	"time"
+
+	"github.com/ecodeclub/ekit/slice"
+	"github.com/ecodeclub/webook/internal/cases"
+	casemocks "github.com/ecodeclub/webook/internal/cases/mocks"
+	"go.uber.org/mock/gomock"
 
 	"github.com/ecodeclub/mq-api"
 	"github.com/ecodeclub/webook/internal/search/internal/event"
@@ -1231,6 +1232,7 @@ func (s *HandlerTestSuite) TestSearchLimit() {
 						Highlight:  "Elasticsearch亮点",
 						Guidance:   "Elasticsearch引导",
 						Status:     2,
+						Result:     0,
 					},
 					{
 						Id:         5,
@@ -1245,6 +1247,7 @@ func (s *HandlerTestSuite) TestSearchLimit() {
 						Highlight:  "Elasticsearch亮点",
 						Guidance:   "Elasticsearch引导",
 						Status:     2,
+						Result:     1,
 					},
 				},
 			},

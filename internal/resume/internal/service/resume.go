@@ -41,7 +41,7 @@ func (s *service) DeleteProject(ctx context.Context, uid, id int64) error {
 }
 
 func (s *service) FindProjects(ctx context.Context, uid int64) ([]domain.Project, error) {
-	return  s.repo.FindProjects(ctx, uid)
+	return s.repo.FindProjects(ctx, uid)
 
 }
 
