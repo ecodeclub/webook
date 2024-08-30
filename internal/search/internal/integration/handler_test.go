@@ -24,6 +24,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ecodeclub/ekit/slice"
+	"github.com/ecodeclub/webook/internal/cases"
+	casemocks "github.com/ecodeclub/webook/internal/cases/mocks"
+	"go.uber.org/mock/gomock"
+
 	"github.com/ecodeclub/mq-api"
 	"github.com/ecodeclub/webook/internal/search/internal/event"
 
@@ -54,19 +59,38 @@ type HandlerTestSuite struct {
 }
 
 func (s *HandlerTestSuite) SetupSuite() {
-	handler, err := startup.InitHandler()
+	ctrl := gomock.NewController(s.T())
+	examSvc := casemocks.NewMockExamineService(ctrl)
+	examSvc.EXPECT().GetResults(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, uid int64, ids []int64) (map[int64]cases.ExamineResult, error) {
+		res := slice.Map(ids, func(idx int, src int64) cases.ExamineResult {
+			return cases.ExamineResult{
+				Cid:    src,
+				Result: cases.ExamineResultEnum(src % 2),
+			}
+		})
+		resMap := make(map[int64]cases.ExamineResult, len(res))
+		for _, examRes := range res {
+			resMap[examRes.Cid] = examRes
+		}
+		return resMap, nil
+	}).AnyTimes()
+	handler, err := startup.InitHandler(&cases.Module{
+		ExamineSvc: examSvc,
+	})
 	require.NoError(s.T(), err)
 	econf.Set("server", map[string]any{"contextTimeout": "1s"})
 	server := egin.Load("server").Build()
-	handler.PrivateRoutes(server.Engine)
+
 	server.Use(func(ctx *gin.Context) {
 		ctx.Set("_session", session.NewMemorySession(session.Claims{
 			Uid: uid,
 			Data: map[string]string{
+				"creator":   "true",
 				"memberDDL": strconv.FormatInt(time.Now().Add(time.Hour).UnixMilli(), 10),
 			},
 		}))
 	})
+	handler.PrivateRoutes(server.Engine)
 	server.Use(middleware.NewCheckMembershipMiddlewareBuilder(nil).Build())
 	s.server = server
 	s.es = testioc.InitES()
@@ -139,6 +163,7 @@ func (s *HandlerTestSuite) TestBizSearch() {
 						Highlight:  "Elasticsearch亮点",
 						Guidance:   "Elasticsearch引导",
 						Status:     2,
+						Result:     0,
 					},
 					{
 						Id:         5,
@@ -153,6 +178,7 @@ func (s *HandlerTestSuite) TestBizSearch() {
 						Highlight:  "Elasticsearch亮点",
 						Guidance:   "Elasticsearch引导",
 						Status:     2,
+						Result:     1,
 					},
 					{
 						Id:         2,
@@ -167,6 +193,7 @@ func (s *HandlerTestSuite) TestBizSearch() {
 						Highlight:  "Elasticsearch亮点",
 						Guidance:   "Elasticsearch引导",
 						Status:     2,
+						Result:     0,
 					},
 					{
 						Id:         3,
@@ -181,6 +208,7 @@ func (s *HandlerTestSuite) TestBizSearch() {
 						Highlight:  "Elasticsearch亮点",
 						Guidance:   "Elasticsearch引导",
 						Status:     2,
+						Result:     1,
 					},
 					{
 						Id:         1,
@@ -195,6 +223,7 @@ func (s *HandlerTestSuite) TestBizSearch() {
 						Highlight:  "Elasticsearch亮点",
 						Guidance:   "Elasticsearch引导",
 						Status:     2,
+						Result:     1,
 					},
 					{
 						Id:         4,
@@ -209,6 +238,7 @@ func (s *HandlerTestSuite) TestBizSearch() {
 						Highlight:  "Elasticsearch亮点",
 						Guidance:   "test_guidance",
 						Status:     2,
+						Result:     0,
 					},
 				},
 			},
@@ -722,6 +752,7 @@ func (s *HandlerTestSuite) TestSearch() {
 				Highlight:  "Elasticsearch亮点",
 				Guidance:   "Elasticsearch引导",
 				Status:     2,
+				Result:     0,
 			},
 		},
 		Questions: []web.Question{
@@ -809,6 +840,7 @@ func (s *HandlerTestSuite) TestSearchWithCol() {
 						Highlight:  "Elasticsearch亮点",
 						Guidance:   "Elasticsearch引导",
 						Status:     2,
+						Result:     0,
 					},
 					{
 						Id:         5,
@@ -823,6 +855,7 @@ func (s *HandlerTestSuite) TestSearchWithCol() {
 						Highlight:  "Elasticsearch亮点",
 						Guidance:   "Elasticsearch引导",
 						Status:     2,
+						Result:     1,
 					},
 				},
 			},
@@ -1199,6 +1232,7 @@ func (s *HandlerTestSuite) TestSearchLimit() {
 						Highlight:  "Elasticsearch亮点",
 						Guidance:   "Elasticsearch引导",
 						Status:     2,
+						Result:     0,
 					},
 					{
 						Id:         5,
@@ -1213,6 +1247,7 @@ func (s *HandlerTestSuite) TestSearchLimit() {
 						Highlight:  "Elasticsearch亮点",
 						Guidance:   "Elasticsearch引导",
 						Status:     2,
+						Result:     1,
 					},
 				},
 			},

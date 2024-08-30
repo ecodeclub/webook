@@ -7,17 +7,18 @@
 package startup
 
 import (
-	baguwen "github.com/ecodeclub/webook/internal/search"
+	"github.com/ecodeclub/webook/internal/cases"
+	"github.com/ecodeclub/webook/internal/search"
 	"github.com/ecodeclub/webook/internal/search/internal/web"
 	testioc "github.com/ecodeclub/webook/internal/test/ioc"
 )
 
 // Injectors from wire.go:
 
-func InitHandler() (*web.Handler, error) {
+func InitHandler(caModule *cases.Module) (*web.Handler, error) {
 	client := testioc.InitES()
 	mq := testioc.InitMQ()
-	module, err := baguwen.InitModule(client, mq)
+	module, err := search.InitModule(client, mq, caModule)
 	if err != nil {
 		return nil, err
 	}

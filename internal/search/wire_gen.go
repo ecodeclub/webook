@@ -11,6 +11,7 @@ import (
 	"sync"
 
 	"github.com/ecodeclub/mq-api"
+	"github.com/ecodeclub/webook/internal/cases"
 	"github.com/ecodeclub/webook/internal/search/internal/event"
 	"github.com/ecodeclub/webook/internal/search/internal/repository"
 	"github.com/ecodeclub/webook/internal/search/internal/repository/dao"
@@ -21,11 +22,12 @@ import (
 
 // Injectors from wire.go:
 
-func InitModule(es *elastic.Client, q mq.MQ) (*Module, error) {
+func InitModule(es *elastic.Client, q mq.MQ, caModule *cases.Module) (*Module, error) {
 	searchService := InitSearchSvc(es)
 	syncService := InitSyncSvc(es)
 	syncConsumer := initSyncConsumer(syncService, q)
-	handler := web.NewHandler(searchService)
+	examineService := caModule.ExamineSvc
+	handler := web.NewHandler(searchService, examineService)
 	module := &Module{
 		SearchSvc: searchService,
 		SyncSvc:   syncService,

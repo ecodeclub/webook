@@ -68,11 +68,56 @@ func (r *resumeProjectRepo) FindProjects(ctx context.Context, uid int64) ([]doma
 	if err != nil {
 		return nil, err
 	}
-	ans := make([]domain.Project, 0, len(pList))
-	for _, pro := range pList {
-		ans = append(ans, r.toProjectDomain(pro))
+
+	ids := slice.Map(pList, func(idx int, src dao.ResumeProject) int64 {
+		return src.ID
+	})
+	var eg errgroup.Group
+	var contributionMap map[int64][]dao.Contribution
+	var difficultyMap map[int64][]dao.Difficulty
+	eg.Go(func() error {
+		var eerr error
+		contributionMap, eerr = r.pdao.BatchFindContributions(ctx, ids)
+		return eerr
+	})
+	eg.Go(func() error {
+		var eerr error
+		difficultyMap, eerr = r.pdao.BatchFindDifficulty(ctx, ids)
+		return eerr
+	})
+	err = eg.Wait()
+	if err != nil {
+		return nil, err
 	}
-	return ans, nil
+	contributionIds := make([]int64, 0, 16)
+	for _, contributions := range contributionMap {
+		cids := slice.Map(contributions, func(idx int, src dao.Contribution) int64 {
+			return src.ID
+		})
+		contributionIds = append(contributionIds, cids...)
+	}
+	caMap, err := r.pdao.FindRefCases(ctx, contributionIds)
+	if err != nil {
+		return nil, err
+	}
+	projects := slice.Map(pList, func(idx int, project dao.ResumeProject) domain.Project {
+		pro := r.toProjectDomain(project)
+		contributions, ok := contributionMap[project.ID]
+		if ok {
+			pro.Contributions = slice.Map(contributions, func(idx int, src dao.Contribution) domain.Contribution {
+				cas := caMap[src.ID]
+				return r.toContributionDomain(src, cas)
+			})
+		}
+		diffs, ok := difficultyMap[project.ID]
+		if ok {
+			pro.Difficulties = slice.Map(diffs, func(idx int, src dao.Difficulty) domain.Difficulty {
+				return r.toDifficultyDomain(src)
+			})
+		}
+		return pro
+	})
+	return projects, nil
 }
 
 func (r *resumeProjectRepo) ProjectInfo(ctx context.Context, id int64) (domain.Project, error) {
