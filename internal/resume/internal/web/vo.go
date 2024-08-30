@@ -44,7 +44,7 @@ type Case struct {
 	Title        string `json:"title"`
 	Introduction string `json:"introduction"`
 	// 是否已经通过了测试
-	Result uint8 `json:"result"`
+	ExamineResult uint8 `json:"examineResult"`
 
 	// 亮点方案
 	Highlight bool `json:"highlight"`
@@ -119,11 +119,11 @@ func newCase(refCase domain.Case, examMap map[int64]cases.ExamineResult, caseMap
 		ca = caseMap[refCase.Id]
 	}
 	return Case{
-		Id:           refCase.Id,
-		Result:       res.Result.ToUint8(),
-		Highlight:    refCase.Highlight,
-		Level:        refCase.Level,
-		Title:        ca.Title,
-		Introduction: ca.Introduction,
+		Id:            refCase.Id,
+		ExamineResult: res.Result.ToUint8(),
+		Highlight:     refCase.Highlight,
+		Level:         refCase.Level,
+		Title:         ca.Title,
+		Introduction:  ca.Introduction,
 	}
 }

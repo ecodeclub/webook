@@ -17,6 +17,8 @@
 package resume
 
 import (
+	"sync"
+
 	"github.com/ecodeclub/webook/internal/cases"
 	"github.com/ecodeclub/webook/internal/resume/internal/repository"
 	"github.com/ecodeclub/webook/internal/resume/internal/repository/dao"
@@ -28,7 +30,7 @@ import (
 
 func InitModule(db *egorm.Component, caModule *cases.Module) *Module {
 	wire.Build(
-		dao.NewResumeProjectDAO,
+		initResumeProjectDAOOnce,
 		repository.NewResumeProjectRepo,
 		service.NewService,
 		wire.FieldsOf(new(*cases.Module), "ExamineSvc"),
@@ -37,4 +39,20 @@ func InitModule(db *egorm.Component, caModule *cases.Module) *Module {
 		wire.Struct(new(Module), "*"),
 	)
 	return new(Module)
+}
+
+var (
+	resumeProjectDAO     dao.ResumeProjectDAO
+	resumeProjectDAOOnce sync.Once
+)
+
+func initResumeProjectDAOOnce(db *egorm.Component) dao.ResumeProjectDAO {
+	resumeProjectDAOOnce.Do(func() {
+		resumeProjectDAO = dao.NewResumeProjectDAO(db)
+		err := dao.InitTables(db)
+		if err != nil {
+			panic(err)
+		}
+	})
+	return resumeProjectDAO
 }

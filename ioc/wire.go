@@ -35,6 +35,7 @@ import (
 	"github.com/ecodeclub/webook/internal/project"
 	baguwen "github.com/ecodeclub/webook/internal/question"
 	"github.com/ecodeclub/webook/internal/recon"
+	"github.com/ecodeclub/webook/internal/resume"
 	"github.com/ecodeclub/webook/internal/roadmap"
 	"github.com/ecodeclub/webook/internal/search"
 	"github.com/ecodeclub/webook/internal/skill"
@@ -89,6 +90,8 @@ func InitApp() (*App, error) {
 		ai.InitModule,
 		bff.InitModule,
 		wire.FieldsOf(new(*bff.Module), "Hdl"),
+		resume.InitModule,
+		wire.FieldsOf(new(*resume.Module), "PrjHdl"),
 		initLocalActiveLimiterBuilder,
 		initCronJobs,
 		// 这两个顺序不要换

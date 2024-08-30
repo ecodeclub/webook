@@ -8,7 +8,7 @@
         "type": "long"
       },
       "labels": {
-        "type": "text"
+        "type": "keyword"
       },
       "title": {
         "type": "text"
