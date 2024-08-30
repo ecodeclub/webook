@@ -15,7 +15,7 @@ type ResumeProjectDAO interface {
 	Delete(ctx context.Context, uid, id int64) error
 	Find(ctx context.Context, uid int64) ([]ResumeProject, error)
 	First(ctx context.Context, id int64) (ResumeProject, error)
-	SaveContribution(ctx context.Context, contribution Contribution, cases []RefCase) error
+	SaveContribution(ctx context.Context, contribution Contribution, cases []RefCase) (int64, error)
 	FindContributions(ctx context.Context, projectId int64) ([]Contribution, error)
 	BatchFindContributions(ctx context.Context, projectIds []int64) (map[int64][]Contribution, error)
 	FindRefCases(ctx context.Context, contributionIds []int64) (map[int64][]RefCase, error)
@@ -138,9 +138,11 @@ func (r *resumeProjectDAO) FindContributions(ctx context.Context, projectId int6
 	return contributions, err
 }
 
-func (r *resumeProjectDAO) SaveContribution(ctx context.Context, contribution Contribution, cases []RefCase) error {
-	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		contributionId, err := r.saveContribution(ctx, tx, contribution)
+func (r *resumeProjectDAO) SaveContribution(ctx context.Context, contribution Contribution, cases []RefCase) (int64, error) {
+	var contributionId int64
+	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var err error
+		contributionId, err = r.saveContribution(ctx, tx, contribution)
 		if err != nil {
 			return err
 		}
@@ -149,6 +151,7 @@ func (r *resumeProjectDAO) SaveContribution(ctx context.Context, contribution Co
 		}
 		return r.saveContributionCases(ctx, tx, contribution, cases)
 	})
+	return contributionId, err
 }
 
 func (r *resumeProjectDAO) saveContribution(ctx context.Context, tx *gorm.DB, contribution Contribution) (int64, error) {

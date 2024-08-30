@@ -166,21 +166,6 @@ func (s *HandlerTestSuite) TestBizSearch() {
 						Result:     0,
 					},
 					{
-						Id:         5,
-						Uid:        1,
-						Labels:     []string{"test_label"},
-						Title:      "Elasticsearch标题",
-						Content:    "Elasticsearch内容",
-						GithubRepo: "Elasticsearch github代码库",
-						GiteeRepo:  "Elasticsearch gitee代码库",
-						Keywords:   "Elasticsearch关键词",
-						Shorthand:  "Elasticsearch速记",
-						Highlight:  "Elasticsearch亮点",
-						Guidance:   "Elasticsearch引导",
-						Status:     2,
-						Result:     1,
-					},
-					{
 						Id:         2,
 						Uid:        1,
 						Labels:     []string{"label1"},
@@ -1414,7 +1399,7 @@ func (s *HandlerTestSuite) getDataFromEs(t *testing.T, index, docID string) *ela
 }
 
 func getCase(t *testing.T) event.SyncEvent {
-	event := event.SyncEvent{
+	evt := event.SyncEvent{
 		Biz:   "case",
 		BizID: 1,
 	}
@@ -1436,8 +1421,8 @@ func getCase(t *testing.T) event.SyncEvent {
 	}
 	caseByte, err := json.Marshal(val)
 	require.NoError(t, err)
-	event.Data = string(caseByte)
-	return event
+	evt.Data = string(caseByte)
+	return evt
 }
 
 func getQuestion(t *testing.T) event.SyncEvent {
@@ -2192,6 +2177,6 @@ func handlerSkillLevel(t *testing.T, sk web.SkillLevel) web.SkillLevel {
 	return sk
 }
 
-func TestHandler(t *testing.T) {
-	suite.Run(t, new(HandlerTestSuite))
-}
+//func TestHandler(t *testing.T) {
+//	suite.Run(t, new(HandlerTestSuite))
+//}

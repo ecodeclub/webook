@@ -15,7 +15,7 @@ type ResumeProjectRepo interface {
 	DeleteProject(ctx context.Context, uid, id int64) error
 	FindProjects(ctx context.Context, uid int64) ([]domain.Project, error)
 	ProjectInfo(ctx context.Context, id int64) (domain.Project, error)
-	SaveContribution(ctx context.Context, id int64, contribution domain.Contribution) error
+	SaveContribution(ctx context.Context, id int64, contribution domain.Contribution) (int64, error)
 	// 删除职责
 	DeleteContribution(ctx context.Context, id int64) error
 	// 保存难点
@@ -32,7 +32,7 @@ func NewResumeProjectRepo(pdao dao.ResumeProjectDAO) ResumeProjectRepo {
 	return &resumeProjectRepo{pdao: pdao}
 }
 
-func (r *resumeProjectRepo) SaveContribution(ctx context.Context, id int64, contribution domain.Contribution) error {
+func (r *resumeProjectRepo) SaveContribution(ctx context.Context, id int64, contribution domain.Contribution) (int64, error) {
 	contributionDao := r.toContributionEntity(contribution)
 	contributionDao.ProjectID = id
 	refcases := slice.Map(contribution.RefCases, func(idx int, src domain.Case) dao.RefCase {
