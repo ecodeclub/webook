@@ -173,11 +173,15 @@ func (s *HandlerTestSuite) SetupSuite() {
 	server := egin.Load("server").Build()
 	server.Use(func(ctx *gin.Context) {
 		ctx.Set("_session", session.NewMemorySession(session.Claims{
-			Uid:  uid,
-			Data: map[string]string{"creator": "true"},
+			Uid: uid,
+			Data: map[string]string{
+				"creator":   "true",
+				"memberDDL": strconv.FormatInt(time.Now().Add(time.Hour).UnixMilli(), 10),
+			},
 		}))
 	})
 	handler.PrivateRoutes(server.Engine)
+	handler.MemberRoutes(server.Engine)
 	s.server = server
 	s.db = testioc.InitDB()
 	err = dao.InitTables(s.db)

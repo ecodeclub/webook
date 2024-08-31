@@ -133,12 +133,11 @@ func initGinxServer(sp session.Provider,
 	lhdl.PrivateRoutes(res.Engine)
 	qsh.PrivateRoutes(res.Engine)
 	cosHdl.PrivateRoutes(res.Engine)
-	skillHdl.PrivateRoutes(res.Engine)
 	pHdl.PrivateRoutes(res.Engine)
 	orderHdl.PrivateRoutes(res.Engine)
 	searchHdl.PrivateRoutes(res.Engine)
 	roadmapHdl.PrivateRoutes(res.Engine)
-
+	skillHdl.PrivateRoutes(res.Engine)
 	creditHdl.PrivateRoutes(res.Engine)
 	marketingHdl.PrivateRoutes(res.Engine)
 	intrHdl.PrivateRoutes(res.Engine)
@@ -154,6 +153,7 @@ func initGinxServer(sp session.Provider,
 	examineHdl.MemberRoutes(res.Engine)
 	caseHdl.MemberRoutes(res.Engine)
 	fbHdl.MemberRoutes(res.Engine)
+	skillHdl.MemberRoutes(res.Engine)
 	caseExamineHdl.MemberRoutes(res.Engine)
 	resumePrjHdl.MemberRoutes(res.Engine)
 	return res
