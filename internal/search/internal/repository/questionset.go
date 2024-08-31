@@ -31,8 +31,8 @@ func NewQuestionSetRepo(questionSetDao dao.QuestionSetDAO) QuestionSetRepo {
 		qsDao: questionSetDao,
 	}
 }
-func (q *questionSetRepo) SearchQuestionSet(ctx context.Context, offset, limit int, keywords string) ([]domain.QuestionSet, error) {
-	sets, err := q.qsDao.SearchQuestionSet(ctx, offset, limit, keywords)
+func (q *questionSetRepo) SearchQuestionSet(ctx context.Context, offset, limit int, queryMetas []domain.QueryMeta) ([]domain.QuestionSet, error) {
+	sets, err := q.qsDao.SearchQuestionSet(ctx, offset, limit, queryMetas)
 	if err != nil {
 		return nil, err
 	}

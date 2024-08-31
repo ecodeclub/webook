@@ -18,6 +18,8 @@ import (
 	"context"
 	"encoding/json"
 
+	"github.com/ecodeclub/webook/internal/search/internal/domain"
+
 	"github.com/olivere/elastic/v7"
 )
 
@@ -51,27 +53,42 @@ type Skill struct {
 
 type skillElasticDAO struct {
 	client *elastic.Client
+	metas  map[string]Col
 }
 
 func NewSkillElasticDAO(client *elastic.Client) SkillDAO {
 	return &skillElasticDAO{
 		client: client,
+		metas: map[string]Col{
+			"name": {
+				Name:  "name",
+				Boost: skillNameBoost,
+			},
+			"labels": {
+				Name:  "labels",
+				Boost: skillLabelBoost,
+			},
+			"desc": {
+				Name:  "desc",
+				Boost: skillDescBoost,
+			},
+			"basic.desc": {
+				Name: "basic.desc",
+			},
+			"intermediate.desc": {
+				Name: "intermediate.desc",
+			},
+			"advanced.desc": {
+				Name: "advanced.desc",
+			},
+		},
 	}
+
 }
 
-func (s *skillElasticDAO) SearchSkill(ctx context.Context, offset, limit int, keywords string) ([]Skill, error) {
+func (s *skillElasticDAO) SearchSkill(ctx context.Context, offset, limit int, queryMetas []domain.QueryMeta) ([]Skill, error) {
 
-	query :=
-		elastic.NewBoolQuery().Should(
-			elastic.NewMatchQuery("name", keywords).Boost(skillNameBoost),
-			elastic.NewMatchQuery("labels", keywords).Boost(skillLabelBoost),
-			elastic.NewMatchQuery("desc", keywords).Boost(skillDescBoost),
-			elastic.NewBoolQuery().Should(
-				elastic.NewMatchQuery("basic.desc", keywords),
-				elastic.NewMatchQuery("intermediate.desc", keywords),
-				elastic.NewMatchQuery("advanced.desc", keywords),
-			))
-
+	query := elastic.NewBoolQuery().Should(buildCols(s.metas, queryMetas)...)
 	resp, err := s.client.Search(SkillIndexName).
 		From(offset).
 		Size(limit).Query(query).Do(ctx)

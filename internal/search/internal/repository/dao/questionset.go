@@ -18,6 +18,8 @@ import (
 	"context"
 	"encoding/json"
 
+	"github.com/ecodeclub/webook/internal/search/internal/domain"
+
 	"github.com/olivere/elastic/v7"
 )
 
@@ -41,20 +43,27 @@ type QuestionSet struct {
 }
 type questionSetElasticDAO struct {
 	client *elastic.Client
+	metas  map[string]Col
 }
 
 func NewQuestionSetDAO(client *elastic.Client) QuestionSetDAO {
 	return &questionSetElasticDAO{
 		client: client,
+		metas: map[string]Col{
+			"title": {
+				Name:  "title",
+				Boost: questionSetTitleBoost,
+			},
+			"description": {
+				Name:  "description",
+				Boost: questionSetDescription,
+			},
+		},
 	}
 }
 
-func (q *questionSetElasticDAO) SearchQuestionSet(ctx context.Context, offset, limit int, keywords string) ([]QuestionSet, error) {
-	query := elastic.NewBoolQuery().Should(
-		// 给予更高权重
-		elastic.NewMatchQuery("title", keywords).Boost(questionSetTitleBoost),
-		elastic.NewMatchQuery("description", keywords).Boost(questionSetDescription),
-	)
+func (q *questionSetElasticDAO) SearchQuestionSet(ctx context.Context, offset, limit int, queryMetas []domain.QueryMeta) ([]QuestionSet, error) {
+	query := elastic.NewBoolQuery().Should(buildCols(q.metas, queryMetas)...)
 	resp, err := q.client.Search(QuestionSetIndexName).
 		From(offset).
 		Size(limit).Query(query).Do(ctx)

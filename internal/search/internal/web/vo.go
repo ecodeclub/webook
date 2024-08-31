@@ -17,6 +17,8 @@ package web
 import (
 	"time"
 
+	"github.com/ecodeclub/webook/internal/cases"
+
 	"github.com/ecodeclub/webook/internal/search/internal/domain"
 )
 
@@ -41,6 +43,7 @@ type Case struct {
 	Status     uint8    `json:"status,omitempty"`
 	Ctime      string   `json:"ctime,omitempty"`
 	Utime      string   `json:"utime,omitempty"`
+	Result     uint8    `json:"result,omitempty"`
 }
 
 type Question struct {
@@ -107,7 +110,7 @@ type SearchResult struct {
 	QuestionSet []QuestionSet `json:"questionSet,omitempty"`
 }
 
-func NewSearchResult(res *domain.SearchResult) SearchResult {
+func NewSearchResult(res *domain.SearchResult, examMap map[int64]cases.ExamineResult) SearchResult {
 	var newResult SearchResult
 	for _, oldCase := range res.Cases {
 		newCase := Case{
@@ -125,6 +128,12 @@ func NewSearchResult(res *domain.SearchResult) SearchResult {
 			Status:     oldCase.Status.ToUint8(),
 			Ctime:      oldCase.Ctime.Format(time.DateTime),
 			Utime:      oldCase.Utime.Format(time.DateTime),
+		}
+		if examMap != nil {
+			exam, ok := examMap[oldCase.Id]
+			if ok {
+				newCase.Result = exam.Result.ToUint8()
+			}
 		}
 		newResult.Cases = append(newResult.Cases, newCase)
 	}

@@ -31,8 +31,8 @@ func NewQuestionRepo(questionDao dao.QuestionDAO) QuestionRepo {
 	}
 }
 
-func (q *questionRepository) SearchQuestion(ctx context.Context, offset, limit int, keywords string) ([]domain.Question, error) {
-	ques, err := q.questionDao.SearchQuestion(ctx, offset, limit, keywords)
+func (q *questionRepository) SearchQuestion(ctx context.Context, offset, limit int, queryMetas []domain.QueryMeta) ([]domain.Question, error) {
+	ques, err := q.questionDao.SearchQuestion(ctx, offset, limit, queryMetas)
 	if err != nil {
 		return nil, err
 	}

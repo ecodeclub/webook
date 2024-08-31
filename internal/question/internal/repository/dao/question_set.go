@@ -37,7 +37,7 @@ type QuestionSetDAO interface {
 	GetByIDs(ctx context.Context, ids []int64) ([]QuestionSet, error)
 	ListByBiz(ctx context.Context, offset int, limit int, biz string) ([]QuestionSet, error)
 	GetByBiz(ctx context.Context, biz string, bizId int64) (QuestionSet, error)
-	//  GetByIDsWithQuestions 返回题集和题集对应的题目id
+	// GetByIDsWithQuestions 返回题集和题集对应的题目id
 	GetByIDsWithQuestions(ctx context.Context, ids []int64) ([]QuestionSet, map[int64][]Question, error)
 }
 

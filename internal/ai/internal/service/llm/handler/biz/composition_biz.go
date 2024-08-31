@@ -32,10 +32,6 @@ func (c *CompositionHandler) Handle(ctx context.Context, req domain.LLMRequest) 
 	return c.root.Handle(ctx, req)
 }
 
-func (c *CompositionHandler) Name() string {
-	return c.name
-}
-
 func (c *CompositionHandler) Biz() string {
 	return c.name
 }

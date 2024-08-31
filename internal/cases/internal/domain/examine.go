@@ -22,10 +22,7 @@ func (r CaseResult) ToUint8() uint8 {
 const (
 	// ResultFailed 完全没通过，或者完全没有考过，我们不需要区别这两种状态
 	ResultFailed CaseResult = iota
-	// ResultBasic 只回答出来了 15K 的部分
-	ResultBasic
-	// ResultIntermediate 回答了 25K 部分
-	ResultIntermediate
-	// ResultAdvanced 回答出来了 35K 部分
-	ResultAdvanced
+	// ResultPassed 回答通过
+	// 注意案例这边只有符合或者不符合，没有级别的评判
+	ResultPassed
 )

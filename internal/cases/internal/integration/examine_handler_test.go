@@ -48,7 +48,7 @@ func (s *ExamineHandlerTest) SetupSuite() {
 		return ai.LLMResponse{
 			Tokens: req.Uid,
 			Amount: req.Uid,
-			Answer: "评分：15K",
+			Answer: "通过",
 		}, nil
 	}).AnyTimes()
 	intrSvc := intrmocks.NewMockService(s.ctrl)
@@ -128,8 +128,8 @@ func (s *ExamineHandlerTest) TestExamine() {
 				assert.Equal(t, dao.CaseExamineRecord{
 					Uid:       uid,
 					Cid:       1,
-					Result:    domain.ResultBasic.ToUint8(),
-					RawResult: "评分：15K",
+					Result:    domain.ResultPassed.ToUint8(),
+					RawResult: "通过",
 					Tokens:    uid,
 					Amount:    uid,
 				}, record)
@@ -146,7 +146,7 @@ func (s *ExamineHandlerTest) TestExamine() {
 				assert.True(t, caseRes.Id > 0)
 				caseRes.Id = 0
 				assert.Equal(t, dao.CaseResult{
-					Result: domain.ResultBasic.ToUint8(),
+					Result: domain.ResultPassed.ToUint8(),
 					Cid:    1,
 					Uid:    uid,
 				}, caseRes)
@@ -158,8 +158,8 @@ func (s *ExamineHandlerTest) TestExamine() {
 			wantCode: 200,
 			wantResp: test.Result[web.ExamineResult]{
 				Data: web.ExamineResult{
-					Result:    domain.ResultBasic.ToUint8(),
-					RawResult: "评分：15K",
+					Result:    domain.ResultPassed.ToUint8(),
+					RawResult: "通过",
 					Amount:    uid,
 				},
 			},
@@ -172,7 +172,7 @@ func (s *ExamineHandlerTest) TestExamine() {
 					Id:     2,
 					Uid:    uid,
 					Cid:    2,
-					Result: domain.ResultIntermediate.ToUint8(),
+					Result: domain.ResultPassed.ToUint8(),
 					Ctime:  123,
 					Utime:  123,
 				}).Error
@@ -196,8 +196,8 @@ func (s *ExamineHandlerTest) TestExamine() {
 				assert.Equal(t, dao.CaseExamineRecord{
 					Uid:       uid,
 					Cid:       2,
-					Result:    domain.ResultBasic.ToUint8(),
-					RawResult: "评分：15K",
+					Result:    domain.ResultPassed.ToUint8(),
+					RawResult: "通过",
 					Tokens:    uid,
 					Amount:    uid,
 				}, record)
@@ -214,7 +214,7 @@ func (s *ExamineHandlerTest) TestExamine() {
 				assert.True(t, caseRes.Id > 0)
 				caseRes.Id = 0
 				assert.Equal(t, dao.CaseResult{
-					Result: domain.ResultBasic.ToUint8(),
+					Result: domain.ResultPassed.ToUint8(),
 					Cid:    csid,
 					Uid:    uid,
 				}, caseRes)
@@ -226,8 +226,8 @@ func (s *ExamineHandlerTest) TestExamine() {
 			},
 			wantResp: test.Result[web.ExamineResult]{
 				Data: web.ExamineResult{
-					Result:    domain.ResultBasic.ToUint8(),
-					RawResult: "评分：15K",
+					Result:    domain.ResultPassed.ToUint8(),
+					RawResult: "通过",
 					Amount:    uid,
 				},
 			},

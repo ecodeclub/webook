@@ -118,29 +118,54 @@ func (s *HandlerTestSuite) SetupSuite() {
 		}).AnyTimes()
 
 	caseSetSvc := casemocks.NewMockCaseSetService(ctrl)
+	caseSetSvc.EXPECT().GetByIdsWithCases(gomock.Any(), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, ids []int64) ([]cases.CaseSet, error) {
+			return slice.Map(ids, func(idx int, src int64) cases.CaseSet {
+				return cases.CaseSet{
+					ID:    src,
+					Title: fmt.Sprintf("这是案例集%d", src),
+					Cases: []cases.Case{
+						{
+							Id:    src*10 + 1,
+							Title: fmt.Sprintf("这是案例%d", src*10+1),
+						},
+						{
+							Id:    src*10 + 2,
+							Title: fmt.Sprintf("这是案例%d", src*10+2),
+						},
+					},
+				}
+			}), nil
+		}).AnyTimes()
 	caseSetSvc.EXPECT().GetByIds(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, ids []int64) ([]cases.CaseSet, error) {
 		return slice.Map(ids, func(idx int, src int64) cases.CaseSet {
 			return cases.CaseSet{
 				ID:    src,
 				Title: fmt.Sprintf("这是案例集%d", src),
-				Cases: []cases.Case{
-					{
-						Id:    src*10 + src,
-						Title: fmt.Sprintf("这是案例%d", src*10+src),
-					},
-					{
-						Id:    src*11 + src,
-						Title: fmt.Sprintf("这是案例%d", src*11+src),
-					},
-				},
 			}
 		}), nil
 	}).AnyTimes()
+
+	caseExamSvc := casemocks.NewMockExamineService(ctrl)
+	caseExamSvc.EXPECT().GetResults(gomock.Any(), gomock.Any(), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, uid int64, ids []int64) (map[int64]cases.ExamineResult, error) {
+			res := make(map[int64]cases.ExamineResult, len(ids))
+			for _, id := range ids {
+				res[id] = cases.ExamineResult{
+					Cid: id,
+					// 偶数不通过，基数通过
+					Result: cases.ExamineResultEnum(id % 2),
+				}
+			}
+			return res, nil
+		}).AnyTimes()
+
 	s.ctrl = ctrl
 	s.producer = evemocks.NewMockSyncEventProducer(s.ctrl)
+
 	handler, err := startup.InitHandler(
 		&baguwen.Module{Svc: queSvc, SetSvc: queSetSvc, ExamSvc: examSvc},
-		&cases.Module{Svc: caseSvc, SetSvc: caseSetSvc},
+		&cases.Module{Svc: caseSvc, SetSvc: caseSetSvc, ExamineSvc: caseExamSvc},
 		s.producer,
 	)
 	require.NoError(s.T(), err)
@@ -148,11 +173,15 @@ func (s *HandlerTestSuite) SetupSuite() {
 	server := egin.Load("server").Build()
 	server.Use(func(ctx *gin.Context) {
 		ctx.Set("_session", session.NewMemorySession(session.Claims{
-			Uid:  uid,
-			Data: map[string]string{"creator": "true"},
+			Uid: uid,
+			Data: map[string]string{
+				"creator":   "true",
+				"memberDDL": strconv.FormatInt(time.Now().Add(time.Hour).UnixMilli(), 10),
+			},
 		}))
 	})
 	handler.PrivateRoutes(server.Engine)
+	handler.MemberRoutes(server.Engine)
 	s.server = server
 	s.db = testioc.InitDB()
 	err = dao.InitTables(s.db)
@@ -741,10 +770,7 @@ func (s *HandlerTestSuite) TestDetailRef() {
 			},
 			Cases: []web.Case{},
 			CaseSets: []web.CaseSet{
-				{ID: 1, Title: "这是案例集1", Cases: []web.Case{
-					{Id: 11, Title: "这是案例11"},
-					{Id: 12, Title: "这是案例12"},
-				}},
+				{ID: 1, Title: "这是案例集1", Cases: []web.Case{}},
 			},
 		},
 		Advanced: web.SkillLevel{
@@ -961,7 +987,7 @@ func (s *HandlerTestSuite) TestRefsByLevelIDs() {
 			Slid:  2,
 			Sid:   2,
 			Rtype: "caseSet",
-			Rid:   6,
+			Rid:   7,
 			Ctime: time.Now().UnixMilli(),
 			Utime: time.Now().UnixMilli(),
 		},
@@ -1036,12 +1062,13 @@ func (s *HandlerTestSuite) TestRefsByLevelIDs() {
 						},
 						CaseSets: []web.CaseSet{
 							{
-								ID:    6,
-								Title: "这是案例集6",
+								ID:    7,
+								Title: "这是案例集7",
 								Cases: []web.Case{
 									{
-										Id:    66,
-										Title: "这是案例66",
+										Id:            71,
+										Title:         "这是案例71",
+										ExamineResult: 1,
 									},
 									{
 										Id:    72,

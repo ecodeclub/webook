@@ -19,37 +19,43 @@ import (
 )
 
 type Handler struct {
-	svc        service.SkillService
-	queSvc     baguwen.Service
-	caseSvc    cases.Service
-	caseSetSvc cases.SetService
-	queSetSvc  baguwen.QuestionSetService
-	examSvc    baguwen.ExamService
-	logger     *elog.Component
+	svc         service.SkillService
+	queSvc      baguwen.Service
+	caseSvc     cases.Service
+	caseSetSvc  cases.SetService
+	caseExamSvc cases.ExamineService
+	queSetSvc   baguwen.QuestionSetService
+	queExamSvc  baguwen.ExamService
+	logger      *elog.Component
 }
 
 func NewHandler(svc service.SkillService,
 	queSvc baguwen.Service,
 	caseSvc cases.Service,
 	caseSetSvc cases.SetService,
+	caseExamSvc cases.ExamineService,
 	queSetSvc baguwen.QuestionSetService,
 	examSvc baguwen.ExamService) *Handler {
 	return &Handler{
-		svc:        svc,
-		logger:     elog.DefaultLogger,
-		queSvc:     queSvc,
-		queSetSvc:  queSetSvc,
-		examSvc:    examSvc,
-		caseSvc:    caseSvc,
-		caseSetSvc: caseSetSvc,
+		svc:         svc,
+		logger:      elog.DefaultLogger,
+		queSvc:      queSvc,
+		queSetSvc:   queSetSvc,
+		queExamSvc:  examSvc,
+		caseSvc:     caseSvc,
+		caseSetSvc:  caseSetSvc,
+		caseExamSvc: caseExamSvc,
 	}
 }
 
 func (h *Handler) PrivateRoutes(server *gin.Engine) {
-	server.POST("/skill/list", ginx.B[Page](h.List))
-	server.POST("/skill/detail-refs", ginx.B[Sid](h.DetailRefs))
 	server.POST("/skill/save", ginx.S(h.Permission), ginx.B[SaveReq](h.Save))
 	server.POST("/skill/save-refs", ginx.S(h.Permission), ginx.B(h.SaveRefs))
+}
+
+func (h *Handler) MemberRoutes(server *gin.Engine) {
+	server.POST("/skill/list", ginx.B[Page](h.List))
+	server.POST("/skill/detail-refs", ginx.B[Sid](h.DetailRefs))
 	server.POST("/skill/level-refs", ginx.BS(h.RefsByLevelIDs))
 }
 
@@ -106,6 +112,7 @@ func (h *Handler) toSkillList(data []domain.Skill, cnt int64) SkillList {
 	}
 }
 
+// DetailRefs 这个接口是不需要结果的
 func (h *Handler) DetailRefs(ctx *ginx.Context, req Sid) (ginx.Result, error) {
 	skill, err := h.svc.Info(ctx, req.Sid)
 	if err != nil {
@@ -173,7 +180,9 @@ func (h *Handler) DetailRefs(ctx *ginx.Context, req Sid) (ginx.Result, error) {
 		cms := slice.ToMap(cs, func(ele cases.CaseSet) int64 {
 			return ele.ID
 		})
-		res.setCaseSets(cms)
+		res.Basic.setCaseSet(cms, nil)
+		res.Intermediate.setCaseSet(cms, nil)
+		res.Advanced.setCaseSet(cms, nil)
 		return nil
 	})
 	return ginx.Result{
@@ -190,7 +199,7 @@ func (h *Handler) RefsByLevelIDs(ctx *ginx.Context, req IDs, sess session.Sessio
 	if err != nil {
 		return systemErrorResult, err
 	}
-	csm, cssm, qsm, qssmap, examResMap, err := h.skillLevels(ctx, uid, res)
+	csm, cssm, caseResultMap, qsm, qssmap, examResMap, err := h.skillLevels(ctx, uid, res)
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -201,7 +210,7 @@ func (h *Handler) RefsByLevelIDs(ctx *ginx.Context, req IDs, sess session.Sessio
 			sl.setCases(csm)
 			sl.setQuestionsWithExam(qsm, examResMap)
 			sl.setQuestionSet(qssmap, examResMap)
-			sl.setCaseSet(cssm)
+			sl.setCaseSet(cssm, caseResultMap)
 			return sl
 		}),
 	}, nil
@@ -210,18 +219,20 @@ func (h *Handler) RefsByLevelIDs(ctx *ginx.Context, req IDs, sess session.Sessio
 func (h *Handler) skillLevels(ctx context.Context, uid int64, levels []domain.SkillLevel) (
 	map[int64]cases.Case,
 	map[int64]cases.CaseSet,
+	map[int64]cases.ExamineResult,
 	map[int64]baguwen.Question,
 	map[int64]baguwen.QuestionSet,
 	map[int64]baguwen.ExamResult,
 	error,
 ) {
 	var (
-		eg         errgroup.Group
-		csm        map[int64]cases.Case
-		cssm       map[int64]cases.CaseSet
-		qsm        map[int64]baguwen.Question
-		qssmap     map[int64]baguwen.QuestionSet
-		examResMap map[int64]baguwen.ExamResult
+		eg             errgroup.Group
+		csm            map[int64]cases.Case
+		cssm           map[int64]cases.CaseSet
+		qsm            map[int64]baguwen.Question
+		qssmap         map[int64]baguwen.QuestionSet
+		queExamResMap  map[int64]baguwen.ExamResult
+		caseExamResMap map[int64]cases.ExamineResult
 	)
 	qids := make([]int64, 0, 32)
 	cids := make([]int64, 0, 16)
@@ -233,8 +244,15 @@ func (h *Handler) skillLevels(ctx context.Context, uid int64, levels []domain.Sk
 		csids = append(csids, sl.CaseSets...)
 		qsids = append(qsids, sl.QuestionSets...)
 	}
-	var qid2s []int64
+
+	var (
+		// 合并了题集内部题目 ID 的
+		qid2s []int64
+		// 合并了案例集内部案例 ID 的
+		cid2s []int64
+	)
 	qid2s = append(qid2s, qids...)
+	cid2s = append(cid2s, cids...)
 
 	//  获取case
 	eg.Go(func() error {
@@ -247,12 +265,16 @@ func (h *Handler) skillLevels(ctx context.Context, uid int64, levels []domain.Sk
 
 	// 获取 caseSet
 	eg.Go(func() error {
-		sets, err := h.caseSetSvc.GetByIds(ctx, csids)
-		cssm = slice.ToMap(sets, func(element cases.CaseSet) int64 {
+		csets, cserr := h.caseSetSvc.GetByIdsWithCases(ctx, csids)
+		cssm = slice.ToMap(csets, func(element cases.CaseSet) int64 {
 			return element.ID
 		})
-		return err
+		for _, cs := range csets {
+			cid2s = append(cid2s, cs.Cids()...)
+		}
+		return cserr
 	})
+
 	// 获取问题
 	eg.Go(func() error {
 		qs, err1 := h.queSvc.GetPubByIDs(ctx, qids)
@@ -275,14 +297,26 @@ func (h *Handler) skillLevels(ctx context.Context, uid int64, levels []domain.Sk
 		}
 		return nil
 	})
-	if err := eg.Wait(); err != nil {
-		return nil, nil, nil, nil, nil, err
-	}
-	// 获取进度
-	examResMap, err := h.examSvc.GetResults(ctx, uid, qid2s)
-	if err != nil {
-		return nil, nil, nil, nil, nil, err
-	}
-	return csm, cssm, qsm, qssmap, examResMap, nil
 
+	if err := eg.Wait(); err != nil {
+		return nil, nil, nil, nil, nil, nil, err
+	}
+
+	eg = errgroup.Group{}
+	eg.Go(func() error {
+		var err1 error
+		queExamResMap, err1 = h.queExamSvc.GetResults(ctx, uid, qid2s)
+		return err1
+	})
+
+	eg.Go(func() error {
+		var err1 error
+		caseExamResMap, err1 = h.caseExamSvc.GetResults(ctx, uid, cid2s)
+		return err1
+	})
+
+	if err := eg.Wait(); err != nil {
+		return nil, nil, nil, nil, nil, nil, err
+	}
+	return csm, cssm, caseExamResMap, qsm, qssmap, queExamResMap, nil
 }

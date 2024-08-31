@@ -2,7 +2,7 @@
   "mappings": {
     "properties": {
       "id": { "type": "long" },
-      "labels": { "type": "text" },
+      "labels": { "type": "keyword" },
       "name": { "type": "text" },
       "desc": { "type": "text" },
       "basic": {

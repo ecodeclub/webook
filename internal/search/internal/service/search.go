@@ -63,18 +63,39 @@ func (s *searchSvc) Search(ctx context.Context, offset, limit int, expr string) 
 	return res, nil
 
 }
-func (s *searchSvc) parseExpr(expr string) (string, string, error) {
+func (s *searchSvc) parseExpr(expr string) (string, []domain.QueryMeta, error) {
 	searchParams := strings.SplitN(expr, ":", 3)
 	if len(searchParams) == 3 {
 		typ := searchParams[0]
 		if typ != "biz" {
-			return "", "", errors.New("参数错误")
+			return "", nil, errors.New("参数错误")
 		}
 		biz := searchParams[1]
 		keywords := searchParams[2]
-		return biz, keywords, nil
+		return biz, s.getQueryMeta(keywords), nil
 	}
-	return "", "", errors.New("参数错误")
+	return "", nil, errors.New("参数错误")
+}
+
+func (s *searchSvc) getQueryMeta(keywords string) []domain.QueryMeta {
+	keywordList := strings.Split(keywords, " ")
+	metas := make([]domain.QueryMeta, 0, len(keywordList))
+	for _, keyword := range keywordList {
+		params := strings.Split(keyword, ":")
+		if len(params) == 1 {
+			metas = append(metas, domain.QueryMeta{
+				Keyword: params[0],
+				IsAll:   true,
+			})
+		}
+		if len(params) == 2 {
+			metas = append(metas, domain.QueryMeta{
+				Keyword: params[1],
+				Col:     params[0],
+			})
+		}
+	}
+	return metas
 }
 
 func NewSearchSvc(
