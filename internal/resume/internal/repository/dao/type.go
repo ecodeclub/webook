@@ -1,5 +1,7 @@
 package dao
 
+import "time"
+
 // 简历上的项目
 type ResumeProject struct {
 	ID int64 `gorm:"primaryKey,autoIncrement"`
@@ -49,4 +51,21 @@ type RefCase struct {
 	Level uint8 `gorm:"not null;default:0"`
 	Utime int64
 	Ctime int64
+}
+
+type Experience struct {
+	ID  int64 `gorm:"primaryKey,autoIncrement"`
+	Uid int64 `gorm:"not null;index"`
+	// 工作经历开始时间
+	StartTime time.Time `gorm:"type:date;not null;comment:开始时间"`
+	// 工作经历结束时间
+	EndTime          time.Time `gorm:"type:date;not null;comment:结束时间"`
+	Title            string    `gorm:"type:varchar(255);not null"`
+	CompanyName      string    `gorm:"type:varchar(255);not null"`
+	Location         string    `gorm:"type:varchar(255);not null"`
+	Responsibilities string    `gorm:"type:text;not null"`
+	Accomplishments  string    `gorm:"type:text;not null"`
+	Skills           string    `gorm:"type:text;not null"`
+	Utime            int64
+	Ctime            int64
 }
