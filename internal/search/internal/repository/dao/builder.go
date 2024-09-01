@@ -1,8 +1,9 @@
 package dao
 
 import (
-	"github.com/ecodeclub/ekit/slice"
 	"strings"
+
+	"github.com/ecodeclub/ekit/slice"
 
 	"github.com/ecodeclub/webook/internal/search/internal/domain"
 	"github.com/olivere/elastic/v7"
