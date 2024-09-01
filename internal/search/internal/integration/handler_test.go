@@ -166,6 +166,21 @@ func (s *HandlerTestSuite) TestBizSearch() {
 						Result:     0,
 					},
 					{
+						Id:         5,
+						Uid:        1,
+						Labels:     []string{"test_label"},
+						Title:      "Elasticsearch标题",
+						Content:    "Elasticsearch内容",
+						GithubRepo: "Elasticsearch github代码库",
+						GiteeRepo:  "Elasticsearch gitee代码库",
+						Keywords:   "Elasticsearch关键词",
+						Shorthand:  "Elasticsearch速记",
+						Highlight:  "Elasticsearch亮点",
+						Guidance:   "Elasticsearch引导",
+						Status:     2,
+						Result:     1,
+					},
+					{
 						Id:         2,
 						Uid:        1,
 						Labels:     []string{"label1"},
@@ -1290,6 +1305,7 @@ func (s *HandlerTestSuite) TestSearchLimit() {
 				s.initSkills()
 			},
 			after: func(t *testing.T, wantRes web.SearchResult, actual web.SearchResult) {
+
 				for idx := range actual.Skills {
 					require.True(t, actual.Skills[idx].Utime != "")
 					actual.Skills[idx].Utime = ""
@@ -1324,6 +1340,7 @@ func (s *HandlerTestSuite) TestSearchLimit() {
 						Name:   "",
 						Desc:   "test_desc",
 					},
+
 					{
 						ID:     4,
 						Labels: []string{"programming"},
@@ -2177,6 +2194,6 @@ func handlerSkillLevel(t *testing.T, sk web.SkillLevel) web.SkillLevel {
 	return sk
 }
 
-//func TestHandler(t *testing.T) {
-//	suite.Run(t, new(HandlerTestSuite))
-//}
+func TestHandler(t *testing.T) {
+	suite.Run(t, new(HandlerTestSuite))
+}

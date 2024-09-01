@@ -72,6 +72,7 @@ func NewQuestionDAO(client *elastic.Client) QuestionDAO {
 			"labels": {
 				Name:  "labels",
 				Boost: questionLabelBoost,
+				IsTerm: true,
 			},
 			"content": {
 				Name:  "content",
