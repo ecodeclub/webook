@@ -3,6 +3,8 @@ package dao
 import (
 	"strings"
 
+	"github.com/ecodeclub/ekit/slice"
+
 	"github.com/ecodeclub/webook/internal/search/internal/domain"
 	"github.com/olivere/elastic/v7"
 )
@@ -13,6 +15,8 @@ type Col struct {
 	Name string
 	// 权重
 	Boost int
+	// 是否是精确匹配
+	IsTerm bool
 }
 
 func buildCols(cols map[string]Col, queryMetas []domain.QueryMeta) []elastic.Query {
@@ -29,9 +33,14 @@ func buildCols(cols map[string]Col, queryMetas []domain.QueryMeta) []elastic.Que
 	queries := make([]elastic.Query, 0, len(colMap))
 	for colname, keyword := range colMap {
 		col := cols[colname]
-		query := elastic.NewMatchQuery(colname, strings.Join(keyword, " "))
-		if col.Boost != 0 {
-			query = query.Boost(float64(col.Boost))
+		var query elastic.Query
+		if col.IsTerm {
+			termVals := slice.Map(keyword, func(idx int, src string) any {
+				return src
+			})
+			query = elastic.NewTermsQuery(colname, termVals...).Boost(float64(col.Boost))
+		} else {
+			query = elastic.NewMatchQuery(colname, strings.Join(keyword, " ")).Boost(float64(col.Boost))
 		}
 		queries = append(queries, query)
 	}
