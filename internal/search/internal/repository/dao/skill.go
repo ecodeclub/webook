@@ -25,8 +25,8 @@ import (
 
 const (
 	SkillIndexName  = "skill_index"
-	skillNameBoost  = 15
-	skillLabelBoost = 3
+	skillNameBoost  = 30
+	skillLabelBoost = 6
 	skillDescBoost  = 2
 )
 
@@ -65,8 +65,9 @@ func NewSkillElasticDAO(client *elastic.Client) SkillDAO {
 				Boost: skillNameBoost,
 			},
 			"labels": {
-				Name:  "labels",
-				Boost: skillLabelBoost,
+				Name:   "labels",
+				Boost:  skillLabelBoost,
+				IsTerm: true,
 			},
 			"desc": {
 				Name:  "desc",

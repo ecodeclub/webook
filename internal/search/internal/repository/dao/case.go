@@ -86,8 +86,9 @@ func NewCaseElasticDAO(client *elastic.Client) *CaseElasticDAO {
 				Boost: caseTitleBoost,
 			},
 			"labels": {
-				Name:  "labels",
-				Boost: caseLabelBoost,
+				Name:   "labels",
+				Boost:  caseLabelBoost,
+				IsTerm: true,
 			},
 			"keywords": {
 				Name:  "keywords",
