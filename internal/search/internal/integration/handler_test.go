@@ -24,6 +24,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ecodeclub/ekit/slice"
+	"github.com/ecodeclub/webook/internal/cases"
+	casemocks "github.com/ecodeclub/webook/internal/cases/mocks"
+	"go.uber.org/mock/gomock"
+
 	"github.com/ecodeclub/mq-api"
 	"github.com/ecodeclub/webook/internal/search/internal/event"
 
@@ -54,19 +59,38 @@ type HandlerTestSuite struct {
 }
 
 func (s *HandlerTestSuite) SetupSuite() {
-	handler, err := startup.InitHandler()
+	ctrl := gomock.NewController(s.T())
+	examSvc := casemocks.NewMockExamineService(ctrl)
+	examSvc.EXPECT().GetResults(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, uid int64, ids []int64) (map[int64]cases.ExamineResult, error) {
+		res := slice.Map(ids, func(idx int, src int64) cases.ExamineResult {
+			return cases.ExamineResult{
+				Cid:    src,
+				Result: cases.ExamineResultEnum(src % 2),
+			}
+		})
+		resMap := make(map[int64]cases.ExamineResult, len(res))
+		for _, examRes := range res {
+			resMap[examRes.Cid] = examRes
+		}
+		return resMap, nil
+	}).AnyTimes()
+	handler, err := startup.InitHandler(&cases.Module{
+		ExamineSvc: examSvc,
+	})
 	require.NoError(s.T(), err)
 	econf.Set("server", map[string]any{"contextTimeout": "1s"})
 	server := egin.Load("server").Build()
-	handler.PrivateRoutes(server.Engine)
+
 	server.Use(func(ctx *gin.Context) {
 		ctx.Set("_session", session.NewMemorySession(session.Claims{
 			Uid: uid,
 			Data: map[string]string{
+				"creator":   "true",
 				"memberDDL": strconv.FormatInt(time.Now().Add(time.Hour).UnixMilli(), 10),
 			},
 		}))
 	})
+	handler.PrivateRoutes(server.Engine)
 	server.Use(middleware.NewCheckMembershipMiddlewareBuilder(nil).Build())
 	s.server = server
 	s.es = testioc.InitES()
@@ -139,6 +163,7 @@ func (s *HandlerTestSuite) TestBizSearch() {
 						Highlight:  "Elasticsearch亮点",
 						Guidance:   "Elasticsearch引导",
 						Status:     2,
+						Result:     0,
 					},
 					{
 						Id:         5,
@@ -153,6 +178,7 @@ func (s *HandlerTestSuite) TestBizSearch() {
 						Highlight:  "Elasticsearch亮点",
 						Guidance:   "Elasticsearch引导",
 						Status:     2,
+						Result:     1,
 					},
 					{
 						Id:         2,
@@ -167,6 +193,7 @@ func (s *HandlerTestSuite) TestBizSearch() {
 						Highlight:  "Elasticsearch亮点",
 						Guidance:   "Elasticsearch引导",
 						Status:     2,
+						Result:     0,
 					},
 					{
 						Id:         3,
@@ -181,6 +208,7 @@ func (s *HandlerTestSuite) TestBizSearch() {
 						Highlight:  "Elasticsearch亮点",
 						Guidance:   "Elasticsearch引导",
 						Status:     2,
+						Result:     1,
 					},
 					{
 						Id:         1,
@@ -195,6 +223,7 @@ func (s *HandlerTestSuite) TestBizSearch() {
 						Highlight:  "Elasticsearch亮点",
 						Guidance:   "Elasticsearch引导",
 						Status:     2,
+						Result:     1,
 					},
 					{
 						Id:         4,
@@ -209,6 +238,7 @@ func (s *HandlerTestSuite) TestBizSearch() {
 						Highlight:  "Elasticsearch亮点",
 						Guidance:   "test_guidance",
 						Status:     2,
+						Result:     0,
 					},
 				},
 			},
@@ -722,6 +752,7 @@ func (s *HandlerTestSuite) TestSearch() {
 				Highlight:  "Elasticsearch亮点",
 				Guidance:   "Elasticsearch引导",
 				Status:     2,
+				Result:     0,
 			},
 		},
 		Questions: []web.Question{
@@ -770,6 +801,234 @@ func (s *HandlerTestSuite) TestSearch() {
 		ans.Skills[idx].Advanced = handlerSkillLevel(t, ans.Skills[idx].Advanced)
 	}
 	assert.Equal(t, want, ans)
+}
+
+func (s *HandlerTestSuite) TestSearchWithCol() {
+	testCases := []struct {
+		name    string
+		before  func(t *testing.T)
+		after   func(t *testing.T, wantRes web.SearchResult, actual web.SearchResult)
+		wantAns web.SearchResult
+		req     web.SearchReq
+	}{
+		{
+			name: "搜索cases",
+			before: func(t *testing.T) {
+				s.initCases()
+			},
+			after: func(t *testing.T, wantRes web.SearchResult, actual web.SearchResult) {
+				for idx := range actual.Cases {
+					require.True(t, actual.Cases[idx].Utime != "")
+					require.True(t, actual.Cases[idx].Ctime != "")
+					actual.Cases[idx].Ctime = ""
+					actual.Cases[idx].Utime = ""
+				}
+				assert.Equal(t, wantRes, actual)
+			},
+			wantAns: web.SearchResult{
+				Cases: []web.Case{
+					{
+						Id:         6,
+						Uid:        1,
+						Labels:     []string{"label1"},
+						Title:      "test_title",
+						Content:    "Elasticsearch内容",
+						GithubRepo: "Elasticsearch github代码库",
+						GiteeRepo:  "Elasticsearch gitee代码库",
+						Keywords:   "Elasticsearch关键词",
+						Shorthand:  "Elasticsearch速记",
+						Highlight:  "Elasticsearch亮点",
+						Guidance:   "Elasticsearch引导",
+						Status:     2,
+						Result:     0,
+					},
+					{
+						Id:         5,
+						Uid:        1,
+						Labels:     []string{"test_label"},
+						Title:      "Elasticsearch标题",
+						Content:    "Elasticsearch内容",
+						GithubRepo: "Elasticsearch github代码库",
+						GiteeRepo:  "Elasticsearch gitee代码库",
+						Keywords:   "Elasticsearch关键词",
+						Shorthand:  "Elasticsearch速记",
+						Highlight:  "Elasticsearch亮点",
+						Guidance:   "Elasticsearch引导",
+						Status:     2,
+						Result:     1,
+					},
+				},
+			},
+			req: web.SearchReq{
+				Keywords: "biz:case:labels:test_label title:test_title",
+				Offset:   0,
+				Limit:    20,
+			},
+		},
+		{
+			name: "搜索questions",
+			before: func(t *testing.T) {
+				s.initQuestions()
+			},
+			after: func(t *testing.T, wantRes web.SearchResult, actual web.SearchResult) {
+				for idx := range actual.Questions {
+					require.True(t, actual.Questions[idx].Utime != "")
+					actual.Questions[idx].Utime = ""
+					if idx < 3 {
+						assert.Equal(t, wantRes.Questions[idx], actual.Questions[idx])
+					}
+				}
+				assert.ElementsMatch(t, wantRes.Questions, actual.Questions)
+
+			},
+			wantAns: web.SearchResult{
+				Questions: []web.Question{
+					{
+						ID:      2,
+						UID:     101,
+						Title:   "test_title",
+						Labels:  []string{"elasticsearch", "search"},
+						Content: "I want to know how to use Elasticsearch for searching.",
+						Status:  2,
+					},
+					{
+						ID:      1,
+						UID:     101,
+						Title:   "dasdsa",
+						Labels:  []string{"test_label"},
+						Content: "I want to know how to use Elasticsearch for searching.",
+						Status:  2,
+					},
+					{
+						ID:      12,
+						UID:     101,
+						Title:   "How to use Elasticsearch?",
+						Labels:  []string{"elasticsearch", "search"},
+						Content: "I want to know how to use Elasticsearch for searching.",
+						Status:  2,
+						Answer: web.Answer{
+							Intermediate: web.AnswerElement{
+								ID:        1,
+								Content:   "Elasticsearch is a distributed search and analytics engine.",
+								Keywords:  "test_intermediate_keywords",
+								Shorthand: "",
+								Highlight: "distributed search and analytics engine",
+								Guidance:  "Learn more about Elasticsearch documentation.",
+							},
+						},
+					},
+				},
+			},
+			req: web.SearchReq{
+				Keywords: "biz:question:title:test_title labels:test_label answer.intermediate.keywords:test_intermediate_keywords",
+				Offset:   0,
+				Limit:    20,
+			},
+		},
+		{
+			name: "搜索skills",
+			before: func(t *testing.T) {
+				s.initSkills()
+			},
+			after: func(t *testing.T, wantRes web.SearchResult, actual web.SearchResult) {
+				for idx := range actual.Skills {
+					require.True(t, actual.Skills[idx].Utime != "")
+					actual.Skills[idx].Utime = ""
+					actual.Skills[idx].Ctime = ""
+					actual.Skills[idx].Basic = handlerSkillLevel(s.T(), actual.Skills[idx].Basic)
+					actual.Skills[idx].Intermediate = handlerSkillLevel(s.T(), actual.Skills[idx].Intermediate)
+					actual.Skills[idx].Advanced = handlerSkillLevel(s.T(), actual.Skills[idx].Advanced)
+					if idx < 3 {
+						assert.Equal(t, wantRes.Skills[idx], actual.Skills[idx])
+					}
+				}
+				assert.ElementsMatch(t, wantRes.Skills, actual.Skills)
+
+			},
+			wantAns: web.SearchResult{
+				Skills: []web.Skill{
+					{
+						ID:     1,
+						Labels: []string{"programming", "golang"},
+						Name:   "test_name",
+						Desc:   "Learn Golang programming language",
+					},
+					{
+						ID:     2,
+						Labels: []string{"programming", "test_label"},
+						Name:   "",
+						Desc:   "Learn Golang programming language",
+					},
+					{
+						ID:     4,
+						Labels: []string{"programming"},
+						Name:   "",
+						Desc:   "",
+						Basic: web.SkillLevel{
+							ID:        1,
+							Desc:      "test_basic",
+							Questions: []int64{1},
+							Cases:     []int64{1},
+						},
+					},
+				},
+			},
+			req: web.SearchReq{
+				Keywords: "biz:skill:labels:golang name:test_name labels:test_label basic.desc:test_basic",
+				Offset:   0,
+				Limit:    20,
+			},
+		},
+		{
+			name: "搜索questionSets",
+			before: func(t *testing.T) {
+				s.initQuestionSets()
+			},
+			after: func(t *testing.T, wantRes web.SearchResult, actual web.SearchResult) {
+				for idx := range actual.QuestionSet {
+					require.True(t, actual.QuestionSet[idx].Utime != "")
+					actual.QuestionSet[idx].Utime = ""
+				}
+			},
+			wantAns: web.SearchResult{
+				QuestionSet: []web.QuestionSet{
+					{
+						Id:          2,
+						Uid:         123,
+						Title:       "test_title",
+						Description: "This is a test question set",
+					},
+					{
+						Id:          1,
+						Uid:         123,
+						Title:       "jjjkjk",
+						Description: "test_desc",
+					},
+				},
+			},
+			req: web.SearchReq{
+				Keywords: "biz:questionSet:title:test_title",
+				Offset:   0,
+				Limit:    20,
+			},
+		},
+	}
+	for _, tc := range testCases {
+		tc := tc
+		s.T().Run(tc.name, func(t *testing.T) {
+			tc.before(t)
+			time.Sleep(3 * time.Second)
+			req, err := http.NewRequest(http.MethodPost,
+				"/search/list", iox.NewJSONReader(tc.req))
+			req.Header.Set("content-type", "application/json")
+			require.NoError(t, err)
+			recorder := test.NewJSONResponseRecorder[web.SearchResult]()
+			s.server.ServeHTTP(recorder, req)
+			require.Equal(t, 200, recorder.Code)
+			tc.after(t, tc.wantAns, recorder.MustScan().Data)
+		})
+	}
+
 }
 
 func (s *HandlerTestSuite) TestSync() {
@@ -973,6 +1232,7 @@ func (s *HandlerTestSuite) TestSearchLimit() {
 						Highlight:  "Elasticsearch亮点",
 						Guidance:   "Elasticsearch引导",
 						Status:     2,
+						Result:     0,
 					},
 					{
 						Id:         5,
@@ -987,6 +1247,7 @@ func (s *HandlerTestSuite) TestSearchLimit() {
 						Highlight:  "Elasticsearch亮点",
 						Guidance:   "Elasticsearch引导",
 						Status:     2,
+						Result:     1,
 					},
 				},
 			},
@@ -1044,6 +1305,7 @@ func (s *HandlerTestSuite) TestSearchLimit() {
 				s.initSkills()
 			},
 			after: func(t *testing.T, wantRes web.SearchResult, actual web.SearchResult) {
+
 				for idx := range actual.Skills {
 					require.True(t, actual.Skills[idx].Utime != "")
 					actual.Skills[idx].Utime = ""
@@ -1078,6 +1340,7 @@ func (s *HandlerTestSuite) TestSearchLimit() {
 						Name:   "",
 						Desc:   "test_desc",
 					},
+
 					{
 						ID:     4,
 						Labels: []string{"programming"},
@@ -1153,7 +1416,7 @@ func (s *HandlerTestSuite) getDataFromEs(t *testing.T, index, docID string) *ela
 }
 
 func getCase(t *testing.T) event.SyncEvent {
-	event := event.SyncEvent{
+	evt := event.SyncEvent{
 		Biz:   "case",
 		BizID: 1,
 	}
@@ -1175,8 +1438,8 @@ func getCase(t *testing.T) event.SyncEvent {
 	}
 	caseByte, err := json.Marshal(val)
 	require.NoError(t, err)
-	event.Data = string(caseByte)
-	return event
+	evt.Data = string(caseByte)
+	return evt
 }
 
 func getQuestion(t *testing.T) event.SyncEvent {

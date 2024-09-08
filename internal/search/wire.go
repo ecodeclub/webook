@@ -20,6 +20,8 @@ import (
 	"context"
 	"sync"
 
+	"github.com/ecodeclub/webook/internal/cases"
+
 	"github.com/ecodeclub/mq-api"
 	"github.com/ecodeclub/webook/internal/search/internal/event"
 
@@ -31,11 +33,12 @@ import (
 	"github.com/olivere/elastic/v7"
 )
 
-func InitModule(es *elastic.Client, q mq.MQ) (*Module, error) {
+func InitModule(es *elastic.Client, q mq.MQ, caModule *cases.Module) (*Module, error) {
 	wire.Build(
 		InitSearchSvc,
 		InitSyncSvc,
 		initSyncConsumer,
+		wire.FieldsOf(new(*cases.Module), "ExamineSvc"),
 		web.NewHandler,
 		wire.Struct(new(Module), "*"),
 	)

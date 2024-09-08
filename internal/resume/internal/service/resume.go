@@ -13,7 +13,7 @@ type Service interface {
 	DeleteProject(ctx context.Context, uid, id int64) error
 	FindProjects(ctx context.Context, uid int64) ([]domain.Project, error)
 	ProjectInfo(ctx context.Context, id int64) (domain.Project, error)
-	SaveContribution(ctx context.Context, id int64, contribution domain.Contribution) error
+	SaveContribution(ctx context.Context, id int64, contribution domain.Contribution) (int64, error)
 	// 删除职责
 	DeleteContribution(ctx context.Context, id int64) error
 	// 保存难点
@@ -42,13 +42,14 @@ func (s *service) DeleteProject(ctx context.Context, uid, id int64) error {
 
 func (s *service) FindProjects(ctx context.Context, uid int64) ([]domain.Project, error) {
 	return s.repo.FindProjects(ctx, uid)
+
 }
 
 func (s *service) ProjectInfo(ctx context.Context, id int64) (domain.Project, error) {
 	return s.repo.ProjectInfo(ctx, id)
 }
 
-func (s *service) SaveContribution(ctx context.Context, id int64, contribution domain.Contribution) error {
+func (s *service) SaveContribution(ctx context.Context, id int64, contribution domain.Contribution) (int64, error) {
 	return s.repo.SaveContribution(ctx, id, contribution)
 }
 

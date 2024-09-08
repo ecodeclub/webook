@@ -15,10 +15,12 @@ type ResumeProjectDAO interface {
 	Delete(ctx context.Context, uid, id int64) error
 	Find(ctx context.Context, uid int64) ([]ResumeProject, error)
 	First(ctx context.Context, id int64) (ResumeProject, error)
-	SaveContribution(ctx context.Context, contribution Contribution, cases []RefCase) error
+	SaveContribution(ctx context.Context, contribution Contribution, cases []RefCase) (int64, error)
 	FindContributions(ctx context.Context, projectId int64) ([]Contribution, error)
+	BatchFindContributions(ctx context.Context, projectIds []int64) (map[int64][]Contribution, error)
 	FindRefCases(ctx context.Context, contributionIds []int64) (map[int64][]RefCase, error)
 	SaveDifficulty(ctx context.Context, difficulty Difficulty) error
+	BatchFindDifficulty(ctx context.Context, projectIds []int64) (map[int64][]Difficulty, error)
 	FindDifficulties(ctx context.Context, projectId int64) ([]Difficulty, error)
 	DeleteDifficulty(ctx context.Context, id int64) error
 	DeleteContribution(ctx context.Context, id int64) error
@@ -26,6 +28,48 @@ type ResumeProjectDAO interface {
 
 type resumeProjectDAO struct {
 	db *egorm.Component
+}
+
+func (r *resumeProjectDAO) BatchFindContributions(ctx context.Context, projectIds []int64) (map[int64][]Contribution, error) {
+	var contributions []Contribution
+	err := r.db.WithContext(ctx).Where("project_id in ?", projectIds).Find(&contributions).Error
+	if err != nil {
+		return nil, err
+	}
+	contributionMap := make(map[int64][]Contribution, len(projectIds))
+	for _, contribution := range contributions {
+		cs, ok := contributionMap[contribution.ProjectID]
+		if ok {
+			cs = append(cs, contribution)
+			contributionMap[contribution.ProjectID] = cs
+		} else {
+			contributionMap[contribution.ProjectID] = []Contribution{
+				contribution,
+			}
+		}
+	}
+	return contributionMap, nil
+}
+
+func (r *resumeProjectDAO) BatchFindDifficulty(ctx context.Context, projectIds []int64) (map[int64][]Difficulty, error) {
+	var difficulties []Difficulty
+	err := r.db.WithContext(ctx).Where("project_id in ?", projectIds).Find(&difficulties).Error
+	if err != nil {
+		return nil, err
+	}
+	diffMap := make(map[int64][]Difficulty, len(projectIds))
+	for _, diff := range difficulties {
+		diffs, ok := diffMap[diff.ProjectID]
+		if ok {
+			diffs = append(diffs, diff)
+			diffMap[diff.ProjectID] = diffs
+		} else {
+			diffMap[diff.ProjectID] = []Difficulty{
+				diff,
+			}
+		}
+	}
+	return diffMap, nil
 }
 
 func NewResumeProjectDAO(db *egorm.Component) ResumeProjectDAO {
@@ -94,9 +138,11 @@ func (r *resumeProjectDAO) FindContributions(ctx context.Context, projectId int6
 	return contributions, err
 }
 
-func (r *resumeProjectDAO) SaveContribution(ctx context.Context, contribution Contribution, cases []RefCase) error {
-	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		contributionId, err := r.saveContribution(ctx, tx, contribution)
+func (r *resumeProjectDAO) SaveContribution(ctx context.Context, contribution Contribution, cases []RefCase) (int64, error) {
+	var contributionId int64
+	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var err error
+		contributionId, err = r.saveContribution(ctx, tx, contribution)
 		if err != nil {
 			return err
 		}
@@ -105,6 +151,7 @@ func (r *resumeProjectDAO) SaveContribution(ctx context.Context, contribution Co
 		}
 		return r.saveContributionCases(ctx, tx, contribution, cases)
 	})
+	return contributionId, err
 }
 
 func (r *resumeProjectDAO) saveContribution(ctx context.Context, tx *gorm.DB, contribution Contribution) (int64, error) {

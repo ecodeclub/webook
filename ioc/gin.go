@@ -18,6 +18,8 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/ecodeclub/webook/internal/resume"
+
 	"github.com/ecodeclub/webook/internal/bff"
 
 	"github.com/ecodeclub/webook/internal/roadmap"
@@ -83,6 +85,7 @@ func initGinxServer(sp session.Provider,
 	bffHdl *bff.Handler,
 	csHdl *cases.CaseSetHandler,
 	caseExamineHdl *cases.ExamineHandler,
+	resumePrjHdl *resume.ProjectHandler,
 ) *egin.Component {
 	session.SetDefaultProvider(sp)
 	res := egin.Load("web").Build()
@@ -130,12 +133,11 @@ func initGinxServer(sp session.Provider,
 	lhdl.PrivateRoutes(res.Engine)
 	qsh.PrivateRoutes(res.Engine)
 	cosHdl.PrivateRoutes(res.Engine)
-	skillHdl.PrivateRoutes(res.Engine)
 	pHdl.PrivateRoutes(res.Engine)
 	orderHdl.PrivateRoutes(res.Engine)
 	searchHdl.PrivateRoutes(res.Engine)
 	roadmapHdl.PrivateRoutes(res.Engine)
-
+	skillHdl.PrivateRoutes(res.Engine)
 	creditHdl.PrivateRoutes(res.Engine)
 	marketingHdl.PrivateRoutes(res.Engine)
 	intrHdl.PrivateRoutes(res.Engine)
@@ -151,6 +153,8 @@ func initGinxServer(sp session.Provider,
 	examineHdl.MemberRoutes(res.Engine)
 	caseHdl.MemberRoutes(res.Engine)
 	fbHdl.MemberRoutes(res.Engine)
+	skillHdl.MemberRoutes(res.Engine)
 	caseExamineHdl.MemberRoutes(res.Engine)
+	resumePrjHdl.MemberRoutes(res.Engine)
 	return res
 }

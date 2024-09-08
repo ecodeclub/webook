@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strconv"
 	"testing"
 
 	"github.com/ecodeclub/ekit/iox"
@@ -31,15 +32,15 @@ import (
 
 const uid = 123
 
-type TestSuite struct {
+type ProjectTestSuite struct {
 	suite.Suite
 	db     *egorm.Component
 	server *egin.Component
-	hdl    *web.Handler
+	hdl    *web.ProjectHandler
 	pdao   dao.ResumeProjectDAO
 }
 
-func (s *TestSuite) TearDownTest() {
+func (s *ProjectTestSuite) TearDownTest() {
 	err := s.db.Exec("TRUNCATE  TABLE `resume_projects`").Error
 	require.NoError(s.T(), err)
 	err = s.db.Exec("TRUNCATE TABLE `contributions`").Error
@@ -50,7 +51,7 @@ func (s *TestSuite) TearDownTest() {
 	require.NoError(s.T(), err)
 }
 
-func (s *TestSuite) SetupSuite() {
+func (s *ProjectTestSuite) SetupSuite() {
 	ctrl := gomock.NewController(s.T())
 	examSvc := casemocks.NewMockExamineService(ctrl)
 	examSvc.EXPECT().GetResults(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, uid int64, ids []int64) (map[int64]cases.ExamineResult, error) {
@@ -66,9 +67,21 @@ func (s *TestSuite) SetupSuite() {
 		}
 		return resMap, nil
 	}).AnyTimes()
+	caseSvc := casemocks.NewMockService(ctrl)
+	caseSvc.EXPECT().GetPubByIDs(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(ctx context.Context, ids []int64) ([]cases.Case, error) {
+			return slice.Map(ids, func(idx int, src int64) cases.Case {
+				return cases.Case{
+					Id:           src,
+					Title:        "这是案例" + strconv.FormatInt(src, 10),
+					Introduction: "这是案例的简介" + strconv.FormatInt(src, 10),
+				}
+			}), nil
+		}).AnyTimes()
 
 	module := startup.InitModule(&cases.Module{
 		ExamineSvc: examSvc,
+		Svc:        caseSvc,
 	})
 	econf.Set("server", map[string]any{"contextTimeout": "1s"})
 	server := egin.Load("server").Build()
@@ -78,7 +91,7 @@ func (s *TestSuite) SetupSuite() {
 			Data: map[string]string{"creator": "true"},
 		}))
 	})
-	module.Hdl.PrivateRoutes(server.Engine)
+	module.PrjHdl.MemberRoutes(server.Engine)
 	s.server = server
 	s.db = testioc.InitDB()
 	err := dao.InitTables(s.db)
@@ -87,10 +100,10 @@ func (s *TestSuite) SetupSuite() {
 }
 
 func TestResumeModule(t *testing.T) {
-	suite.Run(t, new(TestSuite))
+	suite.Run(t, new(ProjectTestSuite))
 }
 
-func (s *TestSuite) TestSaveResumeProject() {
+func (s *ProjectTestSuite) TestSaveResumeProject() {
 	testcases := []struct {
 		name     string
 		req      web.SaveProjectReq
@@ -204,7 +217,7 @@ func (s *TestSuite) TestSaveResumeProject() {
 	}
 }
 
-func (s *TestSuite) TestSaveContribution() {
+func (s *ProjectTestSuite) TestSaveContribution() {
 	testcases := []struct {
 		name     string
 		req      web.SaveContributionReq
@@ -321,7 +334,7 @@ func (s *TestSuite) TestSaveContribution() {
 					Core:         false,
 				})
 				require.NoError(t, err)
-				err = s.pdao.SaveContribution(context.Background(), dao.Contribution{
+				_, err = s.pdao.SaveContribution(context.Background(), dao.Contribution{
 					ID:        1,
 					Type:      "type",
 					ProjectID: 1,
@@ -449,7 +462,7 @@ func (s *TestSuite) TestSaveContribution() {
 					Core:         false,
 				})
 				require.NoError(t, err)
-				err = s.pdao.SaveContribution(context.Background(), dao.Contribution{
+				_, err = s.pdao.SaveContribution(context.Background(), dao.Contribution{
 					ID:        1,
 					Type:      "type",
 					ProjectID: 1,
@@ -500,7 +513,7 @@ func (s *TestSuite) TestSaveContribution() {
 	}
 }
 
-func (s *TestSuite) TestSaveDifficulty() {
+func (s *ProjectTestSuite) TestSaveDifficulty() {
 	testcases := []struct {
 		name     string
 		req      web.SaveDifficultyReq
@@ -614,7 +627,7 @@ func (s *TestSuite) TestSaveDifficulty() {
 	}
 }
 
-func (s *TestSuite) TestDeleteResumeProject() {
+func (s *ProjectTestSuite) TestDeleteResumeProject() {
 	testcases := []struct {
 		name     string
 		before   func(t *testing.T)
@@ -643,7 +656,7 @@ func (s *TestSuite) TestDeleteResumeProject() {
 					Desc:      "desc",
 				})
 				require.NoError(t, err)
-				err = s.pdao.SaveContribution(context.Background(), dao.Contribution{
+				_, err = s.pdao.SaveContribution(context.Background(), dao.Contribution{
 					ID:        1,
 					Type:      "type",
 					ProjectID: 1,
@@ -705,7 +718,7 @@ func (s *TestSuite) TestDeleteResumeProject() {
 
 }
 
-func (s *TestSuite) TestDeleteDifficulty() {
+func (s *ProjectTestSuite) TestDeleteDifficulty() {
 	testcases := []struct {
 		name     string
 		before   func(t *testing.T)
@@ -734,7 +747,7 @@ func (s *TestSuite) TestDeleteDifficulty() {
 					Desc:      "desc",
 				})
 				require.NoError(t, err)
-				err = s.pdao.SaveContribution(context.Background(), dao.Contribution{
+				_, err = s.pdao.SaveContribution(context.Background(), dao.Contribution{
 					ID:        1,
 					Type:      "type",
 					ProjectID: 1,
@@ -795,7 +808,7 @@ func (s *TestSuite) TestDeleteDifficulty() {
 	}
 }
 
-func (s *TestSuite) TestDeleteContribution() {
+func (s *ProjectTestSuite) TestDeleteContribution() {
 	testcases := []struct {
 		name     string
 		before   func(t *testing.T)
@@ -824,7 +837,7 @@ func (s *TestSuite) TestDeleteContribution() {
 					Desc:      "desc",
 				})
 				require.NoError(t, err)
-				err = s.pdao.SaveContribution(context.Background(), dao.Contribution{
+				_, err = s.pdao.SaveContribution(context.Background(), dao.Contribution{
 					ID:        1,
 					Type:      "type",
 					ProjectID: 1,
@@ -889,7 +902,7 @@ func (s *TestSuite) TestDeleteContribution() {
 	}
 }
 
-func (s *TestSuite) TestResumeInfo() {
+func (s *ProjectTestSuite) TestResumeInfo() {
 	testcases := []struct {
 		name     string
 		before   func(t *testing.T)
@@ -930,7 +943,7 @@ func (s *TestSuite) TestResumeInfo() {
 					Desc:      "diff_desc",
 				})
 				require.NoError(t, err)
-				err = s.pdao.SaveContribution(context.Background(), dao.Contribution{
+				_, err = s.pdao.SaveContribution(context.Background(), dao.Contribution{
 					ID:        1,
 					Type:      "type",
 					ProjectID: 1,
@@ -967,18 +980,22 @@ func (s *TestSuite) TestResumeInfo() {
 							ID:   1,
 							Desc: "desc",
 							Case: web.Case{
-								Id:     2,
-								Result: 2 % 4,
-								Level:  1,
+								Id:            2,
+								ExamineResult: 2 % 4,
+								Title:         "这是案例2",
+								Introduction:  "这是案例的简介2",
+								Level:         1,
 							},
 						},
 						{
 							ID:   2,
 							Desc: "diff_desc",
 							Case: web.Case{
-								Id:     3,
-								Result: 3 % 4,
-								Level:  1,
+								Id:            3,
+								ExamineResult: 3 % 4,
+								Level:         1,
+								Title:         "这是案例3",
+								Introduction:  "这是案例的简介3",
 							},
 						},
 					},
@@ -989,16 +1006,20 @@ func (s *TestSuite) TestResumeInfo() {
 							Desc: "desc",
 							RefCases: []web.Case{
 								{
-									Id:        2,
-									Result:    2 % 4,
-									Highlight: true,
-									Level:     1,
+									Id:            2,
+									ExamineResult: 2 % 4,
+									Highlight:     true,
+									Level:         1,
+									Title:         "这是案例2",
+									Introduction:  "这是案例的简介2",
 								},
 								{
-									Id:        3,
-									Result:    3 % 4,
-									Highlight: false,
-									Level:     2,
+									Id:            3,
+									ExamineResult: 3 % 4,
+									Highlight:     false,
+									Level:         2,
+									Title:         "这是案例3",
+									Introduction:  "这是案例的简介3",
 								},
 							},
 						},
@@ -1031,7 +1052,7 @@ func (s *TestSuite) TestResumeInfo() {
 	}
 }
 
-func (s *TestSuite) TestReaumeList() {
+func (s *ProjectTestSuite) TestReaumeList() {
 	for i := 1; i < 4; i++ {
 		_, err := s.pdao.Upsert(context.Background(), dao.ResumeProject{
 			ID:           int64(i),
@@ -1043,6 +1064,44 @@ func (s *TestSuite) TestReaumeList() {
 			Core:         i%2 == 1,
 		})
 		require.NoError(s.T(), err)
+		err = s.pdao.SaveDifficulty(context.Background(), dao.Difficulty{
+			ID:        int64(i*10 + i),
+			ProjectID: int64(i),
+			CaseID:    int64(i*10 + i),
+			Level:     1,
+			Desc:      fmt.Sprintf("desc_%d", i*10+i),
+		})
+		require.NoError(s.T(), err)
+		err = s.pdao.SaveDifficulty(context.Background(), dao.Difficulty{
+			ID:        int64(i*10 + i + 1),
+			ProjectID: int64(i),
+			CaseID:    int64(i*10 + i + 1),
+			Level:     1,
+			Desc:      fmt.Sprintf("desc_%d", i*10+i+1),
+		})
+		require.NoError(s.T(), err)
+		_, err = s.pdao.SaveContribution(context.Background(), dao.Contribution{
+			ID:        int64(i*20 + i),
+			Type:      "type",
+			ProjectID: int64(i),
+			Desc:      "desc",
+		}, []dao.RefCase{
+			{
+				ID:             int64(i*20 + i + 1),
+				CaseID:         int64(i*20 + i + 1),
+				Highlight:      true,
+				ContributionID: int64(i*20 + i),
+				Level:          1,
+			},
+			{
+				ID:             int64(i*20 + i + 2),
+				CaseID:         int64(i*20 + i + 2),
+				Highlight:      false,
+				ContributionID: int64(i*20 + i),
+				Level:          2,
+			},
+		})
+
 	}
 	_, err := s.pdao.Upsert(context.Background(), dao.ResumeProject{
 		ID:        int64(5),
@@ -1058,42 +1117,187 @@ func (s *TestSuite) TestReaumeList() {
 	require.NoError(s.T(), err)
 	recorder := test.NewJSONResponseRecorder[[]web.Project]()
 	s.server.ServeHTTP(recorder, req)
+
 	require.Equal(s.T(), 200, recorder.Code)
+	data := recorder.MustScan().Data
 	assert.Equal(s.T(), []web.Project{
 		{
-			Id:            3,
-			StartTime:     3,
-			EndTime:       1003,
-			Uid:           uid,
-			Introduction:  "introduction",
-			Name:          fmt.Sprintf("项目 %d", 3),
-			Core:          true,
-			Contributions: []web.Contribution{},
-			Difficulties:  []web.Difficulty{},
+			Id:           3,
+			StartTime:    3,
+			EndTime:      1003,
+			Uid:          uid,
+			Introduction: "introduction",
+			Name:         fmt.Sprintf("项目 %d", 3),
+			Core:         true,
+			Contributions: []web.Contribution{
+				{
+					ID:   63,
+					Type: "type",
+					Desc: "desc",
+					RefCases: []web.Case{
+						{
+							Id:            64,
+							Title:         "这是案例64",
+							Introduction:  "这是案例的简介64",
+							ExamineResult: 64 % 4,
+							Highlight:     true,
+							Level:         1,
+						},
+						{
+							Id:            65,
+							Title:         "这是案例65",
+							Introduction:  "这是案例的简介65",
+							ExamineResult: 65 % 4,
+							Highlight:     false,
+							Level:         2,
+						},
+					},
+				},
+			},
+			Difficulties: []web.Difficulty{
+				{
+					ID:   33,
+					Desc: "desc_33",
+					Case: web.Case{
+						Id:            33,
+						Title:         "这是案例33",
+						Introduction:  "这是案例的简介33",
+						ExamineResult: 33 % 4,
+						Highlight:     false,
+						Level:         1,
+					},
+				},
+				{
+					ID:   34,
+					Desc: "desc_34",
+					Case: web.Case{
+						Id:            34,
+						Title:         "这是案例34",
+						Introduction:  "这是案例的简介34",
+						ExamineResult: 34 % 4,
+						Highlight:     false,
+						Level:         1,
+					},
+				},
+			},
 		},
 		{
-			Id:            2,
-			StartTime:     2,
-			EndTime:       1002,
-			Introduction:  "introduction",
-			Uid:           uid,
-			Name:          fmt.Sprintf("项目 %d", 2),
-			Core:          false,
-			Contributions: []web.Contribution{},
-			Difficulties:  []web.Difficulty{},
+			Id:           2,
+			StartTime:    2,
+			EndTime:      1002,
+			Introduction: "introduction",
+			Uid:          uid,
+			Name:         fmt.Sprintf("项目 %d", 2),
+			Core:         false,
+			Contributions: []web.Contribution{
+				{
+					ID:   42,
+					Type: "type",
+					Desc: "desc",
+					RefCases: []web.Case{
+						{
+							Id:            43,
+							Title:         "这是案例43",
+							Introduction:  "这是案例的简介43",
+							ExamineResult: 43 % 4,
+							Highlight:     true,
+							Level:         1,
+						},
+						{
+							Id:            44,
+							Title:         "这是案例44",
+							Introduction:  "这是案例的简介44",
+							ExamineResult: 44 % 4,
+							Highlight:     false,
+							Level:         2,
+						},
+					},
+				},
+			},
+			Difficulties: []web.Difficulty{
+				{
+					ID:   22,
+					Desc: "desc_22",
+					Case: web.Case{
+						Id:            22,
+						Title:         "这是案例22",
+						Introduction:  "这是案例的简介22",
+						ExamineResult: 22 % 4,
+						Level:         1,
+					},
+				},
+				{
+					ID:   23,
+					Desc: "desc_23",
+					Case: web.Case{
+						Id:            23,
+						Title:         "这是案例23",
+						Introduction:  "这是案例的简介23",
+						ExamineResult: 23 % 4,
+						Level:         1,
+					},
+				},
+			},
 		},
 		{
-			Id:            1,
-			StartTime:     1,
-			EndTime:       1001,
-			Introduction:  "introduction",
-			Uid:           uid,
-			Name:          fmt.Sprintf("项目 %d", 1),
-			Core:          true,
-			Contributions: []web.Contribution{},
-			Difficulties:  []web.Difficulty{},
+			Id:           1,
+			StartTime:    1,
+			EndTime:      1001,
+			Introduction: "introduction",
+			Uid:          uid,
+			Name:         fmt.Sprintf("项目 %d", 1),
+			Core:         true,
+			Contributions: []web.Contribution{
+				{
+					ID:   21,
+					Type: "type",
+					Desc: "desc",
+					RefCases: []web.Case{
+						{
+							Id:            22,
+							Title:         "这是案例22",
+							Introduction:  "这是案例的简介22",
+							ExamineResult: 22 % 4,
+							Highlight:     true,
+							Level:         1,
+						},
+						{
+							Id:            23,
+							Title:         "这是案例23",
+							Introduction:  "这是案例的简介23",
+							ExamineResult: 23 % 4,
+							Highlight:     false,
+							Level:         2,
+						},
+					},
+				},
+			},
+			Difficulties: []web.Difficulty{
+				{
+					ID:   11,
+					Desc: "desc_11",
+					Case: web.Case{
+						Id:            11,
+						Title:         "这是案例11",
+						Introduction:  "这是案例的简介11",
+						ExamineResult: 11 % 4,
+						Level:         1,
+					},
+				},
+				{
+					ID:   12,
+					Desc: "desc_12",
+					Case: web.Case{
+						Id:            12,
+						Title:         "这是案例12",
+						Introduction:  "这是案例的简介12",
+						ExamineResult: 12 % 4,
+						Level:         1,
+					},
+				},
+			},
 		},
-	}, recorder.MustScan().Data)
+	}, data)
 	// 清理数据
 	err = s.db.Exec("TRUNCATE  TABLE `resume_projects`").Error
 	require.NoError(s.T(), err)
@@ -1106,7 +1310,7 @@ func (s *TestSuite) TestReaumeList() {
 
 }
 
-func (s *TestSuite) assertContribution(actual *dao.Contribution,
+func (s *ProjectTestSuite) assertContribution(actual *dao.Contribution,
 	expected *dao.Contribution) {
 	t := s.T()
 	require.True(t, actual.Ctime != 0)

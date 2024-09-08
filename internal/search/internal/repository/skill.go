@@ -32,8 +32,8 @@ func NewSKillRepo(skillDao dao.SkillDAO) SkillRepo {
 	}
 }
 
-func (s *skillRepo) SearchSkill(ctx context.Context, offset, limit int, keywords string) ([]domain.Skill, error) {
-	skillList, err := s.skillDao.SearchSkill(ctx, offset, limit, keywords)
+func (s *skillRepo) SearchSkill(ctx context.Context, offset, limit int, queryMetas []domain.QueryMeta) ([]domain.Skill, error) {
+	skillList, err := s.skillDao.SearchSkill(ctx, offset, limit, queryMetas)
 	if err != nil {
 		return nil, err
 	}

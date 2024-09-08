@@ -17,13 +17,14 @@
 package startup
 
 import (
+	"github.com/ecodeclub/webook/internal/cases"
 	baguwen "github.com/ecodeclub/webook/internal/search"
 	"github.com/ecodeclub/webook/internal/search/internal/web"
 	testioc "github.com/ecodeclub/webook/internal/test/ioc"
 	"github.com/google/wire"
 )
 
-func InitHandler() (*web.Handler, error) {
+func InitHandler(caModule *cases.Module) (*web.Handler, error) {
 	wire.Build(testioc.BaseSet, baguwen.InitModule,
 		wire.FieldsOf(new(*baguwen.Module), "Hdl"))
 	return new(web.Handler), nil

@@ -4,7 +4,7 @@
       "id": { "type": "long" },
       "uid": { "type": "long" },
       "title": { "type": "text" },
-      "labels": { "type": "text" },
+      "labels": { "type": "keyword" },
       "content": { "type": "text" },
       "status": { "type": "keyword" },
       "answer": {

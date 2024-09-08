@@ -21,18 +21,18 @@ import (
 )
 
 type CaseRepo interface {
-	SearchCase(ctx context.Context, offset, limit int, keywords string) ([]domain.Case, error)
+	SearchCase(ctx context.Context, offset, limit int, queryMetas []domain.QueryMeta) ([]domain.Case, error)
 }
 
 type QuestionRepo interface {
-	SearchQuestion(ctx context.Context, offset, limit int, keywords string) ([]domain.Question, error)
+	SearchQuestion(ctx context.Context, offset, limit int, queryMetas []domain.QueryMeta) ([]domain.Question, error)
 }
 type QuestionSetRepo interface {
-	SearchQuestionSet(ctx context.Context, offset, limit int, keywords string) ([]domain.QuestionSet, error)
+	SearchQuestionSet(ctx context.Context, offset, limit int, queryMetas []domain.QueryMeta) ([]domain.QuestionSet, error)
 }
 
 type SkillRepo interface {
-	SearchSkill(ctx context.Context, offset, limit int, keywords string) ([]domain.Skill, error)
+	SearchSkill(ctx context.Context, offset, limit int, queryMetas []domain.QueryMeta) ([]domain.Skill, error)
 }
 
 type AnyRepo interface {

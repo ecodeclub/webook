@@ -23,6 +23,7 @@ func InitModule(caModule *cases.Module) *resume.Module {
 		service.NewService,
 		service.NewExperienceService,
 		wire.FieldsOf(new(*cases.Module), "ExamineSvc"),
+		wire.FieldsOf(new(*cases.Module), "Svc"),
 		web.NewHandler,
 		web.NewExperienceHandler,
 		wire.Struct(new(resume.Module), "*"),
