@@ -32,7 +32,7 @@ func (e *experienceDAO) Upsert(ctx context.Context, experience Experience) (int6
 	experience.Ctime = now
 	err := e.db.WithContext(ctx).Model(&Experience{}).
 		Clauses(clause.OnConflict{
-			Columns:   []clause.Column{{Name: "uid"}},
+			//Columns:   []clause.Column{{Name: "uid"}},
 			DoUpdates: clause.AssignmentColumns([]string{"start_time", "end_time", "title", "company_name", "location", "responsibilities", "accomplishments", "skills", "utime"}),
 		}).Create(&experience).Error
 	return experience.ID, err
@@ -54,6 +54,6 @@ func (e *experienceDAO) Delete(ctx context.Context, uid int64, id int64) error {
 
 func (e *experienceDAO) Find(ctx context.Context, uid int64) ([]Experience, error) {
 	var experiences []Experience
-	err := e.db.WithContext(ctx).Where("uid = ?", uid).Order("StartTime desc").Find(&experiences).Error
+	err := e.db.WithContext(ctx).Where("uid = ?", uid).Order("start_time desc").Find(&experiences).Error
 	return experiences, err
 }

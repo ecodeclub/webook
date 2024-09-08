@@ -27,6 +27,12 @@ type ExperienceHandler struct {
 	svc service.ExperienceService
 }
 
+func NewExperienceHandler(svc service.ExperienceService) *ExperienceHandler {
+	return &ExperienceHandler{
+		svc: svc,
+	}
+}
+
 func (h *ExperienceHandler) PrivateRoutes(server *gin.Engine) {
 	g := server.Group("/resume/experience")
 	g.POST("/save", ginx.BS[Experience](h.Save))
@@ -72,8 +78,8 @@ func (h *ExperienceHandler) Save(ctx *ginx.Context,
 
 // List 查询某个人的项目经历
 func (h *ExperienceHandler) List(ctx *ginx.Context, sess session.Session) (ginx.Result, error) {
-	// 可以尝试检测 gap，提醒他你需要一个理由
-	explist, err := h.svc.List(ctx, sess.Claims().Uid)
+	// 可以尝试检测 gap，提醒他你需要一个理由,msg 不为空就是有个overlap，提示需要理由
+	explist, msg, err := h.svc.List(ctx, sess.Claims().Uid)
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -82,6 +88,7 @@ func (h *ExperienceHandler) List(ctx *ginx.Context, sess session.Session) (ginx.
 		resList = append(resList, newExperience(exp))
 	}
 	return ginx.Result{
+		Msg:  msg,
 		Data: resList,
 	}, nil
 }

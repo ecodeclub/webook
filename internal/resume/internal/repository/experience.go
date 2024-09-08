@@ -2,7 +2,9 @@ package repository
 
 import (
 	"context"
-	"encoding/json"
+	"time"
+
+	"github.com/ecodeclub/ekit/sqlx"
 
 	"github.com/ecodeclub/webook/internal/resume/internal/domain"
 	"github.com/ecodeclub/webook/internal/resume/internal/repository/dao"
@@ -16,6 +18,12 @@ type Experience interface {
 
 type experience struct {
 	expdao dao.ExperienceDAO
+}
+
+func NewExperience(exp dao.ExperienceDAO) Experience {
+	return &experience{
+		expdao: exp,
+	}
 }
 
 func (e *experience) SaveExperience(ctx context.Context, experience domain.Experience) (int64, error) {
@@ -40,60 +48,38 @@ func (e *experience) DeleteExperience(ctx context.Context, uid int64, id int64) 
 }
 
 func (e *experience) toExperienceEntity(experience domain.Experience) dao.Experience {
-	responsibilitiesJsonData, err := json.Marshal(experience.Responsibilities)
-	if err != nil {
-		responsibilitiesJsonData = nil
-	}
-	accomplishmentsJsonData, err := json.Marshal(experience.Accomplishments)
-	if err != nil {
-		accomplishmentsJsonData = nil
-	}
-	skillsJsonData, err := json.Marshal(experience.Skills)
-	if err != nil {
-		skillsJsonData = nil
-	}
-
 	return dao.Experience{
-		ID:               experience.Id,
-		StartTime:        experience.Start,
-		EndTime:          experience.End,
-		Title:            experience.Title,
-		CompanyName:      experience.CompanyName,
-		Location:         experience.Location,
-		Responsibilities: string(responsibilitiesJsonData),
-		Accomplishments:  string(accomplishmentsJsonData),
-		Skills:           string(skillsJsonData),
+		ID:          experience.Id,
+		StartTime:   experience.Start.UnixMilli(),
+		EndTime:     experience.End.UnixMilli(),
+		Title:       experience.Title,
+		CompanyName: experience.CompanyName,
+		Location:    experience.Location,
+		Responsibilities: sqlx.JsonColumn[[]domain.Responsibility]{
+			Valid: true,
+			Val:   experience.Responsibilities,
+		},
+		Accomplishments: sqlx.JsonColumn[[]domain.Accomplishment]{
+			Valid: true,
+			Val:   experience.Accomplishments,
+		},
+		Skills: sqlx.JsonColumn[[]string]{
+			Valid: true,
+			Val:   experience.Skills,
+		},
 	}
 }
 
 func (e *experience) toExperienceDomain(experience dao.Experience) domain.Experience {
-	var responsibilities []domain.Responsibility
-	err := json.Unmarshal([]byte(experience.Responsibilities), &responsibilities)
-	if err != nil {
-		responsibilities = nil
-	}
-
-	var accomplishments []domain.Accomplishment
-	err = json.Unmarshal([]byte(experience.Accomplishments), &accomplishments)
-	if err != nil {
-		accomplishments = nil
-	}
-
-	var skills []string
-	err = json.Unmarshal([]byte(experience.Skills), &skills)
-	if err != nil {
-		skills = nil
-	}
-
 	return domain.Experience{
 		Id:               experience.ID,
-		Start:            experience.StartTime,
-		End:              experience.EndTime,
+		Start:            time.UnixMilli(experience.StartTime),
+		End:              time.UnixMilli(experience.EndTime),
 		Title:            experience.Title,
 		CompanyName:      experience.CompanyName,
 		Location:         experience.Location,
-		Responsibilities: responsibilities,
-		Accomplishments:  accomplishments,
-		Skills:           skills,
+		Responsibilities: experience.Responsibilities.Val,
+		Accomplishments:  experience.Accomplishments.Val,
+		Skills:           experience.Skills.Val,
 	}
 }

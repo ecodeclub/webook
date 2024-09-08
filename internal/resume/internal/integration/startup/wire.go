@@ -17,10 +17,14 @@ func InitModule(caModule *cases.Module) *resume.Module {
 	wire.Build(
 		testioc.InitDB,
 		dao.NewResumeProjectDAO,
+		dao.NewExperienceDAO,
 		repository.NewResumeProjectRepo,
+		repository.NewExperience,
 		service.NewService,
+		service.NewExperienceService,
 		wire.FieldsOf(new(*cases.Module), "ExamineSvc"),
 		web.NewHandler,
+		web.NewExperienceHandler,
 		wire.Struct(new(resume.Module), "*"),
 	)
 	return new(resume.Module)

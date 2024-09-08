@@ -25,8 +25,13 @@ func InitModule(caModule *cases.Module) *resume.Module {
 	serviceService := service.NewService(resumeProjectRepo)
 	examineService := caModule.ExamineSvc
 	handler := web.NewHandler(serviceService, examineService)
+	experienceDAO := dao.NewExperienceDAO(db)
+	experience := repository.NewExperience(experienceDAO)
+	experienceService := service.NewExperienceService(experience)
+	experienceHandler := web.NewExperienceHandler(experienceService)
 	module := &resume.Module{
-		Hdl: handler,
+		Hdl:           handler,
+		ExperienceHdl: experienceHandler,
 	}
 	return module
 }

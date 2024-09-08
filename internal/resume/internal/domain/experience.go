@@ -16,8 +16,6 @@ package domain
 
 import (
 	"time"
-
-	"github.com/ecodeclub/webook/internal/resume/internal/web"
 )
 
 // Experience 代表工作经历
@@ -56,18 +54,4 @@ type Accomplishment struct {
 // CurrentEmployed 是否当前正在职
 func (e Experience) CurrentEmployed() bool {
 	return e.End.IsZero()
-}
-
-func newResponsibility(responsibilities web.Responsibility) Responsibility {
-	return Responsibility{
-		Type:    responsibilities.Type,
-		Content: responsibilities.Content,
-	}
-}
-
-func newAccomplishments(responsibilities web.Accomplishment) Accomplishment {
-	return Accomplishment{
-		Type:    responsibilities.Type,
-		Content: responsibilities.Content,
-	}
 }
