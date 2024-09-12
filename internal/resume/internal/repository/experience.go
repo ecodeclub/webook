@@ -50,6 +50,7 @@ func (e *experience) DeleteExperience(ctx context.Context, uid int64, id int64) 
 func (e *experience) toExperienceEntity(experience domain.Experience) dao.Experience {
 	return dao.Experience{
 		ID:          experience.Id,
+		Uid:         experience.Uid,
 		StartTime:   experience.Start.UnixMilli(),
 		EndTime:     experience.End.UnixMilli(),
 		Title:       experience.Title,
@@ -73,8 +74,8 @@ func (e *experience) toExperienceEntity(experience domain.Experience) dao.Experi
 func (e *experience) toExperienceDomain(experience dao.Experience) domain.Experience {
 	return domain.Experience{
 		Id:               experience.ID,
-		Start:            time.UnixMilli(experience.StartTime),
-		End:              time.UnixMilli(experience.EndTime),
+		Start:            time.UnixMilli(experience.StartTime).UTC(),
+		End:              time.UnixMilli(experience.EndTime).UTC(),
 		Title:            experience.Title,
 		CompanyName:      experience.CompanyName,
 		Location:         experience.Location,

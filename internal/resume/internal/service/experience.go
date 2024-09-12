@@ -45,8 +45,12 @@ func (e *experienceService) checkOverlap(experience []domain.Experience) string 
 	l := len(experience)
 
 	for i := 1; i < l; i++ {
-		if experience[i-1].End.Unix() > experience[i].Start.Unix() {
-			return fmt.Sprintf("第%d段工作经历和第%d段工作经历有重合，请提前准备好工作经历重合的理由", i-1, i)
+		if experience[i-1].Start.Unix() < experience[i].End.Unix() {
+			return fmt.Sprintf("第%d段工作经历和第%d段工作经历有重合，请提前准备好工作经历重合的理由", i, i+1)
+		}
+
+		if experience[i-1].Start.Unix()-experience[i].End.Unix() > int64(60*60*24*180) {
+			return fmt.Sprintf("第%d段工作经历和第%d段工作经历有超过半年的空白期，请提前准备合理的理由", i, i+1)
 		}
 	}
 	return ""
