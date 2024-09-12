@@ -36,7 +36,6 @@ type ExperienceTestSuite struct {
 	server *egin.Component
 	db     *egorm.Component
 	dao    dao.ExperienceDAO
-	ctrl   *gomock.Controller
 }
 
 func (s *ExperienceTestSuite) TearDownTest() {
@@ -106,7 +105,7 @@ func (s *ExperienceTestSuite) TestSave() {
 				require.NoError(t, err)
 				assert.Len(t, experiences, 1)
 
-				for i, _ := range experiences {
+				for i := range experiences {
 					assert.True(t, experiences[i].Utime > 0)
 					experiences[i].Utime = 0
 					assert.True(t, experiences[i].Ctime > 0)
