@@ -16,8 +16,10 @@ package resume
 
 import "github.com/ecodeclub/webook/internal/resume/internal/web"
 
+type ExperienceHandler = web.ExperienceHandler
 type ProjectHandler = web.ProjectHandler
 
 type Module struct {
-	PrjHdl *ProjectHandler
+	PrjHdl        *ProjectHandler
+	ExperienceHdl *ExperienceHandler
 }
