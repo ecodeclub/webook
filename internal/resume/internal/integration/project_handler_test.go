@@ -30,7 +30,7 @@ import (
 	"gorm.io/gorm"
 )
 
-const uid = 123
+//const uid = 123
 
 type ProjectTestSuite struct {
 	suite.Suite

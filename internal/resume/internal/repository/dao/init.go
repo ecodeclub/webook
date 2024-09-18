@@ -22,5 +22,6 @@ func InitTables(db *egorm.Component) error {
 		&Contribution{},
 		&Difficulty{},
 		&RefCase{},
+		&Experience{},
 	)
 }
