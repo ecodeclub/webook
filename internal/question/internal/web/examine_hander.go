@@ -60,7 +60,7 @@ func (h *ExamineHandler) Examine(ctx *ginx.Context, req ExamineReq, sess session
 	}
 }
 
-// 修改题目的结果
+// Correct 修改题目的结果
 func (h *ExamineHandler) Correct(ctx *ginx.Context, req CorrectReq, sess session.Session) (ginx.Result, error) {
 	// 实现这个接口
 	err := h.svc.Correct(ctx, sess.Claims().Uid, req.Qid, domain.Result(req.Result))
@@ -73,5 +73,4 @@ func (h *ExamineHandler) Correct(ctx *ginx.Context, req CorrectReq, sess session
 			Result: domain.Result(req.Result),
 		}),
 	}, nil
-
 }

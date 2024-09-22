@@ -37,15 +37,14 @@ func InitHandlerFacade(common []handler.Builder,
 
 func InitZhipu() *zhipu.Handler {
 	type Config struct {
-		APIKey string  `yaml:"apikey"`
-		Price  float64 `yaml:"price"`
+		APIKey string `yaml:"apikey"`
 	}
 	var cfg Config
 	err := econf.UnmarshalKey("zhipu", &cfg)
 	if err != nil {
 		panic(err)
 	}
-	h, err := zhipu.NewHandler(cfg.APIKey, cfg.Price)
+	h, err := zhipu.NewHandler(cfg.APIKey)
 	if err != nil {
 		panic(err)
 	}

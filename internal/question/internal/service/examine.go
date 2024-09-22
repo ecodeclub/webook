@@ -63,17 +63,17 @@ func (svc *LLMExamineService) Examine(ctx context.Context,
 	uid int64,
 	qid int64, input string) (domain.ExamineResult, error) {
 	const biz = "question_examine"
-	// 实际上我们只需要 title，但是懒得写一个新的接口了
 	que, err := svc.queRepo.GetPubByID(ctx, qid)
 	if err != nil {
 		return domain.ExamineResult{}, err
 	}
 	tid := shortuuid.New()
 	aiReq := ai.LLMRequest{
-		Uid:   uid,
-		Tid:   tid,
-		Biz:   biz,
-		Input: []string{que.Title, input},
+		Uid: uid,
+		Tid: tid,
+		Biz: biz,
+		// 标题，标准答案，输入
+		Input: []string{que.Title, que.Answer.String(), input},
 	}
 	aiResp, err := svc.aiSvc.Invoke(ctx, aiReq)
 	if err != nil {
@@ -101,22 +101,38 @@ func (svc *LLMExamineService) Correct(ctx context.Context, uid int64,
 
 func (svc *LLMExamineService) parseExamineResult(answer string) domain.Result {
 	answer = strings.TrimSpace(answer)
-	// 获取第一行
-	segs := strings.SplitN(answer, "\n", 2)
-	if len(segs) < 1 {
+	// 获取第二行
+	segs := strings.SplitN(answer, "\n", 3)
+	if len(segs) < 2 {
 		return domain.ResultFailed
 	}
-	result := segs[0]
-	switch {
-	case strings.Contains(result, "15K"):
+	// 说明 AI 没有按照我要求的格式返回
+	if !strings.Contains(segs[0], "最终评分") {
+		return domain.ResultFailed
+	}
+	// 第一个字符表示的数字
+	result := strings.TrimSpace(segs[1])[0] - '0'
+	firstZeroIdx := svc.findFirstZeroPosition(result)
+	switch firstZeroIdx {
+	case 1:
 		return domain.ResultBasic
-	case strings.Contains(result, "25K"):
+	case 2:
 		return domain.ResultIntermediate
-	case strings.Contains(result, "35K"):
+	case 3:
 		return domain.ResultAdvanced
 	default:
 		return domain.ResultFailed
 	}
+}
+
+// findFirstZeroPosition 从右至左找到第一个 0 的位置
+func (svc *LLMExamineService) findFirstZeroPosition(b byte) int {
+	for i := 0; i < 8; i++ {
+		if (b & (1 << i)) == 0 {
+			return i
+		}
+	}
+	return -1 // 如果没有找到 0，返回 -1
 }
 
 func NewLLMExamineService(

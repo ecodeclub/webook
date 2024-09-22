@@ -14,7 +14,10 @@
 
 package domain
 
-import "time"
+import (
+	"strings"
+	"time"
+)
 
 // Question 和 QuestionSet 是一个多对多的关系
 type Question struct {
@@ -45,6 +48,20 @@ type Answer struct {
 	Advanced     AnswerElement
 
 	Utime time.Time
+}
+
+func (a Answer) String() string {
+	var sb strings.Builder
+	sb.WriteString("15K: ")
+	sb.WriteString(a.Basic.Content)
+	sb.WriteString("\n")
+	sb.WriteString("25K: ")
+	sb.WriteString(a.Intermediate.Content)
+	sb.WriteString("\n")
+	sb.WriteString("35K: ")
+	sb.WriteString(a.Advanced.Content)
+	sb.WriteString("\n")
+	return sb.String()
 }
 
 type AnswerElement struct {
