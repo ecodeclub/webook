@@ -39,9 +39,15 @@ func (dao *GORMConfigDAO) GetConfig(ctx context.Context, biz string) (BizConfig,
 }
 
 type BizConfig struct {
-	Id             int64  `gorm:"primaryKey;autoIncrement;comment:AI biz 配置表ID"`
-	Biz            string `gorm:"type:varchar(256);uniqueIndex;not null;comment:业务类型名"`
-	MaxInput       int    `gorm:"comment:最大输入长度"`
+	Id          int64  `gorm:"primaryKey;autoIncrement;comment:AI biz 配置表ID"`
+	Biz         string `gorm:"type:varchar(256);uniqueIndex;not null;comment:业务类型名"`
+	MaxInput    int    `gorm:"comment:最大输入长度"`
+	Model       string `gorm:"type:varchar(256)"`
+	Price       int64
+	Temperature float64
+	TopP        float64
+	// 系统 prompt
+	SystemPrompt   string
 	PromptTemplate string
 	KnowledgeId    string `gorm:"type:varchar(256);not null;comment:使用的知识库 ID"`
 	// 其它字段按需添加

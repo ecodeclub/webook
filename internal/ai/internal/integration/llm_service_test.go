@@ -51,7 +51,7 @@ func (s *LLMServiceSuite) SetupSuite() {
 	err = s.db.Create(&dao.BizConfig{
 		Biz:            domain.BizQuestionExamine,
 		MaxInput:       100,
-		PromptTemplate: "这是问题 %s，这是用户输入 %s",
+		PromptTemplate: "这是问题 %s，这是问题内容 %s，这是用户输入 %s",
 		KnowledgeId:    knowledgeId,
 		Ctime:          now,
 		Utime:          now,
@@ -60,7 +60,7 @@ func (s *LLMServiceSuite) SetupSuite() {
 	err = s.db.Create(&dao.BizConfig{
 		Biz:            domain.BizCaseExamine,
 		MaxInput:       100,
-		PromptTemplate: "这是案例 %s，这是用户输入 %s",
+		PromptTemplate: "这是案例 %s，这是案例内容 %s，这是用户输入 %s",
 		KnowledgeId:    knowledgeId,
 		Ctime:          now,
 		Utime:          now,
@@ -97,6 +97,7 @@ func (s *LLMServiceSuite) TestService() {
 				Tid: "11",
 				Input: []string{
 					"问题1",
+					"问题1内容",
 					"用户输入1",
 				},
 			},
@@ -142,11 +143,12 @@ func (s *LLMServiceSuite) TestService() {
 						Valid: true,
 						Val: []string{
 							"问题1",
+							"问题1内容",
 							"用户输入1",
 						},
 					},
 					Status:         1,
-					PromptTemplate: sqlx.NewNullString("这是问题 %s，这是用户输入 %s"),
+					PromptTemplate: sqlx.NewNullString("这是问题 %s，这是问题内容 %s，这是用户输入 %s"),
 					Answer:         sqlx.NewNullString("aians"),
 				}, logModel)
 				// 校验credit写入的内容是否正确
@@ -171,6 +173,7 @@ func (s *LLMServiceSuite) TestService() {
 				Tid: "13",
 				Input: []string{
 					"案例1",
+					"案例1内容",
 					"用户输入1",
 				},
 			},
@@ -217,11 +220,12 @@ func (s *LLMServiceSuite) TestService() {
 						Valid: true,
 						Val: []string{
 							"案例1",
+							"案例1内容",
 							"用户输入1",
 						},
 					},
 					Status:         1,
-					PromptTemplate: sqlx.NewNullString("这是案例 %s，这是用户输入 %s"),
+					PromptTemplate: sqlx.NewNullString("这是案例 %s，这是案例内容 %s，这是用户输入 %s"),
 					Answer:         sqlx.NewNullString("aians"),
 				}, logModel)
 				// 校验credit写入的内容是否正确
@@ -274,11 +278,12 @@ func (s *LLMServiceSuite) TestService() {
 						Valid: true,
 						Val: []string{
 							"问题1",
+							"问题1内容",
 							"用户输入1",
 						},
 					},
 					Status:         domain.RecordStatusFailed.ToUint8(),
-					PromptTemplate: sqlx.NewNullString("这是问题 %s，这是用户输入 %s"),
+					PromptTemplate: sqlx.NewNullString("这是问题 %s，这是问题内容 %s，这是用户输入 %s"),
 				}, logModel)
 			},
 			assertFunc: assert.Error,
@@ -291,6 +296,7 @@ func (s *LLMServiceSuite) TestService() {
 				Tid: "11",
 				Input: []string{
 					"问题1",
+					"问题1内容",
 					"用户输入1",
 				},
 			},
@@ -323,11 +329,12 @@ func (s *LLMServiceSuite) TestService() {
 						Valid: true,
 						Val: []string{
 							"问题1",
+							"问题1内容",
 							"用户输入1",
 						},
 					},
 					Status:         domain.CreditStatusFailed.ToUint8(),
-					PromptTemplate: sqlx.NewNullString("这是问题 %s，这是用户输入 %s"),
+					PromptTemplate: sqlx.NewNullString("这是问题 %s，这是问题内容 %s，这是用户输入 %s"),
 					Answer:         sqlx.NewNullString("aians"),
 				}, logModel)
 				// 校验credit写入的内容是否正确
@@ -353,6 +360,7 @@ func (s *LLMServiceSuite) TestService() {
 				Tid: "11",
 				Input: []string{
 					"问题1",
+					"问题1内容",
 					"用户输入1",
 				},
 			},
@@ -412,11 +420,12 @@ func (s *LLMServiceSuite) TestService() {
 						Valid: true,
 						Val: []string{
 							"问题1",
+							"问题1内容",
 							"用户输入1",
 						},
 					},
 					Status:         domain.RecordStatusFailed.ToUint8(),
-					PromptTemplate: sqlx.NewNullString("这是问题 %s，这是用户输入 %s"),
+					PromptTemplate: sqlx.NewNullString("这是问题 %s，这是问题内容 %s，这是用户输入 %s"),
 					Answer:         sqlx.NewNullString("aians"),
 				}, logModel)
 				// 校验credit写入的内容是否正确

@@ -41,6 +41,11 @@ func (repo *CachedConfigRepository) GetConfig(ctx context.Context, biz string) (
 		return domain.BizConfig{}, err
 	}
 	return domain.BizConfig{
+		Model:          res.Model,
+		Price:          res.Price,
+		Temperature:    res.Temperature,
+		TopP:           res.TopP,
+		SystemPrompt:   res.SystemPrompt,
 		MaxInput:       res.MaxInput,
 		PromptTemplate: res.PromptTemplate,
 		KnowledgeId:    res.KnowledgeId,
