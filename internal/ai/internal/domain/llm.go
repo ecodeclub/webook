@@ -26,6 +26,16 @@ type LLMResponse struct {
 }
 
 type BizConfig struct {
+	// 使用的模型
+	Model string
+	// 多少分钱/1000 token
+	Price int64
+
+	Temperature float64
+	TopP        float64
+
+	// 系统 Prompt
+	SystemPrompt string
 	// 允许的最长输入
 	// 这里我们不用计算 token，只需要简单约束一下字符串长度就可以
 	MaxInput int

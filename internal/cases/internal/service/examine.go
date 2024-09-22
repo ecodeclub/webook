@@ -72,7 +72,7 @@ func (svc *LLMExamineService) Examine(ctx context.Context,
 		Uid:   uid,
 		Tid:   tid,
 		Biz:   biz,
-		Input: []string{ca.Title, input},
+		Input: []string{ca.Title, ca.Content, input},
 	}
 	aiResp, err := svc.aiSvc.Invoke(ctx, aiReq)
 	if err != nil {
