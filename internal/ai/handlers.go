@@ -16,7 +16,6 @@ package ai
 
 import (
 	"github.com/ecodeclub/webook/internal/ai/internal/service/llm/handler"
-	"github.com/ecodeclub/webook/internal/ai/internal/service/llm/handler/biz"
 	"github.com/ecodeclub/webook/internal/ai/internal/service/llm/handler/config"
 	"github.com/ecodeclub/webook/internal/ai/internal/service/llm/handler/credit"
 	"github.com/ecodeclub/webook/internal/ai/internal/service/llm/handler/log"
@@ -25,14 +24,9 @@ import (
 	"github.com/gotomicro/ego/core/econf"
 )
 
-func InitHandlerFacade(common []handler.Builder,
-	zhipu *zhipu.Handler) *biz.FacadeHandler {
-	que := InitQuestionExamineHandler(common, zhipu)
-	c := InitCaseExamineHandler(common, zhipu)
-	return biz.NewHandler(map[string]handler.Handler{
-		que.Biz(): que,
-		c.Biz():   c,
-	})
+func InitCompositionHandlerUsingZhipu(common []handler.Builder,
+	root *zhipu.Handler) handler.Handler {
+	return handler.NewCompositionHandler(common, root)
 }
 
 func InitZhipu() *zhipu.Handler {
@@ -49,25 +43,6 @@ func InitZhipu() *zhipu.Handler {
 		panic(err)
 	}
 	return h
-}
-
-func InitQuestionExamineHandler(
-	common []handler.Builder,
-	// platform 就是真正的出口
-	platform handler.Handler) *biz.CompositionHandler {
-	// log -> cfg -> credit -> record -> question_examine -> platform
-	builder := biz.NewQuestionExamineBizHandlerBuilder()
-	common = append(common, builder)
-	return biz.NewCombinedBizHandler("question_examine", common, platform)
-
-}
-func InitCaseExamineHandler(
-	common []handler.Builder,
-	// platform 就是真正的出口
-	platform handler.Handler) *biz.CompositionHandler {
-	builder := biz.NewCaseExamineBizHandlerBuilder()
-	common = append(common, builder)
-	return biz.NewCombinedBizHandler("case_examine", common, platform)
 }
 
 func InitCommonHandlers(log *log.HandlerBuilder,

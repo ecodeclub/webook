@@ -59,23 +59,21 @@ func (svc *LLMExamineService) QuestionResult(ctx context.Context, uid, qid int64
 	return svc.repo.GetResultByUidAndQid(ctx, uid, qid)
 }
 
+// Examine 的执行步骤：
+// - 先抽取关键点
+// - 根据关键点评分
+// 因此总体上要调用 AI 两次
 func (svc *LLMExamineService) Examine(ctx context.Context,
 	uid int64,
 	qid int64, input string) (domain.ExamineResult, error) {
-	const biz = "question_examine"
-	que, err := svc.queRepo.GetPubByID(ctx, qid)
+	// 1. 提取关键点
+	tid := shortuuid.New()
+	keypoints, err := svc.getKeyPoints(ctx, uid, qid, input, tid+"_keypoints")
 	if err != nil {
 		return domain.ExamineResult{}, err
 	}
-	tid := shortuuid.New()
-	aiReq := ai.LLMRequest{
-		Uid: uid,
-		Tid: tid,
-		Biz: biz,
-		// 标题，标准答案，输入
-		Input: []string{que.Title, que.Answer.String(), input},
-	}
-	aiResp, err := svc.aiSvc.Invoke(ctx, aiReq)
+	// 2. 根据关键点来评分
+	aiResp, err := svc.score(ctx, uid, keypoints.Answer, tid+"_score")
 	if err != nil {
 		return domain.ExamineResult{}, err
 	}
@@ -83,14 +81,48 @@ func (svc *LLMExamineService) Examine(ctx context.Context,
 	parsedRes := svc.parseExamineResult(aiResp.Answer)
 	result := domain.ExamineResult{
 		Result:    parsedRes,
-		RawResult: aiResp.Answer,
-		Tokens:    aiResp.Tokens,
-		Amount:    aiResp.Amount,
+		RawResult: keypoints.Answer,
+		Tokens:    keypoints.Tokens + aiResp.Tokens,
+		Amount:    keypoints.Amount + aiResp.Amount,
 		Tid:       tid,
 	}
 	// 开始记录结果
 	err = svc.repo.SaveResult(ctx, uid, qid, result)
 	return result, err
+}
+
+func (svc *LLMExamineService) getKeyPoints(
+	ctx context.Context,
+	uid int64,
+	qid int64, input, tid string) (ai.LLMResponse, error) {
+	// 首先提取关键字
+	const biz = "question_examine_key_points"
+	que, err := svc.queRepo.GetPubByID(ctx, qid)
+	if err != nil {
+		return ai.LLMResponse{}, err
+	}
+	aiReq := ai.LLMRequest{
+		Uid: uid,
+		Tid: tid,
+		Biz: biz,
+		// 标题，标准答案，输入
+		Input: []string{que.Title, que.Answer.String(), input},
+	}
+	return svc.aiSvc.Invoke(ctx, aiReq)
+}
+
+func (svc *LLMExamineService) score(ctx context.Context,
+	uid int64, answer, tid string) (ai.LLMResponse, error) {
+	// 首先提取关键字
+	const biz = "question_examine_score"
+	aiReq := ai.LLMRequest{
+		Uid: uid,
+		Tid: tid,
+		Biz: biz,
+		// 标题，标准答案，输入
+		Input: []string{answer},
+	}
+	return svc.aiSvc.Invoke(ctx, aiReq)
 }
 
 func (svc *LLMExamineService) Correct(ctx context.Context, uid int64,
@@ -101,17 +133,8 @@ func (svc *LLMExamineService) Correct(ctx context.Context, uid int64,
 
 func (svc *LLMExamineService) parseExamineResult(answer string) domain.Result {
 	answer = strings.TrimSpace(answer)
-	// 获取第二行
-	segs := strings.SplitN(answer, "\n", 3)
-	if len(segs) < 2 {
-		return domain.ResultFailed
-	}
-	// 说明 AI 没有按照我要求的格式返回
-	if !strings.Contains(segs[0], "最终评分") {
-		return domain.ResultFailed
-	}
-	// 第一个字符表示的数字
-	result := strings.TrimSpace(segs[1])[0] - '0'
+	// 最后一个字符表示的数字，就是分数
+	result := answer[len(answer)-1] - '0'
 	firstZeroIdx := svc.findFirstZeroPosition(result)
 	switch firstZeroIdx {
 	case 1:

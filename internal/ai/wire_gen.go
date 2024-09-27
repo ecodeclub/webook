@@ -37,8 +37,8 @@ func InitModule(db *gorm.DB, creditSvc *credit.Module) (*Module, error) {
 	recordHandlerBuilder := record.NewHandler(llmLogRepo)
 	v := InitCommonHandlers(handlerBuilder, configHandlerBuilder, creditHandlerBuilder, recordHandlerBuilder)
 	handler := InitZhipu()
-	facadeHandler := InitHandlerFacade(v, handler)
-	llmService := llm.NewLLMService(facadeHandler)
+	handlerHandler := InitCompositionHandlerUsingZhipu(v, handler)
+	llmService := llm.NewLLMService(handlerHandler)
 	module := &Module{
 		Svc: llmService,
 	}

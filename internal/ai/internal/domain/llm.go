@@ -1,5 +1,11 @@
 package domain
 
+import (
+	"fmt"
+
+	"github.com/ecodeclub/ekit/slice"
+)
+
 const BizQuestionExamine = "question_examine"
 const BizCaseExamine = "case_examine"
 
@@ -10,10 +16,21 @@ type LLMRequest struct {
 	Tid string
 	// 用户的输入
 	Input []string
-	// Prompt 将 input 和 PromptTemplate 结合之后生成的正儿八经的 Prompt
-	Prompt string
 	// 业务相关的配置
 	Config BizConfig
+
+	// prompt 将 input 和 PromptTemplate 结合之后生成的正儿八经的 Prompt
+	prompt string
+}
+
+func (req LLMRequest) Prompt() string {
+	if req.prompt == "" {
+		args := slice.Map(req.Input, func(idx int, src string) any {
+			return src
+		})
+		req.prompt = fmt.Sprintf(req.Config.PromptTemplate, args...)
+	}
+	return req.prompt
 }
 
 type LLMResponse struct {

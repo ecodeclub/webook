@@ -60,7 +60,7 @@ func (s *ExamineHandlerTest) SetupSuite() {
 		return ai.LLMResponse{
 			Tokens: req.Uid,
 			Amount: req.Uid,
-			Answer: "最终评分 \n 1分",
+			Answer: "最终评分 \n 1",
 		}, nil
 	}).AnyTimes()
 	module, err := startup.InitModule(nil, &interactive.Module{}, &permission.Module{}, &ai.Module{Svc: aiSvc})
@@ -138,9 +138,9 @@ func (s *ExamineHandlerTest) TestExamine() {
 					Uid:       uid,
 					Qid:       1,
 					Result:    domain.ResultBasic.ToUint8(),
-					RawResult: "最终评分 \n 1分",
-					Tokens:    uid,
-					Amount:    uid,
+					RawResult: "最终评分 \n 1",
+					Tokens:    uid * 2,
+					Amount:    uid * 2,
 				}, record)
 
 				var queRes dao.QuestionResult
@@ -168,8 +168,8 @@ func (s *ExamineHandlerTest) TestExamine() {
 			wantResp: test.Result[web.ExamineResult]{
 				Data: web.ExamineResult{
 					Result:    domain.ResultBasic.ToUint8(),
-					RawResult: "最终评分 \n 1分",
-					Amount:    uid,
+					RawResult: "最终评分 \n 1",
+					Amount:    246,
 				},
 			},
 		},
@@ -206,9 +206,9 @@ func (s *ExamineHandlerTest) TestExamine() {
 					Uid:       uid,
 					Qid:       2,
 					Result:    domain.ResultBasic.ToUint8(),
-					RawResult: "最终评分 \n 1分",
-					Tokens:    uid,
-					Amount:    uid,
+					RawResult: "最终评分 \n 1",
+					Tokens:    246,
+					Amount:    246,
 				}, record)
 
 				var queRes dao.QuestionResult
@@ -236,8 +236,8 @@ func (s *ExamineHandlerTest) TestExamine() {
 			wantResp: test.Result[web.ExamineResult]{
 				Data: web.ExamineResult{
 					Result:    domain.ResultBasic.ToUint8(),
-					RawResult: "最终评分 \n 1分",
-					Amount:    uid,
+					RawResult: "最终评分 \n 1",
+					Amount:    246,
 				},
 			},
 		},

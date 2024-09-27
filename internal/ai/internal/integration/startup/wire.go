@@ -5,10 +5,11 @@ package startup
 import (
 	"sync"
 
+	hdlmocks "github.com/ecodeclub/webook/internal/ai/internal/service/llm/handler/mocks"
+
 	"github.com/ecodeclub/webook/internal/ai"
 	"github.com/ecodeclub/webook/internal/ai/internal/service/llm"
 	"github.com/ecodeclub/webook/internal/ai/internal/service/llm/handler"
-	"github.com/ecodeclub/webook/internal/ai/internal/service/llm/handler/biz"
 	"github.com/ecodeclub/webook/internal/ai/internal/service/llm/handler/config"
 	aicredit "github.com/ecodeclub/webook/internal/ai/internal/service/llm/handler/credit"
 	"github.com/ecodeclub/webook/internal/ai/internal/service/llm/handler/log"
@@ -23,7 +24,7 @@ import (
 )
 
 func InitModule(db *egorm.Component,
-	hdl handler.Handler,
+	hdl *hdlmocks.MockHandler,
 	creditSvc *credit.Module) (*ai.Module, error) {
 	wire.Build(
 		llm.NewLLMService,
@@ -41,7 +42,7 @@ func InitModule(db *egorm.Component,
 		aicredit.NewHandlerBuilder,
 
 		ai.InitCommonHandlers,
-		InitHandlerFacade,
+		InitRootHandler,
 
 		wire.Struct(new(ai.Module), "*"),
 		wire.FieldsOf(new(*credit.Module), "Svc"),
@@ -49,13 +50,8 @@ func InitModule(db *egorm.Component,
 	return new(ai.Module), nil
 }
 
-func InitHandlerFacade(common []handler.Builder, llm handler.Handler) *biz.FacadeHandler {
-	que := ai.InitQuestionExamineHandler(common, llm)
-	ca := ai.InitCaseExamineHandler(common, llm)
-	return biz.NewHandler(map[string]handler.Handler{
-		ca.Biz():  ca,
-		que.Biz(): que,
-	})
+func InitRootHandler(common []handler.Builder, hdl *hdlmocks.MockHandler) handler.Handler {
+	return handler.NewCompositionHandler(common, hdl)
 }
 
 var daoOnce = sync.Once{}

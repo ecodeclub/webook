@@ -35,7 +35,7 @@ func InitModule(db *egorm.Component, creditSvc *credit.Module) (*Module, error) 
 		record.NewHandler,
 		aicredit.NewHandlerBuilder,
 
-		InitHandlerFacade,
+		InitCompositionHandlerUsingZhipu,
 		InitCommonHandlers,
 		InitZhipu,
 
