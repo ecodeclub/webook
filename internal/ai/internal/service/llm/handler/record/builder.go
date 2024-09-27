@@ -32,6 +32,7 @@ func (h *HandlerBuilder) Next(next handler.Handler) handler.Handler {
 			Biz:            req.Biz,
 			Uid:            req.Uid,
 			Input:          req.Input,
+			Status:         domain.RecordStatusProcessing,
 			KnowledgeId:    req.Config.KnowledgeId,
 			PromptTemplate: req.Config.PromptTemplate,
 		}
@@ -48,7 +49,7 @@ func (h *HandlerBuilder) Next(next handler.Handler) handler.Handler {
 		}
 		log.Tokens = resp.Tokens
 		log.Amount = resp.Amount
-		log.Status = domain.RecordStatusProcessing
+		log.Status = domain.RecordStatusSuccess
 		log.Answer = resp.Answer
 		return resp, err
 	})

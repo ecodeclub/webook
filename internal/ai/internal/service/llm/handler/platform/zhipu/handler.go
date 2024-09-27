@@ -52,10 +52,18 @@ func (h *Handler) Handle(ctx context.Context, req domain.LLMRequest) (domain.LLM
 }
 
 func (h *Handler) buildReq(req domain.LLMRequest) *zhipu.ChatCompletionService {
-	svc := h.client.ChatCompletion(req.Config.Model)
-	chatReq := svc.AddMessage(zhipu.ChatCompletionMessage{
+	chatReq := h.client.ChatCompletion(req.Config.Model)
+
+	if req.Config.SystemPrompt != "" {
+		chatReq = chatReq.AddMessage(zhipu.ChatCompletionMessage{
+			Role:    zhipu.RoleSystem,
+			Content: req.Config.SystemPrompt,
+		})
+	}
+
+	chatReq = chatReq.AddMessage(zhipu.ChatCompletionMessage{
 		Role:    zhipu.RoleUser,
-		Content: req.Prompt,
+		Content: req.Prompt(),
 	})
 
 	if req.Config.Temperature > 0 {
@@ -64,13 +72,6 @@ func (h *Handler) buildReq(req domain.LLMRequest) *zhipu.ChatCompletionService {
 
 	if req.Config.TopP > 0 {
 		chatReq = chatReq.SetTopP(req.Config.TopP)
-	}
-
-	if req.Config.SystemPrompt != "" {
-		chatReq = chatReq.AddMessage(zhipu.ChatCompletionMessage{
-			Role:    zhipu.RoleSystem,
-			Content: req.Config.SystemPrompt,
-		})
 	}
 
 	if req.Config.KnowledgeId != "" {

@@ -10,7 +10,6 @@ import (
 
 	"github.com/ecodeclub/ekit/sqlx"
 	"github.com/ecodeclub/webook/internal/ai/internal/service/llm"
-	llmHandler "github.com/ecodeclub/webook/internal/ai/internal/service/llm/handler"
 	hdlmocks "github.com/ecodeclub/webook/internal/ai/internal/service/llm/handler/mocks"
 
 	"github.com/ecodeclub/webook/internal/ai/internal/domain"
@@ -85,7 +84,7 @@ func (s *LLMServiceSuite) TestService() {
 	testCases := []struct {
 		name       string
 		req        domain.LLMRequest
-		before     func(t *testing.T, ctrl *gomock.Controller) (llmHandler.Handler, credit.Service)
+		before     func(t *testing.T, ctrl *gomock.Controller) (*hdlmocks.MockHandler, credit.Service)
 		assertFunc assert.ErrorAssertionFunc
 		after      func(t *testing.T, resp domain.LLMResponse)
 	}{
@@ -103,7 +102,7 @@ func (s *LLMServiceSuite) TestService() {
 			},
 			assertFunc: assert.NoError,
 			before: func(t *testing.T,
-				ctrl *gomock.Controller) (llmHandler.Handler, credit.Service) {
+				ctrl *gomock.Controller) (*hdlmocks.MockHandler, credit.Service) {
 				llmHdl := hdlmocks.NewMockHandler(ctrl)
 				llmHdl.EXPECT().Handle(gomock.Any(), gomock.Any()).
 					Return(domain.LLMResponse{
@@ -179,7 +178,7 @@ func (s *LLMServiceSuite) TestService() {
 			},
 			assertFunc: assert.NoError,
 			before: func(t *testing.T,
-				ctrl *gomock.Controller) (llmHandler.Handler, credit.Service) {
+				ctrl *gomock.Controller) (*hdlmocks.MockHandler, credit.Service) {
 				llmHdl := hdlmocks.NewMockHandler(ctrl)
 				llmHdl.EXPECT().Handle(gomock.Any(), gomock.Any()).
 					Return(domain.LLMResponse{
@@ -254,7 +253,7 @@ func (s *LLMServiceSuite) TestService() {
 				},
 			},
 			before: func(t *testing.T,
-				ctrl *gomock.Controller) (llmHandler.Handler, credit.Service) {
+				ctrl *gomock.Controller) (*hdlmocks.MockHandler, credit.Service) {
 				llmHdl := hdlmocks.NewMockHandler(ctrl)
 				creditSvc := creditmocks.NewMockService(ctrl)
 				creditSvc.EXPECT().GetCreditsByUID(gomock.Any(), gomock.Any()).Return(credit.Credit{
@@ -301,7 +300,7 @@ func (s *LLMServiceSuite) TestService() {
 				},
 			},
 			before: func(t *testing.T,
-				ctrl *gomock.Controller) (llmHandler.Handler, credit.Service) {
+				ctrl *gomock.Controller) (*hdlmocks.MockHandler, credit.Service) {
 				llmHdl := hdlmocks.NewMockHandler(ctrl)
 				llmHdl.EXPECT().Handle(gomock.Any(), gomock.Any()).
 					Return(domain.LLMResponse{}, errors.New("调用失败"))
@@ -366,7 +365,7 @@ func (s *LLMServiceSuite) TestService() {
 			},
 			assertFunc: assert.Error,
 			before: func(t *testing.T,
-				ctrl *gomock.Controller) (llmHandler.Handler, credit.Service) {
+				ctrl *gomock.Controller) (*hdlmocks.MockHandler, credit.Service) {
 				llmHdl := hdlmocks.NewMockHandler(ctrl)
 				llmHdl.EXPECT().Handle(gomock.Any(), gomock.Any()).
 					Return(domain.LLMResponse{

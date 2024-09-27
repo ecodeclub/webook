@@ -12,40 +12,31 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package biz
+package handler
 
 import (
 	"context"
 
 	"github.com/ecodeclub/webook/internal/ai/internal/domain"
-	"github.com/ecodeclub/webook/internal/ai/internal/service/llm/handler"
 )
 
 // CompositionHandler 通过组合 Handler 来完成某个业务
 // 后续该部分应该是动态计算的，通过结合配置来实现动态计算
 type CompositionHandler struct {
-	root handler.Handler
-	name string
+	root Handler
 }
 
 func (c *CompositionHandler) Handle(ctx context.Context, req domain.LLMRequest) (domain.LLMResponse, error) {
 	return c.root.Handle(ctx, req)
 }
 
-func (c *CompositionHandler) Biz() string {
-	return c.name
-}
-
-func NewCombinedBizHandler(name string,
-	common []handler.Builder,
-	l handler.Handler) *CompositionHandler {
-	root := l
+func NewCompositionHandler(common []Builder,
+	root Handler) *CompositionHandler {
 	for i := len(common) - 1; i >= 0; i-- {
 		current := common[i]
 		root = current.Next(root)
 	}
 	return &CompositionHandler{
 		root: root,
-		name: name,
 	}
 }

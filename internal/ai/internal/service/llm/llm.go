@@ -3,8 +3,9 @@ package llm
 import (
 	"context"
 
+	"github.com/ecodeclub/webook/internal/ai/internal/service/llm/handler"
+
 	"github.com/ecodeclub/webook/internal/ai/internal/domain"
-	"github.com/ecodeclub/webook/internal/ai/internal/service/llm/handler/biz"
 )
 
 //go:generate mockgen -source=./llm.go -destination=../../../mocks/llm.mock.go -package=aimocks -typed=true Service
@@ -14,12 +15,12 @@ type Service interface {
 
 type llmService struct {
 	// 这边显示依赖 FacadeHandler
-	handler *biz.FacadeHandler
+	handler handler.Handler
 }
 
-func NewLLMService(facade *biz.FacadeHandler) Service {
+func NewLLMService(root handler.Handler) Service {
 	return &llmService{
-		handler: facade,
+		handler: root,
 	}
 }
 

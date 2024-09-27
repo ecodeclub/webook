@@ -76,19 +76,22 @@ func TestLLMExamineService_parseExamineResult(t *testing.T) {
 		{
 			name: "未通过",
 			llmResult: `
-#### 最终评分
-  0分
-#### 标准答案关键点
+计算过程：
+A1=5，并且 A2 = 0，候选人获得 1 分
+B1=3，并且 B2 = 0，候选人获得 2 分
+C1=2，并且 C2 = 2，候选人获得 0 分
+最终分数：2
 `,
 			wantRes: domain.ResultFailed,
 		},
 		{
 			name: "15K",
 			llmResult: `
-#### 最终评分
-  1分
-回答出来了第一个部分
-#### 标准答案关键点
+计算过程：
+A1=5，并且 A2 = 0，候选人获得 1 分
+B1=3，并且 B2 = 0，候选人获得 2 分
+C1=2，并且 C2 = 2，候选人获得 0 分
+最终分数：1
 `,
 			wantRes: domain.ResultBasic,
 		},
