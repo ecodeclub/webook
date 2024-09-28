@@ -138,9 +138,9 @@ func (s *ExamineHandlerTest) TestExamine() {
 					Uid:       uid,
 					Qid:       1,
 					Result:    domain.ResultBasic.ToUint8(),
-					RawResult: "最终评分 \n 1",
-					Tokens:    uid * 2,
-					Amount:    uid * 2,
+					RawResult: "最终评分 \n 1\n\n最终评分 \n 1",
+					Tokens:    369,
+					Amount:    369,
 				}, record)
 
 				var queRes dao.QuestionResult
@@ -168,8 +168,8 @@ func (s *ExamineHandlerTest) TestExamine() {
 			wantResp: test.Result[web.ExamineResult]{
 				Data: web.ExamineResult{
 					Result:    domain.ResultBasic.ToUint8(),
-					RawResult: "最终评分 \n 1",
-					Amount:    246,
+					RawResult: "最终评分 \n 1\n\n最终评分 \n 1",
+					Amount:    369,
 				},
 			},
 		},
@@ -206,9 +206,9 @@ func (s *ExamineHandlerTest) TestExamine() {
 					Uid:       uid,
 					Qid:       2,
 					Result:    domain.ResultBasic.ToUint8(),
-					RawResult: "最终评分 \n 1",
-					Tokens:    246,
-					Amount:    246,
+					RawResult: "最终评分 \n 1\n\n最终评分 \n 1",
+					Tokens:    369,
+					Amount:    369,
 				}, record)
 
 				var queRes dao.QuestionResult
@@ -236,8 +236,8 @@ func (s *ExamineHandlerTest) TestExamine() {
 			wantResp: test.Result[web.ExamineResult]{
 				Data: web.ExamineResult{
 					Result:    domain.ResultBasic.ToUint8(),
-					RawResult: "最终评分 \n 1",
-					Amount:    246,
+					RawResult: "最终评分 \n 1\n\n最终评分 \n 1",
+					Amount:    369,
 				},
 			},
 		},
