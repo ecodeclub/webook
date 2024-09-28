@@ -61,19 +61,27 @@ func (svc *LLMExamineService) QuestionResult(ctx context.Context, uid, qid int64
 
 // Examine 的执行步骤：
 // - 先抽取关键点
+// - 比较候选人遗漏的关键点
 // - 根据关键点评分
 // 因此总体上要调用 AI 两次
 func (svc *LLMExamineService) Examine(ctx context.Context,
 	uid int64,
 	qid int64, input string) (domain.ExamineResult, error) {
-	// 1. 提取关键点
+	// 提取关键点
 	tid := shortuuid.New()
-	keypoints, err := svc.getKeyPoints(ctx, uid, qid, input, tid+"_keypoints")
+	keyPoints, err := svc.getKeyPoints(ctx, uid, qid, input, tid+"_key_points")
 	if err != nil {
 		return domain.ExamineResult{}, err
 	}
-	// 2. 根据关键点来评分
-	aiResp, err := svc.score(ctx, uid, keypoints.Answer, tid+"_score")
+
+	// 比较遗漏的关键点
+	cmpRes, err := svc.comparePoints(ctx, uid, tid+"_key_points_compare", keyPoints.Answer)
+	if err != nil {
+		return domain.ExamineResult{}, err
+	}
+
+	// 根据关键点、遗漏关键点来评分
+	aiResp, err := svc.score(ctx, uid, keyPoints.Answer+"\n\n"+cmpRes.Answer, tid+"_score")
 	if err != nil {
 		return domain.ExamineResult{}, err
 	}
@@ -81,9 +89,9 @@ func (svc *LLMExamineService) Examine(ctx context.Context,
 	parsedRes := svc.parseExamineResult(aiResp.Answer)
 	result := domain.ExamineResult{
 		Result:    parsedRes,
-		RawResult: keypoints.Answer,
-		Tokens:    keypoints.Tokens + aiResp.Tokens,
-		Amount:    keypoints.Amount + aiResp.Amount,
+		RawResult: keyPoints.Answer + "\n\n" + cmpRes.Answer,
+		Tokens:    keyPoints.Tokens + cmpRes.Tokens + aiResp.Tokens,
+		Amount:    keyPoints.Amount + cmpRes.Amount + aiResp.Amount,
 		Tid:       tid,
 	}
 	// 开始记录结果
@@ -106,7 +114,27 @@ func (svc *LLMExamineService) getKeyPoints(
 		Tid: tid,
 		Biz: biz,
 		// 标题，标准答案，输入
-		Input: []string{que.Title, que.Answer.String(), input},
+		Input: []string{que.Title,
+			que.Answer.Basic.Content,
+			que.Answer.Intermediate.Content,
+			que.Answer.Advanced.Content,
+			input},
+	}
+	return svc.aiSvc.Invoke(ctx, aiReq)
+}
+
+func (svc *LLMExamineService) comparePoints(
+	ctx context.Context,
+	uid int64,
+	tid, keyPoints string) (ai.LLMResponse, error) {
+	// 首先提取关键字
+	const biz = "question_examine_key_points_compare"
+	aiReq := ai.LLMRequest{
+		Uid: uid,
+		Tid: tid,
+		Biz: biz,
+		// 标题，标准答案，输入
+		Input: []string{keyPoints},
 	}
 	return svc.aiSvc.Invoke(ctx, aiReq)
 }

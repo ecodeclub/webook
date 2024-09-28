@@ -52,10 +52,10 @@ type Answer struct {
 
 func (a Answer) String() string {
 	var sb strings.Builder
-	sb.WriteString("15K: ")
+	sb.WriteString("#### 15K: ")
 	sb.WriteString(a.Basic.Content)
 	sb.WriteString("\n")
-	sb.WriteString("25K: ")
+	sb.WriteString("#### 25K ")
 	sb.WriteString(a.Intermediate.Content)
 	sb.WriteString("\n")
 	sb.WriteString("35K: ")
