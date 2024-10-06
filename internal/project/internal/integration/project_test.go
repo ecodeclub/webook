@@ -98,6 +98,7 @@ func (s *ProjectTestSuite) SetupSuite() {
 
 	econf.Set("server", map[string]any{"contextTimeout": "10s"})
 	server := egin.Load("server").Build()
+	s.hdl.PublicRoutes(server.Engine)
 	server.Use(func(ctx *gin.Context) {
 		ctx.Set(session.CtxSessionKey, session.NewMemorySession(session.Claims{
 			Uid: 123,
