@@ -33,11 +33,13 @@ func NewCaseSetHandler(
 	}
 }
 
-func (h *CaseSetHandler) PublicRoutes(server *gin.Engine) {}
+func (h *CaseSetHandler) PublicRoutes(server *gin.Engine) {
+	g := server.Group("/case-sets")
+	g.POST("/list", ginx.B[Page](h.ListCaseSets))
+}
 
 func (h *CaseSetHandler) PrivateRoutes(server *gin.Engine) {
 	g := server.Group("/case-sets")
-	g.POST("/list", ginx.B[Page](h.ListCaseSets))
 	g.POST("/detail", ginx.BS(h.RetrieveCaseSetDetail))
 	g.POST("/detail/biz", ginx.BS(h.GetDetailByBiz))
 }

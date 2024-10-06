@@ -123,10 +123,13 @@ func initGinxServer(sp session.Provider,
 	res.Use(localActiveLimiterMiddleware.Build())
 	user.PublicRoutes(res.Engine)
 	qh.PublicRoutes(res.Engine)
+	qsh.PublicRoutes(res.Engine)
 	cosHdl.PublicRoutes(res.Engine)
 	caseHdl.PublicRoutes(res.Engine)
 	skillHdl.PublicRoutes(res.Engine)
 	csHdl.PublicRoutes(res.Engine)
+	prjHdl.PublicRoutes(res.Engine)
+
 	// 登录校验
 	res.Use(session.CheckLoginMiddleware())
 	user.PrivateRoutes(res.Engine)
@@ -141,11 +144,11 @@ func initGinxServer(sp session.Provider,
 	creditHdl.PrivateRoutes(res.Engine)
 	marketingHdl.PrivateRoutes(res.Engine)
 	intrHdl.PrivateRoutes(res.Engine)
-
-	// 权限校验
 	prjHdl.PrivateRoutes(res.Engine)
 	bffHdl.PrivateRoutes(res.Engine)
 	csHdl.PrivateRoutes(res.Engine)
+
+	// 权限校验
 
 	// 会员校验
 	res.Use(checkMembershipMiddleware.Build())

@@ -50,11 +50,13 @@ func NewQuestionSetHandler(
 	}
 }
 
-func (h *QuestionSetHandler) PublicRoutes(server *gin.Engine) {}
+func (h *QuestionSetHandler) PublicRoutes(server *gin.Engine) {
+	g := server.Group("/question-sets")
+	g.POST("/list", ginx.B[Page](h.ListQuestionSets))
+}
 
 func (h *QuestionSetHandler) PrivateRoutes(server *gin.Engine) {
 	g := server.Group("/question-sets")
-	g.POST("/list", ginx.B[Page](h.ListQuestionSets))
 	g.POST("/detail", ginx.BS(h.RetrieveQuestionSetDetail))
 	g.POST("/detail/biz", ginx.BS(h.GetDetailByBiz))
 }

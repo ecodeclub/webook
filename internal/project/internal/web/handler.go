@@ -46,9 +46,13 @@ func NewHandler(svc service.Service,
 	}
 }
 
-func (h *Handler) PrivateRoutes(server *gin.Engine) {
+func (h *Handler) PublicRoutes(server *gin.Engine) {
 	g := server.Group("/project")
 	g.POST("/list", ginx.B[Page](h.List))
+}
+
+func (h *Handler) PrivateRoutes(server *gin.Engine) {
+	g := server.Group("/project")
 	g.POST("/detail", ginx.BS(h.Detail))
 }
 
