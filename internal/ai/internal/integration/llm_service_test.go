@@ -5,6 +5,10 @@ package integration
 import (
 	"context"
 	"errors"
+	"net/http"
+	"testing"
+	"time"
+
 	"github.com/ecodeclub/ekit/iox"
 	"github.com/ecodeclub/ginx/session"
 	"github.com/ecodeclub/webook/internal/ai/internal/web"
@@ -12,9 +16,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gotomicro/ego/core/econf"
 	"github.com/gotomicro/ego/server/egin"
-	"net/http"
-	"testing"
-	"time"
 
 	"github.com/ecodeclub/ekit/sqlx"
 	"github.com/ecodeclub/webook/internal/ai/internal/service/llm"

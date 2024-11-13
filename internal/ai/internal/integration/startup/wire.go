@@ -3,8 +3,9 @@
 package startup
 
 import (
-	"github.com/ecodeclub/webook/internal/ai/internal/web"
 	"sync"
+
+	"github.com/ecodeclub/webook/internal/ai/internal/web"
 
 	"github.com/ecodeclub/webook/internal/ai"
 	"github.com/ecodeclub/webook/internal/ai/internal/service/llm"
