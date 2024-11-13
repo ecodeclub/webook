@@ -5,6 +5,14 @@ package integration
 import (
 	"context"
 	"errors"
+	"github.com/ecodeclub/ekit/iox"
+	"github.com/ecodeclub/ginx/session"
+	"github.com/ecodeclub/webook/internal/ai/internal/web"
+	"github.com/ecodeclub/webook/internal/test"
+	"github.com/gin-gonic/gin"
+	"github.com/gotomicro/ego/core/econf"
+	"github.com/gotomicro/ego/server/egin"
+	"net/http"
 	"testing"
 	"time"
 
@@ -458,6 +466,124 @@ func (s *LLMServiceSuite) TestService() {
 				return
 			}
 			tc.after(t, resp)
+		})
+	}
+}
+
+func (s *LLMServiceSuite) TestHandler() {
+	testCases := []struct {
+		name       string
+		req        web.LLMRequest
+		before     func(t *testing.T, ctrl *gomock.Controller) (llmHandler.Handler, credit.Service)
+		assertFunc assert.ErrorAssertionFunc
+		after      func(t *testing.T, resp web.LLMResponse)
+		wantCode   int
+	}{
+		{
+			name: "八股文测试-成功",
+			req: web.LLMRequest{
+				Biz: domain.BizQuestionExamine,
+				Input: []string{
+					"问题1",
+					"问题1内容",
+					"用户输入1",
+				},
+			},
+			assertFunc: assert.NoError,
+			before: func(t *testing.T,
+				ctrl *gomock.Controller) (llmHandler.Handler, credit.Service) {
+				llmHdl := hdlmocks.NewMockHandler(ctrl)
+				llmHdl.EXPECT().Handle(gomock.Any(), gomock.Any()).
+					Return(domain.LLMResponse{
+						Tokens: 100,
+						Amount: 100,
+						Answer: "aians",
+					}, nil)
+				creditSvc := creditmocks.NewMockService(ctrl)
+				creditSvc.EXPECT().GetCreditsByUID(gomock.Any(), gomock.Any()).Return(credit.Credit{
+					TotalAmount: 1000,
+				}, nil)
+				creditSvc.EXPECT().TryDeductCredits(gomock.Any(), gomock.Any()).Return(11, nil)
+				creditSvc.EXPECT().ConfirmDeductCredits(gomock.Any(), int64(123), int64(11)).Return(nil)
+				return llmHdl, creditSvc
+			},
+			after: func(t *testing.T, resp web.LLMResponse) {
+				ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+				defer cancel()
+				// 校验response写入的内容是否正确
+				assert.Equal(t, web.LLMResponse{
+					Amount:    100,
+					RawResult: "aians",
+				}, resp)
+
+				var logModel dao.LLMRecord
+				err := s.db.WithContext(ctx).Where("id = ?", 1).First(&logModel).Error
+				require.NoError(t, err)
+				assert.True(t, logModel.Tid != "")
+				s.assertLog(dao.LLMRecord{
+					Id:          1,
+					Uid:         123,
+					Tid:         logModel.Tid,
+					Biz:         domain.BizQuestionExamine,
+					Tokens:      100,
+					Amount:      100,
+					KnowledgeId: knowledgeId,
+					Input: sqlx.JsonColumn[[]string]{
+						Valid: true,
+						Val: []string{
+							"问题1",
+							"问题1内容",
+							"用户输入1",
+						},
+					},
+					Status:         1,
+					PromptTemplate: sqlx.NewNullString("这是问题 %s，这是问题内容 %s，这是用户输入 %s"),
+					Answer:         sqlx.NewNullString("aians"),
+				}, logModel)
+				// 校验credit写入的内容是否正确
+				var creditLogModel dao.LLMCredit
+				err = s.db.WithContext(ctx).Where("id = ?", 1).First(&creditLogModel).Error
+				require.NoError(t, err)
+				assert.True(t, logModel.Tid != "")
+
+				s.assertCreditLog(dao.LLMCredit{
+					Id:     1,
+					Tid:    logModel.Tid,
+					Uid:    123,
+					Biz:    domain.BizQuestionExamine,
+					Amount: 100,
+					Status: 1,
+				}, creditLogModel)
+			},
+			wantCode: 200,
+		},
+	}
+	for _, tc := range testCases {
+		tc := tc
+		s.T().Run(tc.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+			mockHdl, mockCredit := tc.before(t, ctrl)
+			mou, err := startup.InitModule(s.db, mockHdl, &credit.Module{Svc: mockCredit})
+			require.NoError(t, err)
+			req, err := http.NewRequest(http.MethodPost,
+				"/llm/ask", iox.NewJSONReader(tc.req))
+			req.Header.Set("content-type", "application/json")
+			require.NoError(t, err)
+			econf.Set("server", map[string]any{"contextTimeout": "1s"})
+
+			server := egin.Load("server").Build()
+			server.Use(func(ctx *gin.Context) {
+				ctx.Set(session.CtxSessionKey,
+					session.NewMemorySession(session.Claims{
+						Uid: 123,
+					}))
+			})
+			mou.Hdl.PrivateRoutes(server.Engine)
+			recorder := test.NewJSONResponseRecorder[web.LLMResponse]()
+			server.ServeHTTP(recorder, req)
+			require.Equal(t, tc.wantCode, recorder.Code)
+			tc.after(t, recorder.MustScan().Data)
 		})
 	}
 }

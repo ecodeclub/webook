@@ -7,8 +7,6 @@
 package startup
 
 import (
-	"sync"
-
 	"github.com/ecodeclub/webook/internal/ai"
 	"github.com/ecodeclub/webook/internal/ai/internal/repository"
 	"github.com/ecodeclub/webook/internal/ai/internal/repository/dao"
@@ -19,9 +17,11 @@ import (
 	credit2 "github.com/ecodeclub/webook/internal/ai/internal/service/llm/handler/credit"
 	"github.com/ecodeclub/webook/internal/ai/internal/service/llm/handler/log"
 	"github.com/ecodeclub/webook/internal/ai/internal/service/llm/handler/record"
+	"github.com/ecodeclub/webook/internal/ai/internal/web"
 	"github.com/ecodeclub/webook/internal/credit"
 	"github.com/ego-component/egorm"
 	"gorm.io/gorm"
+	"sync"
 )
 
 // Injectors from wire.go:
@@ -41,8 +41,10 @@ func InitModule(db *gorm.DB, hdl handler.Handler, creditSvc *credit.Module) (*ai
 	v := ai.InitCommonHandlers(handlerBuilder, configHandlerBuilder, creditHandlerBuilder, recordHandlerBuilder)
 	facadeHandler := InitHandlerFacade(v, hdl)
 	llmService := llm.NewLLMService(facadeHandler)
+	webHandler := web.NewHandler(llmService)
 	module := &ai.Module{
 		Svc: llmService,
+		Hdl: webHandler,
 	}
 	return module, nil
 }

@@ -3,6 +3,7 @@
 package startup
 
 import (
+	"github.com/ecodeclub/webook/internal/ai/internal/web"
 	"sync"
 
 	"github.com/ecodeclub/webook/internal/ai"
@@ -42,7 +43,7 @@ func InitModule(db *egorm.Component,
 
 		ai.InitCommonHandlers,
 		InitHandlerFacade,
-
+		web.NewHandler,
 		wire.Struct(new(ai.Module), "*"),
 		wire.FieldsOf(new(*credit.Module), "Svc"),
 	)
