@@ -54,9 +54,15 @@ func InitModule(db *egorm.Component,
 func InitHandlerFacade(common []handler.Builder, llm handler.Handler) *biz.FacadeHandler {
 	que := ai.InitQuestionExamineHandler(common, llm)
 	ca := ai.InitCaseExamineHandler(common, llm)
+	jdTech := ai.InitJDTechHandler(common, llm)
+	jdBiz := ai.InitJDBizHandler(common, llm)
+	jdPosition := ai.InitJDPositionHandler(common, llm)
 	return biz.NewHandler(map[string]handler.Handler{
-		ca.Biz():  ca,
-		que.Biz(): que,
+		ca.Biz():         ca,
+		que.Biz():        que,
+		jdBiz.Biz():      jdBiz,
+		jdTech.Biz():     jdTech,
+		jdPosition.Biz(): jdPosition,
 	})
 }
 

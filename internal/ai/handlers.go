@@ -29,9 +29,15 @@ func InitHandlerFacade(common []handler.Builder,
 	zhipu *zhipu.Handler) *biz.FacadeHandler {
 	que := InitQuestionExamineHandler(common, zhipu)
 	c := InitCaseExamineHandler(common, zhipu)
+	jdTech := InitJDTechHandler(common, zhipu)
+	jdBiz := InitJDBizHandler(common, zhipu)
+	jdPosition := InitJDPositionHandler(common, zhipu)
 	return biz.NewHandler(map[string]handler.Handler{
-		que.Biz(): que,
-		c.Biz():   c,
+		que.Biz():        que,
+		c.Biz():          c,
+		jdBiz.Biz():      jdBiz,
+		jdTech.Biz():     jdTech,
+		jdPosition.Biz(): jdPosition,
 	})
 }
 
@@ -61,6 +67,7 @@ func InitQuestionExamineHandler(
 	return biz.NewCombinedBizHandler("question_examine", common, platform)
 
 }
+
 func InitCaseExamineHandler(
 	common []handler.Builder,
 	// platform 就是真正的出口
@@ -70,6 +77,24 @@ func InitCaseExamineHandler(
 	return biz.NewCombinedBizHandler("case_examine", common, platform)
 }
 
+func InitJDTechHandler(common []handler.Builder,
+	platform handler.Handler) *biz.CompositionHandler {
+	builder := biz.NewJDTechHandlerBuilder()
+	common = append(common, builder)
+	return biz.NewCombinedBizHandler("analysis_jd_tech", common, platform)
+}
+func InitJDBizHandler(common []handler.Builder,
+	platform handler.Handler) *biz.CompositionHandler {
+	builder := biz.NewJDBizHandlerBuilder()
+	common = append(common, builder)
+	return biz.NewCombinedBizHandler("analysis_jd_biz", common, platform)
+}
+func InitJDPositionHandler(common []handler.Builder,
+	platform handler.Handler) *biz.CompositionHandler {
+	builder := biz.NewJDPositionHandlerBuilder()
+	common = append(common, builder)
+	return biz.NewCombinedBizHandler("analysis_jd_position", common, platform)
+}
 func InitCommonHandlers(log *log.HandlerBuilder,
 	cfg *config.HandlerBuilder,
 	credit *credit.HandlerBuilder,

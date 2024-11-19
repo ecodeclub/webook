@@ -1,7 +1,12 @@
 package domain
 
-const BizQuestionExamine = "question_examine"
-const BizCaseExamine = "case_examine"
+const (
+	BizQuestionExamine = "question_examine"
+	BizCaseExamine     = "case_examine"
+	AnalysisJDTech     = "analysis_jd_tech"
+	AnalysisJDBiz      = "analysis_jd_biz"
+	AnalysisJDPosition = "analysis_jd_position"
+)
 
 type LLMRequest struct {
 	Biz string

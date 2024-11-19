@@ -75,6 +75,37 @@ func (s *LLMServiceSuite) SetupSuite() {
 		Utime:          now,
 	}).Error
 	s.NoError(err)
+
+	err = s.db.Create(&dao.BizConfig{
+		Biz:            domain.AnalysisJDBiz,
+		MaxInput:       100,
+		PromptTemplate: "这是岗位描述 %s",
+		KnowledgeId:    knowledgeId,
+		Ctime:          now,
+		Utime:          now,
+	}).Error
+	s.NoError(err)
+
+	err = s.db.Create(&dao.BizConfig{
+		Biz:            domain.AnalysisJDTech,
+		MaxInput:       100,
+		PromptTemplate: "这是岗位描述tech %s",
+		KnowledgeId:    knowledgeId,
+		Ctime:          now,
+		Utime:          now,
+	}).Error
+	s.NoError(err)
+
+	err = s.db.Create(&dao.BizConfig{
+		Biz:            domain.AnalysisJDPosition,
+		MaxInput:       100,
+		PromptTemplate: "这是岗位描述position %s",
+		KnowledgeId:    knowledgeId,
+		Ctime:          now,
+		Utime:          now,
+	}).Error
+	s.NoError(err)
+
 }
 
 func (s *LLMServiceSuite) TearDownSuite() {
@@ -471,7 +502,7 @@ func (s *LLMServiceSuite) TestService() {
 	}
 }
 
-func (s *LLMServiceSuite) TestHandler() {
+func (s *LLMServiceSuite) TestHandler_Ask() {
 	testCases := []struct {
 		name       string
 		req        web.LLMRequest
@@ -481,7 +512,7 @@ func (s *LLMServiceSuite) TestHandler() {
 		wantCode   int
 	}{
 		{
-			name: "八股文测试-成功",
+			name: "八股文web-成功",
 			req: web.LLMRequest{
 				Biz: domain.BizQuestionExamine,
 				Input: []string{
@@ -568,7 +599,7 @@ func (s *LLMServiceSuite) TestHandler() {
 			mou, err := startup.InitModule(s.db, mockHdl, &credit.Module{Svc: mockCredit})
 			require.NoError(t, err)
 			req, err := http.NewRequest(http.MethodPost,
-				"/llm/ask", iox.NewJSONReader(tc.req))
+				"/ai/ask", iox.NewJSONReader(tc.req))
 			req.Header.Set("content-type", "application/json")
 			require.NoError(t, err)
 			econf.Set("server", map[string]any{"contextTimeout": "1s"})
@@ -585,6 +616,114 @@ func (s *LLMServiceSuite) TestHandler() {
 			server.ServeHTTP(recorder, req)
 			require.Equal(t, tc.wantCode, recorder.Code)
 			tc.after(t, recorder.MustScan().Data)
+		})
+	}
+}
+
+func (s *LLMServiceSuite) TestHandler_AnalysisJD() {
+	testCases := []struct {
+		name       string
+		req        web.JDRequest
+		before     func(t *testing.T, ctrl *gomock.Controller) (llmHandler.Handler, credit.Service)
+		assertFunc assert.ErrorAssertionFunc
+		after      func(t *testing.T, resp web.JDResponse)
+		wantCode   int
+	}{
+		{
+			name: "岗位测评",
+			req: web.JDRequest{
+				Input: []string{
+					"我们招聘一个go工程师",
+				},
+			},
+			assertFunc: assert.NoError,
+			before: func(t *testing.T,
+				ctrl *gomock.Controller) (llmHandler.Handler, credit.Service) {
+				llmHdl := hdlmocks.NewMockHandler(ctrl)
+				llmHdl.EXPECT().Handle(gomock.Any(), gomock.Any()).
+					DoAndReturn(func(ctx context.Context, request domain.LLMRequest) (domain.LLMResponse, error) {
+						if request.Biz == "analysis_jd_tech" {
+							return domain.LLMResponse{
+								Tokens: 1000,
+								Amount: 100,
+								Answer: `{"score": 7, "analysis": "tech"}`,
+							}, nil
+						}
+						if request.Biz == "analysis_jd_biz" {
+							return domain.LLMResponse{
+								Tokens: 100,
+								Amount: 200,
+								Answer: `{"score": 8, "analysis": "biz"}`,
+							}, nil
+						}
+						if request.Biz == "analysis_jd_position" {
+							return domain.LLMResponse{
+								Tokens: 100,
+								Amount: 100,
+								Answer: `{"score": 5, "analysis": "position"}`,
+							}, nil
+						}
+						return domain.LLMResponse{}, errors.New("unknown biz")
+					}).AnyTimes()
+				creditSvc := creditmocks.NewMockService(ctrl)
+				creditSvc.EXPECT().GetCreditsByUID(gomock.Any(), gomock.Any()).Return(credit.Credit{
+					TotalAmount: 200000,
+				}, nil).AnyTimes()
+				creditSvc.EXPECT().TryDeductCredits(gomock.Any(), gomock.Any()).Return(11, nil).AnyTimes()
+				creditSvc.EXPECT().ConfirmDeductCredits(gomock.Any(), int64(123), int64(11)).Return(nil).AnyTimes()
+				return llmHdl, creditSvc
+			},
+			after: func(t *testing.T, resp web.JDResponse) {
+				// 校验response写入的内容是否正确
+				assert.Equal(t, web.JDResponse{
+					Amount: 400,
+					TechScore: &web.JD{
+						Score:    7,
+						Analysis: "tech",
+					},
+					BizScore: &web.JD{
+						Score:    8,
+						Analysis: "biz",
+					},
+					PosScore: &web.JD{
+						Score:    5,
+						Analysis: "position",
+					},
+				}, resp)
+
+			},
+			wantCode: 200,
+		},
+	}
+	for _, tc := range testCases {
+		tc := tc
+		s.T().Run(tc.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+			mockHdl, mockCredit := tc.before(t, ctrl)
+			mou, err := startup.InitModule(s.db, mockHdl, &credit.Module{Svc: mockCredit})
+			require.NoError(t, err)
+			req, err := http.NewRequest(http.MethodPost,
+				"/ai/analysis_jd", iox.NewJSONReader(tc.req))
+			req.Header.Set("content-type", "application/json")
+			require.NoError(t, err)
+			econf.Set("server", map[string]any{"contextTimeout": "1s"})
+			server := egin.Load("server").Build()
+			server.Use(func(ctx *gin.Context) {
+				ctx.Set(session.CtxSessionKey,
+					session.NewMemorySession(session.Claims{
+						Uid: 123,
+					}))
+			})
+			mou.Hdl.PrivateRoutes(server.Engine)
+			recorder := test.NewJSONResponseRecorder[web.JDResponse]()
+			server.ServeHTTP(recorder, req)
+			require.Equal(t, tc.wantCode, recorder.Code)
+			tc.after(t, recorder.MustScan().Data)
+			err = s.db.Exec("TRUNCATE TABLE `llm_records`").Error
+			require.NoError(s.T(), err)
+			err = s.db.Exec("TRUNCATE TABLE `llm_credits`").Error
+			require.NoError(s.T(), err)
 		})
 	}
 }

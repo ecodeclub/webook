@@ -55,9 +55,15 @@ func InitModule(db *gorm.DB, hdl handler.Handler, creditSvc *credit.Module) (*ai
 func InitHandlerFacade(common []handler.Builder, llm2 handler.Handler) *biz.FacadeHandler {
 	que := ai.InitQuestionExamineHandler(common, llm2)
 	ca := ai.InitCaseExamineHandler(common, llm2)
+	jdTech := ai.InitJDTechHandler(common, llm2)
+	jdBiz := ai.InitJDBizHandler(common, llm2)
+	jdPosition := ai.InitJDPositionHandler(common, llm2)
 	return biz.NewHandler(map[string]handler.Handler{
-		ca.Biz():  ca,
-		que.Biz(): que,
+		ca.Biz():         ca,
+		que.Biz():        que,
+		jdBiz.Biz():      jdBiz,
+		jdTech.Biz():     jdTech,
+		jdPosition.Biz(): jdPosition,
 	})
 }
 
