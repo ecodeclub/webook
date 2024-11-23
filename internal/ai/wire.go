@@ -5,6 +5,9 @@ package ai
 import (
 	"sync"
 
+	"github.com/ecodeclub/webook/internal/ai/internal/service"
+	"github.com/ecodeclub/webook/internal/ai/internal/web"
+
 	"github.com/ecodeclub/webook/internal/ai/internal/service/llm"
 	"github.com/ecodeclub/webook/internal/ai/internal/service/llm/handler/config"
 	aicredit "github.com/ecodeclub/webook/internal/ai/internal/service/llm/handler/credit"
@@ -38,7 +41,9 @@ func InitModule(db *egorm.Component, creditSvc *credit.Module) (*Module, error) 
 		InitCompositionHandlerUsingZhipu,
 		InitCommonHandlers,
 		InitZhipu,
-
+		service.NewGeneralService,
+		service.NewJDService,
+		web.NewHandler,
 		wire.Struct(new(Module), "*"),
 		wire.FieldsOf(new(*credit.Module), "Svc"),
 	)

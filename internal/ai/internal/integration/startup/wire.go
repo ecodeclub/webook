@@ -5,6 +5,9 @@ package startup
 import (
 	"sync"
 
+	"github.com/ecodeclub/webook/internal/ai/internal/service"
+	"github.com/ecodeclub/webook/internal/ai/internal/web"
+
 	hdlmocks "github.com/ecodeclub/webook/internal/ai/internal/service/llm/handler/mocks"
 
 	"github.com/ecodeclub/webook/internal/ai"
@@ -43,7 +46,9 @@ func InitModule(db *egorm.Component,
 
 		ai.InitCommonHandlers,
 		InitRootHandler,
-
+		service.NewGeneralService,
+		service.NewJDService,
+		web.NewHandler,
 		wire.Struct(new(ai.Module), "*"),
 		wire.FieldsOf(new(*credit.Module), "Svc"),
 	)
