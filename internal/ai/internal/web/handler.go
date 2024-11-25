@@ -31,7 +31,7 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 func (h *Handler) LLMAsk(ctx *ginx.Context, req LLMRequest, sess session.Session) (ginx.Result, error) {
 	uid := sess.Claims().Uid
 	resp, err := h.generalSvc.LLMAsk(ctx, uid, req.Biz, req.Input)
-	switch  {
+	switch {
 	case errors.Is(err, credit.ErrInsufficientCredit):
 		return ginx.Result{
 			Code: errs.InsufficientCredit.Code,
@@ -52,7 +52,7 @@ func (h *Handler) LLMAsk(ctx *ginx.Context, req LLMRequest, sess session.Session
 func (h *Handler) AnalysisJd(ctx *ginx.Context, req JDRequest, sess session.Session) (ginx.Result, error) {
 	uid := sess.Claims().Uid
 	resp, err := h.jdSvc.Evaluate(ctx, uid, req.JD)
-	switch  {
+	switch {
 	case errors.Is(err, credit.ErrInsufficientCredit):
 		return ginx.Result{
 			Code: errs.InsufficientCredit.Code,
