@@ -25,3 +25,22 @@ type JDEvaluation struct {
 	Score    int    `json:"score"`
 	Analysis string `json:"analysis"`
 }
+
+type Config struct {
+	Id             int64   `json:"id"`
+	Biz            string  `json:"biz"`
+	MaxInput       int     `json:"maxInput"`
+	Model          string  `json:"model"`
+	Price          int64   `json:"price"`
+	Temperature    float64 `json:"temperature"`
+	TopP           float64 `json:"topP"`
+	SystemPrompt   string  `json:"systemPrompt"`
+	PromptTemplate string  `json:"promptTemplate"`
+	KnowledgeId    string  `json:"knowledgeId"`
+}
+type ConfigRequest struct {
+	Config Config `json:"config"`
+}
+type ConfigInfoReq struct {
+	Id int64 `json:"id"`
+}

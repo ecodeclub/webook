@@ -17,12 +17,16 @@ package repository
 import (
 	"context"
 
+	"github.com/ecodeclub/ekit/slice"
 	"github.com/ecodeclub/webook/internal/ai/internal/domain"
 	"github.com/ecodeclub/webook/internal/ai/internal/repository/dao"
 )
 
 type ConfigRepository interface {
 	GetConfig(ctx context.Context, biz string) (domain.BizConfig, error)
+	Save(ctx context.Context, cfg domain.BizConfig) (int64, error)
+	List(ctx context.Context) ([]domain.BizConfig, error)
+	GetById(ctx context.Context, id int64) (domain.BizConfig, error)
 }
 
 // CachedConfigRepository 这个是一定要搞缓存的
@@ -35,6 +39,61 @@ func NewCachedConfigRepository(dao dao.ConfigDAO) ConfigRepository {
 	return &CachedConfigRepository{dao: dao}
 }
 
+// Save 保存配置
+func (r *CachedConfigRepository) Save(ctx context.Context, cfg domain.BizConfig) (int64, error) {
+	return r.dao.Save(ctx, dao.BizConfig{
+		Id:             cfg.Id,
+		Biz:            cfg.Biz,
+		MaxInput:       cfg.MaxInput,
+		Model:          cfg.Model,
+		Price:          cfg.Price,
+		Temperature:    cfg.Temperature,
+		TopP:           cfg.TopP,
+		SystemPrompt:   cfg.SystemPrompt,
+		PromptTemplate: cfg.PromptTemplate,
+		KnowledgeId:    cfg.KnowledgeId,
+	})
+}
+func (r *CachedConfigRepository) List(ctx context.Context) ([]domain.BizConfig, error) {
+	configs, err := r.dao.List(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return slice.Map(configs, func(idx int, src dao.BizConfig) domain.BizConfig {
+		return domain.BizConfig{
+			Id:             src.Id,
+			Biz:            src.Biz,
+			Model:          src.Model,
+			Price:          src.Price,
+			Temperature:    src.Temperature,
+			TopP:           src.TopP,
+			SystemPrompt:   src.SystemPrompt,
+			MaxInput:       src.MaxInput,
+			KnowledgeId:    src.KnowledgeId,
+			PromptTemplate: src.PromptTemplate,
+		}
+	}), nil
+}
+
+func (r *CachedConfigRepository) GetById(ctx context.Context, id int64) (domain.BizConfig, error) {
+	cfg, err := r.dao.GetById(ctx, id)
+	if err != nil {
+		return domain.BizConfig{}, err
+	}
+
+	return domain.BizConfig{
+		Id:             cfg.Id,
+		Biz:            cfg.Biz,
+		Model:          cfg.Model,
+		Price:          cfg.Price,
+		Temperature:    cfg.Temperature,
+		TopP:           cfg.TopP,
+		SystemPrompt:   cfg.SystemPrompt,
+		MaxInput:       cfg.MaxInput,
+		KnowledgeId:    cfg.KnowledgeId,
+		PromptTemplate: cfg.PromptTemplate,
+	}, nil
+}
 func (repo *CachedConfigRepository) GetConfig(ctx context.Context, biz string) (domain.BizConfig, error) {
 	res, err := repo.dao.GetConfig(ctx, biz)
 	if err != nil {

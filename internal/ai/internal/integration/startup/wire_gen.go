@@ -7,8 +7,6 @@
 package startup
 
 import (
-	"sync"
-
 	"github.com/ecodeclub/webook/internal/ai"
 	"github.com/ecodeclub/webook/internal/ai/internal/repository"
 	"github.com/ecodeclub/webook/internal/ai/internal/repository/dao"
@@ -18,12 +16,13 @@ import (
 	"github.com/ecodeclub/webook/internal/ai/internal/service/llm/handler/config"
 	credit2 "github.com/ecodeclub/webook/internal/ai/internal/service/llm/handler/credit"
 	"github.com/ecodeclub/webook/internal/ai/internal/service/llm/handler/log"
-	hdlmocks "github.com/ecodeclub/webook/internal/ai/internal/service/llm/handler/mocks"
+	"github.com/ecodeclub/webook/internal/ai/internal/service/llm/handler/mocks"
 	"github.com/ecodeclub/webook/internal/ai/internal/service/llm/handler/record"
 	"github.com/ecodeclub/webook/internal/ai/internal/web"
 	"github.com/ecodeclub/webook/internal/credit"
 	"github.com/ego-component/egorm"
 	"gorm.io/gorm"
+	"sync"
 )
 
 // Injectors from wire.go:
@@ -46,9 +45,12 @@ func InitModule(db *gorm.DB, hdl *hdlmocks.MockHandler, creditSvc *credit.Module
 	generalService := service.NewGeneralService(llmService)
 	jdService := service.NewJDService(llmService)
 	webHandler := web.NewHandler(generalService, jdService)
+	configService := service.NewConfigService(configRepository)
+	adminHandler := web.NewAdminHandler(configService)
 	module := &ai.Module{
-		Svc: llmService,
-		Hdl: webHandler,
+		Svc:          llmService,
+		Hdl:          webHandler,
+		ADMINHandler: adminHandler,
 	}
 	return module, nil
 }

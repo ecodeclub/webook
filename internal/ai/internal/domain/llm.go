@@ -43,6 +43,8 @@ type LLMResponse struct {
 }
 
 type BizConfig struct {
+	Id int64
+	Biz string
 	// 使用的模型
 	Model string
 	// 多少分钱/1000 token
