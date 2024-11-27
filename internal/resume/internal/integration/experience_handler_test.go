@@ -6,8 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ecodeclub/webook/internal/ai"
-
 	"github.com/ecodeclub/ekit/iox"
 	"github.com/ecodeclub/ekit/sqlx"
 	"github.com/ecodeclub/webook/internal/resume/internal/domain"
@@ -64,9 +62,7 @@ func (s *ExperienceTestSuite) SetupSuite() {
 
 	module := startup.InitModule(&cases.Module{
 		ExamineSvc: examSvc,
-	},
-		&ai.Module{},
-	)
+	})
 	econf.Set("server", map[string]any{"contextTimeout": "1s"})
 	server := egin.Load("server").Build()
 
