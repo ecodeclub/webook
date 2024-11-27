@@ -18,10 +18,8 @@ import "github.com/ecodeclub/webook/internal/resume/internal/web"
 
 type ExperienceHandler = web.ExperienceHandler
 type ProjectHandler = web.ProjectHandler
-type AnalysisHandler = web.AnalysisHandler
 
 type Module struct {
-	PrjHdl          *ProjectHandler
-	ExperienceHdl   *ExperienceHandler
-	AnalysisHandler *AnalysisHandler
+	PrjHdl        *ProjectHandler
+	ExperienceHdl *ExperienceHandler
 }

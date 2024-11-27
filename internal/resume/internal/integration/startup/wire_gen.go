@@ -7,7 +7,6 @@
 package startup
 
 import (
-	"github.com/ecodeclub/webook/internal/ai"
 	"github.com/ecodeclub/webook/internal/cases"
 	"github.com/ecodeclub/webook/internal/resume"
 	"github.com/ecodeclub/webook/internal/resume/internal/repository"
@@ -19,7 +18,7 @@ import (
 
 // Injectors from wire.go:
 
-func InitModule(caModule *cases.Module, aiModule *ai.Module) *resume.Module {
+func InitModule(caModule *cases.Module) *resume.Module {
 	db := testioc.InitDB()
 	resumeProjectDAO := dao.NewResumeProjectDAO(db)
 	resumeProjectRepo := repository.NewResumeProjectRepo(resumeProjectDAO)
@@ -31,13 +30,9 @@ func InitModule(caModule *cases.Module, aiModule *ai.Module) *resume.Module {
 	experience := repository.NewExperience(experienceDAO)
 	experienceService := service.NewExperienceService(experience)
 	experienceHandler := web.NewExperienceHandler(experienceService)
-	llmService := aiModule.Svc
-	analysisService := service.NewAnalysisService(llmService)
-	analysisHandler := web.NewAnalysisHandler(analysisService)
 	module := &resume.Module{
-		PrjHdl:          projectHandler,
-		ExperienceHdl:   experienceHandler,
-		AnalysisHandler: analysisHandler,
+		PrjHdl:        projectHandler,
+		ExperienceHdl: experienceHandler,
 	}
 	return module
 }

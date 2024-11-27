@@ -1,8 +1,7 @@
 package errs
 
 var (
-	SystemError        = ErrorCode{Code: 516001, Msg: "系统错误"}
-	InsufficientCredit = ErrorCode{Code: 516002, Msg: "积分不足"}
+	SystemError = ErrorCode{Code: 516001, Msg: "系统错误"}
 )
 
 type ErrorCode struct {
