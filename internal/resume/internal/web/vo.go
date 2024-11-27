@@ -71,6 +71,17 @@ type Difficulty struct {
 	Case Case `json:"case"`
 }
 
+type AnalysisReq struct {
+	Resume string `json:"resume"`
+}
+
+type AnalysisResp struct {
+	Amount         int64  `json:"amount"`
+	RewriteSkills  string `json:"rewriteSkills"`
+	RewriteProject string `json:"rewriteProject"`
+	RewriteJobs    string `json:"rewriteJobs"`
+}
+
 func newProject(project domain.Project, examMap map[int64]cases.ExamineResult, caseMap map[int64]cases.Case) Project {
 	return Project{
 		Id:           project.Id,
