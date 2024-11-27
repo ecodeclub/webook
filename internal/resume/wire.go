@@ -17,6 +17,7 @@
 package resume
 
 import (
+	"github.com/ecodeclub/webook/internal/ai"
 	"sync"
 
 	"github.com/ecodeclub/webook/internal/cases"
@@ -28,14 +29,21 @@ import (
 	"github.com/google/wire"
 )
 
-func InitModule(db *egorm.Component, caModule *cases.Module) *Module {
+func InitModule(db *egorm.Component, caModule *cases.Module, aiModule *ai.Module) *Module {
 	wire.Build(
 		initResumeProjectDAOOnce,
+		dao.NewExperienceDAO,
 		repository.NewResumeProjectRepo,
+		repository.NewExperience,
+		service.NewExperienceService,
 		service.NewService,
 		wire.FieldsOf(new(*cases.Module), "ExamineSvc"),
 		wire.FieldsOf(new(*cases.Module), "Svc"),
+		wire.FieldsOf(new(*ai.Module), "Svc"),
+		service.NewAnalysisService,
 		web.NewHandler,
+		web.NewAnalysisHandler,
+		web.NewExperienceHandler,
 		wire.Struct(new(Module), "*"),
 	)
 	return new(Module)

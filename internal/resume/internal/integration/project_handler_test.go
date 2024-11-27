@@ -5,6 +5,7 @@ package integration
 import (
 	"context"
 	"fmt"
+	"github.com/ecodeclub/webook/internal/ai"
 	"net/http"
 	"strconv"
 	"testing"
@@ -82,7 +83,8 @@ func (s *ProjectTestSuite) SetupSuite() {
 	module := startup.InitModule(&cases.Module{
 		ExamineSvc: examSvc,
 		Svc:        caseSvc,
-	})
+	},
+		&ai.Module{},)
 	econf.Set("server", map[string]any{"contextTimeout": "1s"})
 	server := egin.Load("server").Build()
 	server.Use(func(ctx *gin.Context) {

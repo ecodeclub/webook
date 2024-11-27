@@ -2,6 +2,7 @@ package integration
 
 import (
 	"context"
+	"github.com/ecodeclub/webook/internal/ai"
 	"net/http"
 	"testing"
 	"time"
@@ -62,7 +63,9 @@ func (s *ExperienceTestSuite) SetupSuite() {
 
 	module := startup.InitModule(&cases.Module{
 		ExamineSvc: examSvc,
-	})
+	},
+		&ai.Module{},
+	)
 	econf.Set("server", map[string]any{"contextTimeout": "1s"})
 	server := egin.Load("server").Build()
 

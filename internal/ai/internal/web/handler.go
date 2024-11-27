@@ -4,8 +4,11 @@ import (
 	"github.com/ecodeclub/ginx"
 	"github.com/ecodeclub/ginx/session"
 	"github.com/ecodeclub/webook/internal/ai/internal/domain"
+	"github.com/ecodeclub/webook/internal/ai/internal/errs"
 	"github.com/ecodeclub/webook/internal/ai/internal/service"
+	"github.com/ecodeclub/webook/internal/ai/internal/service/llm/handler/credit"
 	"github.com/gin-gonic/gin"
+	"github.com/pkg/errors"
 )
 
 type Handler struct {
@@ -28,31 +31,46 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 func (h *Handler) LLMAsk(ctx *ginx.Context, req LLMRequest, sess session.Session) (ginx.Result, error) {
 	uid := sess.Claims().Uid
 	resp, err := h.generalSvc.LLMAsk(ctx, uid, req.Biz, req.Input)
-	if err != nil {
+	switch {
+	case errors.Is(err, credit.ErrInsufficientCredit):
+		return ginx.Result{
+			Code: errs.InsufficientCredit.Code,
+			Msg:  errs.InsufficientCredit.Msg,
+		}, nil
+	case err == nil:
+		return ginx.Result{
+			Data: LLMResponse{
+				Amount:    resp.Amount,
+				RawResult: resp.Answer,
+			},
+		}, nil
+	default:
 		return systemErrorResult, err
 	}
-	return ginx.Result{
-		Data: LLMResponse{
-			Amount:    resp.Amount,
-			RawResult: resp.Answer,
-		},
-	}, nil
 }
 
 func (h *Handler) AnalysisJd(ctx *ginx.Context, req JDRequest, sess session.Session) (ginx.Result, error) {
 	uid := sess.Claims().Uid
 	resp, err := h.jdSvc.Evaluate(ctx, uid, req.JD)
-	if err != nil {
+	switch {
+	case errors.Is(err, credit.ErrInsufficientCredit):
+		return ginx.Result{
+			Code: errs.InsufficientCredit.Code,
+			Msg:  errs.InsufficientCredit.Msg,
+		}, nil
+	case err == nil:
+		return ginx.Result{
+			Data: JDResponse{
+				Amount:    resp.Amount,
+				TechScore: h.newJD(resp.TechScore),
+				BizScore:  h.newJD(resp.BizScore),
+				PosScore:  h.newJD(resp.PosScore),
+			},
+		}, nil
+	default:
 		return systemErrorResult, err
 	}
-	return ginx.Result{
-		Data: JDResponse{
-			Amount:    resp.Amount,
-			TechScore: h.newJD(resp.TechScore),
-			BizScore:  h.newJD(resp.BizScore),
-			PosScore:  h.newJD(resp.PosScore),
-		},
-	}, nil
+
 
 }
 
