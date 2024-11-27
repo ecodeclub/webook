@@ -113,7 +113,7 @@ func (h *ProjectHandler) ProjectInfo(ctx *ginx.Context, req IDItem, sess session
 
 func (h *ProjectHandler) ProjectList(ctx *ginx.Context, sess session.Session) (ginx.Result, error) {
 	uid := sess.Claims().Uid
-	projects, err := h.svc.FindProjects(ctx.Request.Context(), uid)
+	projects, err := h.svc.FindProjects(ctx, uid)
 	if err != nil {
 		return systemErrorResult, err
 	}
