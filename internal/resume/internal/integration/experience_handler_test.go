@@ -2,10 +2,11 @@ package integration
 
 import (
 	"context"
-	"github.com/ecodeclub/webook/internal/ai"
 	"net/http"
 	"testing"
 	"time"
+
+	"github.com/ecodeclub/webook/internal/ai"
 
 	"github.com/ecodeclub/ekit/iox"
 	"github.com/ecodeclub/ekit/sqlx"

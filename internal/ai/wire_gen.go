@@ -7,6 +7,8 @@
 package ai
 
 import (
+	"sync"
+
 	"github.com/ecodeclub/webook/internal/ai/internal/repository"
 	"github.com/ecodeclub/webook/internal/ai/internal/repository/dao"
 	"github.com/ecodeclub/webook/internal/ai/internal/service"
@@ -19,7 +21,6 @@ import (
 	"github.com/ecodeclub/webook/internal/credit"
 	"github.com/ego-component/egorm"
 	"gorm.io/gorm"
-	"sync"
 )
 
 // Injectors from wire.go:

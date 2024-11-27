@@ -7,6 +7,8 @@
 package resume
 
 import (
+	"sync"
+
 	"github.com/ecodeclub/webook/internal/ai"
 	"github.com/ecodeclub/webook/internal/cases"
 	"github.com/ecodeclub/webook/internal/resume/internal/repository"
@@ -15,7 +17,6 @@ import (
 	"github.com/ecodeclub/webook/internal/resume/internal/web"
 	"github.com/ego-component/egorm"
 	"gorm.io/gorm"
-	"sync"
 )
 
 // Injectors from wire.go:

@@ -71,7 +71,6 @@ func (h *Handler) AnalysisJd(ctx *ginx.Context, req JDRequest, sess session.Sess
 		return systemErrorResult, err
 	}
 
-
 }
 
 func (h *Handler) newJD(jd *domain.JDEvaluation) *JDEvaluation {

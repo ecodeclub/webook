@@ -17,8 +17,9 @@
 package resume
 
 import (
-	"github.com/ecodeclub/webook/internal/ai"
 	"sync"
+
+	"github.com/ecodeclub/webook/internal/ai"
 
 	"github.com/ecodeclub/webook/internal/cases"
 	"github.com/ecodeclub/webook/internal/resume/internal/repository"
