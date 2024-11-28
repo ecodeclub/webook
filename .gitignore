@@ -36,6 +36,7 @@ cover.out
 /internal/skill/internal/integration/logs
 /internal/feedback/internal/integration/logs
 /internal/ai/internal/integration/logs
+/internal/resume/internal/integration/logs
 /config/cert/
 
 local_test.go
