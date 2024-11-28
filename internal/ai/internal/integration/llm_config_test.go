@@ -205,6 +205,7 @@ func (s *ConfigSuite) TestConfig_List() {
 	confs := recorder.MustScan().Data
 	assert.Equal(s.T(), getWantConfigs(), confs)
 	err = s.db.Exec("TRUNCATE TABLE `ai_biz_configs`").Error
+	require.NoError(s.T(), err)
 }
 
 func (s *ConfigSuite) Test_Detail() {
