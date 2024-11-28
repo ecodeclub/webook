@@ -45,7 +45,10 @@ func (dao *GORMConfigDAO) GetById(ctx context.Context, id int64) (BizConfig, err
 
 func (dao *GORMConfigDAO) List(ctx context.Context) ([]BizConfig, error) {
 	var configs []BizConfig
-	err := dao.db.WithContext(ctx).Find(&configs).Error
+	err := dao.db.WithContext(ctx).
+		Model(&BizConfig{}).
+		Order("id desc").
+		Find(&configs).Error
 	return configs, err
 }
 func (dao *GORMConfigDAO) GetConfig(ctx context.Context, biz string) (BizConfig, error) {

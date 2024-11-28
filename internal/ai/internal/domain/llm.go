@@ -43,7 +43,7 @@ type LLMResponse struct {
 }
 
 type BizConfig struct {
-	Id int64
+	Id  int64
 	Biz string
 	// 使用的模型
 	Model string
