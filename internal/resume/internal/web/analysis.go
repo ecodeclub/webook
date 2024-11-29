@@ -20,7 +20,7 @@ func NewAnalysisHandler(svc service.AnalysisService) *AnalysisHandler {
 	}
 }
 
-func (h *AnalysisHandler) PublicRoutes(server *gin.Engine) {
+func (h *AnalysisHandler) MemberRoutes(server *gin.Engine) {
 	g := server.Group("/resume/analysis")
 	g.POST("", ginx.BS(h.Analysis))
 }

@@ -610,7 +610,7 @@ func (s *LLMServiceSuite) TestHandler_Ask() {
 						Uid: 123,
 					}))
 			})
-			mou.Hdl.PrivateRoutes(server.Engine)
+			mou.Hdl.MemberRoutes(server.Engine)
 			recorder := test.NewJSONResponseRecorder[web.LLMResponse]()
 			server.ServeHTTP(recorder, req)
 			require.Equal(t, tc.wantCode, recorder.Code)
@@ -712,7 +712,7 @@ func (s *LLMServiceSuite) TestHandler_AnalysisJD() {
 						Uid: 123,
 					}))
 			})
-			mou.Hdl.PrivateRoutes(server.Engine)
+			mou.Hdl.MemberRoutes(server.Engine)
 			recorder := test.NewJSONResponseRecorder[web.JDResponse]()
 			server.ServeHTTP(recorder, req)
 			require.Equal(t, tc.wantCode, recorder.Code)
