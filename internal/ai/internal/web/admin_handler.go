@@ -18,7 +18,7 @@ func NewAdminHandler(svc service.ConfigService) *AdminHandler {
 	}
 }
 
-func (h *AdminHandler) RegisterRoutes(server *gin.Engine) {
+func (h *AdminHandler) PrivateRoutes(server *gin.Engine) {
 	// 管理员路由组
 	admin := server.Group("/ai/config")
 	admin.POST("/save", ginx.B[ConfigRequest](h.Save))

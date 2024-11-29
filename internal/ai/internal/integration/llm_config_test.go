@@ -46,7 +46,7 @@ func (s *ConfigSuite) SetupSuite() {
 			Uid: 123,
 		}))
 	})
-	s.adminHandler.RegisterRoutes(server.Engine)
+	s.adminHandler.PrivateRoutes(server.Engine)
 	s.server = server
 }
 

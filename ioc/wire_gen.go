@@ -143,7 +143,8 @@ func InitApp() (*App, error) {
 	adminCaseHandler := casesModule.AdminHandler
 	adminCaseSetHandler := casesModule.AdminSetHandler
 	adminHandler3 := marketingModule.AdminHdl
-	adminServer := InitAdminServer(adminHandler, webAdminHandler, adminHandler2, adminQuestionSetHandler, adminCaseHandler, adminCaseSetHandler, adminHandler3)
+	adminHandler4 := aiModule.AdminHandler
+	adminServer := InitAdminServer(adminHandler, webAdminHandler, adminHandler2, adminQuestionSetHandler, adminCaseHandler, adminCaseSetHandler, adminHandler3, adminHandler4)
 	closeTimeoutOrdersJob := orderModule.CloseTimeoutOrdersJob
 	closeTimeoutLockedCreditsJob := creditModule.CloseTimeoutLockedCreditsJob
 	syncWechatOrderJob := paymentModule.SyncWechatOrderJob
