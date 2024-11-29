@@ -86,7 +86,7 @@ func (a *AnalysisTestSuite) SetupSuite() {
 				Uid: uid,
 			}))
 	})
-	hdl.PublicRoutes(server.Engine)
+	hdl.MemberRoutes(server.Engine)
 	a.server = server
 }
 
