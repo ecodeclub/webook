@@ -9,5 +9,5 @@ import (
 type LLMRequest = domain.LLMRequest
 type LLMResponse = domain.LLMResponse
 type LLMService = llm.Service
-
+type AdminHandler = web.AdminHandler
 type LLMHandler = web.Handler

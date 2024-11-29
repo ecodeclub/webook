@@ -46,9 +46,12 @@ func InitModule(db *gorm.DB, hdl *hdlmocks.MockHandler, creditSvc *credit.Module
 	generalService := service.NewGeneralService(llmService)
 	jdService := service.NewJDService(llmService)
 	webHandler := web.NewHandler(generalService, jdService)
+	configService := service.NewConfigService(configRepository)
+	adminHandler := web.NewAdminHandler(configService)
 	module := &ai.Module{
-		Svc: llmService,
-		Hdl: webHandler,
+		Svc:          llmService,
+		Hdl:          webHandler,
+		AdminHandler: adminHandler,
 	}
 	return module, nil
 }

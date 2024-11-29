@@ -43,7 +43,9 @@ func InitModule(db *egorm.Component, creditSvc *credit.Module) (*Module, error) 
 		InitZhipu,
 		service.NewGeneralService,
 		service.NewJDService,
+		service.NewConfigService,
 		web.NewHandler,
+		web.NewAdminHandler,
 		wire.Struct(new(Module), "*"),
 		wire.FieldsOf(new(*credit.Module), "Svc"),
 	)
