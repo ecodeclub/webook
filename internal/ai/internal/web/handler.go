@@ -23,7 +23,7 @@ func NewHandler(generalSvc service.GeneralService, jdSvc service.JDService) *Han
 	}
 }
 
-func (h *Handler) PrivateRoutes(server *gin.Engine) {
+func (h *Handler) MemberRoutes(server *gin.Engine) {
 	server.POST("/ai/ask", ginx.BS(h.LLMAsk))
 	server.POST("/ai/analysis_jd", ginx.BS(h.AnalysisJd))
 }
