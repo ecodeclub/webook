@@ -38,6 +38,10 @@ func NewHandlerBuilder(creSvc credit.Service, repo repository.LLMCreditLogRepo) 
 
 func (h *HandlerBuilder) Next(next handler.Handler) handler.Handler {
 	return handler.HandleFunc(func(ctx context.Context, req domain.LLMRequest) (domain.LLMResponse, error) {
+		// 不需要扣除积分
+		if req.Config.Price == 0 {
+			return next.Handle(ctx, req)
+		}
 		cre, err := h.creditSvc.GetCreditsByUID(ctx, req.Uid)
 		if err != nil {
 			return domain.LLMResponse{}, err
