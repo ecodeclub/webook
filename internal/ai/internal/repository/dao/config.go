@@ -16,12 +16,17 @@ package dao
 
 import (
 	"context"
+	"time"
 
 	"github.com/ego-component/egorm"
+	"gorm.io/gorm/clause"
 )
 
 type ConfigDAO interface {
 	GetConfig(ctx context.Context, biz string) (BizConfig, error)
+	Save(ctx context.Context, cfg BizConfig) (int64, error)
+	List(ctx context.Context) ([]BizConfig, error)
+	GetById(ctx context.Context, id int64) (BizConfig, error)
 }
 
 type GORMConfigDAO struct {
@@ -32,10 +37,34 @@ func NewGORMConfigDAO(db *egorm.Component) ConfigDAO {
 	return &GORMConfigDAO{db: db}
 }
 
+func (dao *GORMConfigDAO) GetById(ctx context.Context, id int64) (BizConfig, error) {
+	var config BizConfig
+	err := dao.db.WithContext(ctx).Where("id = ?", id).First(&config).Error
+	return config, err
+}
+
+func (dao *GORMConfigDAO) List(ctx context.Context) ([]BizConfig, error) {
+	var configs []BizConfig
+	err := dao.db.WithContext(ctx).
+		Model(&BizConfig{}).
+		Order("id desc").
+		Find(&configs).Error
+	return configs, err
+}
 func (dao *GORMConfigDAO) GetConfig(ctx context.Context, biz string) (BizConfig, error) {
 	var res BizConfig
 	err := dao.db.WithContext(ctx).Where("biz = ?", biz).First(&res).Error
 	return res, err
+}
+func (dao *GORMConfigDAO) Save(ctx context.Context, cfg BizConfig) (int64, error) {
+	now := time.Now().UnixMilli()
+	cfg.Utime = now
+	cfg.Ctime = now
+	err := dao.db.WithContext(ctx).Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "id"}},
+		DoUpdates: clause.AssignmentColumns([]string{"biz", "max_input", "model", "price", "temperature", "top_p", "system_prompt", "prompt_template", "knowledge_id", "utime"}),
+	}).Create(&cfg).Error
+	return cfg.Id, err
 }
 
 type BizConfig struct {

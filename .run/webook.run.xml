@@ -4,6 +4,9 @@
     <working_directory value="$PROJECT_DIR$" />
     <go_parameters value="--tags=mock" />
     <parameters value="--config=config/local.yaml" />
+    <envs>
+      <env name="EGO_DEBUG" value="false" />
+    </envs>
     <kind value="PACKAGE" />
     <package value="github.com/ecodeclub/webook" />
     <directory value="$PROJECT_DIR$" />

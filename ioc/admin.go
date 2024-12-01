@@ -18,6 +18,8 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/ecodeclub/webook/internal/ai"
+
 	"github.com/ecodeclub/webook/internal/cases"
 
 	baguwen "github.com/ecodeclub/webook/internal/question"
@@ -43,7 +45,9 @@ func InitAdminServer(prj *project.AdminHandler,
 	queSet *baguwen.AdminQuestionSetHandler,
 	caseHdl *cases.AdminCaseHandler,
 	caseSetHdl *cases.AdminCaseSetHandler,
-	mark *marketing.AdminHandler) AdminServer {
+	mark *marketing.AdminHandler,
+	aiHdl *ai.AdminHandler,
+) AdminServer {
 	res := egin.Load("admin").Build()
 	res.Use(cors.New(cors.Config{
 		ExposeHeaders:    []string{"X-Refresh-Token", "X-Access-Token"},
@@ -73,6 +77,7 @@ func InitAdminServer(prj *project.AdminHandler,
 	que.PrivateRoutes(res.Engine)
 	caseHdl.PrivateRoutes(res.Engine)
 	caseSetHdl.PrivateRoutes(res.Engine)
+	aiHdl.RegisterRoutes(res.Engine)
 	return res
 }
 

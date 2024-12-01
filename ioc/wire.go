@@ -91,7 +91,9 @@ func InitApp() (*App, error) {
 		bff.InitModule,
 		wire.FieldsOf(new(*bff.Module), "Hdl"),
 		resume.InitModule,
-		wire.FieldsOf(new(*resume.Module), "PrjHdl"),
+		wire.FieldsOf(new(*resume.Module), "PrjHdl", "AnalysisHandler"),
+		wire.FieldsOf(new(*ai.Module), "Hdl", "AdminHandler"),
+
 		initLocalActiveLimiterBuilder,
 		initCronJobs,
 		// 这两个顺序不要换
