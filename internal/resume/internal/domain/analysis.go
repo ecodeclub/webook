@@ -1,12 +1,13 @@
 package domain
 
 const (
-	BizResumeSkillKeyPoints   = "biz_resume_skill_keypoints"
-	BizSkillsRewrite          = "biz_skills_rewrite"
-	BizResumeProjectKeyPoints = "biz_resume_project_keypoints"
-	BizResumeProjectRewrite   = "biz_resume_project_rewrite"
-	BizResumeJobsKeyPoints    = "biz_resume_jobs_keypoints"
-	BizResumeJobsRewrite      = "biz_resume_jobs_rewrite"
+	BizResumeSkillKeyPoints = "biz_resume_skill_keypoints"
+	BizSkillsRewrite        = "biz_resume_skill_rewrite"
+	// BizResumeProjectEvaluation 评价项目经历
+	BizResumeProjectEvaluation = "biz_resume_project_evaluation"
+	BizResumeProjectRewrite    = "biz_resume_project_rewrite"
+	//BizResumeJobsKeyPoints    = "biz_resume_job_keypoints"
+	BizResumeJobsRewrite = "biz_resume_job_rewrite"
 )
 
 type ResumeAnalysis struct {

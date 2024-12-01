@@ -47,29 +47,23 @@ func (a *AnalysisTestSuite) SetupSuite() {
 				Amount: 200,
 				Answer: fmt.Sprintf("%s:%s", req.Input[0], req.Input[1]),
 			}, nil
-		case domain.BizResumeProjectKeyPoints:
+		case domain.BizResumeProjectEvaluation:
 			return ai.LLMResponse{
 				Tokens: 150,
 				Amount: 150,
-				Answer: fmt.Sprintf("project的keypoints %s", req.Input[0]),
+				Answer: fmt.Sprintf("project的评估 %s", req.Input[0]),
 			}, nil
 		case domain.BizResumeProjectRewrite:
 			return ai.LLMResponse{
 				Tokens: 220,
 				Amount: 220,
-				Answer: fmt.Sprintf("%s:%s", req.Input[0], req.Input[1]),
-			}, nil
-		case domain.BizResumeJobsKeyPoints:
-			return ai.LLMResponse{
-				Tokens: 300,
-				Amount: 300,
-				Answer: fmt.Sprintf("jobs的keypoints %s", req.Input[0]),
+				Answer: fmt.Sprintf("project的重写 %s", req.Input[0]),
 			}, nil
 		case domain.BizResumeJobsRewrite:
 			return ai.LLMResponse{
 				Tokens: 400,
 				Amount: 400,
-				Answer: fmt.Sprintf("%s:%s", req.Input[0], req.Input[1]),
+				Answer: fmt.Sprintf("工作经历重写%s", req.Input[0]),
 			}, nil
 		default:
 			return ai.LLMResponse{}, errors.New("mock Err")
@@ -107,10 +101,10 @@ func (a *AnalysisTestSuite) TestAnalysis() {
 			wantCode: 200,
 			wantResp: test.Result[web.AnalysisResp]{
 				Data: web.AnalysisResp{
-					Amount:         1370,
-					RewriteSkills:  "resume:skill的keypoints resume",
-					RewriteJobs:    "resume:jobs的keypoints resume",
-					RewriteProject: "resume:project的keypoints resume",
+					Amount:         1070,
+					RewriteSkills:  ":skill的keypoints resume",
+					RewriteJobs:    "工作经历重写resume",
+					RewriteProject: "project的重写 resume\n## 综合评价\nproject的评估 project的重写 resume",
 				},
 			},
 		},

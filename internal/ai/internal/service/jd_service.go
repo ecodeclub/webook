@@ -2,7 +2,9 @@ package service
 
 import (
 	"context"
-	"encoding/json"
+	"errors"
+	"strconv"
+	"strings"
 	"sync/atomic"
 
 	"github.com/ecodeclub/webook/internal/ai/internal/domain"
@@ -83,10 +85,18 @@ func (j *jdSvc) analysisJd(ctx context.Context, uid int64, biz string, jd string
 	if err != nil {
 		return 0, nil, err
 	}
-	var jdEva domain.JDEvaluation
-	err = json.Unmarshal([]byte(resp.Answer), &jdEva)
-	if err != nil {
-		return 0, nil, err
+	answer := strings.SplitN(resp.Answer, "\n", 2)
+	if len(answer) != 2 {
+		return 0, nil, errors.New("不符合预期的大模型响应")
 	}
-	return resp.Amount, &jdEva, nil
+	score := answer[0]
+	scoreNum, err := strconv.ParseFloat(strings.TrimSpace(strings.TrimPrefix(score, "score:")), 64)
+	if err != nil {
+		return 0, nil, errors.New("分数返回的数据不对")
+	}
+
+	return resp.Amount, &domain.JDEvaluation{
+		Score:    scoreNum,
+		Analysis: strings.TrimSpace(strings.TrimPrefix(answer[1], "analysis:")),
+	}, nil
 }

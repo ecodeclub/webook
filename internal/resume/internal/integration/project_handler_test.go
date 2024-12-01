@@ -1055,7 +1055,7 @@ func (s *ProjectTestSuite) TestResumeInfo() {
 	}
 }
 
-func (s *ProjectTestSuite) TestReaumeList() {
+func (s *ProjectTestSuite) TestResumeList() {
 	for i := 1; i < 4; i++ {
 		_, err := s.pdao.Upsert(context.Background(), dao.ResumeProject{
 			ID:           int64(i),
@@ -1116,8 +1116,8 @@ func (s *ProjectTestSuite) TestReaumeList() {
 	})
 	req, err := http.NewRequest(http.MethodPost,
 		"/resume/project/list", iox.NewJSONReader(nil))
-	req.Header.Set("content-type", "application/json")
 	require.NoError(s.T(), err)
+	req.Header.Set("content-type", "application/json")
 	recorder := test.NewJSONResponseRecorder[[]web.Project]()
 	s.server.ServeHTTP(recorder, req)
 

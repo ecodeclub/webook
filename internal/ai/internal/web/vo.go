@@ -22,8 +22,8 @@ type JDResponse struct {
 }
 
 type JDEvaluation struct {
-	Score    int    `json:"score"`
-	Analysis string `json:"analysis"`
+	Score    float64 `json:"score"`
+	Analysis string  `json:"analysis"`
 }
 
 type Config struct {
