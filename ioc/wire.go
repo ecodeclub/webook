@@ -92,7 +92,7 @@ func InitApp() (*App, error) {
 		wire.FieldsOf(new(*bff.Module), "Hdl"),
 		resume.InitModule,
 		wire.FieldsOf(new(*resume.Module), "PrjHdl", "AnalysisHandler"),
-		wire.FieldsOf(new(*ai.Module), "Hdl"),
+		wire.FieldsOf(new(*ai.Module), "Hdl", "AdminHandler"),
 
 		initLocalActiveLimiterBuilder,
 		initCronJobs,

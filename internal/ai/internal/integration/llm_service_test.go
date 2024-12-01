@@ -643,21 +643,24 @@ func (s *LLMServiceSuite) TestHandler_AnalysisJD() {
 							return domain.LLMResponse{
 								Tokens: 1000,
 								Amount: 100,
-								Answer: `{"score": 7, "analysis": "tech"}`,
+								Answer: `score: 6
+这是技术前景`,
 							}, nil
 						}
 						if request.Biz == "analysis_jd_biz" {
 							return domain.LLMResponse{
 								Tokens: 100,
 								Amount: 200,
-								Answer: `{"score": 8, "analysis": "biz"}`,
+								Answer: `score: 7
+这是业务前景`,
 							}, nil
 						}
 						if request.Biz == "analysis_jd_position" {
 							return domain.LLMResponse{
 								Tokens: 100,
 								Amount: 100,
-								Answer: `{"score": 5, "analysis": "position"}`,
+								Answer: `score: 8
+这是公司地位`,
 							}, nil
 						}
 						return domain.LLMResponse{}, errors.New("unknown biz")
@@ -675,16 +678,16 @@ func (s *LLMServiceSuite) TestHandler_AnalysisJD() {
 				assert.Equal(t, web.JDResponse{
 					Amount: 400,
 					TechScore: &web.JDEvaluation{
-						Score:    7,
-						Analysis: "tech",
+						Score:    6,
+						Analysis: "这是技术前景",
 					},
 					BizScore: &web.JDEvaluation{
-						Score:    8,
-						Analysis: "biz",
+						Score:    7,
+						Analysis: "这是业务前景",
 					},
 					PosScore: &web.JDEvaluation{
-						Score:    5,
-						Analysis: "position",
+						Score:    8,
+						Analysis: "这是公司地位",
 					},
 				}, resp)
 
