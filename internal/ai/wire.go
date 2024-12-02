@@ -33,6 +33,10 @@ func InitModule(db *egorm.Component, creditSvc *credit.Module) (*Module, error) 
 		dao.NewGORMLLMLogDAO,
 		dao.NewGORMConfigDAO,
 
+		InitZhipuKnowledgeBase,
+		dao.NewKnowledgeBaseDAO,
+		repository.NewKnowledgeBaseRepo,
+
 		config.NewBuilder,
 		log.NewHandler,
 		record.NewHandler,

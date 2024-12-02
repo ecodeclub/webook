@@ -36,7 +36,7 @@ func (s *ConfigSuite) SetupSuite() {
 	err := dao.InitTables(db)
 	s.NoError(err)
 	// 先插入 BizConfig
-	mou, err := startup.InitModule(s.db, nil, &credit.Module{})
+	mou, err := startup.InitModule(s.db, nil, nil, &credit.Module{})
 	require.NoError(s.T(), err)
 	s.adminHandler = mou.AdminHandler
 	econf.Set("server", map[string]any{"contextTimeout": "1s"})
@@ -190,6 +190,7 @@ func (s *ConfigSuite) TestConfig_List() {
 			SystemPrompt:   "test_prompt",
 			PromptTemplate: "test_template",
 			KnowledgeId:    "test_knowledge",
+			Utime:          int64(i),
 		}
 		configs = append(configs, cfg)
 	}
@@ -252,6 +253,7 @@ func (s *ConfigSuite) Test_Detail() {
 				SystemPrompt:   "testPrompt",
 				PromptTemplate: "testTemplate",
 				KnowledgeId:    "testKnowledgeId",
+				Utime:          22,
 			},
 		},
 	}
@@ -287,6 +289,7 @@ func getWantConfigs() []web.Config {
 			SystemPrompt:   "test_prompt",
 			PromptTemplate: "test_template",
 			KnowledgeId:    "test_knowledge",
+			Utime:          int64(i),
 		}
 		configs = append(configs, cfg)
 	}

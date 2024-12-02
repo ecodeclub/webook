@@ -20,6 +20,8 @@ import (
 	"github.com/ecodeclub/webook/internal/ai/internal/service/llm/handler/log"
 	hdlmocks "github.com/ecodeclub/webook/internal/ai/internal/service/llm/handler/mocks"
 	"github.com/ecodeclub/webook/internal/ai/internal/service/llm/handler/record"
+	"github.com/ecodeclub/webook/internal/ai/internal/service/llm/knowledge_base"
+	"github.com/ecodeclub/webook/internal/ai/internal/service/llm/knowledge_base/zhipu"
 	"github.com/ecodeclub/webook/internal/ai/internal/web"
 	"github.com/ecodeclub/webook/internal/credit"
 	"github.com/ego-component/egorm"
@@ -28,7 +30,7 @@ import (
 
 // Injectors from wire.go:
 
-func InitModule(db *gorm.DB, hdl *hdlmocks.MockHandler, creditSvc *credit.Module) (*ai.Module, error) {
+func InitModule(db *gorm.DB, hdl *hdlmocks.MockHandler, baseSvc knowledge_base.RepositoryBaseSvc, creditSvc *credit.Module) (*ai.Module, error) {
 	handlerBuilder := log.NewHandler()
 	configDAO := dao.NewGORMConfigDAO(db)
 	configRepository := repository.NewCachedConfigRepository(configDAO)
@@ -49,14 +51,26 @@ func InitModule(db *gorm.DB, hdl *hdlmocks.MockHandler, creditSvc *credit.Module
 	configService := service.NewConfigService(configRepository)
 	adminHandler := web.NewAdminHandler(configService)
 	module := &ai.Module{
-		Svc:          llmService,
-		Hdl:          webHandler,
-		AdminHandler: adminHandler,
+		Svc:              llmService,
+		KnowledgeBaseSvc: baseSvc,
+		Hdl:              webHandler,
+		AdminHandler:     adminHandler,
 	}
 	return module, nil
 }
 
 // wire.go:
+
+func InitKnowledgeBaseSvc(db *egorm.Component, apikey string) knowledge_base.RepositoryBaseSvc {
+	knowledgeDao := dao.NewKnowledgeBaseDAO(db)
+	knowledgeRepo := repository.NewKnowledgeBaseRepo(knowledgeDao)
+
+	knowledgeSvc, err := zhipu.NewKnowledgeBase(apikey, knowledgeRepo)
+	if err != nil {
+		panic(err)
+	}
+	return knowledgeSvc
+}
 
 func InitRootHandler(common []handler.Builder, hdl *hdlmocks.MockHandler) handler.Handler {
 	return handler.NewCompositionHandler(common, hdl)

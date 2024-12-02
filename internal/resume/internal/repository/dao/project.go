@@ -198,7 +198,7 @@ func (r *resumeProjectDAO) Upsert(ctx context.Context, pro ResumeProject) (int64
 }
 
 func (r *resumeProjectDAO) Delete(ctx context.Context, uid, id int64) error {
-	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
 		res := tx.WithContext(ctx).Model(&ResumeProject{}).Where("id = ? and uid = ?", id, uid).Delete(&ResumeProject{})
 		if res.Error != nil {
 			return res.Error

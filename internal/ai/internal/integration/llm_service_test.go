@@ -489,7 +489,7 @@ func (s *LLMServiceSuite) TestService() {
 			ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 			defer cancel()
 			mockHdl, mockCredit := tc.before(t, ctrl)
-			mou, err := startup.InitModule(s.db, mockHdl, &credit.Module{Svc: mockCredit})
+			mou, err := startup.InitModule(s.db, mockHdl, nil, &credit.Module{Svc: mockCredit})
 			require.NoError(t, err)
 			resp, err := mou.Svc.Invoke(ctx, tc.req)
 			tc.assertFunc(t, err)
@@ -595,7 +595,7 @@ func (s *LLMServiceSuite) TestHandler_Ask() {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
 			mockHdl, mockCredit := tc.before(t, ctrl)
-			mou, err := startup.InitModule(s.db, mockHdl, &credit.Module{Svc: mockCredit})
+			mou, err := startup.InitModule(s.db, mockHdl, nil, &credit.Module{Svc: mockCredit})
 			require.NoError(t, err)
 			req, err := http.NewRequest(http.MethodPost,
 				"/ai/ask", iox.NewJSONReader(tc.req))
@@ -701,7 +701,7 @@ func (s *LLMServiceSuite) TestHandler_AnalysisJD() {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
 			mockHdl, mockCredit := tc.before(t, ctrl)
-			mou, err := startup.InitModule(s.db, mockHdl, &credit.Module{Svc: mockCredit})
+			mou, err := startup.InitModule(s.db, mockHdl, nil, &credit.Module{Svc: mockCredit})
 			require.NoError(t, err)
 			req, err := http.NewRequest(http.MethodPost,
 				"/ai/analysis_jd", iox.NewJSONReader(tc.req))
