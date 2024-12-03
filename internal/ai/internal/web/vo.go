@@ -19,6 +19,7 @@ type JDResponse struct {
 	TechScore *JDEvaluation `json:"techScore"`
 	BizScore  *JDEvaluation `json:"bizScore"`
 	PosScore  *JDEvaluation `json:"posScore"`
+	Subtext   string        `json:"subtext"`
 }
 
 type JDEvaluation struct {

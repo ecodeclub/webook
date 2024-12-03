@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -31,6 +32,7 @@ func NewJDService(aiSvc llm.Service) JDService {
 func (j *jdSvc) Evaluate(ctx context.Context, uid int64, jd string) (domain.JD, error) {
 	var techJD, bizJD, positionJD *domain.JDEvaluation
 	var amount int64
+	var subtext string
 	var eg errgroup.Group
 	eg.Go(func() error {
 		var err error
@@ -62,6 +64,19 @@ func (j *jdSvc) Evaluate(ctx context.Context, uid int64, jd string) (domain.JD, 
 		atomic.AddInt64(&amount, positionAmount)
 		return nil
 	})
+
+	eg.Go(func() error {
+		tid := shortuuid.New()
+		resp, err := j.aiSvc.Invoke(ctx, domain.LLMRequest{
+			Uid:   uid,
+			Tid:   tid,
+			Biz:   domain.AnalysisJDSubtext,
+			Input: []string{jd},
+		})
+		subtext = resp.Answer
+		atomic.AddInt64(&amount, resp.Amount)
+		return err
+	})
 	if err := eg.Wait(); err != nil {
 		return domain.JD{}, err
 	}
@@ -70,6 +85,7 @@ func (j *jdSvc) Evaluate(ctx context.Context, uid int64, jd string) (domain.JD, 
 		TechScore: techJD,
 		BizScore:  bizJD,
 		PosScore:  positionJD,
+		Subtext:   subtext,
 	}, nil
 }
 
@@ -92,7 +108,7 @@ func (j *jdSvc) analysisJd(ctx context.Context, uid int64, biz string, jd string
 	score := answer[0]
 	scoreNum, err := strconv.ParseFloat(strings.TrimSpace(strings.TrimPrefix(score, "score:")), 64)
 	if err != nil {
-		return 0, nil, errors.New("分数返回的数据不对")
+		return 0, nil, fmt.Errorf("分数返回的数据不对 %s", score)
 	}
 
 	return resp.Amount, &domain.JDEvaluation{
