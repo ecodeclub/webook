@@ -14,9 +14,9 @@ type JDEvaluation struct {
 
 type JD struct {
 	Amount    int64
-	TechScore *JDEvaluation
-	BizScore  *JDEvaluation
-	PosScore  *JDEvaluation
+	TechScore JDEvaluation
+	BizScore  JDEvaluation
+	PosScore  JDEvaluation
 	// 潜台词
 	Subtext string
 }

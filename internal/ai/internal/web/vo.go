@@ -15,11 +15,11 @@ type JDRequest struct {
 }
 
 type JDResponse struct {
-	Amount    int64         `json:"amount"`
-	TechScore *JDEvaluation `json:"techScore"`
-	BizScore  *JDEvaluation `json:"bizScore"`
-	PosScore  *JDEvaluation `json:"posScore"`
-	Subtext   string        `json:"subtext"`
+	Amount    int64        `json:"amount"`
+	TechScore JDEvaluation `json:"techScore"`
+	BizScore  JDEvaluation `json:"bizScore"`
+	PosScore  JDEvaluation `json:"posScore"`
+	Subtext   string       `json:"subtext"`
 }
 
 type JDEvaluation struct {
