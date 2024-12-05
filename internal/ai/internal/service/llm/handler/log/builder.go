@@ -31,7 +31,7 @@ func (h *HandlerBuilder) Next(next handler.Handler) handler.Handler {
 			elog.Int64("uid", req.Uid),
 			elog.String("biz", req.Biz))
 		// 记录请求
-		logger.Info("请求 LLM")
+		logger.Debug("请求 LLM")
 		resp, err := next.Handle(ctx, req)
 		if err != nil {
 			// 记录错误
@@ -39,7 +39,7 @@ func (h *HandlerBuilder) Next(next handler.Handler) handler.Handler {
 			return resp, err
 		}
 		// 记录响应
-		logger.Info("请求 LLM 服务响应成功", elog.Int64("tokens", resp.Tokens))
+		logger.Debug("请求 LLM 服务响应成功", elog.Int64("tokens", resp.Tokens))
 		return resp, err
 	})
 }

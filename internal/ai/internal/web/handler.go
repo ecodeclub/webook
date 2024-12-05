@@ -65,6 +65,7 @@ func (h *Handler) AnalysisJd(ctx *ginx.Context, req JDRequest, sess session.Sess
 				TechScore: h.newJD(resp.TechScore),
 				BizScore:  h.newJD(resp.BizScore),
 				PosScore:  h.newJD(resp.PosScore),
+				Subtext:   resp.Subtext,
 			},
 		}, nil
 	default:
@@ -73,8 +74,8 @@ func (h *Handler) AnalysisJd(ctx *ginx.Context, req JDRequest, sess session.Sess
 
 }
 
-func (h *Handler) newJD(jd *domain.JDEvaluation) *JDEvaluation {
-	return &JDEvaluation{
+func (h *Handler) newJD(jd domain.JDEvaluation) JDEvaluation {
+	return JDEvaluation{
 		Score:    jd.Score,
 		Analysis: jd.Analysis,
 	}

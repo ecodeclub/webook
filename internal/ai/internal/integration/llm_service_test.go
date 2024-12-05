@@ -59,6 +59,7 @@ func (s *LLMServiceSuite) SetupSuite() {
 	err = s.db.Create(&dao.BizConfig{
 		Biz:            domain.BizQuestionExamine,
 		MaxInput:       100,
+		Price:          1,
 		PromptTemplate: "这是问题 %s，这是问题内容 %s，这是用户输入 %s",
 		KnowledgeId:    knowledgeId,
 		Ctime:          now,
@@ -68,6 +69,7 @@ func (s *LLMServiceSuite) SetupSuite() {
 	err = s.db.Create(&dao.BizConfig{
 		Biz:            domain.BizCaseExamine,
 		MaxInput:       100,
+		Price:          1,
 		PromptTemplate: "这是案例 %s，这是案例内容 %s，这是用户输入 %s",
 		KnowledgeId:    knowledgeId,
 		Ctime:          now,
@@ -105,6 +107,15 @@ func (s *LLMServiceSuite) SetupSuite() {
 	}).Error
 	s.NoError(err)
 
+	err = s.db.Create(&dao.BizConfig{
+		Biz:            domain.AnalysisJDSubtext,
+		MaxInput:       100,
+		PromptTemplate: "这是岗位描述Subtext %s",
+		KnowledgeId:    knowledgeId,
+		Ctime:          now,
+		Utime:          now,
+	}).Error
+	s.NoError(err)
 }
 
 func (s *LLMServiceSuite) TearDownSuite() {
@@ -639,31 +650,34 @@ func (s *LLMServiceSuite) TestHandler_AnalysisJD() {
 				llmHdl := hdlmocks.NewMockHandler(ctrl)
 				llmHdl.EXPECT().Handle(gomock.Any(), gomock.Any()).
 					DoAndReturn(func(ctx context.Context, request domain.LLMRequest) (domain.LLMResponse, error) {
-						if request.Biz == "analysis_jd_tech" {
+						switch request.Biz {
+						case domain.AnalysisJDTech:
 							return domain.LLMResponse{
 								Tokens: 1000,
 								Amount: 100,
-								Answer: `score: 6
-这是技术前景`,
+								Answer: `{"score":6, "summary":["这是技术前景"]}`,
 							}, nil
-						}
-						if request.Biz == "analysis_jd_biz" {
+						case domain.AnalysisJDBiz:
 							return domain.LLMResponse{
 								Tokens: 100,
 								Amount: 200,
-								Answer: `score: 7
-这是业务前景`,
+								Answer: `{"score":7, "summary":["这是业务前景"]}`,
 							}, nil
-						}
-						if request.Biz == "analysis_jd_position" {
+						case domain.AnalysisJDPosition:
 							return domain.LLMResponse{
 								Tokens: 100,
 								Amount: 100,
-								Answer: `score: 8
-这是公司地位`,
+								Answer: `{"score":8, "summary":["这是公司地位"]}`,
 							}, nil
+						case domain.AnalysisJDSubtext:
+							return domain.LLMResponse{
+								Tokens: 100,
+								Amount: 100,
+								Answer: `这是我的分析`,
+							}, nil
+						default:
+							return domain.LLMResponse{}, errors.New("unknown biz")
 						}
-						return domain.LLMResponse{}, errors.New("unknown biz")
 					}).AnyTimes()
 				creditSvc := creditmocks.NewMockService(ctrl)
 				creditSvc.EXPECT().GetCreditsByUID(gomock.Any(), gomock.Any()).Return(credit.Credit{
@@ -676,19 +690,20 @@ func (s *LLMServiceSuite) TestHandler_AnalysisJD() {
 			after: func(t *testing.T, resp web.JDResponse) {
 				// 校验response写入的内容是否正确
 				assert.Equal(t, web.JDResponse{
-					Amount: 400,
-					TechScore: &web.JDEvaluation{
+					Amount: 500,
+					TechScore: web.JDEvaluation{
 						Score:    6,
-						Analysis: "这是技术前景",
+						Analysis: "- 这是技术前景",
 					},
-					BizScore: &web.JDEvaluation{
+					BizScore: web.JDEvaluation{
 						Score:    7,
-						Analysis: "这是业务前景",
+						Analysis: "- 这是业务前景",
 					},
-					PosScore: &web.JDEvaluation{
+					PosScore: web.JDEvaluation{
 						Score:    8,
-						Analysis: "这是公司地位",
+						Analysis: "- 这是公司地位",
 					},
+					Subtext: "这是我的分析",
 				}, resp)
 
 			},
