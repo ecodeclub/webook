@@ -25,4 +25,6 @@ type Module struct {
 	ExamineHdl  *ExamineHandler
 
 	KnowledgeJobStarter *KnowledgeJobStarter
+
+	KnowledgeBaseHdl *KnowledgeBaseHandler
 }

@@ -5,6 +5,10 @@ package startup
 import (
 	"sync"
 
+	"github.com/ecodeclub/webook/internal/ai/internal/service/llm/knowledge_base/zhipu"
+
+	"github.com/ecodeclub/webook/internal/ai/internal/service/llm/knowledge_base"
+
 	"github.com/ecodeclub/webook/internal/ai/internal/service"
 	"github.com/ecodeclub/webook/internal/ai/internal/web"
 
@@ -28,6 +32,7 @@ import (
 
 func InitModule(db *egorm.Component,
 	hdl *hdlmocks.MockHandler,
+	baseSvc knowledge_base.RepositoryBaseSvc,
 	creditSvc *credit.Module) (*ai.Module, error) {
 	wire.Build(
 		llm.NewLLMService,
@@ -55,6 +60,17 @@ func InitModule(db *egorm.Component,
 		wire.FieldsOf(new(*credit.Module), "Svc"),
 	)
 	return new(ai.Module), nil
+}
+
+func InitKnowledgeBaseSvc(db *egorm.Component, apikey string) knowledge_base.RepositoryBaseSvc {
+	knowledgeDao := dao.NewKnowledgeBaseDAO(db)
+	knowledgeRepo := repository.NewKnowledgeBaseRepo(knowledgeDao)
+	// 将智谱对应的apikey写到环境变量
+	knowledgeSvc, err := zhipu.NewKnowledgeBase(apikey, knowledgeRepo)
+	if err != nil {
+		panic(err)
+	}
+	return knowledgeSvc
 }
 
 func InitRootHandler(common []handler.Builder, hdl *hdlmocks.MockHandler) handler.Handler {

@@ -47,6 +47,7 @@ func InitAdminServer(prj *project.AdminHandler,
 	caseSetHdl *cases.AdminCaseSetHandler,
 	mark *marketing.AdminHandler,
 	aiHdl *ai.AdminHandler,
+
 ) AdminServer {
 	res := egin.Load("admin").Build()
 	res.Use(cors.New(cors.Config{

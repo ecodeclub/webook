@@ -65,6 +65,7 @@ type BizConfig struct {
 	// 这里一般使用 %s
 	// 后续考虑 key value 的形式
 	PromptTemplate string
+	Utime          int64
 }
 
 type LLMCredit struct {

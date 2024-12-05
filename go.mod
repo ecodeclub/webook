@@ -16,6 +16,7 @@ require (
 	github.com/google/wire v0.6.0
 	github.com/gotomicro/ego v1.1.19
 	github.com/lithammer/shortuuid/v4 v4.0.0
+	github.com/lukasjarosch/go-docx v0.5.0
 	github.com/olivere/elastic/v7 v7.0.32
 	github.com/pkg/errors v0.9.1
 	github.com/redis/go-redis/v9 v9.4.0
@@ -24,7 +25,7 @@ require (
 	github.com/wechatpay-apiv3/wechatpay-go v0.2.18
 	github.com/yankeguo/zhipu v0.1.0
 	go.uber.org/mock v0.3.0
-	golang.org/x/sync v0.6.0
+	golang.org/x/sync v0.7.0
 	gorm.io/gorm v1.25.1
 )
 
@@ -123,11 +124,11 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.26.0 // indirect
 	golang.org/x/arch v0.7.0 // indirect
-	golang.org/x/crypto v0.23.0 // indirect
+	golang.org/x/crypto v0.25.0 // indirect
 	golang.org/x/exp v0.0.0-20231006140011-7918f672742d // indirect
-	golang.org/x/net v0.25.0 // indirect
-	golang.org/x/sys v0.20.0 // indirect
-	golang.org/x/text v0.15.0 // indirect
+	golang.org/x/net v0.27.0 // indirect
+	golang.org/x/sys v0.22.0 // indirect
+	golang.org/x/text v0.16.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20230711160842-782d3b101e98 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20230711160842-782d3b101e98 // indirect
 	google.golang.org/grpc v1.58.1 // indirect
