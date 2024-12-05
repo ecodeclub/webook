@@ -15,11 +15,13 @@
 package nonsense
 
 import (
+	"log/slog"
+
 	"github.com/gin-gonic/gin"
 )
 
 // NonSenseV1
 var NonSenseV1 gin.HandlerFunc = func(ct *gin.Context) {
 	// 啥也不做
-	println("hello")
+	slog.Debug("进来了 NonSenseV1")
 }

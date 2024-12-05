@@ -655,22 +655,19 @@ func (s *LLMServiceSuite) TestHandler_AnalysisJD() {
 							return domain.LLMResponse{
 								Tokens: 1000,
 								Amount: 100,
-								Answer: `score: 6
-这是技术前景`,
+								Answer: `{"score":6, "summary":["这是技术前景"]}`,
 							}, nil
 						case domain.AnalysisJDBiz:
 							return domain.LLMResponse{
 								Tokens: 100,
 								Amount: 200,
-								Answer: `score: 7
-这是业务前景`,
+								Answer: `{"score":7, "summary":["这是业务前景"]}`,
 							}, nil
 						case domain.AnalysisJDPosition:
 							return domain.LLMResponse{
 								Tokens: 100,
 								Amount: 100,
-								Answer: `score: 8
-这是公司地位`,
+								Answer: `{"score":8, "summary":["这是公司地位"]}`,
 							}, nil
 						case domain.AnalysisJDSubtext:
 							return domain.LLMResponse{
@@ -694,17 +691,17 @@ func (s *LLMServiceSuite) TestHandler_AnalysisJD() {
 				// 校验response写入的内容是否正确
 				assert.Equal(t, web.JDResponse{
 					Amount: 500,
-					TechScore: &web.JDEvaluation{
+					TechScore: web.JDEvaluation{
 						Score:    6,
-						Analysis: "这是技术前景",
+						Analysis: "- 这是技术前景",
 					},
-					BizScore: &web.JDEvaluation{
+					BizScore: web.JDEvaluation{
 						Score:    7,
-						Analysis: "这是业务前景",
+						Analysis: "- 这是业务前景",
 					},
-					PosScore: &web.JDEvaluation{
+					PosScore: web.JDEvaluation{
 						Score:    8,
-						Analysis: "这是公司地位",
+						Analysis: "- 这是公司地位",
 					},
 					Subtext: "这是我的分析",
 				}, resp)
