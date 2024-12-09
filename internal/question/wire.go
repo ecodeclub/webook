@@ -73,10 +73,11 @@ func InitModule(db *egorm.Component,
 		service.NewQuestionSetService,
 		web.NewQuestionSetHandler,
 		initKnowledgeStarter,
-
+		InitKnowledgeBaseSvc,
+		web.NewKnowledgeBaseHandler,
 		wire.FieldsOf(new(*interactive.Module), "Svc"),
 		wire.FieldsOf(new(*permission.Module), "Svc"),
-		wire.FieldsOf(new(*ai.Module), "Svc"),
+		wire.FieldsOf(new(*ai.Module), "Svc", "KnowledgeBaseSvc"),
 
 		wire.Struct(new(Module), "*"),
 	)

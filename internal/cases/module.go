@@ -21,20 +21,22 @@ import (
 )
 
 type Module struct {
-	Svc             Service
-	SetSvc          SetService
-	ExamineSvc      ExamineService
-	Hdl             *Handler
-	AdminSetHandler *AdminCaseSetHandler
-	AdminHandler    *AdminCaseHandler
-	ExamineHdl      *ExamineHandler
-	CsHdl           *CaseSetHandler
+	Svc                  Service
+	SetSvc               SetService
+	ExamineSvc           ExamineService
+	Hdl                  *Handler
+	AdminSetHandler      *AdminCaseSetHandler
+	AdminHandler         *AdminCaseHandler
+	ExamineHdl           *ExamineHandler
+	CsHdl                *CaseSetHandler
+	KnowledgeBaseHandler *KnowledgeBaseHandler
 }
 
 type Handler = web.Handler
 type Service = service.Service
 type SetService = service.CaseSetService
 type ExamineService = service.ExamineService
+type KnowledgeBaseHandler = web.KnowledgeBaseHandler
 type ExamineResult = domain.ExamineCaseResult
 type ExamineResultEnum = domain.CaseResult
 type Case = domain.Case

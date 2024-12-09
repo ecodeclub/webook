@@ -45,7 +45,7 @@ func InitModule(p event.SyncDataToSearchEventProducer,
 		event.NewInteractiveEventProducer,
 		wire.FieldsOf(new(*interactive.Module), "Svc"),
 		wire.FieldsOf(new(*permission.Module), "Svc"),
-		wire.FieldsOf(new(*ai.Module), "Svc"),
+		wire.FieldsOf(new(*ai.Module), "Svc", "KnowledgeBaseSvc"),
 	)
 	return new(baguwen.Module), nil
 }
@@ -63,9 +63,15 @@ var moduleSet = wire.NewSet(baguwen.InitQuestionDAO,
 	repository.NewQuestionSetRepository,
 	service.NewQuestionSetService,
 	web.NewQuestionSetHandler,
+	initKnowledgeBaseSvc,
+	web.NewKnowledgeBaseHandler,
 	wire.Struct(new(baguwen.Module), "*"),
 )
 
 func initKnowledgeJobStarter(svc service.Service) *job.KnowledgeJobStarter {
 	return job.NewKnowledgeJobStarter(svc, os.TempDir())
+}
+
+func initKnowledgeBaseSvc(svc ai.KnowledgeBaseService, queRepo repository.Repository) service.QuestionKnowledgeBase {
+	return service.NewQuestionKnowledgeBase("knowledge_id", queRepo, svc)
 }

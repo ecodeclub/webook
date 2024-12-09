@@ -44,12 +44,14 @@ func InitModule(
 		service.NewService,
 		service.NewCaseSetService,
 		service.NewLLMExamineService,
+		initKnowledgeBaseSvc,
 		web.NewHandler,
 		web.NewAdminCaseSetHandler,
 		web.NewAdminCaseHandler,
+		web.NewKnowledgeBaseHandler,
 		wire.FieldsOf(new(*interactive.Module), "Svc"),
-		wire.FieldsOf(new(*ai.Module), "Svc"),
-		wire.Struct(new(cases.Module), "AdminHandler", "ExamineSvc", "Svc", "Hdl", "AdminSetHandler"),
+		wire.FieldsOf(new(*ai.Module), "Svc", "KnowledgeBaseSvc"),
+		wire.Struct(new(cases.Module), "AdminHandler", "ExamineSvc", "Svc", "Hdl", "AdminSetHandler", "KnowledgeBaseHandler"),
 	)
 	return new(cases.Module), nil
 }
@@ -70,14 +72,20 @@ func InitExamModule(
 		service.NewCaseSetService,
 		service.NewService,
 		service.NewLLMExamineService,
+		initKnowledgeBaseSvc,
 		web.NewHandler,
 		web.NewAdminCaseSetHandler,
 		web.NewAdminCaseHandler,
 		web.NewExamineHandler,
 		web.NewCaseSetHandler,
+		web.NewKnowledgeBaseHandler,
 		wire.FieldsOf(new(*interactive.Module), "Svc"),
-		wire.FieldsOf(new(*ai.Module), "Svc"),
+		wire.FieldsOf(new(*ai.Module), "Svc", "KnowledgeBaseSvc"),
 		wire.Struct(new(cases.Module), "*"),
 	)
 	return new(cases.Module), nil
+}
+
+func initKnowledgeBaseSvc(svc ai.KnowledgeBaseService, caRepo repository.CaseRepo) service.KnowledgeBaseService {
+	return service.NewKnowledgeBaseService(caRepo, svc, "knowledge_id")
 }

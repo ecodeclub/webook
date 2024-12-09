@@ -85,5 +85,6 @@ func (h *AdminHandler) domainToConfig(cfg domain.BizConfig) Config {
 		SystemPrompt:   cfg.SystemPrompt,
 		PromptTemplate: cfg.PromptTemplate,
 		KnowledgeId:    cfg.KnowledgeId,
+		Utime:          cfg.Utime,
 	}
 }

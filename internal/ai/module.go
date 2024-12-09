@@ -1,7 +1,8 @@
 package ai
 
 type Module struct {
-	Svc          LLMService
-	Hdl          *LLMHandler
-	AdminHandler *AdminHandler
+	Svc              LLMService
+	KnowledgeBaseSvc KnowledgeBaseService
+	Hdl              *LLMHandler
+	AdminHandler     *AdminHandler
 }
