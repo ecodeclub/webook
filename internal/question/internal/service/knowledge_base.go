@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/ecodeclub/webook/internal/question/internal/domain"
+
 	"github.com/ecodeclub/webook/internal/ai"
 	"github.com/ecodeclub/webook/internal/question/internal/repository"
 	"github.com/gotomicro/ego/core/elog"
@@ -61,7 +63,7 @@ func (q *questionKnowledgeBase) syncOne(id int64) error {
 		return fmt.Errorf("序列化问题数据失败 %w", err)
 	}
 	err = q.knowledgeBaseSvc.UploadFile(ctx, ai.KnowledgeBaseFile{
-		Biz:             "question",
+		Biz:             domain.QuestionBiz,
 		BizID:           que.Id,
 		Name:            fmt.Sprintf("question_%d", que.Id),
 		Data:            data,

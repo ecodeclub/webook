@@ -12,7 +12,7 @@ func InitKnowledgeBaseSvc(svc ai.KnowledgeBaseService, queSvc repository.Reposit
 		KnowledgeBaseID string `yaml:"knowledgeBaseID"`
 	}
 	var cfg Config
-	err := econf.UnmarshalKey("zhipuBaseID", &cfg)
+	err := econf.UnmarshalKey("question.zhipu", &cfg)
 	if err != nil {
 		panic(err)
 	}
