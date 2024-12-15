@@ -18,6 +18,8 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/ecodeclub/webook/internal/review"
+
 	"github.com/ecodeclub/webook/internal/ai"
 
 	"github.com/ecodeclub/webook/internal/resume"
@@ -90,6 +92,7 @@ func initGinxServer(sp session.Provider,
 	resumePrjHdl *resume.ProjectHandler,
 	resumeAnaHdl *resume.AnalysisHandler,
 	aiHdl *ai.LLMHandler,
+	reviewHdl *review.Hdl,
 ) *egin.Component {
 	session.SetDefaultProvider(sp)
 	res := egin.Load("web").Build()
@@ -133,7 +136,7 @@ func initGinxServer(sp session.Provider,
 	skillHdl.PublicRoutes(res.Engine)
 	csHdl.PublicRoutes(res.Engine)
 	prjHdl.PublicRoutes(res.Engine)
-
+	reviewHdl.PublicRoutes(res.Engine)
 	// 登录校验
 	res.Use(session.CheckLoginMiddleware())
 	user.PrivateRoutes(res.Engine)
@@ -165,5 +168,6 @@ func initGinxServer(sp session.Provider,
 	resumePrjHdl.MemberRoutes(res.Engine)
 	resumeAnaHdl.MemberRoutes(res.Engine)
 	aiHdl.MemberRoutes(res.Engine)
+	reviewHdl.MemberRoutes(res.Engine)
 	return res
 }

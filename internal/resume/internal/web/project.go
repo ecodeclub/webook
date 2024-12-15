@@ -48,7 +48,7 @@ func (h *ProjectHandler) DeleteContribution(ctx *ginx.Context, item IDItem) (gin
 }
 
 func (h *ProjectHandler) DeleteDifficulty(ctx *ginx.Context, item IDItem) (ginx.Result, error) {
-	err := h.svc.DeleteDifficulty(ctx.Request.Context(), item.ID)
+	err := h.svc.DeleteDifficulty(ctx, item.ID)
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -86,7 +86,7 @@ func (h *ProjectHandler) DeleteProject(ctx *ginx.Context, req IDItem, sess sessi
 
 func (h *ProjectHandler) ProjectInfo(ctx *ginx.Context, req IDItem, sess session.Session) (ginx.Result, error) {
 	uid := sess.Claims().Uid
-	pro, err := h.svc.ProjectInfo(ctx.Request.Context(), req.ID)
+	pro, err := h.svc.ProjectInfo(ctx, req.ID)
 	if err != nil {
 		return systemErrorResult, err
 	}
