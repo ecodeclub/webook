@@ -103,7 +103,7 @@ func (s *HandlerTestSuite) SetupSuite() {
 		return perm.BizID%2 == 0, nil
 	}).AnyTimes()
 
-	module, err := startup.InitModule(producer, intrModule,
+	module, err := startup.InitModule(producer, nil, intrModule,
 		&permission.Module{Svc: permSvc}, &ai.Module{})
 	require.NoError(s.T(), err)
 	econf.Set("server", map[string]any{"contextTimeout": "1s"})

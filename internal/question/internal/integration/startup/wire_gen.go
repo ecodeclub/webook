@@ -26,7 +26,7 @@ import (
 
 // Injectors from wire.go:
 
-func InitModule(p event.SyncDataToSearchEventProducer, intrModule *interactive.Module, permModule *permission.Module, aiModule *ai.Module) (*baguwen.Module, error) {
+func InitModule(p event.SyncDataToSearchEventProducer, knowledgeBaseP event.KnowledgeBaseEventProducer, intrModule *interactive.Module, permModule *permission.Module, aiModule *ai.Module) (*baguwen.Module, error) {
 	db := testioc.InitDB()
 	questionDAO := baguwen.InitQuestionDAO(db)
 	ecacheCache := testioc.InitCache()
@@ -37,7 +37,7 @@ func InitModule(p event.SyncDataToSearchEventProducer, intrModule *interactive.M
 	if err != nil {
 		return nil, err
 	}
-	serviceService := service.NewService(repositoryRepository, p, interactiveEventProducer)
+	serviceService := service.NewService(repositoryRepository, p, interactiveEventProducer, knowledgeBaseP)
 	questionSetDAO := baguwen.InitQuestionSetDAO(db)
 	questionSetRepository := repository.NewQuestionSetRepository(questionSetDAO)
 	questionSetService := service.NewQuestionSetService(questionSetRepository, repositoryRepository, interactiveEventProducer, p)

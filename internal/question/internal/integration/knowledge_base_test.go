@@ -40,7 +40,7 @@ func (k *KnowledgeBaseTestSuite) SetupSuite() {
 	k.db = testioc.InitDB()
 }
 
-func (k *KnowledgeBaseTestSuite) getWantQuestion(id int64) domain.Question {
+func getWantQuestion(id int64) domain.Question {
 	que := domain.Question{
 		Id:      id,
 		Uid:     uid,
@@ -50,17 +50,17 @@ func (k *KnowledgeBaseTestSuite) getWantQuestion(id int64) domain.Question {
 		Content: fmt.Sprintf("内容%d", id),
 		Status:  domain.PublishedStatus,
 		Answer: domain.Answer{
-			Analysis:     k.getAnswerElement(id),
-			Basic:        k.getAnswerElement(id),
-			Intermediate: k.getAnswerElement(id),
-			Advanced:     k.getAnswerElement(id),
+			Analysis:     getAnswerElement(id),
+			Basic:        getAnswerElement(id),
+			Intermediate: getAnswerElement(id),
+			Advanced:     getAnswerElement(id),
 		},
 		Utime: time.UnixMilli(123),
 	}
 	return que
 }
 
-func (k *KnowledgeBaseTestSuite) getAnswerElement(idx int64) domain.AnswerElement {
+func getAnswerElement(idx int64) domain.AnswerElement {
 	return domain.AnswerElement{
 		Content:   fmt.Sprintf("这是解析 %d", idx),
 		Keywords:  fmt.Sprintf("关键字 %d", idx),
@@ -74,7 +74,7 @@ func (k *KnowledgeBaseTestSuite) TestKnowledgeBaseSync() {
 	ctrl := gomock.NewController(k.T())
 	svc := aimocks.NewMockRepositoryBaseSvc(ctrl)
 	svc.EXPECT().UploadFile(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, file ai.KnowledgeBaseFile) error {
-		wantQue := k.getWantQuestion(file.BizID)
+		wantQue := getWantQuestion(file.BizID)
 		var actualQue domain.Question
 		err := json.Unmarshal(file.Data, &actualQue)
 		if err != nil {
@@ -112,7 +112,7 @@ func (k *KnowledgeBaseTestSuite) TestKnowledgeBaseSync() {
 	intrModule := &interactive.Module{
 		Svc: intrSvc,
 	}
-	module, err := startup.InitModule(nil, intrModule, &permission.Module{}, &ai.Module{
+	module, err := startup.InitModule(nil, nil, intrModule, &permission.Module{}, &ai.Module{
 		KnowledgeBaseSvc: svc,
 	})
 	require.NoError(k.T(), err)

@@ -20,7 +20,7 @@ import (
 
 // Injectors from wire.go:
 
-func InitModule(syncProducer event.SyncEventProducer, aiModule *ai.Module, intrModule *interactive.Module) (*cases.Module, error) {
+func InitModule(syncProducer event.SyncEventProducer, knowledgeBaseProducer event.KnowledgeBaseEventProducer, aiModule *ai.Module, intrModule *interactive.Module) (*cases.Module, error) {
 	db := testioc.InitDB()
 	caseDAO := cases.InitCaseDAO(db)
 	caseRepo := repository.NewCaseRepo(caseDAO)
@@ -29,7 +29,7 @@ func InitModule(syncProducer event.SyncEventProducer, aiModule *ai.Module, intrM
 	if err != nil {
 		return nil, err
 	}
-	serviceService := service.NewService(caseRepo, interactiveEventProducer, syncProducer)
+	serviceService := service.NewService(caseRepo, interactiveEventProducer, knowledgeBaseProducer, syncProducer)
 	adminCaseHandler := web.NewAdminCaseHandler(serviceService)
 	examineDAO := dao.NewGORMExamineDAO(db)
 	examineRepository := repository.NewCachedExamineRepository(examineDAO)
@@ -55,7 +55,7 @@ func InitModule(syncProducer event.SyncEventProducer, aiModule *ai.Module, intrM
 	return module, nil
 }
 
-func InitExamModule(syncProducer event.SyncEventProducer, intrModule *interactive.Module, aiModule *ai.Module) (*cases.Module, error) {
+func InitExamModule(syncProducer event.SyncEventProducer, knowledgeBaseProducer event.KnowledgeBaseEventProducer, intrModule *interactive.Module, aiModule *ai.Module) (*cases.Module, error) {
 	db := testioc.InitDB()
 	caseDAO := cases.InitCaseDAO(db)
 	caseRepo := repository.NewCaseRepo(caseDAO)
@@ -64,7 +64,7 @@ func InitExamModule(syncProducer event.SyncEventProducer, intrModule *interactiv
 	if err != nil {
 		return nil, err
 	}
-	serviceService := service.NewService(caseRepo, interactiveEventProducer, syncProducer)
+	serviceService := service.NewService(caseRepo, interactiveEventProducer, knowledgeBaseProducer, syncProducer)
 	caseSetDAO := dao.NewCaseSetDAO(db)
 	caseSetRepository := repository.NewCaseSetRepo(caseSetDAO)
 	caseSetService := service.NewCaseSetService(caseSetRepository, caseRepo, interactiveEventProducer)

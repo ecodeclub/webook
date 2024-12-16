@@ -5,6 +5,8 @@ package startup
 import (
 	"sync"
 
+	"github.com/ecodeclub/webook/internal/ai/internal/event"
+
 	"github.com/ecodeclub/webook/internal/ai/internal/service/llm/knowledge_base/zhipu"
 
 	"github.com/ecodeclub/webook/internal/ai/internal/service/llm/knowledge_base"
@@ -33,7 +35,9 @@ import (
 func InitModule(db *egorm.Component,
 	hdl *hdlmocks.MockHandler,
 	baseSvc knowledge_base.RepositoryBaseSvc,
-	creditSvc *credit.Module) (*ai.Module, error) {
+	creditSvc *credit.Module,
+	consumer *event.KnowledgeBaseConsumer,
+) (*ai.Module, error) {
 	wire.Build(
 		llm.NewLLMService,
 		repository.NewLLMLogRepo,

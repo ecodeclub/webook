@@ -43,7 +43,7 @@ func (k *KnowledgeBaseTestSuite) SetupSuite() {
 }
 
 func (k *KnowledgeBaseTestSuite) getWantCase(id int64) domain.Case {
-	que := domain.Case{
+	ca := domain.Case{
 		Id:           id,
 		Uid:          123,
 		Labels:       []string{"label"},
@@ -60,14 +60,16 @@ func (k *KnowledgeBaseTestSuite) getWantCase(id int64) domain.Case {
 		BizId:        id,
 		Status:       domain.PublishedStatus,
 	}
-	return que
+	return ca
 }
 
 func (k *KnowledgeBaseTestSuite) TestKnowledgeBaseSync() {
 	ctrl := gomock.NewController(k.T())
 	svc := aimocks.NewMockRepositoryBaseSvc(ctrl)
 	producer := eveMocks.NewMockSyncEventProducer(ctrl)
+	knowledgeProducer := eveMocks.NewMockKnowledgeBaseEventProducer(ctrl)
 	producer.EXPECT().Produce(gomock.Any(), gomock.Any()).AnyTimes()
+	knowledgeProducer.EXPECT().Produce(gomock.Any(), gomock.Any()).AnyTimes()
 	svc.EXPECT().UploadFile(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, file ai.KnowledgeBaseFile) error {
 		assert.Equal(k.T(), fmt.Sprintf("case_%d", file.BizID), file.Name)
 		assert.Equal(k.T(), domain.BizCase, file.Biz)
@@ -93,7 +95,7 @@ func (k *KnowledgeBaseTestSuite) TestKnowledgeBaseSync() {
 	intrModule := &interactive.Module{
 		Svc: intrSvc,
 	}
-	module, err := startup.InitModule(producer, &ai.Module{
+	module, err := startup.InitModule(producer, knowledgeProducer, &ai.Module{
 		KnowledgeBaseSvc: svc,
 	}, intrModule)
 	require.NoError(k.T(), err)

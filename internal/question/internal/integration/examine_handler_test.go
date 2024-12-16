@@ -63,7 +63,7 @@ func (s *ExamineHandlerTest) SetupSuite() {
 			Answer: "最终评分 \n 1",
 		}, nil
 	}).AnyTimes()
-	module, err := startup.InitModule(nil, &interactive.Module{}, &permission.Module{}, &ai.Module{Svc: aiSvc})
+	module, err := startup.InitModule(nil, nil, &interactive.Module{}, &permission.Module{}, &ai.Module{Svc: aiSvc})
 	require.NoError(s.T(), err)
 	hdl := module.ExamineHdl
 	s.db = testioc.InitDB()

@@ -41,7 +41,8 @@ func InitModule(db *gorm.DB, intrModule *interactive.Module, ec ecache.Cache, pe
 	if err != nil {
 		return nil, err
 	}
-	serviceService := service.NewService(repositoryRepository, syncDataToSearchEventProducer, interactiveEventProducer)
+	knowledgeBaseEventProducer := InitKnowledgeBaseUploadProducer(q)
+	serviceService := service.NewService(repositoryRepository, syncDataToSearchEventProducer, interactiveEventProducer, knowledgeBaseEventProducer)
 	questionSetDAO := InitQuestionSetDAO(db)
 	questionSetRepository := repository.NewQuestionSetRepository(questionSetDAO)
 	questionSetService := service.NewQuestionSetService(questionSetRepository, repositoryRepository, interactiveEventProducer, syncDataToSearchEventProducer)

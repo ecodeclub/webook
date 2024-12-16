@@ -61,7 +61,7 @@ func InitApp() (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	aiModule, err := ai.InitModule(db, creditModule)
+	aiModule, err := ai.InitModule(db, creditModule, mq)
 	if err != nil {
 		return nil, err
 	}

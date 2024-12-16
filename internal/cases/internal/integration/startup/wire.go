@@ -31,6 +31,7 @@ import (
 
 func InitModule(
 	syncProducer event.SyncEventProducer,
+	knowledgeBaseProducer event.KnowledgeBaseEventProducer,
 	aiModule *ai.Module,
 	intrModule *interactive.Module) (*cases.Module, error) {
 	wire.Build(cases.InitCaseDAO,
@@ -58,6 +59,7 @@ func InitModule(
 
 func InitExamModule(
 	syncProducer event.SyncEventProducer,
+	knowledgeBaseProducer event.KnowledgeBaseEventProducer,
 	intrModule *interactive.Module,
 	aiModule *ai.Module) (*cases.Module, error) {
 	wire.Build(

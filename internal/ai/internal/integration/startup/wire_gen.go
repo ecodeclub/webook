@@ -10,6 +10,7 @@ import (
 	"sync"
 
 	"github.com/ecodeclub/webook/internal/ai"
+	"github.com/ecodeclub/webook/internal/ai/internal/event"
 	"github.com/ecodeclub/webook/internal/ai/internal/repository"
 	"github.com/ecodeclub/webook/internal/ai/internal/repository/dao"
 	"github.com/ecodeclub/webook/internal/ai/internal/service"
@@ -30,7 +31,7 @@ import (
 
 // Injectors from wire.go:
 
-func InitModule(db *gorm.DB, hdl *hdlmocks.MockHandler, baseSvc knowledge_base.RepositoryBaseSvc, creditSvc *credit.Module) (*ai.Module, error) {
+func InitModule(db *gorm.DB, hdl *hdlmocks.MockHandler, baseSvc knowledge_base.RepositoryBaseSvc, creditSvc *credit.Module, consumer *event.KnowledgeBaseConsumer) (*ai.Module, error) {
 	handlerBuilder := log.NewHandler()
 	configDAO := dao.NewGORMConfigDAO(db)
 	configRepository := repository.NewCachedConfigRepository(configDAO)
@@ -55,6 +56,7 @@ func InitModule(db *gorm.DB, hdl *hdlmocks.MockHandler, baseSvc knowledge_base.R
 		KnowledgeBaseSvc: baseSvc,
 		Hdl:              webHandler,
 		AdminHandler:     adminHandler,
+		C:                consumer,
 	}
 	return module, nil
 }

@@ -30,11 +30,12 @@ func InitModule(db *gorm.DB, intrModule *interactive.Module, aiModule *ai.Module
 	if err != nil {
 		return nil, err
 	}
+	knowledgeBaseEventProducer := InitKnowledgeBaseEvt(q)
 	syncEventProducer, err := event.NewSyncEventProducer(q)
 	if err != nil {
 		return nil, err
 	}
-	serviceService := service.NewService(caseRepo, interactiveEventProducer, syncEventProducer)
+	serviceService := service.NewService(caseRepo, interactiveEventProducer, knowledgeBaseEventProducer, syncEventProducer)
 	caseSetDAO := dao.NewCaseSetDAO(db)
 	caseSetRepository := repository.NewCaseSetRepo(caseSetDAO)
 	caseSetService := service.NewCaseSetService(caseSetRepository, caseRepo, interactiveEventProducer)

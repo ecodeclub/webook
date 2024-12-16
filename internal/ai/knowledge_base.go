@@ -6,7 +6,7 @@ import (
 	"github.com/gotomicro/ego/core/econf"
 )
 
-func InitZhipuKnowledgeBase(repo repository.KnowledgeBaseRepo) *zhipu.KnowledgeBase {
+func InitZhipuKnowledgeBase(repo repository.KnowledgeBaseRepo) KnowledgeBaseService {
 	type Config struct {
 		APIKey string `yaml:"apikey"`
 	}

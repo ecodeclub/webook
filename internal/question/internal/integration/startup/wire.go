@@ -35,6 +35,7 @@ import (
 )
 
 func InitModule(p event.SyncDataToSearchEventProducer,
+	knowledgeBaseP event.KnowledgeBaseEventProducer,
 	intrModule *interactive.Module,
 	permModule *permission.Module,
 	aiModule *ai.Module,

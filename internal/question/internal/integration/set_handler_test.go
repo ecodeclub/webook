@@ -91,7 +91,7 @@ func (s *SetHandlerTestSuite) SetupSuite() {
 		return res, nil
 	}).AnyTimes()
 
-	module, err := startup.InitModule(s.producer, intrModule, &permission.Module{}, &ai.Module{})
+	module, err := startup.InitModule(s.producer, nil, intrModule, &permission.Module{}, &ai.Module{})
 	require.NoError(s.T(), err)
 	econf.Set("server", map[string]any{"contextTimeout": "1s"})
 	server := egin.Load("server").Build()
