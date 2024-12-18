@@ -26,6 +26,7 @@ type AdminQuestionSetHandler = web.AdminQuestionSetHandler
 type Handler = web.Handler
 type QuestionSetHandler = web.QuestionSetHandler
 type ExamineHandler = web.ExamineHandler
+type KnowledgeBaseHandler = web.KnowledgeBaseHandler
 
 type Service = service.Service
 type QuestionSetService = service.QuestionSetService

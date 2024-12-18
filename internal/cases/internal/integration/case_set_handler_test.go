@@ -75,7 +75,7 @@ func (s *CaseSetTestSuite) SetupSuite() {
 		return res, nil
 	}).AnyTimes()
 
-	module, err := startup.InitExamModule(s.producer, intrModule, &ai.Module{})
+	module, err := startup.InitExamModule(s.producer, nil, intrModule, &ai.Module{})
 	require.NoError(s.T(), err)
 	econf.Set("server", map[string]any{"contextTimeout": "1s"})
 	server := egin.Load("server").Build()

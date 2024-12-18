@@ -97,7 +97,7 @@ func (s *HandlerTestSuite) SetupSuite() {
 		}
 		return res, nil
 	}).AnyTimes()
-	module, err := startup.InitModule(nil, &ai.Module{}, intrModule)
+	module, err := startup.InitModule(nil, nil, &ai.Module{}, intrModule)
 	require.NoError(s.T(), err)
 	handler := module.Hdl
 	econf.Set("server", map[string]any{"contextTimeout": "1s"})

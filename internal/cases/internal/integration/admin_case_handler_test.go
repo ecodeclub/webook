@@ -54,12 +54,13 @@ import (
 
 type AdminCaseHandlerTestSuite struct {
 	suite.Suite
-	server   *egin.Component
-	db       *egorm.Component
-	rdb      ecache.Cache
-	dao      dao.CaseDAO
-	ctrl     *gomock.Controller
-	producer *eveMocks.MockSyncEventProducer
+	server                *egin.Component
+	db                    *egorm.Component
+	rdb                   ecache.Cache
+	dao                   dao.CaseDAO
+	ctrl                  *gomock.Controller
+	producer              *eveMocks.MockSyncEventProducer
+	knowledgeBaseProducer *eveMocks.MockKnowledgeBaseEventProducer
 }
 
 func (s *AdminCaseHandlerTestSuite) TearDownTest() {
@@ -72,9 +73,10 @@ func (s *AdminCaseHandlerTestSuite) TearDownTest() {
 func (s *AdminCaseHandlerTestSuite) SetupSuite() {
 	s.ctrl = gomock.NewController(s.T())
 	s.producer = eveMocks.NewMockSyncEventProducer(s.ctrl)
+	s.knowledgeBaseProducer = eveMocks.NewMockKnowledgeBaseEventProducer(s.ctrl)
 	intrModule := &interactive.Module{}
 
-	module, err := startup.InitModule(s.producer, &ai.Module{}, intrModule)
+	module, err := startup.InitModule(s.producer, s.knowledgeBaseProducer, &ai.Module{}, intrModule)
 	require.NoError(s.T(), err)
 	handler := module.AdminHandler
 	econf.Set("server", map[string]any{"contextTimeout": "1s"})
@@ -435,6 +437,9 @@ func (s *AdminCaseHandlerTestSuite) TestPublish() {
 				s.producer.EXPECT().Produce(gomock.Any(), gomock.Any()).
 					MaxTimes(1).
 					Return(nil)
+				s.knowledgeBaseProducer.EXPECT().Produce(gomock.Any(), gomock.Any()).
+					MaxTimes(1).
+					Return(nil)
 			},
 			after: func(t *testing.T) {
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
@@ -492,6 +497,9 @@ func (s *AdminCaseHandlerTestSuite) TestPublish() {
 			// publish_case表的ctime不更新
 			before: func(t *testing.T) {
 				s.producer.EXPECT().Produce(gomock.Any(), gomock.Any()).
+					MaxTimes(1).
+					Return(nil)
+				s.knowledgeBaseProducer.EXPECT().Produce(gomock.Any(), gomock.Any()).
 					MaxTimes(1).
 					Return(nil)
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
@@ -576,6 +584,9 @@ func (s *AdminCaseHandlerTestSuite) TestPublish() {
 			// publish_case表的ctime不更新
 			before: func(t *testing.T) {
 				s.producer.EXPECT().Produce(gomock.Any(), gomock.Any()).
+					MaxTimes(1).
+					Return(nil)
+				s.knowledgeBaseProducer.EXPECT().Produce(gomock.Any(), gomock.Any()).
 					MaxTimes(1).
 					Return(nil)
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
@@ -696,6 +707,34 @@ func (s *AdminCaseHandlerTestSuite) TestEvent() {
 		wg.Done()
 		return nil
 	}).Times(1)
+	s.knowledgeBaseProducer.EXPECT().Produce(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, baseEvent event.KnowledgeBaseEvent) error {
+		var ca domain.Case
+		err := json.Unmarshal(baseEvent.Data, &ca)
+		require.NoError(t, err)
+		assert.Equal(t, domain.BizCase, baseEvent.Biz)
+		assert.Equal(t, baseEvent.BizID, ca.Id)
+		assert.Equal(t, fmt.Sprintf("case_%d", ca.Id), baseEvent.Name)
+		ca.Ctime = time.UnixMilli(123)
+		ca.Utime = time.UnixMilli(123)
+		assert.Equal(t, domain.Case{
+			Id:         baseEvent.BizID,
+			Title:      "案例2",
+			Uid:        uid,
+			Content:    "案例2内容",
+			Labels:     []string{"MySQL"},
+			GithubRepo: "www.github.com",
+			GiteeRepo:  "www.gitee.com",
+			Keywords:   "mysql_keywords",
+			Shorthand:  "mysql_shorthand",
+			Highlight:  "mysql_highlight",
+			Guidance:   "mysql_guidance",
+			Status:     2,
+			Biz:        domain.DefaultBiz,
+			Ctime:      time.UnixMilli(123),
+			Utime:      time.UnixMilli(123),
+		}, ca)
+		return nil
+	})
 	// 发布
 	publishReq := web.SaveReq{
 		Case: web.Case{
@@ -737,6 +776,7 @@ func (s *AdminCaseHandlerTestSuite) TestEvent() {
 		Guidance:   "mysql_guidance",
 		Status:     2,
 	}, evt)
+	time.Sleep(3 * time.Second)
 }
 
 // assertCase 不比较 id

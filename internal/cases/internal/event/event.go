@@ -16,6 +16,9 @@ package event
 
 import (
 	"encoding/json"
+	"fmt"
+
+	"github.com/ecodeclub/webook/internal/ai"
 
 	"github.com/ecodeclub/webook/internal/cases/internal/domain"
 )
@@ -70,4 +73,30 @@ func newCase(ca domain.Case) Case {
 		Ctime:        ca.Ctime.UnixMilli(),
 		Utime:        ca.Utime.UnixMilli(),
 	}
+}
+
+type KnowledgeBaseEvent struct {
+	Biz   string `json:"biz"`
+	BizID int64  `json:"bizID"`
+	// 文件名
+	Name string `json:"name"`
+	// 文件内容
+	Data []byte `json:"data"`
+	// 用途
+	Type            string `json:"type"`
+	KnowledgeBaseID string `json:"knowledgeBaseID"`
+}
+
+func NewKnowledgeBaseEvent(ca domain.Case) (KnowledgeBaseEvent, error) {
+	data, err := json.Marshal(ca)
+	if err != nil {
+		return KnowledgeBaseEvent{}, fmt.Errorf("序列化问题数据失败 %w", err)
+	}
+	return KnowledgeBaseEvent{
+		Biz:   domain.BizCase,
+		BizID: ca.Id,
+		Name:  fmt.Sprintf("case_%d", ca.Id),
+		Data:  data,
+		Type:  ai.RepositoryBaseTypeRetrieval,
+	}, nil
 }

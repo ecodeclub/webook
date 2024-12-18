@@ -26,11 +26,13 @@ type Service interface {
 }
 
 type service struct {
-	repo         repository.CaseRepo
-	producer     event.SyncEventProducer
-	intrProducer event.InteractiveEventProducer
-	logger       *elog.Component
-	syncTimeout  time.Duration
+	repo                  repository.CaseRepo
+	producer              event.SyncEventProducer
+	intrProducer          event.InteractiveEventProducer
+	knowledgeBaseProducer event.KnowledgeBaseEventProducer
+
+	logger      *elog.Component
+	syncTimeout time.Duration
 }
 
 func (s *service) GetPubByIDs(ctx context.Context, ids []int64) ([]domain.Case, error) {
@@ -47,7 +49,14 @@ func (s *service) Publish(ctx context.Context, ca domain.Case) (int64, error) {
 	id, err := s.repo.Sync(ctx, ca)
 	if err == nil {
 		go func() {
-			s.syncCase(id)
+			cctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+			defer cancel()
+			newCase, cerr := s.getCase(cctx, id)
+			if cerr != nil {
+				return
+			}
+			s.syncCase(cctx, newCase)
+			s.uploadCase(cctx, newCase)
 		}()
 	}
 	return id, nil
@@ -105,30 +114,51 @@ func (s *service) PubDetail(ctx context.Context, caseId int64) (domain.Case, err
 
 func NewService(repo repository.CaseRepo,
 	intrProducer event.InteractiveEventProducer,
+	knowledgeUploadProducer event.KnowledgeBaseEventProducer,
 	producer event.SyncEventProducer) Service {
 	return &service{
-		repo:         repo,
-		producer:     producer,
-		intrProducer: intrProducer,
-		logger:       elog.DefaultLogger,
-		syncTimeout:  10 * time.Second,
+		repo:                  repo,
+		producer:              producer,
+		intrProducer:          intrProducer,
+		knowledgeBaseProducer: knowledgeUploadProducer,
+		logger:                elog.DefaultLogger,
+		syncTimeout:           10 * time.Second,
 	}
 }
 
-func (s *service) syncCase(id int64) {
-	ctx, cancel := context.WithTimeout(context.Background(), s.syncTimeout)
-	defer cancel()
+func (s *service) syncCase(ctx context.Context, ca domain.Case) {
+	evt := event.NewCaseEvent(ca)
+	err := s.producer.Produce(ctx, evt)
+	if err != nil {
+		s.logger.Error("发送案例内容到搜索失败",
+			elog.FieldErr(err),
+			elog.Any("event", evt),
+		)
+	}
+}
+
+func (s *service) getCase(ctx context.Context, id int64) (domain.Case, error) {
 	ca, err := s.repo.GetPubByID(ctx, id)
 	if err != nil {
 		s.logger.Error("搜索案例详情失败",
 			elog.FieldErr(err),
 		)
-		return
+		return domain.Case{}, err
 	}
-	evt := event.NewCaseEvent(ca)
-	err = s.producer.Produce(ctx, evt)
+	return ca, err
+}
+
+func (s *service) uploadCase(ctx context.Context, ca domain.Case) {
+	evt, err := event.NewKnowledgeBaseEvent(ca)
 	if err != nil {
-		s.logger.Error("发送案例内容到搜索失败",
+		s.logger.Error("发送上传案例到知识库的事件失败",
+			elog.FieldErr(err),
+			elog.Any("event", evt),
+		)
+	}
+	err = s.knowledgeBaseProducer.Produce(ctx, evt)
+	if err != nil {
+		s.logger.Error("发送上传案例到知识库的事件失败",
 			elog.FieldErr(err),
 			elog.Any("event", evt),
 		)

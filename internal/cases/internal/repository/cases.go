@@ -21,6 +21,7 @@ type CaseRepo interface {
 	// Sync 保存到制作库，而后同步到线上库
 	Sync(ctx context.Context, ca domain.Case) (int64, error)
 	// 管理端接口
+	Ids(ctx context.Context) ([]int64, error)
 	List(ctx context.Context, offset int, limit int) ([]domain.Case, error)
 	Total(ctx context.Context) (int64, error)
 	Save(ctx context.Context, ca domain.Case) (int64, error)
@@ -32,6 +33,10 @@ type CaseRepo interface {
 
 type caseRepo struct {
 	caseDao dao.CaseDAO
+}
+
+func (c *caseRepo) Ids(ctx context.Context) ([]int64, error) {
+	return c.caseDao.Ids(ctx)
 }
 
 func (c *caseRepo) Exclude(ctx context.Context, ids []int64, offset int, limit int) ([]domain.Case, int64, error) {
