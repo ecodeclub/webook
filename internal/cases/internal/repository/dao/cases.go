@@ -4,6 +4,8 @@ import (
 	"context"
 	"time"
 
+	"github.com/ecodeclub/webook/internal/cases/internal/domain"
+
 	"gorm.io/gorm/clause"
 
 	"github.com/ego-component/egorm"
@@ -18,7 +20,8 @@ type CaseDAO interface {
 	Count(ctx context.Context) (int64, error)
 
 	Sync(ctx context.Context, c Case) (int64, error)
-
+	// 提供给同步到知识库用
+	Ids(ctx context.Context) ([]int64, error)
 	// 线上库
 	PublishCaseList(ctx context.Context, offset, limit int) ([]PublishCase, error)
 	PublishCaseCount(ctx context.Context) (int64, error)
@@ -33,6 +36,16 @@ type caseDAO struct {
 	db            *egorm.Component
 	listColumns   []string
 	updateColumns []string
+}
+
+func (ca *caseDAO) Ids(ctx context.Context) ([]int64, error) {
+	var ids []int64
+	err := ca.db.WithContext(ctx).
+		Select("id").
+		Model(&Case{}).
+		Where("status = ?", domain.PublishedStatus).
+		Scan(&ids).Error
+	return ids, err
 }
 
 func (ca *caseDAO) NotInTotal(ctx context.Context, ids []int64) (int64, error) {

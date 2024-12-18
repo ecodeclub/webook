@@ -30,6 +30,8 @@ type QuestionDAO interface {
 	GetByID(ctx context.Context, id int64) (Question, []AnswerElement, error)
 	List(ctx context.Context, offset int, limit int) ([]Question, error)
 	Count(ctx context.Context) (int64, error)
+	// 用于
+	Ids(ctx context.Context) ([]int64, error)
 	// Delete 会直接删除制作库和线上库的数据
 	Delete(ctx context.Context, qid int64) error
 
@@ -46,6 +48,16 @@ type QuestionDAO interface {
 
 type GORMQuestionDAO struct {
 	db *egorm.Component
+}
+
+func (g *GORMQuestionDAO) Ids(ctx context.Context) ([]int64, error) {
+	var ids []int64
+	err := g.db.WithContext(ctx).
+		Select("id").
+		Model(&Question{}).
+		Where("status = ? ", 2).
+		Scan(&ids).Error
+	return ids, err
 }
 
 func (g *GORMQuestionDAO) NotInTotal(ctx context.Context, ids []int64) (int64, error) {

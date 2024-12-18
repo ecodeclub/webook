@@ -62,7 +62,7 @@ func InitApp() (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	aiModule, err := ai.InitModule(db, creditModule)
+	aiModule, err := ai.InitModule(db, creditModule, mq)
 	if err != nil {
 		return nil, err
 	}
@@ -148,7 +148,9 @@ func InitApp() (*App, error) {
 	adminHandler3 := marketingModule.AdminHdl
 	adminHandler4 := aiModule.AdminHandler
 	adminHandler5 := reviewModule.AdminHdl
-	adminServer := InitAdminServer(adminHandler, webAdminHandler, adminHandler2, adminQuestionSetHandler, adminCaseHandler, adminCaseSetHandler, adminHandler3, adminHandler4, adminHandler5)
+	knowledgeBaseHandler := casesModule.KnowledgeBaseHandler
+	webKnowledgeBaseHandler := baguwenModule.KnowledgeBaseHdl
+	adminServer := InitAdminServer(adminHandler, webAdminHandler, adminHandler2, adminQuestionSetHandler, adminCaseHandler, adminCaseSetHandler, adminHandler3, adminHandler4, adminHandler5, knowledgeBaseHandler, webKnowledgeBaseHandler)
 	closeTimeoutOrdersJob := orderModule.CloseTimeoutOrdersJob
 	closeTimeoutLockedCreditsJob := creditModule.CloseTimeoutLockedCreditsJob
 	syncWechatOrderJob := paymentModule.SyncWechatOrderJob

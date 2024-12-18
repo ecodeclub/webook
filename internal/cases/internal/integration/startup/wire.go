@@ -31,6 +31,7 @@ import (
 
 func InitModule(
 	syncProducer event.SyncEventProducer,
+	knowledgeBaseProducer event.KnowledgeBaseEventProducer,
 	aiModule *ai.Module,
 	intrModule *interactive.Module) (*cases.Module, error) {
 	wire.Build(cases.InitCaseDAO,
@@ -44,18 +45,21 @@ func InitModule(
 		service.NewService,
 		service.NewCaseSetService,
 		service.NewLLMExamineService,
+		initKnowledgeBaseSvc,
 		web.NewHandler,
 		web.NewAdminCaseSetHandler,
 		web.NewAdminCaseHandler,
+		web.NewKnowledgeBaseHandler,
 		wire.FieldsOf(new(*interactive.Module), "Svc"),
-		wire.FieldsOf(new(*ai.Module), "Svc"),
-		wire.Struct(new(cases.Module), "AdminHandler", "ExamineSvc", "Svc", "Hdl", "AdminSetHandler"),
+		wire.FieldsOf(new(*ai.Module), "Svc", "KnowledgeBaseSvc"),
+		wire.Struct(new(cases.Module), "AdminHandler", "ExamineSvc", "Svc", "Hdl", "AdminSetHandler", "KnowledgeBaseHandler"),
 	)
 	return new(cases.Module), nil
 }
 
 func InitExamModule(
 	syncProducer event.SyncEventProducer,
+	knowledgeBaseProducer event.KnowledgeBaseEventProducer,
 	intrModule *interactive.Module,
 	aiModule *ai.Module) (*cases.Module, error) {
 	wire.Build(
@@ -70,14 +74,20 @@ func InitExamModule(
 		service.NewCaseSetService,
 		service.NewService,
 		service.NewLLMExamineService,
+		initKnowledgeBaseSvc,
 		web.NewHandler,
 		web.NewAdminCaseSetHandler,
 		web.NewAdminCaseHandler,
 		web.NewExamineHandler,
 		web.NewCaseSetHandler,
+		web.NewKnowledgeBaseHandler,
 		wire.FieldsOf(new(*interactive.Module), "Svc"),
-		wire.FieldsOf(new(*ai.Module), "Svc"),
+		wire.FieldsOf(new(*ai.Module), "Svc", "KnowledgeBaseSvc"),
 		wire.Struct(new(cases.Module), "*"),
 	)
 	return new(cases.Module), nil
+}
+
+func initKnowledgeBaseSvc(svc ai.KnowledgeBaseService, caRepo repository.CaseRepo) service.KnowledgeBaseService {
+	return service.NewKnowledgeBaseService(caRepo, svc, "knowledge_id")
 }

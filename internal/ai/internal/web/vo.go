@@ -38,6 +38,7 @@ type Config struct {
 	SystemPrompt   string  `json:"systemPrompt"`
 	PromptTemplate string  `json:"promptTemplate"`
 	KnowledgeId    string  `json:"knowledgeId"`
+	Utime          int64   `json:"utime"`
 }
 type ConfigRequest struct {
 	Config Config `json:"config"`

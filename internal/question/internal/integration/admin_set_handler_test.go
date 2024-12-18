@@ -60,7 +60,8 @@ type AdminSetHandlerTestSuite struct {
 	dao            dao.QuestionDAO
 	questionSetDAO dao.QuestionSetDAO
 	producer       *eveMocks.MockSyncEventProducer
-	setSvc         service.QuestionSetService
+
+	setSvc service.QuestionSetService
 }
 
 func (s *AdminSetHandlerTestSuite) SetupSuite() {
@@ -69,7 +70,7 @@ func (s *AdminSetHandlerTestSuite) SetupSuite() {
 
 	intrModule := &interactive.Module{}
 
-	module, err := startup.InitModule(s.producer, intrModule,
+	module, err := startup.InitModule(s.producer, nil, intrModule,
 		&permission.Module{}, &ai.Module{})
 	require.NoError(s.T(), err)
 	econf.Set("server", map[string]any{"contextTimeout": "1s"})
