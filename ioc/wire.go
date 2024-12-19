@@ -36,6 +36,7 @@ import (
 	baguwen "github.com/ecodeclub/webook/internal/question"
 	"github.com/ecodeclub/webook/internal/recon"
 	"github.com/ecodeclub/webook/internal/resume"
+	"github.com/ecodeclub/webook/internal/review"
 	"github.com/ecodeclub/webook/internal/roadmap"
 	"github.com/ecodeclub/webook/internal/search"
 	"github.com/ecodeclub/webook/internal/skill"
@@ -93,6 +94,8 @@ func InitApp() (*App, error) {
 		resume.InitModule,
 		wire.FieldsOf(new(*resume.Module), "PrjHdl", "AnalysisHandler"),
 		wire.FieldsOf(new(*ai.Module), "Hdl", "AdminHandler"),
+		review.InitModule,
+		wire.FieldsOf(new(*review.Module), "Hdl", "AdminHdl"),
 
 		initLocalActiveLimiterBuilder,
 		initCronJobs,

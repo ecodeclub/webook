@@ -1,8 +1,6 @@
 package web
 
 import (
-	"context"
-
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/ecodeclub/ginx"
 	"github.com/ecodeclub/ginx/session"
@@ -50,7 +48,7 @@ func (h *ProjectHandler) DeleteContribution(ctx *ginx.Context, item IDItem) (gin
 }
 
 func (h *ProjectHandler) DeleteDifficulty(ctx *ginx.Context, item IDItem) (ginx.Result, error) {
-	err := h.svc.DeleteDifficulty(ctx.Request.Context(), item.ID)
+	err := h.svc.DeleteDifficulty(ctx, item.ID)
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -79,7 +77,7 @@ func (h *ProjectHandler) SaveProject(ctx *ginx.Context, req SaveProjectReq, sess
 
 func (h *ProjectHandler) DeleteProject(ctx *ginx.Context, req IDItem, sess session.Session) (ginx.Result, error) {
 	uid := sess.Claims().Uid
-	err := h.svc.DeleteProject(ctx.Request.Context(), uid, req.ID)
+	err := h.svc.DeleteProject(ctx, uid, req.ID)
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -87,9 +85,8 @@ func (h *ProjectHandler) DeleteProject(ctx *ginx.Context, req IDItem, sess sessi
 }
 
 func (h *ProjectHandler) ProjectInfo(ctx *ginx.Context, req IDItem, sess session.Session) (ginx.Result, error) {
-	pctx := ctx.Request.Context()
 	uid := sess.Claims().Uid
-	pro, err := h.svc.ProjectInfo(pctx, req.ID)
+	pro, err := h.svc.ProjectInfo(ctx, req.ID)
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -102,8 +99,7 @@ func (h *ProjectHandler) ProjectInfo(ctx *ginx.Context, req IDItem, sess session
 			cids = append(cids, ca.Id)
 		}
 	}
-
-	resMap, caMap, err := h.getCaMap(pctx, uid, cids)
+	resMap, caMap, err := h.getCaMap(ctx, uid, cids)
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -182,20 +178,20 @@ func (h *ProjectHandler) ProjectDifficultySave(ctx *ginx.Context, req SaveDiffic
 	return ginx.Result{}, nil
 }
 
-func (h *ProjectHandler) getCaMap(ctx context.Context, uid int64, cids []int64) (map[int64]cases.ExamineResult, map[int64]cases.Case, error) {
+func (h *ProjectHandler) getCaMap(ctx *ginx.Context, uid int64, cids []int64) (map[int64]cases.ExamineResult, map[int64]cases.Case, error) {
 	var (
 		resMap map[int64]cases.ExamineResult
 		caMap  map[int64]cases.Case
 		eg     errgroup.Group
 	)
-
+	pctx := ctx.Request.Context()
 	eg.Go(func() error {
 		var eerr error
-		resMap, eerr = h.examSvc.GetResults(ctx, uid, cids)
+		resMap, eerr = h.examSvc.GetResults(pctx, uid, cids)
 		return eerr
 	})
 	eg.Go(func() error {
-		cas, eerr := h.caseSvc.GetPubByIDs(ctx, cids)
+		cas, eerr := h.caseSvc.GetPubByIDs(pctx, cids)
 		if eerr != nil {
 			return eerr
 		}

@@ -26,6 +26,7 @@ import (
 	baguwen "github.com/ecodeclub/webook/internal/question"
 	"github.com/ecodeclub/webook/internal/recon"
 	"github.com/ecodeclub/webook/internal/resume"
+	"github.com/ecodeclub/webook/internal/review"
 	"github.com/ecodeclub/webook/internal/roadmap"
 	"github.com/ecodeclub/webook/internal/search"
 	"github.com/ecodeclub/webook/internal/skill"
@@ -135,7 +136,9 @@ func InitApp() (*App, error) {
 	projectHandler := resumeModule.PrjHdl
 	analysisHandler := resumeModule.AnalysisHandler
 	handler17 := aiModule.Hdl
-	component := initGinxServer(provider, checkMembershipMiddlewareBuilder, localActiveLimit, checkPermissionMiddlewareBuilder, handler, examineHandler, questionSetHandler, webHandler, handler2, handler3, handler4, handler5, handler6, handler7, handler8, handler9, handler10, handler11, handler12, handler13, handler14, handler15, handler16, caseSetHandler, webExamineHandler, projectHandler, analysisHandler, handler17)
+	reviewModule := review.InitModule(db)
+	handler18 := reviewModule.Hdl
+	component := initGinxServer(provider, checkMembershipMiddlewareBuilder, localActiveLimit, checkPermissionMiddlewareBuilder, handler, examineHandler, questionSetHandler, webHandler, handler2, handler3, handler4, handler5, handler6, handler7, handler8, handler9, handler10, handler11, handler12, handler13, handler14, handler15, handler16, caseSetHandler, webExamineHandler, projectHandler, analysisHandler, handler17, handler18)
 	adminHandler := projectModule.AdminHdl
 	webAdminHandler := roadmapModule.AdminHdl
 	adminHandler2 := baguwenModule.AdminHdl
@@ -144,9 +147,10 @@ func InitApp() (*App, error) {
 	adminCaseSetHandler := casesModule.AdminSetHandler
 	adminHandler3 := marketingModule.AdminHdl
 	adminHandler4 := aiModule.AdminHandler
+	adminHandler5 := reviewModule.AdminHdl
 	knowledgeBaseHandler := casesModule.KnowledgeBaseHandler
 	webKnowledgeBaseHandler := baguwenModule.KnowledgeBaseHdl
-	adminServer := InitAdminServer(adminHandler, webAdminHandler, adminHandler2, adminQuestionSetHandler, adminCaseHandler, adminCaseSetHandler, adminHandler3, adminHandler4, knowledgeBaseHandler, webKnowledgeBaseHandler)
+	adminServer := InitAdminServer(adminHandler, webAdminHandler, adminHandler2, adminQuestionSetHandler, adminCaseHandler, adminCaseSetHandler, adminHandler3, adminHandler4, adminHandler5, knowledgeBaseHandler, webKnowledgeBaseHandler)
 	closeTimeoutOrdersJob := orderModule.CloseTimeoutOrdersJob
 	closeTimeoutLockedCreditsJob := creditModule.CloseTimeoutLockedCreditsJob
 	syncWechatOrderJob := paymentModule.SyncWechatOrderJob
