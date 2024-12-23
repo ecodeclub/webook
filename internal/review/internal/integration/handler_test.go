@@ -8,6 +8,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ecodeclub/ekit/sqlx"
+	"github.com/ecodeclub/webook/internal/interactive"
+	intrmocks "github.com/ecodeclub/webook/internal/interactive/mocks"
+	"go.uber.org/mock/gomock"
+
 	"github.com/ecodeclub/ekit/iox"
 	"github.com/ecodeclub/ginx/session"
 	"github.com/ecodeclub/webook/internal/review/internal/domain"
@@ -34,9 +39,36 @@ type TestSuite struct {
 	reviewDao dao.ReviewDAO
 }
 
-func (a *TestSuite) SetupSuite() {
+func (s *TestSuite) mockInteractive(biz string, id int64) interactive.Interactive {
+	liked := id%2 == 1
+	collected := id%2 == 0
+	return interactive.Interactive{
+		Biz:        biz,
+		BizId:      id,
+		ViewCnt:    int(id + 1),
+		LikeCnt:    int(id + 2),
+		CollectCnt: int(id + 3),
+		Liked:      liked,
+		Collected:  collected,
+	}
+}
+
+func (s *TestSuite) SetupSuite() {
 	db := testioc.InitDB()
-	mou := startup.InitModule(db)
+
+	ctrl := gomock.NewController(s.T())
+	svc := intrmocks.NewMockService(ctrl)
+	svc.EXPECT().GetByIds(gomock.Any(), "review", gomock.Any()).DoAndReturn(func(ctx context.Context, biz string, ids []int64) (map[int64]interactive.Interactive, error) {
+		res := make(map[int64]interactive.Interactive, len(ids))
+		for _, id := range ids {
+			intr := s.mockInteractive(biz, id)
+			res[id] = intr
+		}
+		return res, nil
+	}).AnyTimes()
+	mou := startup.InitModule(db, &interactive.Module{
+		Svc: svc,
+	})
 	econf.Set("server", map[string]any{"contextTimeout": "1s"})
 	server := egin.Load("server").Build()
 	server.Use(func(ctx *gin.Context) {
@@ -52,9 +84,9 @@ func (a *TestSuite) SetupSuite() {
 	mou.Hdl.PublicRoutes(server.Engine)
 	mou.AdminHdl.PrivateRoutes(server.Engine)
 	reviewDao := dao.NewReviewDAO(db)
-	a.db = db
-	a.server = server
-	a.reviewDao = reviewDao
+	s.db = db
+	s.server = server
+	s.reviewDao = reviewDao
 }
 
 func (s *TestSuite) TearDownTest() {
@@ -83,8 +115,14 @@ func (s *TestSuite) TestSave() {
 				review, err := s.reviewDao.Get(ctx, 1)
 				require.NoError(t, err)
 				s.assertReview(t, dao.Review{
-					ID:               1,
-					Uid:              uid,
+					ID:    1,
+					Uid:   uid,
+					Title: "标题",
+					Desc:  "简介",
+					Labels: sqlx.JsonColumn[[]string]{
+						Valid: true,
+						Val:   []string{"MySQL"},
+					},
 					JD:               "测试JD",
 					JDAnalysis:       "JD分析",
 					Questions:        "面试问题",
@@ -95,6 +133,9 @@ func (s *TestSuite) TestSave() {
 			},
 			req: web.ReviewSaveReq{
 				Review: web.Review{
+					Title:            "标题",
+					Desc:             "简介",
+					Labels:           []string{"MySQL"},
 					JD:               "测试JD",
 					JDAnalysis:       "JD分析",
 					Questions:        "面试问题",
@@ -113,8 +154,14 @@ func (s *TestSuite) TestSave() {
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 				defer cancel()
 				_, err := s.reviewDao.Save(ctx, dao.Review{
-					ID:               2,
-					Uid:              uid,
+					ID:    2,
+					Uid:   uid,
+					Title: "旧的标题",
+					Desc:  "旧的简介",
+					Labels: sqlx.JsonColumn[[]string]{
+						Valid: true,
+						Val:   []string{"旧MySQL"},
+					},
 					JD:               "旧的JD",
 					JDAnalysis:       "旧的分析",
 					Questions:        "旧的问题",
@@ -130,8 +177,14 @@ func (s *TestSuite) TestSave() {
 				review, err := s.reviewDao.Get(ctx, 2)
 				require.NoError(t, err)
 				s.assertReview(t, dao.Review{
-					ID:               2,
-					Uid:              uid,
+					ID:    2,
+					Uid:   uid,
+					Title: "新的标题",
+					Desc:  "新的简介",
+					Labels: sqlx.JsonColumn[[]string]{
+						Valid: true,
+						Val:   []string{"新MySQL"},
+					},
 					JD:               "新的JD",
 					JDAnalysis:       "新的分析",
 					Questions:        "新的问题",
@@ -143,6 +196,9 @@ func (s *TestSuite) TestSave() {
 			req: web.ReviewSaveReq{
 				Review: web.Review{
 					ID:               2,
+					Title:            "新的标题",
+					Desc:             "新的简介",
+					Labels:           []string{"新MySQL"},
 					JD:               "新的JD",
 					JDAnalysis:       "新的分析",
 					Questions:        "新的问题",
@@ -192,7 +248,13 @@ func (s *TestSuite) TestPublish() {
 				review, err := s.reviewDao.Get(ctx, 1)
 				require.NoError(t, err)
 				wantReview := dao.Review{
-					ID:               1,
+					ID:    1,
+					Title: "标题",
+					Desc:  "简介",
+					Labels: sqlx.JsonColumn[[]string]{
+						Valid: true,
+						Val:   []string{"MySQL"},
+					},
 					Uid:              uid,
 					JD:               "测试JD",
 					JDAnalysis:       "JD分析",
@@ -206,10 +268,13 @@ func (s *TestSuite) TestPublish() {
 				// 检查发布表中的数据
 				pubReview, err := s.reviewDao.GetPublishReview(ctx, 1)
 				require.NoError(t, err)
-				s.assertReview(t, dao.Review(wantReview), dao.Review(pubReview))
+				s.assertReview(t, wantReview, dao.Review(pubReview))
 			},
 			req: web.ReviewSaveReq{
 				Review: web.Review{
+					Title:            "标题",
+					Desc:             "简介",
+					Labels:           []string{"MySQL"},
 					JD:               "测试JD",
 					JDAnalysis:       "JD分析",
 					Questions:        "面试问题",
@@ -229,8 +294,14 @@ func (s *TestSuite) TestPublish() {
 				defer cancel()
 				// 先创建一条记录
 				_, err := s.reviewDao.Save(ctx, dao.Review{
-					ID:               2,
-					Uid:              uid,
+					ID:    2,
+					Uid:   uid,
+					Title: "旧的标题",
+					Desc:  "旧的简介",
+					Labels: sqlx.JsonColumn[[]string]{
+						Valid: true,
+						Val:   []string{"旧MySQL"},
+					},
 					JD:               "旧的JD",
 					JDAnalysis:       "旧的分析",
 					Questions:        "旧的问题",
@@ -251,8 +322,14 @@ func (s *TestSuite) TestPublish() {
 				require.NoError(t, err)
 
 				wantReview := dao.Review{
-					ID:               2,
-					Uid:              uid,
+					ID:    2,
+					Uid:   uid,
+					Title: "新的标题",
+					Desc:  "新的简介",
+					Labels: sqlx.JsonColumn[[]string]{
+						Valid: true,
+						Val:   []string{"新MySQL"},
+					},
 					JD:               "新的JD",
 					JDAnalysis:       "新的分析",
 					Questions:        "新的问题",
@@ -270,6 +347,9 @@ func (s *TestSuite) TestPublish() {
 			req: web.ReviewSaveReq{
 				Review: web.Review{
 					ID:               2,
+					Title:            "新的标题",
+					Desc:             "新的简介",
+					Labels:           []string{"新MySQL"},
 					JD:               "新的JD",
 					JDAnalysis:       "新的分析",
 					Questions:        "新的问题",
@@ -289,8 +369,14 @@ func (s *TestSuite) TestPublish() {
 				defer cancel()
 				// 创建原始记录
 				oldReview := dao.Review{
-					ID:               3,
-					Uid:              uid,
+					ID:    3,
+					Uid:   uid,
+					Title: "旧的标题",
+					Desc:  "旧的简介",
+					Labels: sqlx.JsonColumn[[]string]{
+						Valid: true,
+						Val:   []string{"旧MySQL"},
+					},
 					JD:               "旧的JD",
 					JDAnalysis:       "旧的分析",
 					Questions:        "旧的问题",
@@ -310,8 +396,14 @@ func (s *TestSuite) TestPublish() {
 				defer cancel()
 
 				wantReview := dao.Review{
-					ID:               3,
-					Uid:              uid,
+					ID:    3,
+					Uid:   uid,
+					Title: "最新标题",
+					Desc:  "最新简介",
+					Labels: sqlx.JsonColumn[[]string]{
+						Valid: true,
+						Val:   []string{"最新MySQL"},
+					},
 					JD:               "最新JD",
 					JDAnalysis:       "最新分析",
 					Questions:        "最新问题",
@@ -333,6 +425,9 @@ func (s *TestSuite) TestPublish() {
 			req: web.ReviewSaveReq{
 				Review: web.Review{
 					ID:               3,
+					Title:            "最新标题",
+					Desc:             "最新简介",
+					Labels:           []string{"最新MySQL"},
 					JD:               "最新JD",
 					JDAnalysis:       "最新分析",
 					Questions:        "最新问题",
@@ -392,8 +487,14 @@ func (s *TestSuite) TestDetail() {
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 				defer cancel()
 				_, err := s.reviewDao.Save(ctx, dao.Review{
-					ID:               1,
-					Uid:              uid,
+					ID:    1,
+					Uid:   uid,
+					Title: "测试标题",
+					Desc:  "测试描述",
+					Labels: sqlx.JsonColumn[[]string]{
+						Valid: true,
+						Val:   []string{"测试标签"},
+					},
 					JD:               "测试JD",
 					JDAnalysis:       "JD分析",
 					Questions:        "面试问题",
@@ -411,7 +512,12 @@ func (s *TestSuite) TestDetail() {
 			wantCode: 200,
 			wantResp: test.Result[web.Review]{
 				Data: web.Review{
-					ID:               1,
+					ID:    1,
+					Title: "测试标题",
+					Desc:  "测试描述",
+					Labels: []string{
+						"测试标签",
+					},
 					JD:               "测试JD",
 					JDAnalysis:       "JD分析",
 					Questions:        "面试问题",
@@ -478,7 +584,13 @@ func (s *TestSuite) TestList() {
 	data := make([]dao.Review, 0, 100)
 	for idx := 0; idx < 100; idx++ {
 		data = append(data, dao.Review{
-			Uid:              uid,
+			Uid:   uid,
+			Title: fmt.Sprintf("标题 %d", idx),
+			Desc:  fmt.Sprintf("描述 %d", idx),
+			Labels: sqlx.JsonColumn[[]string]{
+				Valid: true,
+				Val:   []string{fmt.Sprintf("标签 %d", idx)},
+			},
 			JD:               fmt.Sprintf("这是JD %d", idx),
 			JDAnalysis:       fmt.Sprintf("这是JD分析 %d", idx),
 			Questions:        fmt.Sprintf("这是面试问题 %d", idx),
@@ -509,6 +621,9 @@ func (s *TestSuite) TestList() {
 					List: []web.Review{
 						{
 							ID:               100,
+							Title:            "标题 99",
+							Desc:             "描述 99",
+							Labels:           []string{"标签 99"},
 							JD:               "这是JD 99",
 							JDAnalysis:       "这是JD分析 99",
 							Questions:        "这是面试问题 99",
@@ -519,6 +634,9 @@ func (s *TestSuite) TestList() {
 						},
 						{
 							ID:               99,
+							Title:            "标题 98",
+							Desc:             "描述 98",
+							Labels:           []string{"标签 98"},
 							JD:               "这是JD 98",
 							JDAnalysis:       "这是JD分析 98",
 							Questions:        "这是面试问题 98",
@@ -544,6 +662,9 @@ func (s *TestSuite) TestList() {
 					List: []web.Review{
 						{
 							ID:               1,
+							Title:            "标题 0",
+							Desc:             "描述 0",
+							Labels:           []string{"标签 0"},
 							JD:               "这是JD 0",
 							JDAnalysis:       "这是JD分析 0",
 							Questions:        "这是面试问题 0",
@@ -579,8 +700,14 @@ func (s *TestSuite) TestPubList() {
 
 	for idx := 1; idx <= 100; idx++ {
 		review := dao.Review{
-			ID:               int64(idx),
-			Uid:              uid,
+			ID:    int64(idx),
+			Uid:   uid,
+			Title: fmt.Sprintf("标题 %d", idx),
+			Desc:  fmt.Sprintf("描述 %d", idx),
+			Labels: sqlx.JsonColumn[[]string]{
+				Valid: true,
+				Val:   []string{fmt.Sprintf("标签 %d", idx)},
+			},
 			JD:               fmt.Sprintf("这是JD %d", idx),
 			JDAnalysis:       fmt.Sprintf("这是JD分析 %d", idx),
 			Questions:        fmt.Sprintf("这是面试问题 %d", idx),
@@ -622,6 +749,9 @@ func (s *TestSuite) TestPubList() {
 					List: []web.Review{
 						{
 							ID:               100,
+							Title:            "标题 100",
+							Desc:             "描述 100",
+							Labels:           []string{"标签 100"},
 							JD:               "这是JD 100",
 							JDAnalysis:       "这是JD分析 100",
 							Questions:        "这是面试问题 100",
@@ -629,9 +759,19 @@ func (s *TestSuite) TestPubList() {
 							Resume:           "这是简历 100",
 							Status:           domain.PublishedStatus.ToUint8(),
 							Utime:            123,
+							Interactive: web.Interactive{
+								CollectCnt: 103,   // id + 3
+								LikeCnt:    102,   // id + 2
+								ViewCnt:    101,   // id + 1
+								Liked:      false, // id 为偶数时为 false
+								Collected:  true,  // id 为偶数时为 true
+							},
 						},
 						{
 							ID:               98,
+							Title:            "标题 98",
+							Desc:             "描述 98",
+							Labels:           []string{"标签 98"},
 							JD:               "这是JD 98",
 							JDAnalysis:       "这是JD分析 98",
 							Questions:        "这是面试问题 98",
@@ -639,6 +779,13 @@ func (s *TestSuite) TestPubList() {
 							Resume:           "这是简历 98",
 							Status:           domain.PublishedStatus.ToUint8(),
 							Utime:            123,
+							Interactive: web.Interactive{
+								CollectCnt: 101,   // id + 3
+								LikeCnt:    100,   // id + 2
+								ViewCnt:    99,    // id + 1
+								Liked:      false, // id 为偶数时为 false
+								Collected:  true,  // id 为偶数时为 true
+							},
 						},
 					},
 				},
@@ -657,6 +804,9 @@ func (s *TestSuite) TestPubList() {
 					List: []web.Review{
 						{
 							ID:               4,
+							Title:            "标题 4",
+							Desc:             "描述 4",
+							Labels:           []string{"标签 4"},
 							JD:               "这是JD 4",
 							JDAnalysis:       "这是JD分析 4",
 							Questions:        "这是面试问题 4",
@@ -664,9 +814,19 @@ func (s *TestSuite) TestPubList() {
 							Resume:           "这是简历 4",
 							Status:           domain.PublishedStatus.ToUint8(),
 							Utime:            123,
+							Interactive: web.Interactive{
+								CollectCnt: 7,     // id + 3
+								LikeCnt:    6,     // id + 2
+								ViewCnt:    5,     // id + 1
+								Liked:      false, // id 为偶数时为 false
+								Collected:  true,  // id 为偶数时为 true
+							},
 						},
 						{
 							ID:               2,
+							Title:            "标题 2",
+							Desc:             "描述 2",
+							Labels:           []string{"标签 2"},
 							JD:               "这是JD 2",
 							JDAnalysis:       "这是JD分析 2",
 							Questions:        "这是面试问题 2",
@@ -674,6 +834,13 @@ func (s *TestSuite) TestPubList() {
 							Resume:           "这是简历 2",
 							Status:           domain.PublishedStatus.ToUint8(),
 							Utime:            123,
+							Interactive: web.Interactive{
+								CollectCnt: 5,     // id + 3
+								LikeCnt:    4,     // id + 2
+								ViewCnt:    3,     // id + 1
+								Liked:      false, // id 为偶数时为 false
+								Collected:  true,  // id 为偶数时为 true
+							},
 						},
 					},
 				},
@@ -711,8 +878,14 @@ func (s *TestSuite) TestPubDetail() {
 
 				// 创建原始记录
 				review := dao.Review{
-					ID:               1,
-					Uid:              uid,
+					ID:    1,
+					Uid:   uid,
+					Title: "已发布的标题",
+					Desc:  "已发布的描述",
+					Labels: sqlx.JsonColumn[[]string]{
+						Valid: true,
+						Val:   []string{"已发布的标签"},
+					},
 					JD:               "已发布的JD",
 					JDAnalysis:       "已发布的JD分析",
 					Questions:        "已发布的面试问题",
@@ -734,6 +907,9 @@ func (s *TestSuite) TestPubDetail() {
 			wantResp: test.Result[web.Review]{
 				Data: web.Review{
 					ID:               1,
+					Title:            "已发布的标题",
+					Desc:             "已发布的描述",
+					Labels:           []string{"已发布的标签"},
 					JD:               "已发布的JD",
 					JDAnalysis:       "已发布的JD分析",
 					Questions:        "已发布的面试问题",

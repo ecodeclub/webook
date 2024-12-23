@@ -7,6 +7,7 @@
 package review
 
 import (
+	"github.com/ecodeclub/webook/internal/interactive"
 	"github.com/ecodeclub/webook/internal/review/internal/repository"
 	"github.com/ecodeclub/webook/internal/review/internal/repository/dao"
 	"github.com/ecodeclub/webook/internal/review/internal/service"
@@ -17,11 +18,12 @@ import (
 
 // Injectors from wire.go:
 
-func InitModule(db *gorm.DB) *Module {
+func InitModule(db *gorm.DB, interSvc *interactive.Module) *Module {
 	reviewDAO := initReviewDao(db)
 	reviewRepo := repository.NewReviewRepo(reviewDAO)
 	reviewSvc := service.NewReviewSvc(reviewRepo)
-	handler := web.NewHandler(reviewSvc)
+	serviceService := interSvc.Svc
+	handler := web.NewHandler(reviewSvc, serviceService)
 	adminHandler := web.NewAdminHandler(reviewSvc)
 	module := &Module{
 		Hdl:      handler,

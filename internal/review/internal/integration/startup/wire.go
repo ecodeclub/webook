@@ -3,6 +3,7 @@
 package startup
 
 import (
+	"github.com/ecodeclub/webook/internal/interactive"
 	"github.com/ecodeclub/webook/internal/review"
 	"github.com/ecodeclub/webook/internal/review/internal/repository"
 	"github.com/ecodeclub/webook/internal/review/internal/repository/dao"
@@ -12,7 +13,7 @@ import (
 	"github.com/google/wire"
 )
 
-func InitModule(db *egorm.Component) *review.Module {
+func InitModule(db *egorm.Component, interSvc *interactive.Module) *review.Module {
 	wire.Build(
 		initReviewDao,
 		repository.NewReviewRepo,
@@ -20,6 +21,7 @@ func InitModule(db *egorm.Component) *review.Module {
 		web.NewHandler,
 		web.NewAdminHandler,
 		wire.Struct(new(review.Module), "*"),
+		wire.FieldsOf(new(*interactive.Module), "Svc"),
 	)
 	return new(review.Module)
 }
