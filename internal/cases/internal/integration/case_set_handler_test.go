@@ -594,6 +594,7 @@ func (s *CaseSetTestSuite) TestCaseSet_ListAllCaseSets() {
 			wantCode: 200,
 			wantResp: test.Result[web.CaseSetList]{
 				Data: web.CaseSetList{
+					Total: 100,
 					CaseSets: []web.CaseSet{
 						{
 							Id:          100,
@@ -636,6 +637,7 @@ func (s *CaseSetTestSuite) TestCaseSet_ListAllCaseSets() {
 			wantCode: 200,
 			wantResp: test.Result[web.CaseSetList]{
 				Data: web.CaseSetList{
+					Total: 100,
 					CaseSets: []web.CaseSet{
 						{
 							Id:          1,

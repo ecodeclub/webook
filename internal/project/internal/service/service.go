@@ -18,6 +18,8 @@ import (
 	"context"
 	"time"
 
+	"golang.org/x/sync/errgroup"
+
 	"github.com/ecodeclub/webook/internal/project/internal/event"
 	"github.com/gotomicro/ego/core/elog"
 
@@ -27,7 +29,7 @@ import (
 
 // Service C 端接口
 type Service interface {
-	List(ctx context.Context, offset int, limit int) ([]domain.Project, error)
+	List(ctx context.Context, offset int, limit int) (int64, []domain.Project, error)
 	Detail(ctx context.Context, id int64) (domain.Project, error)
 	// Brief 获得 project 本身的内容
 	Brief(ctx context.Context, id int64) (domain.Project, error)
@@ -62,8 +64,23 @@ func (s *service) Detail(ctx context.Context, id int64) (domain.Project, error) 
 	return prj, err
 }
 
-func (s *service) List(ctx context.Context, offset int, limit int) ([]domain.Project, error) {
-	return s.repo.List(ctx, offset, limit)
+func (s *service) List(ctx context.Context, offset int, limit int) (int64, []domain.Project, error) {
+	var (
+		eg       errgroup.Group
+		total    int64
+		projects []domain.Project
+	)
+	eg.Go(func() error {
+		var err error
+		projects, err = s.repo.List(ctx, offset, limit)
+		return err
+	})
+	eg.Go(func() error {
+		var err error
+		total, err = s.repo.Count(ctx)
+		return err
+	})
+	return total, projects, eg.Wait()
 }
 
 func NewService(repo repository.Repository, producer event.InteractiveEventProducer) Service {

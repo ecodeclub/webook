@@ -35,7 +35,7 @@ type QuestionSetService interface {
 	Save(ctx context.Context, set domain.QuestionSet) (int64, error)
 	UpdateQuestions(ctx context.Context, set domain.QuestionSet) error
 	List(ctx context.Context, offset, limit int) ([]domain.QuestionSet, int64, error)
-	ListDefault(ctx context.Context, offset, limit int) ([]domain.QuestionSet, error)
+	ListDefault(ctx context.Context, offset, limit int) ([]domain.QuestionSet, int64, error)
 	Detail(ctx context.Context, id int64) (domain.QuestionSet, error)
 	GetByIds(ctx context.Context, ids []int64) ([]domain.QuestionSet, error)
 	DetailByBiz(ctx context.Context, biz string, bizId int64) (domain.QuestionSet, error)
@@ -75,8 +75,24 @@ func (q *questionSetService) DetailByBiz(ctx context.Context, biz string, bizId 
 	return q.repo.GetByBiz(ctx, biz, bizId)
 }
 
-func (q *questionSetService) ListDefault(ctx context.Context, offset, limit int) ([]domain.QuestionSet, error) {
-	return q.repo.ListByBiz(ctx, offset, limit, domain.DefaultBiz)
+func (q *questionSetService) ListDefault(ctx context.Context, offset, limit int) ([]domain.QuestionSet, int64, error) {
+	var (
+		eg    errgroup.Group
+		qs    []domain.QuestionSet
+		total int64
+	)
+	eg.Go(func() error {
+		var err error
+		qs, err = q.repo.ListByBiz(ctx, offset, limit, domain.DefaultBiz)
+		return err
+	})
+	eg.Go(func() error {
+		var err error
+		total, err = q.repo.CountByBiz(ctx, domain.DefaultBiz)
+		return err
+	})
+	return qs, total, eg.Wait()
+
 }
 
 func (q *questionSetService) GetByIds(ctx context.Context, ids []int64) ([]domain.QuestionSet, error) {

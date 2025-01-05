@@ -135,7 +135,7 @@ func (s *ProjectTestSuite) TestProjectList() {
 		req  web.Page
 
 		wantCode int
-		wantResp test.Result[[]web.Project]
+		wantResp test.Result[web.ProjectList]
 	}{
 		{
 			name: "从头获取成功",
@@ -144,42 +144,45 @@ func (s *ProjectTestSuite) TestProjectList() {
 				Limit:  2,
 			},
 			wantCode: 200,
-			wantResp: test.Result[[]web.Project]{
-				Data: []web.Project{
-					{
-						Id:         9,
-						SN:         "SN9",
-						Title:      "标题9",
-						Status:     domain.ProjectStatusPublished.ToUint8(),
-						Labels:     []string{"标签9"},
-						Desc:       "描述9",
-						Utime:      9,
-						CodeSPU:    "code-spu-9",
-						ProductSPU: "product-spu-9",
-						Interactive: web.Interactive{
-							ViewCnt:    10,
-							LikeCnt:    11,
-							CollectCnt: 12,
-							Liked:      true,
-							Collected:  false,
+			wantResp: test.Result[web.ProjectList]{
+				Data: web.ProjectList{
+					Total: 5,
+					Projects: []web.Project{
+						{
+							Id:         9,
+							SN:         "SN9",
+							Title:      "标题9",
+							Status:     domain.ProjectStatusPublished.ToUint8(),
+							Labels:     []string{"标签9"},
+							Desc:       "描述9",
+							Utime:      9,
+							CodeSPU:    "code-spu-9",
+							ProductSPU: "product-spu-9",
+							Interactive: web.Interactive{
+								ViewCnt:    10,
+								LikeCnt:    11,
+								CollectCnt: 12,
+								Liked:      true,
+								Collected:  false,
+							},
 						},
-					},
-					{
-						Id:         7,
-						SN:         "SN7",
-						Title:      "标题7",
-						Status:     domain.ProjectStatusPublished.ToUint8(),
-						Labels:     []string{"标签7"},
-						Desc:       "描述7",
-						Utime:      7,
-						CodeSPU:    "code-spu-7",
-						ProductSPU: "product-spu-7",
-						Interactive: web.Interactive{
-							ViewCnt:    8,
-							LikeCnt:    9,
-							CollectCnt: 10,
-							Liked:      true,
-							Collected:  false,
+						{
+							Id:         7,
+							SN:         "SN7",
+							Title:      "标题7",
+							Status:     domain.ProjectStatusPublished.ToUint8(),
+							Labels:     []string{"标签7"},
+							Desc:       "描述7",
+							Utime:      7,
+							CodeSPU:    "code-spu-7",
+							ProductSPU: "product-spu-7",
+							Interactive: web.Interactive{
+								ViewCnt:    8,
+								LikeCnt:    9,
+								CollectCnt: 10,
+								Liked:      true,
+								Collected:  false,
+							},
 						},
 					},
 				},
@@ -192,24 +195,27 @@ func (s *ProjectTestSuite) TestProjectList() {
 				Limit:  2,
 			},
 			wantCode: 200,
-			wantResp: test.Result[[]web.Project]{
-				Data: []web.Project{
-					{
-						Id:         1,
-						SN:         "SN1",
-						Title:      "标题1",
-						Status:     domain.ProjectStatusPublished.ToUint8(),
-						Labels:     []string{"标签1"},
-						Desc:       "描述1",
-						Utime:      1,
-						CodeSPU:    "code-spu-1",
-						ProductSPU: "product-spu-1",
-						Interactive: web.Interactive{
-							ViewCnt:    2,
-							LikeCnt:    3,
-							CollectCnt: 4,
-							Liked:      true,
-							Collected:  false,
+			wantResp: test.Result[web.ProjectList]{
+				Data: web.ProjectList{
+					Total: 5,
+					Projects: []web.Project{
+						{
+							Id:         1,
+							SN:         "SN1",
+							Title:      "标题1",
+							Status:     domain.ProjectStatusPublished.ToUint8(),
+							Labels:     []string{"标签1"},
+							Desc:       "描述1",
+							Utime:      1,
+							CodeSPU:    "code-spu-1",
+							ProductSPU: "product-spu-1",
+							Interactive: web.Interactive{
+								ViewCnt:    2,
+								LikeCnt:    3,
+								CollectCnt: 4,
+								Liked:      true,
+								Collected:  false,
+							},
 						},
 					},
 				},
@@ -224,7 +230,7 @@ func (s *ProjectTestSuite) TestProjectList() {
 				"/project/list", iox.NewJSONReader(tc.req))
 			req.Header.Set("content-type", "application/json")
 			require.NoError(t, err)
-			recorder := test.NewJSONResponseRecorder[[]web.Project]()
+			recorder := test.NewJSONResponseRecorder[web.ProjectList]()
 			s.server.ServeHTTP(recorder, req)
 			require.Equal(t, tc.wantCode, recorder.Code)
 			assert.Equal(t, tc.wantResp, recorder.MustScan())

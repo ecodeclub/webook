@@ -151,6 +151,7 @@ func (s *HandlerTestSuite) TestPubList() {
 			wantCode: 200,
 			wantResp: test.Result[web.CasesList]{
 				Data: web.CasesList{
+					Total: 100,
 					Cases: []web.Case{
 						{
 							Id:           100,
@@ -191,6 +192,7 @@ func (s *HandlerTestSuite) TestPubList() {
 			wantCode: 200,
 			wantResp: test.Result[web.CasesList]{
 				Data: web.CasesList{
+					Total: 100,
 					Cases: []web.Case{
 						{
 							Id:           1,

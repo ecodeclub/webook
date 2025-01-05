@@ -30,7 +30,7 @@ type QuestionSetDAO interface {
 
 	GetQuestionsByID(ctx context.Context, id int64) ([]Question, error)
 	UpdateQuestionsByID(ctx context.Context, id int64, qids []int64) error
-
+	CountByBiz(ctx context.Context, biz string) (int64, error)
 	Count(ctx context.Context) (int64, error)
 	List(ctx context.Context, offset, limit int) ([]QuestionSet, error)
 	UpdateNonZero(ctx context.Context, set QuestionSet) error
@@ -43,6 +43,15 @@ type QuestionSetDAO interface {
 
 type GORMQuestionSetDAO struct {
 	db *egorm.Component
+}
+
+func (g *GORMQuestionSetDAO) CountByBiz(ctx context.Context, biz string) (int64, error) {
+	var res int64
+	db := g.db.WithContext(ctx).Model(&QuestionSet{})
+	err := db.Select("COUNT(id)").
+		Where("biz = ?", biz).
+		Count(&res).Error
+	return res, err
 }
 
 func (g *GORMQuestionSetDAO) GetByIDsWithQuestions(ctx context.Context, ids []int64) ([]QuestionSet, map[int64][]Question, error) {

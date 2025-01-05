@@ -19,7 +19,7 @@ type Service interface {
 	Publish(ctx context.Context, ca domain.Case) (int64, error)
 	List(ctx context.Context, offset int, limit int) ([]domain.Case, int64, error)
 
-	PubList(ctx context.Context, offset int, limit int) ([]domain.Case, error)
+	PubList(ctx context.Context, offset int, limit int) (int64, []domain.Case, error)
 	GetPubByIDs(ctx context.Context, ids []int64) ([]domain.Case, error)
 	Detail(ctx context.Context, caseId int64) (domain.Case, error)
 	PubDetail(ctx context.Context, caseId int64) (domain.Case, error)
@@ -84,8 +84,24 @@ func (s *service) List(ctx context.Context, offset int, limit int) ([]domain.Cas
 	return caseList, total, nil
 }
 
-func (s *service) PubList(ctx context.Context, offset int, limit int) ([]domain.Case, error) {
-	return s.repo.PubList(ctx, offset, limit)
+func (s *service) PubList(ctx context.Context, offset int, limit int) (int64, []domain.Case, error) {
+	var (
+		eg    errgroup.Group
+		cas   []domain.Case
+		total int64
+	)
+	eg.Go(func() error {
+		var err error
+		cas, err = s.repo.PubList(ctx, offset, limit)
+		return err
+	})
+	eg.Go(func() error {
+		var err error
+		total, err = s.repo.PubCount(ctx)
+		return err
+	})
+	return total, cas, eg.Wait()
+
 }
 
 func (s *service) Detail(ctx context.Context, caseId int64) (domain.Case, error) {

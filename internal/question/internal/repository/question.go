@@ -34,6 +34,7 @@ type Repository interface {
 	PubList(ctx context.Context, offset int, limit int, biz string) ([]domain.Question, error)
 	// Sync 保存到制作库，而后同步到线上库
 	Sync(ctx context.Context, que *domain.Question) (int64, error)
+	PubCount(ctx context.Context, biz string) (int64, error)
 	List(ctx context.Context, offset int, limit int) ([]domain.Question, error)
 	Total(ctx context.Context) (int64, error)
 	Update(ctx context.Context, question *domain.Question) error
@@ -57,6 +58,10 @@ type CachedRepository struct {
 	dao    dao.QuestionDAO
 	cache  cache.QuestionCache
 	logger *elog.Component
+}
+
+func (c *CachedRepository) PubCount(ctx context.Context, biz string) (int64, error) {
+	return c.dao.PubCount(ctx, biz)
 }
 
 func (c *CachedRepository) QuestionIds(ctx context.Context) ([]int64, error) {
