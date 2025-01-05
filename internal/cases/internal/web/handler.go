@@ -57,7 +57,7 @@ func (h *Handler) MemberRoutes(server *gin.Engine) {
 }
 
 func (h *Handler) PubList(ctx *ginx.Context, req Page) (ginx.Result, error) {
-	data, err := h.svc.PubList(ctx, req.Offset, req.Limit)
+	count, data, err := h.svc.PubList(ctx, req.Offset, req.Limit)
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -78,6 +78,7 @@ func (h *Handler) PubList(ctx *ginx.Context, req Page) (ginx.Result, error) {
 	}
 	return ginx.Result{
 		Data: CasesList{
+			Total: count,
 			Cases: slice.Map(data, func(idx int, ca domain.Case) Case {
 				return Case{
 					Id:           ca.Id,

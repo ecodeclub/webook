@@ -167,7 +167,7 @@ func (s *HandlerTestSuite) TestPubList() {
 		req  web.Page
 
 		wantCode int
-		wantResp test.Result[[]web.Question]
+		wantResp test.Result[web.QuestionList]
 	}{
 		{
 			name: "获取成功",
@@ -176,38 +176,41 @@ func (s *HandlerTestSuite) TestPubList() {
 				Offset: 0,
 			},
 			wantCode: 200,
-			wantResp: test.Result[[]web.Question]{
-				Data: []web.Question{
-					{
-						Id:      100,
-						Title:   "这是标题 99",
-						Content: "这是解析 99",
-						Status:  domain.UnPublishedStatus.ToUint8(),
-						Utime:   123,
-						Biz:     domain.DefaultBiz,
-						BizId:   100,
-						Interactive: web.Interactive{
-							ViewCnt:    101,
-							LikeCnt:    102,
-							CollectCnt: 103,
-							Liked:      false,
-							Collected:  true,
+			wantResp: test.Result[web.QuestionList]{
+				Data: web.QuestionList{
+					Total: 100,
+					Questions: []web.Question{
+						{
+							Id:      100,
+							Title:   "这是标题 99",
+							Content: "这是解析 99",
+							Status:  domain.UnPublishedStatus.ToUint8(),
+							Utime:   123,
+							Biz:     domain.DefaultBiz,
+							BizId:   100,
+							Interactive: web.Interactive{
+								ViewCnt:    101,
+								LikeCnt:    102,
+								CollectCnt: 103,
+								Liked:      false,
+								Collected:  true,
+							},
 						},
-					},
-					{
-						Id:      99,
-						Title:   "这是标题 98",
-						Content: "这是解析 98",
-						Status:  domain.UnPublishedStatus.ToUint8(),
-						Utime:   123,
-						Biz:     domain.DefaultBiz,
-						BizId:   99,
-						Interactive: web.Interactive{
-							ViewCnt:    100,
-							LikeCnt:    101,
-							CollectCnt: 102,
-							Liked:      true,
-							Collected:  false,
+						{
+							Id:      99,
+							Title:   "这是标题 98",
+							Content: "这是解析 98",
+							Status:  domain.UnPublishedStatus.ToUint8(),
+							Utime:   123,
+							Biz:     domain.DefaultBiz,
+							BizId:   99,
+							Interactive: web.Interactive{
+								ViewCnt:    100,
+								LikeCnt:    101,
+								CollectCnt: 102,
+								Liked:      true,
+								Collected:  false,
+							},
 						},
 					},
 				},
@@ -220,22 +223,25 @@ func (s *HandlerTestSuite) TestPubList() {
 				Offset: 99,
 			},
 			wantCode: 200,
-			wantResp: test.Result[[]web.Question]{
-				Data: []web.Question{
-					{
-						Id:      1,
-						Title:   "这是标题 0",
-						Content: "这是解析 0",
-						Biz:     domain.DefaultBiz,
-						BizId:   1,
-						Status:  domain.UnPublishedStatus.ToUint8(),
-						Utime:   123,
-						Interactive: web.Interactive{
-							ViewCnt:    2,
-							LikeCnt:    3,
-							CollectCnt: 4,
-							Liked:      true,
-							Collected:  false,
+			wantResp: test.Result[web.QuestionList]{
+				Data: web.QuestionList{
+					Total: 100,
+					Questions: []web.Question{
+						{
+							Id:      1,
+							Title:   "这是标题 0",
+							Content: "这是解析 0",
+							Biz:     domain.DefaultBiz,
+							BizId:   1,
+							Status:  domain.UnPublishedStatus.ToUint8(),
+							Utime:   123,
+							Interactive: web.Interactive{
+								ViewCnt:    2,
+								LikeCnt:    3,
+								CollectCnt: 4,
+								Liked:      true,
+								Collected:  false,
+							},
 						},
 					},
 				},
@@ -250,7 +256,7 @@ func (s *HandlerTestSuite) TestPubList() {
 				"/question/list", iox.NewJSONReader(tc.req))
 			req.Header.Set("content-type", "application/json")
 			require.NoError(t, err)
-			recorder := test.NewJSONResponseRecorder[[]web.Question]()
+			recorder := test.NewJSONResponseRecorder[web.QuestionList]()
 			s.server.ServeHTTP(recorder, req)
 			require.Equal(t, tc.wantCode, recorder.Code)
 			assert.Equal(t, tc.wantResp, recorder.MustScan())

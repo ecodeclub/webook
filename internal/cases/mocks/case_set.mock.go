@@ -5,6 +5,7 @@
 //
 //	mockgen -source=./case_set.go -destination=../../mocks/case_set.mock.go -package=casemocks -typed CaseSetService
 //
+
 // Package casemocks is a generated GoMock package.
 package casemocks
 
@@ -49,31 +50,31 @@ func (m *MockCaseSetService) Detail(ctx context.Context, id int64) (domain.CaseS
 }
 
 // Detail indicates an expected call of Detail.
-func (mr *MockCaseSetServiceMockRecorder) Detail(ctx, id any) *CaseSetServiceDetailCall {
+func (mr *MockCaseSetServiceMockRecorder) Detail(ctx, id any) *MockCaseSetServiceDetailCall {
 	mr.mock.ctrl.T.Helper()
 	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Detail", reflect.TypeOf((*MockCaseSetService)(nil).Detail), ctx, id)
-	return &CaseSetServiceDetailCall{Call: call}
+	return &MockCaseSetServiceDetailCall{Call: call}
 }
 
-// CaseSetServiceDetailCall wrap *gomock.Call
-type CaseSetServiceDetailCall struct {
+// MockCaseSetServiceDetailCall wrap *gomock.Call
+type MockCaseSetServiceDetailCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *CaseSetServiceDetailCall) Return(arg0 domain.CaseSet, arg1 error) *CaseSetServiceDetailCall {
+func (c *MockCaseSetServiceDetailCall) Return(arg0 domain.CaseSet, arg1 error) *MockCaseSetServiceDetailCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *CaseSetServiceDetailCall) Do(f func(context.Context, int64) (domain.CaseSet, error)) *CaseSetServiceDetailCall {
+func (c *MockCaseSetServiceDetailCall) Do(f func(context.Context, int64) (domain.CaseSet, error)) *MockCaseSetServiceDetailCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *CaseSetServiceDetailCall) DoAndReturn(f func(context.Context, int64) (domain.CaseSet, error)) *CaseSetServiceDetailCall {
+func (c *MockCaseSetServiceDetailCall) DoAndReturn(f func(context.Context, int64) (domain.CaseSet, error)) *MockCaseSetServiceDetailCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -88,31 +89,31 @@ func (m *MockCaseSetService) GetByBiz(ctx context.Context, biz string, bizId int
 }
 
 // GetByBiz indicates an expected call of GetByBiz.
-func (mr *MockCaseSetServiceMockRecorder) GetByBiz(ctx, biz, bizId any) *CaseSetServiceGetByBizCall {
+func (mr *MockCaseSetServiceMockRecorder) GetByBiz(ctx, biz, bizId any) *MockCaseSetServiceGetByBizCall {
 	mr.mock.ctrl.T.Helper()
 	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetByBiz", reflect.TypeOf((*MockCaseSetService)(nil).GetByBiz), ctx, biz, bizId)
-	return &CaseSetServiceGetByBizCall{Call: call}
+	return &MockCaseSetServiceGetByBizCall{Call: call}
 }
 
-// CaseSetServiceGetByBizCall wrap *gomock.Call
-type CaseSetServiceGetByBizCall struct {
+// MockCaseSetServiceGetByBizCall wrap *gomock.Call
+type MockCaseSetServiceGetByBizCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *CaseSetServiceGetByBizCall) Return(arg0 domain.CaseSet, arg1 error) *CaseSetServiceGetByBizCall {
+func (c *MockCaseSetServiceGetByBizCall) Return(arg0 domain.CaseSet, arg1 error) *MockCaseSetServiceGetByBizCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *CaseSetServiceGetByBizCall) Do(f func(context.Context, string, int64) (domain.CaseSet, error)) *CaseSetServiceGetByBizCall {
+func (c *MockCaseSetServiceGetByBizCall) Do(f func(context.Context, string, int64) (domain.CaseSet, error)) *MockCaseSetServiceGetByBizCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *CaseSetServiceGetByBizCall) DoAndReturn(f func(context.Context, string, int64) (domain.CaseSet, error)) *CaseSetServiceGetByBizCall {
+func (c *MockCaseSetServiceGetByBizCall) DoAndReturn(f func(context.Context, string, int64) (domain.CaseSet, error)) *MockCaseSetServiceGetByBizCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -127,31 +128,31 @@ func (m *MockCaseSetService) GetByIds(ctx context.Context, ids []int64) ([]domai
 }
 
 // GetByIds indicates an expected call of GetByIds.
-func (mr *MockCaseSetServiceMockRecorder) GetByIds(ctx, ids any) *CaseSetServiceGetByIdsCall {
+func (mr *MockCaseSetServiceMockRecorder) GetByIds(ctx, ids any) *MockCaseSetServiceGetByIdsCall {
 	mr.mock.ctrl.T.Helper()
 	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetByIds", reflect.TypeOf((*MockCaseSetService)(nil).GetByIds), ctx, ids)
-	return &CaseSetServiceGetByIdsCall{Call: call}
+	return &MockCaseSetServiceGetByIdsCall{Call: call}
 }
 
-// CaseSetServiceGetByIdsCall wrap *gomock.Call
-type CaseSetServiceGetByIdsCall struct {
+// MockCaseSetServiceGetByIdsCall wrap *gomock.Call
+type MockCaseSetServiceGetByIdsCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *CaseSetServiceGetByIdsCall) Return(arg0 []domain.CaseSet, arg1 error) *CaseSetServiceGetByIdsCall {
+func (c *MockCaseSetServiceGetByIdsCall) Return(arg0 []domain.CaseSet, arg1 error) *MockCaseSetServiceGetByIdsCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *CaseSetServiceGetByIdsCall) Do(f func(context.Context, []int64) ([]domain.CaseSet, error)) *CaseSetServiceGetByIdsCall {
+func (c *MockCaseSetServiceGetByIdsCall) Do(f func(context.Context, []int64) ([]domain.CaseSet, error)) *MockCaseSetServiceGetByIdsCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *CaseSetServiceGetByIdsCall) DoAndReturn(f func(context.Context, []int64) ([]domain.CaseSet, error)) *CaseSetServiceGetByIdsCall {
+func (c *MockCaseSetServiceGetByIdsCall) DoAndReturn(f func(context.Context, []int64) ([]domain.CaseSet, error)) *MockCaseSetServiceGetByIdsCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -166,31 +167,31 @@ func (m *MockCaseSetService) GetByIdsWithCases(ctx context.Context, ids []int64)
 }
 
 // GetByIdsWithCases indicates an expected call of GetByIdsWithCases.
-func (mr *MockCaseSetServiceMockRecorder) GetByIdsWithCases(ctx, ids any) *CaseSetServiceGetByIdsWithCasesCall {
+func (mr *MockCaseSetServiceMockRecorder) GetByIdsWithCases(ctx, ids any) *MockCaseSetServiceGetByIdsWithCasesCall {
 	mr.mock.ctrl.T.Helper()
 	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetByIdsWithCases", reflect.TypeOf((*MockCaseSetService)(nil).GetByIdsWithCases), ctx, ids)
-	return &CaseSetServiceGetByIdsWithCasesCall{Call: call}
+	return &MockCaseSetServiceGetByIdsWithCasesCall{Call: call}
 }
 
-// CaseSetServiceGetByIdsWithCasesCall wrap *gomock.Call
-type CaseSetServiceGetByIdsWithCasesCall struct {
+// MockCaseSetServiceGetByIdsWithCasesCall wrap *gomock.Call
+type MockCaseSetServiceGetByIdsWithCasesCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *CaseSetServiceGetByIdsWithCasesCall) Return(arg0 []domain.CaseSet, arg1 error) *CaseSetServiceGetByIdsWithCasesCall {
+func (c *MockCaseSetServiceGetByIdsWithCasesCall) Return(arg0 []domain.CaseSet, arg1 error) *MockCaseSetServiceGetByIdsWithCasesCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *CaseSetServiceGetByIdsWithCasesCall) Do(f func(context.Context, []int64) ([]domain.CaseSet, error)) *CaseSetServiceGetByIdsWithCasesCall {
+func (c *MockCaseSetServiceGetByIdsWithCasesCall) Do(f func(context.Context, []int64) ([]domain.CaseSet, error)) *MockCaseSetServiceGetByIdsWithCasesCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *CaseSetServiceGetByIdsWithCasesCall) DoAndReturn(f func(context.Context, []int64) ([]domain.CaseSet, error)) *CaseSetServiceGetByIdsWithCasesCall {
+func (c *MockCaseSetServiceGetByIdsWithCasesCall) DoAndReturn(f func(context.Context, []int64) ([]domain.CaseSet, error)) *MockCaseSetServiceGetByIdsWithCasesCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -206,31 +207,31 @@ func (m *MockCaseSetService) GetCandidates(ctx context.Context, id int64, offset
 }
 
 // GetCandidates indicates an expected call of GetCandidates.
-func (mr *MockCaseSetServiceMockRecorder) GetCandidates(ctx, id, offset, limit any) *CaseSetServiceGetCandidatesCall {
+func (mr *MockCaseSetServiceMockRecorder) GetCandidates(ctx, id, offset, limit any) *MockCaseSetServiceGetCandidatesCall {
 	mr.mock.ctrl.T.Helper()
 	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCandidates", reflect.TypeOf((*MockCaseSetService)(nil).GetCandidates), ctx, id, offset, limit)
-	return &CaseSetServiceGetCandidatesCall{Call: call}
+	return &MockCaseSetServiceGetCandidatesCall{Call: call}
 }
 
-// CaseSetServiceGetCandidatesCall wrap *gomock.Call
-type CaseSetServiceGetCandidatesCall struct {
+// MockCaseSetServiceGetCandidatesCall wrap *gomock.Call
+type MockCaseSetServiceGetCandidatesCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *CaseSetServiceGetCandidatesCall) Return(arg0 []domain.Case, arg1 int64, arg2 error) *CaseSetServiceGetCandidatesCall {
+func (c *MockCaseSetServiceGetCandidatesCall) Return(arg0 []domain.Case, arg1 int64, arg2 error) *MockCaseSetServiceGetCandidatesCall {
 	c.Call = c.Call.Return(arg0, arg1, arg2)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *CaseSetServiceGetCandidatesCall) Do(f func(context.Context, int64, int, int) ([]domain.Case, int64, error)) *CaseSetServiceGetCandidatesCall {
+func (c *MockCaseSetServiceGetCandidatesCall) Do(f func(context.Context, int64, int, int) ([]domain.Case, int64, error)) *MockCaseSetServiceGetCandidatesCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *CaseSetServiceGetCandidatesCall) DoAndReturn(f func(context.Context, int64, int, int) ([]domain.Case, int64, error)) *CaseSetServiceGetCandidatesCall {
+func (c *MockCaseSetServiceGetCandidatesCall) DoAndReturn(f func(context.Context, int64, int, int) ([]domain.Case, int64, error)) *MockCaseSetServiceGetCandidatesCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -246,31 +247,31 @@ func (m *MockCaseSetService) List(ctx context.Context, offset, limit int) ([]dom
 }
 
 // List indicates an expected call of List.
-func (mr *MockCaseSetServiceMockRecorder) List(ctx, offset, limit any) *CaseSetServiceListCall {
+func (mr *MockCaseSetServiceMockRecorder) List(ctx, offset, limit any) *MockCaseSetServiceListCall {
 	mr.mock.ctrl.T.Helper()
 	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "List", reflect.TypeOf((*MockCaseSetService)(nil).List), ctx, offset, limit)
-	return &CaseSetServiceListCall{Call: call}
+	return &MockCaseSetServiceListCall{Call: call}
 }
 
-// CaseSetServiceListCall wrap *gomock.Call
-type CaseSetServiceListCall struct {
+// MockCaseSetServiceListCall wrap *gomock.Call
+type MockCaseSetServiceListCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *CaseSetServiceListCall) Return(arg0 []domain.CaseSet, arg1 int64, arg2 error) *CaseSetServiceListCall {
+func (c *MockCaseSetServiceListCall) Return(arg0 []domain.CaseSet, arg1 int64, arg2 error) *MockCaseSetServiceListCall {
 	c.Call = c.Call.Return(arg0, arg1, arg2)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *CaseSetServiceListCall) Do(f func(context.Context, int, int) ([]domain.CaseSet, int64, error)) *CaseSetServiceListCall {
+func (c *MockCaseSetServiceListCall) Do(f func(context.Context, int, int) ([]domain.CaseSet, int64, error)) *MockCaseSetServiceListCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *CaseSetServiceListCall) DoAndReturn(f func(context.Context, int, int) ([]domain.CaseSet, int64, error)) *CaseSetServiceListCall {
+func (c *MockCaseSetServiceListCall) DoAndReturn(f func(context.Context, int, int) ([]domain.CaseSet, int64, error)) *MockCaseSetServiceListCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -285,70 +286,71 @@ func (m *MockCaseSetService) ListByBiz(ctx context.Context, offset, limit int, b
 }
 
 // ListByBiz indicates an expected call of ListByBiz.
-func (mr *MockCaseSetServiceMockRecorder) ListByBiz(ctx, offset, limit, biz any) *CaseSetServiceListByBizCall {
+func (mr *MockCaseSetServiceMockRecorder) ListByBiz(ctx, offset, limit, biz any) *MockCaseSetServiceListByBizCall {
 	mr.mock.ctrl.T.Helper()
 	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListByBiz", reflect.TypeOf((*MockCaseSetService)(nil).ListByBiz), ctx, offset, limit, biz)
-	return &CaseSetServiceListByBizCall{Call: call}
+	return &MockCaseSetServiceListByBizCall{Call: call}
 }
 
-// CaseSetServiceListByBizCall wrap *gomock.Call
-type CaseSetServiceListByBizCall struct {
+// MockCaseSetServiceListByBizCall wrap *gomock.Call
+type MockCaseSetServiceListByBizCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *CaseSetServiceListByBizCall) Return(arg0 []domain.CaseSet, arg1 error) *CaseSetServiceListByBizCall {
+func (c *MockCaseSetServiceListByBizCall) Return(arg0 []domain.CaseSet, arg1 error) *MockCaseSetServiceListByBizCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *CaseSetServiceListByBizCall) Do(f func(context.Context, int, int, string) ([]domain.CaseSet, error)) *CaseSetServiceListByBizCall {
+func (c *MockCaseSetServiceListByBizCall) Do(f func(context.Context, int, int, string) ([]domain.CaseSet, error)) *MockCaseSetServiceListByBizCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *CaseSetServiceListByBizCall) DoAndReturn(f func(context.Context, int, int, string) ([]domain.CaseSet, error)) *CaseSetServiceListByBizCall {
+func (c *MockCaseSetServiceListByBizCall) DoAndReturn(f func(context.Context, int, int, string) ([]domain.CaseSet, error)) *MockCaseSetServiceListByBizCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // ListDefault mocks base method.
-func (m *MockCaseSetService) ListDefault(ctx context.Context, offset, limit int) ([]domain.CaseSet, error) {
+func (m *MockCaseSetService) ListDefault(ctx context.Context, offset, limit int) (int64, []domain.CaseSet, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListDefault", ctx, offset, limit)
-	ret0, _ := ret[0].([]domain.CaseSet)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].([]domain.CaseSet)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
 }
 
 // ListDefault indicates an expected call of ListDefault.
-func (mr *MockCaseSetServiceMockRecorder) ListDefault(ctx, offset, limit any) *CaseSetServiceListDefaultCall {
+func (mr *MockCaseSetServiceMockRecorder) ListDefault(ctx, offset, limit any) *MockCaseSetServiceListDefaultCall {
 	mr.mock.ctrl.T.Helper()
 	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListDefault", reflect.TypeOf((*MockCaseSetService)(nil).ListDefault), ctx, offset, limit)
-	return &CaseSetServiceListDefaultCall{Call: call}
+	return &MockCaseSetServiceListDefaultCall{Call: call}
 }
 
-// CaseSetServiceListDefaultCall wrap *gomock.Call
-type CaseSetServiceListDefaultCall struct {
+// MockCaseSetServiceListDefaultCall wrap *gomock.Call
+type MockCaseSetServiceListDefaultCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *CaseSetServiceListDefaultCall) Return(arg0 []domain.CaseSet, arg1 error) *CaseSetServiceListDefaultCall {
-	c.Call = c.Call.Return(arg0, arg1)
+func (c *MockCaseSetServiceListDefaultCall) Return(arg0 int64, arg1 []domain.CaseSet, arg2 error) *MockCaseSetServiceListDefaultCall {
+	c.Call = c.Call.Return(arg0, arg1, arg2)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *CaseSetServiceListDefaultCall) Do(f func(context.Context, int, int) ([]domain.CaseSet, error)) *CaseSetServiceListDefaultCall {
+func (c *MockCaseSetServiceListDefaultCall) Do(f func(context.Context, int, int) (int64, []domain.CaseSet, error)) *MockCaseSetServiceListDefaultCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *CaseSetServiceListDefaultCall) DoAndReturn(f func(context.Context, int, int) ([]domain.CaseSet, error)) *CaseSetServiceListDefaultCall {
+func (c *MockCaseSetServiceListDefaultCall) DoAndReturn(f func(context.Context, int, int) (int64, []domain.CaseSet, error)) *MockCaseSetServiceListDefaultCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -363,31 +365,31 @@ func (m *MockCaseSetService) Save(ctx context.Context, set domain.CaseSet) (int6
 }
 
 // Save indicates an expected call of Save.
-func (mr *MockCaseSetServiceMockRecorder) Save(ctx, set any) *CaseSetServiceSaveCall {
+func (mr *MockCaseSetServiceMockRecorder) Save(ctx, set any) *MockCaseSetServiceSaveCall {
 	mr.mock.ctrl.T.Helper()
 	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Save", reflect.TypeOf((*MockCaseSetService)(nil).Save), ctx, set)
-	return &CaseSetServiceSaveCall{Call: call}
+	return &MockCaseSetServiceSaveCall{Call: call}
 }
 
-// CaseSetServiceSaveCall wrap *gomock.Call
-type CaseSetServiceSaveCall struct {
+// MockCaseSetServiceSaveCall wrap *gomock.Call
+type MockCaseSetServiceSaveCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *CaseSetServiceSaveCall) Return(arg0 int64, arg1 error) *CaseSetServiceSaveCall {
+func (c *MockCaseSetServiceSaveCall) Return(arg0 int64, arg1 error) *MockCaseSetServiceSaveCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *CaseSetServiceSaveCall) Do(f func(context.Context, domain.CaseSet) (int64, error)) *CaseSetServiceSaveCall {
+func (c *MockCaseSetServiceSaveCall) Do(f func(context.Context, domain.CaseSet) (int64, error)) *MockCaseSetServiceSaveCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *CaseSetServiceSaveCall) DoAndReturn(f func(context.Context, domain.CaseSet) (int64, error)) *CaseSetServiceSaveCall {
+func (c *MockCaseSetServiceSaveCall) DoAndReturn(f func(context.Context, domain.CaseSet) (int64, error)) *MockCaseSetServiceSaveCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -401,31 +403,31 @@ func (m *MockCaseSetService) UpdateCases(ctx context.Context, set domain.CaseSet
 }
 
 // UpdateCases indicates an expected call of UpdateCases.
-func (mr *MockCaseSetServiceMockRecorder) UpdateCases(ctx, set any) *CaseSetServiceUpdateCasesCall {
+func (mr *MockCaseSetServiceMockRecorder) UpdateCases(ctx, set any) *MockCaseSetServiceUpdateCasesCall {
 	mr.mock.ctrl.T.Helper()
 	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateCases", reflect.TypeOf((*MockCaseSetService)(nil).UpdateCases), ctx, set)
-	return &CaseSetServiceUpdateCasesCall{Call: call}
+	return &MockCaseSetServiceUpdateCasesCall{Call: call}
 }
 
-// CaseSetServiceUpdateCasesCall wrap *gomock.Call
-type CaseSetServiceUpdateCasesCall struct {
+// MockCaseSetServiceUpdateCasesCall wrap *gomock.Call
+type MockCaseSetServiceUpdateCasesCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *CaseSetServiceUpdateCasesCall) Return(arg0 error) *CaseSetServiceUpdateCasesCall {
+func (c *MockCaseSetServiceUpdateCasesCall) Return(arg0 error) *MockCaseSetServiceUpdateCasesCall {
 	c.Call = c.Call.Return(arg0)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *CaseSetServiceUpdateCasesCall) Do(f func(context.Context, domain.CaseSet) error) *CaseSetServiceUpdateCasesCall {
+func (c *MockCaseSetServiceUpdateCasesCall) Do(f func(context.Context, domain.CaseSet) error) *MockCaseSetServiceUpdateCasesCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *CaseSetServiceUpdateCasesCall) DoAndReturn(f func(context.Context, domain.CaseSet) error) *CaseSetServiceUpdateCasesCall {
+func (c *MockCaseSetServiceUpdateCasesCall) DoAndReturn(f func(context.Context, domain.CaseSet) error) *MockCaseSetServiceUpdateCasesCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

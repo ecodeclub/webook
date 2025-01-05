@@ -27,6 +27,7 @@ import (
 // Repository C 端接口
 type Repository interface {
 	List(ctx context.Context, offset int, limit int) ([]domain.Project, error)
+	Count(ctx context.Context) (int64, error)
 	Detail(ctx context.Context, id int64) (domain.Project, error)
 	Brief(ctx context.Context, id int64) (domain.Project, error)
 }
@@ -35,6 +36,10 @@ var _ Repository = &CachedRepository{}
 
 type CachedRepository struct {
 	dao dao.ProjectDAO
+}
+
+func (repo *CachedRepository) Count(ctx context.Context) (int64, error) {
+	return repo.dao.Count(ctx)
 }
 
 func (repo *CachedRepository) Brief(ctx context.Context, id int64) (domain.Project, error) { //TODO implement me

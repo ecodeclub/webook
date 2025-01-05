@@ -116,7 +116,7 @@ func (h *Handler) PubDetail(ctx *ginx.Context,
 }
 
 func (h *Handler) PubList(ctx *ginx.Context, req Page) (ginx.Result, error) {
-	data, err := h.svc.PubList(ctx, req.Offset, req.Limit)
+	count, data, err := h.svc.PubList(ctx, req.Offset, req.Limit)
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -138,9 +138,15 @@ func (h *Handler) PubList(ctx *ginx.Context, req Page) (ginx.Result, error) {
 
 	// 获得数据
 	return ginx.Result{
-		// 在 C 端是下拉刷新
-		Data: slice.Map(data, func(idx int, src domain.Question) Question {
+		Data: h.toQuestionList(data, count, intrs),
+	}, nil
+}
+
+func (h *Handler) toQuestionList(data []domain.Question, cnt int64, intrs map[int64]interactive.Interactive) QuestionList {
+	return QuestionList{
+		Total: cnt,
+		Questions: slice.Map(data, func(idx int, src domain.Question) Question {
 			return newQuestion(src, intrs[src.Id])
 		}),
-	}, nil
+	}
 }

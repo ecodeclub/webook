@@ -63,7 +63,7 @@ func (h *QuestionSetHandler) PrivateRoutes(server *gin.Engine) {
 
 // ListQuestionSets 展示个人题集
 func (h *QuestionSetHandler) ListQuestionSets(ctx *ginx.Context, req Page) (ginx.Result, error) {
-	data, err := h.svc.ListDefault(ctx, req.Offset, req.Limit)
+	data, count, err := h.svc.ListDefault(ctx, req.Offset, req.Limit)
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -84,6 +84,7 @@ func (h *QuestionSetHandler) ListQuestionSets(ctx *ginx.Context, req Page) (ginx
 	}
 	return ginx.Result{
 		Data: QuestionSetList{
+			Total: count,
 			QuestionSets: slice.Map(data, func(idx int, src domain.QuestionSet) QuestionSet {
 				qs := newQuestionSet(src)
 				qs.Interactive = newInteractive(intrs[src.Id])

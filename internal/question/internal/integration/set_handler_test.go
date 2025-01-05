@@ -643,7 +643,9 @@ func (s *SetHandlerTestSuite) TestQuestionSet_ListAllQuestionSets() {
 			},
 			wantCode: 200,
 			wantResp: test.Result[web.QuestionSetList]{
+
 				Data: web.QuestionSetList{
+					Total: 100,
 					QuestionSets: []web.QuestionSet{
 						{
 							Id:          100,
@@ -686,6 +688,7 @@ func (s *SetHandlerTestSuite) TestQuestionSet_ListAllQuestionSets() {
 			wantCode: 200,
 			wantResp: test.Result[web.QuestionSetList]{
 				Data: web.QuestionSetList{
+					Total: 100,
 					QuestionSets: []web.QuestionSet{
 						{
 							Id:          1,
