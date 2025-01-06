@@ -3,7 +3,9 @@
 package review
 
 import (
+	"github.com/ecodeclub/mq-api"
 	"github.com/ecodeclub/webook/internal/interactive"
+	"github.com/ecodeclub/webook/internal/review/internal/event"
 	"github.com/ecodeclub/webook/internal/review/internal/repository"
 	"github.com/ecodeclub/webook/internal/review/internal/repository/dao"
 	"github.com/ecodeclub/webook/internal/review/internal/service"
@@ -12,9 +14,10 @@ import (
 	"github.com/google/wire"
 )
 
-func InitModule(db *egorm.Component, interSvc *interactive.Module) *Module {
+func InitModule(db *egorm.Component, interSvc *interactive.Module, q mq.MQ) *Module {
 	wire.Build(
 		initReviewDao,
+		initIntrProducer,
 		repository.NewReviewRepo,
 		service.NewReviewSvc,
 		web.NewHandler,
@@ -31,4 +34,12 @@ func initReviewDao(db *egorm.Component) dao.ReviewDAO {
 		panic(err)
 	}
 	return dao.NewReviewDAO(db)
+}
+
+func initIntrProducer(q mq.MQ)event.InteractiveEventProducer{
+	producer,err := event.NewInteractiveEventProducer(q)
+	if err != nil {
+		panic(err)
+	}
+	return producer
 }

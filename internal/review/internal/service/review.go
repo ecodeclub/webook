@@ -2,6 +2,9 @@ package service
 
 import (
 	"context"
+	"github.com/ecodeclub/webook/internal/review/internal/event"
+	"github.com/gotomicro/ego/core/elog"
+	"time"
 
 	"github.com/ecodeclub/webook/internal/review/internal/domain"
 	"github.com/ecodeclub/webook/internal/review/internal/repository"
@@ -19,14 +22,18 @@ type ReviewSvc interface {
 	PubInfo(ctx context.Context, id int64) (domain.Review, error)
 }
 
-func NewReviewSvc(repo repository.ReviewRepo) ReviewSvc {
+func NewReviewSvc(repo repository.ReviewRepo, intrProducer event.InteractiveEventProducer) ReviewSvc {
 	return &reviewSvc{
-		repo: repo,
+		repo:         repo,
+		logger:       elog.DefaultLogger,
+		intrProducer: intrProducer,
 	}
 }
 
 type reviewSvc struct {
-	repo repository.ReviewRepo
+	repo         repository.ReviewRepo
+	logger       *elog.Component
+	intrProducer event.InteractiveEventProducer
 }
 
 func (r *reviewSvc) Save(ctx context.Context, re domain.Review) (int64, error) {
@@ -67,5 +74,20 @@ func (r *reviewSvc) PubList(ctx context.Context, offset, limit int) ([]domain.Re
 }
 
 func (r *reviewSvc) PubInfo(ctx context.Context, id int64) (domain.Review, error) {
-	return r.repo.PubInfo(ctx, id)
+	re, err := r.repo.PubInfo(ctx, id)
+	if err == nil {
+		go func() {
+			newCtx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+			defer cancel()
+			err1 := r.intrProducer.Produce(newCtx, event.NewViewCntEvent(id, domain.ReviewBiz))
+			if err1 != nil {
+				if err1 != nil {
+					r.logger.Error("发送面经阅读计数消息到消息队列失败",
+						elog.FieldErr(err1),
+						elog.Int64("reviewId", id))
+				}
+			}
+		}()
+	}
+	return re,err
 }

@@ -1,5 +1,7 @@
 package domain
 
+const ReviewBiz = "review"
+
 type Review struct {
 	ID               int64
 	Title            string

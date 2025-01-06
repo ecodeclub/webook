@@ -55,7 +55,7 @@ func (s *TestSuite) mockInteractive(biz string, id int64) interactive.Interactiv
 
 func (s *TestSuite) SetupSuite() {
 	db := testioc.InitDB()
-
+	testmq := testioc.InitMQ()
 	ctrl := gomock.NewController(s.T())
 	svc := intrmocks.NewMockService(ctrl)
 	svc.EXPECT().GetByIds(gomock.Any(), "review", gomock.Any()).DoAndReturn(func(ctx context.Context, biz string, ids []int64) (map[int64]interactive.Interactive, error) {
@@ -68,7 +68,7 @@ func (s *TestSuite) SetupSuite() {
 	}).AnyTimes()
 	mou := startup.InitModule(db, &interactive.Module{
 		Svc: svc,
-	})
+	}, testmq)
 	econf.Set("server", map[string]any{"contextTimeout": "1s"})
 	server := egin.Load("server").Build()
 	server.Use(func(ctx *gin.Context) {

@@ -23,7 +23,7 @@ import (
 	"github.com/ecodeclub/webook/internal/pkg/middleware"
 	"github.com/ecodeclub/webook/internal/product"
 	"github.com/ecodeclub/webook/internal/project"
-	baguwen "github.com/ecodeclub/webook/internal/question"
+	"github.com/ecodeclub/webook/internal/question"
 	"github.com/ecodeclub/webook/internal/recon"
 	"github.com/ecodeclub/webook/internal/resume"
 	"github.com/ecodeclub/webook/internal/review"
@@ -136,7 +136,7 @@ func InitApp() (*App, error) {
 	projectHandler := resumeModule.PrjHdl
 	analysisHandler := resumeModule.AnalysisHandler
 	handler17 := aiModule.Hdl
-	reviewModule := review.InitModule(db, interactiveModule)
+	reviewModule := review.InitModule(db, interactiveModule, mq)
 	handler18 := reviewModule.Hdl
 	component := initGinxServer(provider, checkMembershipMiddlewareBuilder, localActiveLimit, checkPermissionMiddlewareBuilder, handler, examineHandler, questionSetHandler, webHandler, handler2, handler3, handler4, handler5, handler6, handler7, handler8, handler9, handler10, handler11, handler12, handler13, handler14, handler15, handler16, caseSetHandler, webExamineHandler, projectHandler, analysisHandler, handler17, handler18)
 	adminHandler := projectModule.AdminHdl
