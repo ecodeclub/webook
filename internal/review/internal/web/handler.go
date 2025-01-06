@@ -67,9 +67,17 @@ func (h *Handler) PubDetail(ctx *ginx.Context, req DetailReq) (ginx.Result, erro
 	if err != nil {
 		return systemErrorResult, err
 	}
+	var err1 error
+	intr, err1 := h.intrSvc.GetByIds(ctx, "review", []int64{req.ID})
+	// 这个数据查询不到也不需要担心
+	if err1 != nil {
+		h.logger.Error("查询数据的点赞数据失败",
+			elog.Any("id", req.ID),
+			elog.FieldErr(err))
+	}
 
 	// 转换为展示层对象并返回
 	return ginx.Result{
-		Data: newReviewWithInteractive(review, interactive.Interactive{}),
+		Data: newReviewWithInteractive(review, intr[req.ID]),
 	}, nil
 }

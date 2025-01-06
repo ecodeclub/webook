@@ -106,7 +106,7 @@ func (s *TestSuite) TestSave() {
 		wantResp test.Result[int64]
 	}{
 		{
-			name: "新建面试评测",
+			name: "新建面经",
 			before: func(t *testing.T) {
 			},
 			after: func(t *testing.T) {
@@ -149,7 +149,7 @@ func (s *TestSuite) TestSave() {
 			},
 		},
 		{
-			name: "更新面试评测",
+			name: "更新面经",
 			before: func(t *testing.T) {
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 				defer cancel()
@@ -916,6 +916,13 @@ func (s *TestSuite) TestPubDetail() {
 					QuestionAnalysis: "已发布的问题分析",
 					Resume:           "已发布的简历",
 					Status:           domain.PublishedStatus.ToUint8(),
+					Interactive: web.Interactive{
+						CollectCnt: 4,
+						LikeCnt:    3,
+						ViewCnt:    2,
+						Liked:      true,
+						Collected:  false,
+					},
 				},
 			},
 		},
