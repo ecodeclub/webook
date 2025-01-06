@@ -57,7 +57,7 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 }
 
 func (h *Handler) List(ctx *ginx.Context, req Page) (ginx.Result, error) {
-	data, err := h.svc.List(ctx, req.Offset, req.Limit)
+	count, data, err := h.svc.List(ctx, req.Offset, req.Limit)
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -77,9 +77,12 @@ func (h *Handler) List(ctx *ginx.Context, req Page) (ginx.Result, error) {
 		}
 	}
 	return ginx.Result{
-		Data: slice.Map(data, func(idx int, src domain.Project) Project {
-			return newProject(src, intrs[src.Id])
-		}),
+		Data: ProjectList{
+			Total: count,
+			Projects: slice.Map(data, func(idx int, src domain.Project) Project {
+				return newProject(src, intrs[src.Id])
+			}),
+		},
 	}, nil
 }
 

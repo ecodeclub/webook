@@ -19,7 +19,7 @@ type CaseSetRepository interface {
 	Total(ctx context.Context) (int64, error)
 	List(ctx context.Context, offset int, limit int) ([]domain.CaseSet, error)
 	UpdateNonZero(ctx context.Context, set domain.CaseSet) error
-
+	CountByBiz(ctx context.Context, biz string) (int64, error)
 	GetByIDs(ctx context.Context, ids []int64) ([]domain.CaseSet, error)
 	// GetByIDsWithCases 会同步把关联的 Case 也找出来，但是只是找 id，具体内容没有找
 	GetByIDsWithCases(ctx context.Context, ids []int64) ([]domain.CaseSet, error)
@@ -30,6 +30,10 @@ type CaseSetRepository interface {
 
 type caseSetRepo struct {
 	dao dao.CaseSetDAO
+}
+
+func (c *caseSetRepo) CountByBiz(ctx context.Context, biz string) (int64, error) {
+	return c.dao.CountByBiz(ctx, biz)
 }
 
 func NewCaseSetRepo(caseSetDao dao.CaseSetDAO) CaseSetRepository {

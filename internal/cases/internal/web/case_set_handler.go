@@ -46,7 +46,7 @@ func (h *CaseSetHandler) PrivateRoutes(server *gin.Engine) {
 
 // ListCaseSets 展示个人案例集
 func (h *CaseSetHandler) ListCaseSets(ctx *ginx.Context, req Page) (ginx.Result, error) {
-	data, err := h.svc.ListDefault(ctx, req.Offset, req.Limit)
+	count, data, err := h.svc.ListDefault(ctx, req.Offset, req.Limit)
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -67,6 +67,7 @@ func (h *CaseSetHandler) ListCaseSets(ctx *ginx.Context, req Page) (ginx.Result,
 	}
 	return ginx.Result{
 		Data: CaseSetList{
+			Total: count,
 			CaseSets: slice.Map(data, func(idx int, src domain.CaseSet) CaseSet {
 				qs := newCaseSet(src)
 				qs.Interactive = newInteractive(intrs[src.ID])

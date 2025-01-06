@@ -16,6 +16,7 @@ type CaseSetDAO interface {
 	UpdateCasesByID(ctx context.Context, id int64, cids []int64) error
 
 	Count(ctx context.Context) (int64, error)
+	CountByBiz(ctx context.Context, biz string) (int64, error)
 	List(ctx context.Context, offset, limit int) ([]CaseSet, error)
 	UpdateNonZero(ctx context.Context, set CaseSet) error
 	GetByIDs(ctx context.Context, ids []int64) ([]CaseSet, error)
@@ -27,6 +28,15 @@ type CaseSetDAO interface {
 
 type caseSetDAO struct {
 	db *egorm.Component
+}
+
+func (c *caseSetDAO) CountByBiz(ctx context.Context, biz string) (int64, error) {
+	var count int64
+	db := c.db.WithContext(ctx)
+	err := db.
+		Model(&CaseSet{}).
+		Where("biz = ?", biz).Count(&count).Error
+	return count, err
 }
 
 func (c *caseSetDAO) GetRefCasesByIDs(ctx context.Context, ids []int64) ([]CaseSetCase, error) {
