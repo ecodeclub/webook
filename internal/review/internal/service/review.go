@@ -2,9 +2,10 @@ package service
 
 import (
 	"context"
+	"time"
+
 	"github.com/ecodeclub/webook/internal/review/internal/event"
 	"github.com/gotomicro/ego/core/elog"
-	"time"
 
 	"github.com/ecodeclub/webook/internal/review/internal/domain"
 	"github.com/ecodeclub/webook/internal/review/internal/repository"
@@ -89,5 +90,5 @@ func (r *reviewSvc) PubInfo(ctx context.Context, id int64) (domain.Review, error
 			}
 		}()
 	}
-	return re,err
+	return re, err
 }

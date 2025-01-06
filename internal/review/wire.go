@@ -36,8 +36,8 @@ func initReviewDao(db *egorm.Component) dao.ReviewDAO {
 	return dao.NewReviewDAO(db)
 }
 
-func initIntrProducer(q mq.MQ)event.InteractiveEventProducer{
-	producer,err := event.NewInteractiveEventProducer(q)
+func initIntrProducer(q mq.MQ) event.InteractiveEventProducer {
+	producer, err := event.NewInteractiveEventProducer(q)
 	if err != nil {
 		panic(err)
 	}

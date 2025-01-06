@@ -15,7 +15,7 @@ import (
 	"github.com/google/wire"
 )
 
-func InitModule(db *egorm.Component, interSvc *interactive.Module,q mq.MQ) *review.Module {
+func InitModule(db *egorm.Component, interSvc *interactive.Module, q mq.MQ) *review.Module {
 	wire.Build(
 		initReviewDao,
 		initIntrProducer,
@@ -36,8 +36,8 @@ func initReviewDao(db *egorm.Component) dao.ReviewDAO {
 	}
 	return dao.NewReviewDAO(db)
 }
-func initIntrProducer(q mq.MQ)event.InteractiveEventProducer{
-	producer,err := event.NewInteractiveEventProducer(q)
+func initIntrProducer(q mq.MQ) event.InteractiveEventProducer {
+	producer, err := event.NewInteractiveEventProducer(q)
 	if err != nil {
 		panic(err)
 	}
