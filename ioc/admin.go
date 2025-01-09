@@ -58,7 +58,8 @@ func InitAdminServer(prj *project.AdminHandler,
 				return true
 			}
 			// 只允许我的域名过来的
-			return strings.Contains(origin, "meoying.com")
+			return strings.Contains(origin, "meoying.com") ||
+				strings.Contains(origin, "mianshi.icu")
 		},
 	}))
 	res.GET("/hello", func(ctx *gin.Context) {
