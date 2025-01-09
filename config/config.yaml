@@ -36,6 +36,10 @@ es:
   url: ""
   sniff: false
 
+question:
+  zhipu:
+    knowledgeBaseID: '1234'
+
 web:
   port: 8080
   mode: debug
