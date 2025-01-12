@@ -39,12 +39,12 @@ func (repo *CachedRepository) GetByBiz(ctx context.Context, biz string, bizId in
 	if err != nil {
 		return domain.Roadmap{}, err
 	}
-	edges, err := repo.dao.GetEdgesByRid(ctx, r.Id)
+	nodeMap, edges, err := repo.dao.GetEdgesByRid(ctx, r.Id)
 	if err != nil {
 		return domain.Roadmap{}, err
 	}
 	res := repo.toDomain(r)
-	res.Edges = repo.edgesToDomain(edges)
+	res.Edges = repo.edgesToDomain(edges, nodeMap)
 	return res, nil
 }
 

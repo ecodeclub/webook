@@ -55,9 +55,11 @@ func newRoadmapWithBiz(r domain.Roadmap,
 		dst := newNode(edge.Dst)
 		dst.Title = bizMap[dst.Biz][dst.BizId].Title
 		return Edge{
-			Id:  edge.Id,
-			Src: src,
-			Dst: dst,
+			Id:    edge.Id,
+			Type:  edge.Type,
+			Attrs: edge.Attrs,
+			Src:   src,
+			Dst:   dst,
 		}
 	})
 	return rm
@@ -88,6 +90,9 @@ type IdReq struct {
 }
 
 type Node struct {
+	ID    int64  `json:"id"`
+	Rid   int64  `json:"rid"`
+	Attrs string `json:"attrs"`
 	BizId int64  `json:"bizId"`
 	Biz   string `json:"biz"`
 	Title string `json:"title"`
@@ -95,6 +100,9 @@ type Node struct {
 
 func (n Node) toDomain() domain.Node {
 	return domain.Node{
+		ID:    n.ID,
+		Rid:   n.Rid,
+		Attrs: n.Attrs,
 		Biz: domain.Biz{
 			BizId: n.BizId,
 			Biz:   n.Biz,
@@ -104,22 +112,31 @@ func (n Node) toDomain() domain.Node {
 
 func newNode(node domain.Node) Node {
 	return Node{
+		ID:    node.ID,
+		Rid:   node.Rid,
+		Attrs: node.Attrs,
 		BizId: node.BizId,
+
 		Biz:   node.Biz.Biz,
 		Title: node.Title,
 	}
 }
 
 type Edge struct {
-	Id  int64 `json:"id"`
-	Src Node  `json:"src"`
-	Dst Node  `json:"dst"`
+	Id    int64  `json:"id"`
+	Type  string `json:"type"`
+	Attrs string `json:"attrs"`
+	Src   Node   `json:"src"`
+	Dst   Node   `json:"dst"`
 }
 
 func (e Edge) toDomain() domain.Edge {
 	return domain.Edge{
-		Src: e.Src.toDomain(),
-		Dst: e.Dst.toDomain(),
+		Id:    e.Id,
+		Type:  e.Type,
+		Attrs: e.Attrs,
+		Src:   e.Src.toDomain(),
+		Dst:   e.Dst.toDomain(),
 	}
 }
 

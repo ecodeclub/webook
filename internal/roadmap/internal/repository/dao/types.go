@@ -57,3 +57,43 @@ type Edge struct {
 func (e Edge) TableName() string {
 	return "roadmap_edges"
 }
+
+type EdgeV1 struct {
+	Id int64 `gorm:"primaryKey,autoIncrement"`
+
+	// 理论上来说 Edge 中的 Rid, Src, Dst 构成一个唯一索引。
+	// 但是因为都是内部在操作，所以没太大必要真的建立这个唯一索引
+	// Roadmap 的 ID
+	Rid int64 `gorm:"index"`
+
+	// 源头
+	SrcNode int64 `gorm:"index:src_node"`
+
+	// 目标
+	DstNode int64 `gorm:"index:dst_node"`
+
+	Type  string
+	Attrs string
+
+	Utime int64
+	Ctime int64
+}
+type Node struct {
+	Id int64 `gorm:"primaryKey,autoIncrement"`
+	// plainText, link
+	Biz string
+
+	// 关联id
+	RefId int64
+	Attrs string
+	Rid   int64 `gorm:"index"`
+	Utime int64
+	Ctime int64
+}
+
+func (e Node) TableName() string {
+	return "roadmap_nodes"
+}
+func (e EdgeV1) TableName() string {
+	return "roadmap_edges_v1"
+}
