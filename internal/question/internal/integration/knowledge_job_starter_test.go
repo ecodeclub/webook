@@ -23,6 +23,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/ecodeclub/webook/internal/member"
+
 	"github.com/ecodeclub/webook/internal/ai"
 
 	"github.com/ecodeclub/webook/internal/interactive"
@@ -45,7 +47,7 @@ type KnowledgeJobStarterTestSuite struct {
 }
 
 func (s *KnowledgeJobStarterTestSuite) SetupSuite() {
-	module, err := startup.InitModule(nil, nil, &interactive.Module{}, &permission.Module{}, &ai.Module{})
+	module, err := startup.InitModule(nil, nil, &interactive.Module{}, &permission.Module{}, &ai.Module{}, &member.Module{})
 	require.NoError(s.T(), err)
 	s.starter = module.KnowledgeJobStarter
 	s.db = testioc.InitDB()

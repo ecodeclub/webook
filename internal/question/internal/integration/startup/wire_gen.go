@@ -11,6 +11,7 @@ import (
 
 	"github.com/ecodeclub/webook/internal/ai"
 	"github.com/ecodeclub/webook/internal/interactive"
+	"github.com/ecodeclub/webook/internal/member"
 	"github.com/ecodeclub/webook/internal/permission"
 	baguwen "github.com/ecodeclub/webook/internal/question"
 	"github.com/ecodeclub/webook/internal/question/internal/event"
@@ -26,7 +27,7 @@ import (
 
 // Injectors from wire.go:
 
-func InitModule(p event.SyncDataToSearchEventProducer, knowledgeBaseP event.KnowledgeBaseEventProducer, intrModule *interactive.Module, permModule *permission.Module, aiModule *ai.Module) (*baguwen.Module, error) {
+func InitModule(p event.SyncDataToSearchEventProducer, knowledgeBaseP event.KnowledgeBaseEventProducer, intrModule *interactive.Module, permModule *permission.Module, aiModule *ai.Module, memberModule *member.Module) (*baguwen.Module, error) {
 	db := testioc.InitDB()
 	questionDAO := baguwen.InitQuestionDAO(db)
 	ecacheCache := testioc.InitCache()
@@ -49,7 +50,8 @@ func InitModule(p event.SyncDataToSearchEventProducer, knowledgeBaseP event.Know
 	adminQuestionSetHandler := web.NewAdminQuestionSetHandler(questionSetService)
 	service2 := intrModule.Svc
 	service3 := permModule.Svc
-	handler := web.NewHandler(service2, examineService, service3, serviceService)
+	service4 := memberModule.Svc
+	handler := web.NewHandler(service2, examineService, service3, serviceService, service4)
 	questionSetHandler := web.NewQuestionSetHandler(questionSetService, examineService, service2)
 	examineHandler := web.NewExamineHandler(examineService)
 	knowledgeJobStarter := initKnowledgeJobStarter(serviceService)

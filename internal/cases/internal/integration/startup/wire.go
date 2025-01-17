@@ -25,6 +25,7 @@ import (
 	"github.com/ecodeclub/webook/internal/cases/internal/service"
 	"github.com/ecodeclub/webook/internal/cases/internal/web"
 	"github.com/ecodeclub/webook/internal/interactive"
+	"github.com/ecodeclub/webook/internal/member"
 	testioc "github.com/ecodeclub/webook/internal/test/ioc"
 	"github.com/google/wire"
 )
@@ -33,6 +34,7 @@ func InitModule(
 	syncProducer event.SyncEventProducer,
 	knowledgeBaseProducer event.KnowledgeBaseEventProducer,
 	aiModule *ai.Module,
+	memberModule *member.Module,
 	intrModule *interactive.Module) (*cases.Module, error) {
 	wire.Build(cases.InitCaseDAO,
 		testioc.BaseSet,
@@ -51,6 +53,7 @@ func InitModule(
 		web.NewAdminCaseHandler,
 		web.NewKnowledgeBaseHandler,
 		wire.FieldsOf(new(*interactive.Module), "Svc"),
+		wire.FieldsOf(new(*member.Module), "Svc"),
 		wire.FieldsOf(new(*ai.Module), "Svc", "KnowledgeBaseSvc"),
 		wire.Struct(new(cases.Module), "AdminHandler", "ExamineSvc", "Svc", "Hdl", "AdminSetHandler", "KnowledgeBaseHandler"),
 	)
@@ -61,6 +64,7 @@ func InitExamModule(
 	syncProducer event.SyncEventProducer,
 	knowledgeBaseProducer event.KnowledgeBaseEventProducer,
 	intrModule *interactive.Module,
+	memberModule *member.Module,
 	aiModule *ai.Module) (*cases.Module, error) {
 	wire.Build(
 		testioc.BaseSet,
@@ -84,6 +88,7 @@ func InitExamModule(
 		wire.FieldsOf(new(*interactive.Module), "Svc"),
 		wire.FieldsOf(new(*ai.Module), "Svc", "KnowledgeBaseSvc"),
 		wire.Struct(new(cases.Module), "*"),
+		wire.FieldsOf(new(*member.Module), "Svc"),
 	)
 	return new(cases.Module), nil
 }
