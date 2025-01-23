@@ -23,7 +23,7 @@ on:
 #  schedule:
 #    - cron: '29 21 * * *'
   push:
-    branches: [ "main", "actions" ]
+    branches: [ "main", "actions", "beta"]
     # Publish semver tags as releases.
 #    tags: [ 'v*.*.*' ]
 #  pull_request:
@@ -34,7 +34,7 @@ env:
   REGISTRY: ''
   # github.repository as <account>/<repo>
   IMAGE_NAME: ${{ github.repository }}
-  TAGS: flycash/webook:latest
+  TAGS: flycash/webook_beta:latest
 
 
 jobs:

@@ -71,7 +71,7 @@ func (h *Handler) PubDetail(ctx *ginx.Context,
 		var err error
 		detail, err = h.svc.PubDetail(ctx, req.Qid)
 		if err != nil {
-			return fmt.Errorf("查找面试题详情失败 %w", err)
+			return fmt.Errorf("查找面试题详情失败 %w, qid %d", err, req.Qid)
 		}
 		// 非八股文，我们需要判定是否有权限
 		// 暂时在这里聚合

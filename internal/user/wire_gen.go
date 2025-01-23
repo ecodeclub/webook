@@ -8,6 +8,7 @@ package user
 
 import (
 	"github.com/ecodeclub/ecache"
+	"github.com/ecodeclub/ginx/session"
 	"github.com/ecodeclub/mq-api"
 	"github.com/ecodeclub/webook/internal/member"
 	"github.com/ecodeclub/webook/internal/permission"
@@ -21,9 +22,9 @@ import (
 
 // Injectors from wire.go:
 
-func InitHandler(db *gorm.DB, cache2 ecache.Cache, q mq.MQ, creators []string, memberSvc *member.Module, permissionSvc *permission.Module) *web.Handler {
-	wechatWebOAuth2Service := initWechatWebOAuthService(cache2)
-	wechatMiniOAuth2Service := initWechatMiniOAuthService()
+func InitHandler(db *gorm.DB, cache2 ecache.Cache, q mq.MQ, creators []string, memberSvc *member.Module, sp session.Provider, permissionSvc *permission.Module) *web.Handler {
+	userWechatWebOAuth2Service := initWechatWebOAuthService(cache2)
+	userWechatMiniOAuth2Service := initWechatMiniOAuthService()
 	userDAO := initDAO(db)
 	userCache := cache.NewUserECache(cache2)
 	userRepository := repository.NewCachedUserRepository(userDAO, userCache)
@@ -31,7 +32,7 @@ func InitHandler(db *gorm.DB, cache2 ecache.Cache, q mq.MQ, creators []string, m
 	userService := service.NewUserService(userRepository, registrationEventProducer)
 	serviceService := memberSvc.Svc
 	service2 := permissionSvc.Svc
-	handler := iniHandler(wechatWebOAuth2Service, wechatMiniOAuth2Service, userService, serviceService, service2, creators)
+	handler := iniHandler(userWechatWebOAuth2Service, userWechatMiniOAuth2Service, userService, serviceService, sp, service2, creators)
 	return handler
 }
 
