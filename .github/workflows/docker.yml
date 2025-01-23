@@ -60,19 +60,19 @@ jobs:
         with:
           path: 'webook'
 #          指定分支
-          ref: 'main'
+          ref: 'beta'
       - name: Set up Go
         uses: actions/setup-go@v2
         with:
           go-version: '1.21'
 
-      - name: Init Go work
-        working-directory: ./webook
-        run: mv go_build.work go.work
+#      - name: Init Go work
+#        working-directory: ./webook
+#        run: mv go_build.work go.work
 
-      - name: go work sync
-        working-directory: ./webook
-        run: go work sync
+#      - name: go work sync
+#        working-directory: ./webook
+#        run: go work sync
 
       - name: go mod tidy
         working-directory: ./webook
