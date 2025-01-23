@@ -99,7 +99,7 @@ func (h *Handler) PreviewOrder(ctx *ginx.Context, req PreviewOrderReq, sess sess
 }
 
 func (h *Handler) toSPUVO(spu domain.SPU) SPU {
-	return SPU{Category: spu.Category0}
+	return SPU{Category0: spu.Category0, Category1: spu.Category1}
 }
 
 func (h *Handler) toSKUVO(sku domain.SKU) SKU {

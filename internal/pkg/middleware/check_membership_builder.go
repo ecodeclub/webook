@@ -55,9 +55,10 @@ func (c *CheckMembershipMiddlewareBuilder) Build() gin.HandlerFunc {
 
 		claims := sess.Claims()
 		memberDDL, _ := claims.Get("memberDDL").AsInt64()
+		now := time.Now().UnixMilli()
 		// 如果 jwt 中的数据格式不对，那么这里就会返回 0
 		// jwt中找到会员截止日期，没有过期
-		if memberDDL > time.Now().UnixMilli() {
+		if memberDDL > now {
 			return
 		}
 
@@ -81,7 +82,7 @@ func (c *CheckMembershipMiddlewareBuilder) Build() gin.HandlerFunc {
 			return
 		}
 
-		if info.EndAt < time.Now().UnixMilli() {
+		if info.EndAt < now {
 			elog.Debug("会员已过期", elog.Int64("uid", claims.Uid),
 				elog.String("ddl", time.UnixMilli(info.EndAt).Format(time.DateTime)))
 			gctx.AbortWithStatus(http.StatusForbidden)

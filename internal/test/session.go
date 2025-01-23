@@ -1,6 +1,8 @@
 package test
 
 import (
+	"time"
+
 	"github.com/ecodeclub/ginx/gctx"
 	"github.com/ecodeclub/ginx/session"
 	redis2 "github.com/ecodeclub/ginx/session/redis"
@@ -9,7 +11,7 @@ import (
 
 // 初始化一下 session
 func init() {
-	provider := redis2.NewSessionProvider(testioc.InitRedis(), "127389584287606793")
+	provider := redis2.NewSessionProvider(testioc.InitRedis(), "127389584287606793", time.Hour)
 	session.SetDefaultProvider(provider)
 }
 

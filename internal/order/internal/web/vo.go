@@ -36,7 +36,8 @@ type SKU struct {
 }
 
 type SPU struct {
-	Category string `json:"category"`
+	Category0 string `json:"category0"`
+	Category1 string `json:"category1"`
 }
 
 type PaymentItem struct {

@@ -16,6 +16,7 @@ package ioc
 
 import (
 	"github.com/ecodeclub/ecache"
+	"github.com/ecodeclub/ginx/session"
 	"github.com/ecodeclub/mq-api"
 	"github.com/ecodeclub/webook/internal/member"
 	"github.com/ecodeclub/webook/internal/permission"
@@ -24,7 +25,12 @@ import (
 	"github.com/gotomicro/ego/core/econf"
 )
 
-func InitUserHandler(db *egorm.Component, ec ecache.Cache, q mq.MQ, memModule *member.Module, perm *permission.Module) *user.Handler {
+func InitUserHandler(db *egorm.Component,
+	sp session.Provider,
+	ec ecache.Cache,
+	q mq.MQ,
+	memModule *member.Module,
+	perm *permission.Module) *user.Handler {
 	type UserConfig struct {
 		Creators []string `json:"creators"`
 	}
@@ -33,5 +39,5 @@ func InitUserHandler(db *egorm.Component, ec ecache.Cache, q mq.MQ, memModule *m
 	if err != nil {
 		panic(err)
 	}
-	return user.InitHandler(db, ec, q, cfg.Creators, memModule, perm)
+	return user.InitHandler(db, ec, q, cfg.Creators, memModule, sp, perm)
 }
