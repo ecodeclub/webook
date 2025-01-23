@@ -48,12 +48,12 @@ jobs:
       id-token: write
 
     steps:
-      - name: Checkout Private GO
-        uses: actions/checkout@v4
-        with:
-          repository: ecodeclub/webook-private
-          ssh-key: ${{ secrets.WEBOOK_PRIVATE_DEPLOY_KEY }}
-          path: 'webook-private'
+#      - name: Checkout Private GO
+#        uses: actions/checkout@v4
+#        with:
+#          repository: ecodeclub/webook-private
+#          ssh-key: ${{ secrets.WEBOOK_PRIVATE_DEPLOY_KEY }}
+#          path: 'webook-private'
 
       - name: Checkout repository
         uses: actions/checkout@v4
