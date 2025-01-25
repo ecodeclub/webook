@@ -26,6 +26,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ecodeclub/webook/internal/member"
+
 	"github.com/ecodeclub/webook/internal/ai"
 
 	"github.com/ecodeclub/webook/internal/permission"
@@ -102,7 +104,7 @@ func (s *AdminHandlerTestSuite) SetupSuite() {
 		return res, nil
 	}).AnyTimes()
 
-	module, err := startup.InitModule(s.producer, s.knowledgeBaseProducer, intrModule, &permission.Module{}, &ai.Module{})
+	module, err := startup.InitModule(s.producer, s.knowledgeBaseProducer, intrModule, &permission.Module{}, &ai.Module{}, &member.Module{})
 	require.NoError(s.T(), err)
 	econf.Set("server", map[string]any{"contextTimeout": "1s"})
 	server := egin.Load("server").Build()

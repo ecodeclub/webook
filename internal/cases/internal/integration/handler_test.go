@@ -24,6 +24,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ecodeclub/webook/internal/member"
+	membermocks "github.com/ecodeclub/webook/internal/member/mocks"
+
 	"github.com/ecodeclub/webook/internal/ai"
 	"github.com/ecodeclub/webook/internal/interactive"
 	intrmocks "github.com/ecodeclub/webook/internal/interactive/mocks"
@@ -97,22 +100,53 @@ func (s *HandlerTestSuite) SetupSuite() {
 		}
 		return res, nil
 	}).AnyTimes()
-	module, err := startup.InitModule(nil, nil, &ai.Module{}, intrModule)
+	memSvc := membermocks.NewMockService(s.ctrl)
+	memSvc.EXPECT().GetMembershipInfo(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, id int64) (member.Member, error) {
+		if id%2 == 0 {
+			return member.Member{
+				Uid:   uid,
+				EndAt: time.Now().Add(10 * time.Hour).UnixMilli(),
+			}, nil
+		}
+		return member.Member{
+			Uid:   uid,
+			EndAt: 0,
+		}, nil
+	}).AnyTimes()
+	module, err := startup.InitModule(nil, nil, &ai.Module{}, &member.Module{
+		Svc: memSvc,
+	}, intrModule)
 	require.NoError(s.T(), err)
 	handler := module.Hdl
 	econf.Set("server", map[string]any{"contextTimeout": "1s"})
 	server := egin.Load("server").Build()
-	handler.PublicRoutes(server.Engine)
 	server.Use(func(ctx *gin.Context) {
+		notMember := ctx.GetHeader("not_member") == "1"
+		notlogin := ctx.GetHeader("not_login") == "1"
+		uidStr := ctx.GetHeader("uid")
+		nuid := uid
+		data := map[string]string{
+			"creator": "true",
+		}
+		if uidStr != "" {
+			nuid, err = strconv.Atoi(uidStr)
+			require.NoError(s.T(), err)
+		}
+
+		// 如果是会员,添加memberDDL
+		if !notMember {
+			data["memberDDL"] = strconv.FormatInt(time.Now().Add(time.Hour).UnixMilli(), 10)
+		}
+		if notlogin {
+			return
+		}
 		ctx.Set("_session", session.NewMemorySession(session.Claims{
-			Uid: uid,
-			Data: map[string]string{
-				"memberDDL": strconv.FormatInt(time.Now().Add(time.Hour).UnixMilli(), 10),
-			},
+			Uid:  int64(nuid),
+			Data: data,
 		}))
 	})
+	handler.PublicRoutes(server.Engine)
 	server.Use(middleware.NewCheckMembershipMiddlewareBuilder(nil).Build())
-	handler.MemberRoutes(server.Engine)
 
 	s.server = server
 	s.db = testioc.InitDB()
@@ -241,7 +275,7 @@ func (s *HandlerTestSuite) TestPubDetail() {
 		},
 		Status:     domain.PublishedStatus.ToUint8(),
 		Title:      "redis案例标题",
-		Content:    "redis案例内容",
+		Content:    `<p>在微服务超时控制和重试策略里面，经常会引用这个案例。代码在 <a href="https://github.com/meoying/interview-cases/tree/main/case31_40/case32" rel="noopener noreferrer" target="_blank">interview-cases/case31_40/case32 at main · meoying/interview-cases (github.com)</a></p><p></p><h3>普通版</h3><p>普通版本就是使用一个普通的滑动窗口算法，关键点是：</p><ul><li>在窗口里面，记录了每个请求的时间戳，以及这个请求是否超时；</li><li>每个请求在收到了超时响应之后，统计这个窗口内部的超时请求数量；</li><li>如果超时请求数量超过阈值了，那么就认为不应该重试了；</li><li>如果超时请求数量没有超过阈值，那么就认为可以重试；</li></ul><p></p><h3>进阶版</h3><p>在高并发的情况下，滑动窗口算法的开销是难以忍受的。举个例子来说，即便将窗口限制在 1s，高并发的时候 1s 也有几万个请求，这几万个请求会占据你很多内存。而且在判定要不要重试的时候还要遍历，这也是一个极大的问题。</p><p></p><p>所以在进阶版里面，需要做优化：</p><ul><li>使用 ring buffer 来实现滑动窗口，进一步使用一个比特来标记请求是否超时；</li><li>每个请求超时之后，判定要不要执行重试，就要统计这个 ring buffer 里面为 1 的比特数量；</li><li>如果超时请求数量超过阈值了，那么就认为不应该重试；</li><li>如果超时请求数量没有超过阈值，那么就认为可以重试；</li><li>为了进一步提高性能，这里可以使用原子操作；</li></ul><p></p><p>举个例子来说，假设我们现在用 128 个比特来记录请求的超时信息，也就是说窗口大小是 128 个请求（不再是以时间来作为窗口大小了）。而后第一个请求过来标记下标 0 的比特，第二个请求标记下标 1 的比特...当都标记满了，就再次从头开始。</p><p></p><p>要注意，在我们的实现里面使用了大量的原子操作，所以你同样可以用这个案例来证明你很擅长并发编程。如果你觉得代码奇怪，请不要惊讶，它确实是对的，只是说违背一般的并发编程的模式而已，但是它确实是并发安全的，并且性能很好。</p><p></p><h3>适用场景和话术</h3><p>它可以用在这些场景：</p><ul><li>介绍你的提高可用性的方案，你可以将重试作为作为提高系统可用性的一环，而后介绍你这个规避了重试风暴的重试策略；</li><li>在面试中讨论到了超时问题</li><li>在面试中讨论到了重试问题，你可以主动提及重试风暴的问题，以及你解决了这个问题，也就是这个案例；</li></ul><p></p><p>而在介绍的时候，你要用一种演进的预期来介绍，也就是你不要上来就介绍进阶版，你要先介绍普通版，而后介绍进阶版。从这个演进中能够体现你对系统的思考，以及你是一个精益求精的人。</p><p></p><p>那么你可以参考这个话术：</p><blockquote>在处理大量请求时，我们经常会遇到超时的情况。为了合理控制重试行为，避免所谓的“重试风暴”，我设计了一个基于时间窗口的算法。在这个算法中，我们维护了一个滑动窗口，窗口内记录了每个请求的时间戳以及该请求是否超时。每当一个请求超时后，我们会统计窗口内超时的请求数量。如果超时请求的数量超过了设定的阈值，我们就认为当前系统压力较大，不适合进行重试；否则，我们认为可以安全地进行重试。</blockquote><blockquote>然而，随着并发量的增加，普通版的滑动窗口算法暴露出了一些问题。特别是在高并发场景下，窗口内需要维护的请求数量可能非常大，这不仅占用了大量内存，而且在判定是否需要重试时还需要遍历整个窗口，这大大增加了算法的时间复杂度。</blockquote><blockquote>为了解决这个问题，我们进一步设计了进阶版的算法。在这个版本中，我们引入了ring buffer 来优化滑动窗口的实现。具体来说，我们不再以时间为窗口大小，而是使用固定数量的比特位来记录请求的超时信息。每个比特位对应一个请求，用1表示超时，用0表示未超时。当所有比特位都被标记后，我们从头开始再次标记。</blockquote><blockquote>这种设计极大地降低了内存占用，因为无论并发量多高，我们只需要固定数量的比特位来记录请求的超时状态。同时，在判定是否需要重试时，我们只需要统计ring buffer中为1的比特数量，这大大简化了算法的实现并提高了效率。</blockquote><p></p><h3>模拟面试题</h3><p><strong>你的 ring buffer 设置得多大？</strong></p><blockquote>你可以随便说，并不需要很多。比如说你可以这么回答：</blockquote><blockquote>默认情况下是 128 字节，也就是 128 * 8 比特，1024 个比特。相当于每次都是只统计 1024 个请求中超时的比例</blockquote>`,
 		GithubRepo: "redis github仓库",
 		GiteeRepo:  "redis gitee仓库",
 		Keywords:   "redis_keywords",
@@ -263,14 +297,17 @@ func (s *HandlerTestSuite) TestPubDetail() {
 	require.NoError(s.T(), err)
 
 	testCases := []struct {
-		name string
-
+		name     string
+		before   func(req *http.Request)
 		req      web.CaseId
 		wantCode int
 		wantResp test.Result[web.Case]
 	}{
 		{
-			name: "查询到了数据",
+			name: "非会员获取部分数据",
+			before: func(req *http.Request) {
+				req.Header.Set("not_member", "1")
+			},
 			req: web.CaseId{
 				Cid: 3,
 			},
@@ -281,7 +318,7 @@ func (s *HandlerTestSuite) TestPubDetail() {
 					Labels:       []string{"Redis"},
 					Title:        "redis案例标题",
 					Introduction: "redis案例介绍",
-					Content:      "redis案例内容",
+					Content:      `<p>在微服务超时控制和重试策略里面，经常会引用这个案例。代码在 <a href="https://github.com/meoying/interview-cases/tree/main/case31_40/case32" rel="noopener noreferrer" target="_blank">interview-cases/case31_40/case32 at main · meoying/interview-cases (github.com)</a></p><p></p><h3>普通版</h3><p>普通版本就是使用一个普通的滑动窗口算法，关键点是：</p><ul><li>在窗口里面，记录了每个请求的时间戳，以及这个请求是否超时；</li><li>每个请求在收到了超时响应之后，统计这个窗口内部的超时请求数量；</li><li>如果超时请求数量超过阈值了，那么就认为不应该重试了；</li><li>如果超时请求数量没有超过阈值，那么就认为可以重试；</li></ul><p></p><h3>进阶版</h3><p>在高并发的情况下，滑动窗口算法的开销是难以忍受的。举个例子来说，即便将窗口限制在 1s，高并发的时候 1s 也有几万个请求，这几万个请求会占据你很多内存。而且在判定要不要重试的时候还要遍历，这也是一个极大的问题。</p>`,
 					GithubRepo:   "redis github仓库",
 					GiteeRepo:    "redis gitee仓库",
 					Status:       domain.PublishedStatus.ToUint8(),
@@ -303,6 +340,116 @@ func (s *HandlerTestSuite) TestPubDetail() {
 				},
 			},
 		},
+		{
+			name: "未登录获取部分数据",
+			before: func(req *http.Request) {
+				req.Header.Set("not_login", "1")
+			},
+			req: web.CaseId{
+				Cid: 3,
+			},
+			wantCode: 200,
+			wantResp: test.Result[web.Case]{
+				Data: web.Case{
+					Id:           3,
+					Labels:       []string{"Redis"},
+					Title:        "redis案例标题",
+					Introduction: "redis案例介绍",
+					Content:      `<p>在微服务超时控制和重试策略里面，经常会引用这个案例。代码在 <a href="https://github.com/meoying/interview-cases/tree/main/case31_40/case32" rel="noopener noreferrer" target="_blank">interview-cases/case31_40/case32 at main · meoying/interview-cases (github.com)</a></p><p></p><h3>普通版</h3><p>普通版本就是使用一个普通的滑动窗口算法，关键点是：</p><ul><li>在窗口里面，记录了每个请求的时间戳，以及这个请求是否超时；</li><li>每个请求在收到了超时响应之后，统计这个窗口内部的超时请求数量；</li><li>如果超时请求数量超过阈值了，那么就认为不应该重试了；</li><li>如果超时请求数量没有超过阈值，那么就认为可以重试；</li></ul><p></p><h3>进阶版</h3><p>在高并发的情况下，滑动窗口算法的开销是难以忍受的。举个例子来说，即便将窗口限制在 1s，高并发的时候 1s 也有几万个请求，这几万个请求会占据你很多内存。而且在判定要不要重试的时候还要遍历，这也是一个极大的问题。</p>`,
+					GithubRepo:   "redis github仓库",
+					GiteeRepo:    "redis gitee仓库",
+					Status:       domain.PublishedStatus.ToUint8(),
+					Keywords:     "redis_keywords",
+					Shorthand:    "redis_shorthand",
+					Highlight:    "redis_highlight",
+					Guidance:     "redis_guidance",
+					Biz:          "ai",
+					BizId:        13,
+					Utime:        13,
+					Interactive: web.Interactive{
+						Liked:      true,
+						Collected:  false,
+						ViewCnt:    4,
+						LikeCnt:    5,
+						CollectCnt: 6,
+					},
+					ExamineResult: 0,
+				},
+			},
+		},
+		{
+			name: "会员获取全部数据",
+			before: func(req *http.Request) {
+			},
+			req: web.CaseId{
+				Cid: 3,
+			},
+			wantCode: 200,
+			wantResp: test.Result[web.Case]{
+				Data: web.Case{
+					Id:           3,
+					Labels:       []string{"Redis"},
+					Title:        "redis案例标题",
+					Introduction: "redis案例介绍",
+					Content:      `<p>在微服务超时控制和重试策略里面，经常会引用这个案例。代码在 <a href="https://github.com/meoying/interview-cases/tree/main/case31_40/case32" rel="noopener noreferrer" target="_blank">interview-cases/case31_40/case32 at main · meoying/interview-cases (github.com)</a></p><p></p><h3>普通版</h3><p>普通版本就是使用一个普通的滑动窗口算法，关键点是：</p><ul><li>在窗口里面，记录了每个请求的时间戳，以及这个请求是否超时；</li><li>每个请求在收到了超时响应之后，统计这个窗口内部的超时请求数量；</li><li>如果超时请求数量超过阈值了，那么就认为不应该重试了；</li><li>如果超时请求数量没有超过阈值，那么就认为可以重试；</li></ul><p></p><h3>进阶版</h3><p>在高并发的情况下，滑动窗口算法的开销是难以忍受的。举个例子来说，即便将窗口限制在 1s，高并发的时候 1s 也有几万个请求，这几万个请求会占据你很多内存。而且在判定要不要重试的时候还要遍历，这也是一个极大的问题。</p><p></p><p>所以在进阶版里面，需要做优化：</p><ul><li>使用 ring buffer 来实现滑动窗口，进一步使用一个比特来标记请求是否超时；</li><li>每个请求超时之后，判定要不要执行重试，就要统计这个 ring buffer 里面为 1 的比特数量；</li><li>如果超时请求数量超过阈值了，那么就认为不应该重试；</li><li>如果超时请求数量没有超过阈值，那么就认为可以重试；</li><li>为了进一步提高性能，这里可以使用原子操作；</li></ul><p></p><p>举个例子来说，假设我们现在用 128 个比特来记录请求的超时信息，也就是说窗口大小是 128 个请求（不再是以时间来作为窗口大小了）。而后第一个请求过来标记下标 0 的比特，第二个请求标记下标 1 的比特...当都标记满了，就再次从头开始。</p><p></p><p>要注意，在我们的实现里面使用了大量的原子操作，所以你同样可以用这个案例来证明你很擅长并发编程。如果你觉得代码奇怪，请不要惊讶，它确实是对的，只是说违背一般的并发编程的模式而已，但是它确实是并发安全的，并且性能很好。</p><p></p><h3>适用场景和话术</h3><p>它可以用在这些场景：</p><ul><li>介绍你的提高可用性的方案，你可以将重试作为作为提高系统可用性的一环，而后介绍你这个规避了重试风暴的重试策略；</li><li>在面试中讨论到了超时问题</li><li>在面试中讨论到了重试问题，你可以主动提及重试风暴的问题，以及你解决了这个问题，也就是这个案例；</li></ul><p></p><p>而在介绍的时候，你要用一种演进的预期来介绍，也就是你不要上来就介绍进阶版，你要先介绍普通版，而后介绍进阶版。从这个演进中能够体现你对系统的思考，以及你是一个精益求精的人。</p><p></p><p>那么你可以参考这个话术：</p><blockquote>在处理大量请求时，我们经常会遇到超时的情况。为了合理控制重试行为，避免所谓的“重试风暴”，我设计了一个基于时间窗口的算法。在这个算法中，我们维护了一个滑动窗口，窗口内记录了每个请求的时间戳以及该请求是否超时。每当一个请求超时后，我们会统计窗口内超时的请求数量。如果超时请求的数量超过了设定的阈值，我们就认为当前系统压力较大，不适合进行重试；否则，我们认为可以安全地进行重试。</blockquote><blockquote>然而，随着并发量的增加，普通版的滑动窗口算法暴露出了一些问题。特别是在高并发场景下，窗口内需要维护的请求数量可能非常大，这不仅占用了大量内存，而且在判定是否需要重试时还需要遍历整个窗口，这大大增加了算法的时间复杂度。</blockquote><blockquote>为了解决这个问题，我们进一步设计了进阶版的算法。在这个版本中，我们引入了ring buffer 来优化滑动窗口的实现。具体来说，我们不再以时间为窗口大小，而是使用固定数量的比特位来记录请求的超时信息。每个比特位对应一个请求，用1表示超时，用0表示未超时。当所有比特位都被标记后，我们从头开始再次标记。</blockquote><blockquote>这种设计极大地降低了内存占用，因为无论并发量多高，我们只需要固定数量的比特位来记录请求的超时状态。同时，在判定是否需要重试时，我们只需要统计ring buffer中为1的比特数量，这大大简化了算法的实现并提高了效率。</blockquote><p></p><h3>模拟面试题</h3><p><strong>你的 ring buffer 设置得多大？</strong></p><blockquote>你可以随便说，并不需要很多。比如说你可以这么回答：</blockquote><blockquote>默认情况下是 128 字节，也就是 128 * 8 比特，1024 个比特。相当于每次都是只统计 1024 个请求中超时的比例</blockquote>`,
+					GithubRepo:   "redis github仓库",
+					GiteeRepo:    "redis gitee仓库",
+					Status:       domain.PublishedStatus.ToUint8(),
+					Keywords:     "redis_keywords",
+					Shorthand:    "redis_shorthand",
+					Highlight:    "redis_highlight",
+					Guidance:     "redis_guidance",
+					Biz:          "ai",
+					BizId:        13,
+					Utime:        13,
+					Interactive: web.Interactive{
+						Liked:      true,
+						Collected:  false,
+						ViewCnt:    4,
+						LikeCnt:    5,
+						CollectCnt: 6,
+					},
+					ExamineResult: 1,
+				},
+			},
+		},
+		{
+			name: "token中会员过期，但是是会员,返回全部数据",
+			before: func(req *http.Request) {
+				req.Header.Set("uid", "4")
+			},
+			req: web.CaseId{
+				Cid: 3,
+			},
+			wantCode: 200,
+			wantResp: test.Result[web.Case]{
+				Data: web.Case{
+					Id:           3,
+					Labels:       []string{"Redis"},
+					Title:        "redis案例标题",
+					Introduction: "redis案例介绍",
+					Content:      `<p>在微服务超时控制和重试策略里面，经常会引用这个案例。代码在 <a href="https://github.com/meoying/interview-cases/tree/main/case31_40/case32" rel="noopener noreferrer" target="_blank">interview-cases/case31_40/case32 at main · meoying/interview-cases (github.com)</a></p><p></p><h3>普通版</h3><p>普通版本就是使用一个普通的滑动窗口算法，关键点是：</p><ul><li>在窗口里面，记录了每个请求的时间戳，以及这个请求是否超时；</li><li>每个请求在收到了超时响应之后，统计这个窗口内部的超时请求数量；</li><li>如果超时请求数量超过阈值了，那么就认为不应该重试了；</li><li>如果超时请求数量没有超过阈值，那么就认为可以重试；</li></ul><p></p><h3>进阶版</h3><p>在高并发的情况下，滑动窗口算法的开销是难以忍受的。举个例子来说，即便将窗口限制在 1s，高并发的时候 1s 也有几万个请求，这几万个请求会占据你很多内存。而且在判定要不要重试的时候还要遍历，这也是一个极大的问题。</p><p></p><p>所以在进阶版里面，需要做优化：</p><ul><li>使用 ring buffer 来实现滑动窗口，进一步使用一个比特来标记请求是否超时；</li><li>每个请求超时之后，判定要不要执行重试，就要统计这个 ring buffer 里面为 1 的比特数量；</li><li>如果超时请求数量超过阈值了，那么就认为不应该重试；</li><li>如果超时请求数量没有超过阈值，那么就认为可以重试；</li><li>为了进一步提高性能，这里可以使用原子操作；</li></ul><p></p><p>举个例子来说，假设我们现在用 128 个比特来记录请求的超时信息，也就是说窗口大小是 128 个请求（不再是以时间来作为窗口大小了）。而后第一个请求过来标记下标 0 的比特，第二个请求标记下标 1 的比特...当都标记满了，就再次从头开始。</p><p></p><p>要注意，在我们的实现里面使用了大量的原子操作，所以你同样可以用这个案例来证明你很擅长并发编程。如果你觉得代码奇怪，请不要惊讶，它确实是对的，只是说违背一般的并发编程的模式而已，但是它确实是并发安全的，并且性能很好。</p><p></p><h3>适用场景和话术</h3><p>它可以用在这些场景：</p><ul><li>介绍你的提高可用性的方案，你可以将重试作为作为提高系统可用性的一环，而后介绍你这个规避了重试风暴的重试策略；</li><li>在面试中讨论到了超时问题</li><li>在面试中讨论到了重试问题，你可以主动提及重试风暴的问题，以及你解决了这个问题，也就是这个案例；</li></ul><p></p><p>而在介绍的时候，你要用一种演进的预期来介绍，也就是你不要上来就介绍进阶版，你要先介绍普通版，而后介绍进阶版。从这个演进中能够体现你对系统的思考，以及你是一个精益求精的人。</p><p></p><p>那么你可以参考这个话术：</p><blockquote>在处理大量请求时，我们经常会遇到超时的情况。为了合理控制重试行为，避免所谓的“重试风暴”，我设计了一个基于时间窗口的算法。在这个算法中，我们维护了一个滑动窗口，窗口内记录了每个请求的时间戳以及该请求是否超时。每当一个请求超时后，我们会统计窗口内超时的请求数量。如果超时请求的数量超过了设定的阈值，我们就认为当前系统压力较大，不适合进行重试；否则，我们认为可以安全地进行重试。</blockquote><blockquote>然而，随着并发量的增加，普通版的滑动窗口算法暴露出了一些问题。特别是在高并发场景下，窗口内需要维护的请求数量可能非常大，这不仅占用了大量内存，而且在判定是否需要重试时还需要遍历整个窗口，这大大增加了算法的时间复杂度。</blockquote><blockquote>为了解决这个问题，我们进一步设计了进阶版的算法。在这个版本中，我们引入了ring buffer 来优化滑动窗口的实现。具体来说，我们不再以时间为窗口大小，而是使用固定数量的比特位来记录请求的超时信息。每个比特位对应一个请求，用1表示超时，用0表示未超时。当所有比特位都被标记后，我们从头开始再次标记。</blockquote><blockquote>这种设计极大地降低了内存占用，因为无论并发量多高，我们只需要固定数量的比特位来记录请求的超时状态。同时，在判定是否需要重试时，我们只需要统计ring buffer中为1的比特数量，这大大简化了算法的实现并提高了效率。</blockquote><p></p><h3>模拟面试题</h3><p><strong>你的 ring buffer 设置得多大？</strong></p><blockquote>你可以随便说，并不需要很多。比如说你可以这么回答：</blockquote><blockquote>默认情况下是 128 字节，也就是 128 * 8 比特，1024 个比特。相当于每次都是只统计 1024 个请求中超时的比例</blockquote>`,
+					GithubRepo:   "redis github仓库",
+					GiteeRepo:    "redis gitee仓库",
+					Status:       domain.PublishedStatus.ToUint8(),
+					Keywords:     "redis_keywords",
+					Shorthand:    "redis_shorthand",
+					Highlight:    "redis_highlight",
+					Guidance:     "redis_guidance",
+					Biz:          "ai",
+					BizId:        13,
+					Utime:        13,
+					Interactive: web.Interactive{
+						Liked:      true,
+						Collected:  false,
+						ViewCnt:    4,
+						LikeCnt:    5,
+						CollectCnt: 6,
+					},
+					ExamineResult: 0,
+				},
+			},
+		},
 	}
 	for _, tc := range testCases {
 		tc := tc
@@ -310,6 +457,7 @@ func (s *HandlerTestSuite) TestPubDetail() {
 			req, err := http.NewRequest(http.MethodPost,
 				"/cases/detail", iox.NewJSONReader(tc.req))
 			req.Header.Set("content-type", "application/json")
+			tc.before(req)
 			require.NoError(t, err)
 			recorder := test.NewJSONResponseRecorder[web.Case]()
 			s.server.ServeHTTP(recorder, req)

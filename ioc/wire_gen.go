@@ -66,7 +66,7 @@ func InitApp() (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	baguwenModule, err := baguwen.InitModule(db, interactiveModule, cache, permissionModule, aiModule, mq)
+	baguwenModule, err := baguwen.InitModule(db, interactiveModule, cache, permissionModule, aiModule, module, mq)
 	if err != nil {
 		return nil, err
 	}
@@ -77,7 +77,7 @@ func InitApp() (*App, error) {
 	handler2 := InitUserHandler(db, provider, cache, mq, module, permissionModule)
 	config := InitCosConfig()
 	handler3 := cos.InitHandler(config)
-	casesModule, err := cases.InitModule(db, interactiveModule, aiModule, mq)
+	casesModule, err := cases.InitModule(db, interactiveModule, aiModule, module, mq)
 	if err != nil {
 		return nil, err
 	}

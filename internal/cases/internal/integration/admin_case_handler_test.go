@@ -26,6 +26,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ecodeclub/webook/internal/member"
+
 	"github.com/ecodeclub/ginx/session"
 	"github.com/ecodeclub/webook/internal/ai"
 	"github.com/gin-gonic/gin"
@@ -76,7 +78,7 @@ func (s *AdminCaseHandlerTestSuite) SetupSuite() {
 	s.knowledgeBaseProducer = eveMocks.NewMockKnowledgeBaseEventProducer(s.ctrl)
 	intrModule := &interactive.Module{}
 
-	module, err := startup.InitModule(s.producer, s.knowledgeBaseProducer, &ai.Module{}, intrModule)
+	module, err := startup.InitModule(s.producer, s.knowledgeBaseProducer, &ai.Module{}, &member.Module{}, intrModule)
 	require.NoError(s.T(), err)
 	handler := module.AdminHandler
 	econf.Set("server", map[string]any{"contextTimeout": "1s"})
