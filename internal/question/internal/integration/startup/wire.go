@@ -19,6 +19,10 @@ package startup
 import (
 	"os"
 
+	"github.com/ecodeclub/ginx/session"
+
+	"github.com/ecodeclub/webook/internal/member"
+
 	"github.com/ecodeclub/webook/internal/ai"
 
 	"github.com/ecodeclub/webook/internal/interactive"
@@ -39,6 +43,8 @@ func InitModule(p event.SyncDataToSearchEventProducer,
 	intrModule *interactive.Module,
 	permModule *permission.Module,
 	aiModule *ai.Module,
+	sp session.Provider,
+	memberModule *member.Module,
 ) (*baguwen.Module, error) {
 	wire.Build(
 		testioc.BaseSet,
@@ -46,6 +52,7 @@ func InitModule(p event.SyncDataToSearchEventProducer,
 		event.NewInteractiveEventProducer,
 		wire.FieldsOf(new(*interactive.Module), "Svc"),
 		wire.FieldsOf(new(*permission.Module), "Svc"),
+		wire.FieldsOf(new(*member.Module), "Svc"),
 		wire.FieldsOf(new(*ai.Module), "Svc", "KnowledgeBaseSvc"),
 	)
 	return new(baguwen.Module), nil

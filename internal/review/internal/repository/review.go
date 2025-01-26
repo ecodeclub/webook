@@ -3,6 +3,8 @@ package repository
 import (
 	"context"
 
+	"github.com/ecodeclub/ekit/sqlx"
+
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/ecodeclub/webook/internal/review/internal/domain"
 	"github.com/ecodeclub/webook/internal/review/internal/repository/dao"
@@ -84,6 +86,9 @@ func toDaoReview(review domain.Review) dao.Review {
 	return dao.Review{
 		ID:               review.ID,
 		Uid:              review.Uid,
+		Title:            review.Title,
+		Desc:             review.Desc,
+		Labels:           sqlx.JsonColumn[[]string]{Val: review.Labels, Valid: len(review.Labels) != 0},
 		JD:               review.JD,
 		JDAnalysis:       review.JDAnalysis,
 		Questions:        review.Questions,
@@ -98,6 +103,9 @@ func toDomainReview(review dao.Review) domain.Review {
 	return domain.Review{
 		ID:               review.ID,
 		JD:               review.JD,
+		Title:            review.Title,
+		Desc:             review.Desc,
+		Labels:           review.Labels.Val,
 		JDAnalysis:       review.JDAnalysis,
 		Questions:        review.Questions,
 		QuestionAnalysis: review.QuestionAnalysis,

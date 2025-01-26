@@ -108,7 +108,6 @@ func (h *QuestionSetHandler) GetDetailByBiz(
 func (h *QuestionSetHandler) RetrieveQuestionSetDetail(
 	ctx *ginx.Context,
 	req QuestionSetID, sess session.Session) (ginx.Result, error) {
-
 	data, err := h.svc.Detail(ctx.Request.Context(), req.QSID)
 	if err != nil {
 		return systemErrorResult, err

@@ -38,7 +38,6 @@ services:
       default:
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:7.13.0
-    container_name: elasticsearch
     environment:
       - discovery.type=single-node
       - "xpack.security.enabled=false"

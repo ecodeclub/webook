@@ -5,6 +5,10 @@ package cases
 import (
 	"sync"
 
+	"github.com/ecodeclub/ginx/session"
+
+	"github.com/ecodeclub/webook/internal/member"
+
 	"github.com/ecodeclub/webook/internal/ai"
 
 	"github.com/ecodeclub/webook/internal/interactive"
@@ -24,6 +28,8 @@ import (
 func InitModule(db *egorm.Component,
 	intrModule *interactive.Module,
 	aiModule *ai.Module,
+	memberModule *member.Module,
+	sp session.Provider,
 	q mq.MQ) (*Module, error) {
 	wire.Build(InitCaseDAO,
 		dao.NewCaseSetDAO,
@@ -47,6 +53,7 @@ func InitModule(db *egorm.Component,
 		wire.FieldsOf(new(*interactive.Module), "Svc"),
 		wire.FieldsOf(new(*ai.Module), "Svc", "KnowledgeBaseSvc"),
 		wire.Struct(new(Module), "*"),
+		wire.FieldsOf(new(*member.Module), "Svc"),
 	)
 	return new(Module), nil
 }

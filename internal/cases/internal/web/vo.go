@@ -42,6 +42,8 @@ type Case struct {
 	Interactive Interactive `json:"interactive,omitempty"`
 
 	ExamineResult uint8 `json:"examineResult"`
+
+	Permitted bool `json:"permitted,omitempty"`
 }
 
 type CaseId struct {

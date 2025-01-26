@@ -7,7 +7,10 @@
 package startup
 
 import (
+	"github.com/ecodeclub/mq-api"
+	"github.com/ecodeclub/webook/internal/interactive"
 	"github.com/ecodeclub/webook/internal/review"
+	"github.com/ecodeclub/webook/internal/review/internal/event"
 	"github.com/ecodeclub/webook/internal/review/internal/repository"
 	"github.com/ecodeclub/webook/internal/review/internal/repository/dao"
 	"github.com/ecodeclub/webook/internal/review/internal/service"
@@ -18,11 +21,13 @@ import (
 
 // Injectors from wire.go:
 
-func InitModule(db *gorm.DB) *review.Module {
+func InitModule(db *gorm.DB, interSvc *interactive.Module, q mq.MQ) *review.Module {
 	reviewDAO := initReviewDao(db)
 	reviewRepo := repository.NewReviewRepo(reviewDAO)
-	reviewSvc := service.NewReviewSvc(reviewRepo)
-	handler := web.NewHandler(reviewSvc)
+	interactiveEventProducer := initIntrProducer(q)
+	reviewSvc := service.NewReviewSvc(reviewRepo, interactiveEventProducer)
+	serviceService := interSvc.Svc
+	handler := web.NewHandler(reviewSvc, serviceService)
 	adminHandler := web.NewAdminHandler(reviewSvc)
 	module := &review.Module{
 		Hdl:      handler,
@@ -39,4 +44,12 @@ func initReviewDao(db *egorm.Component) dao.ReviewDAO {
 		panic(err)
 	}
 	return dao.NewReviewDAO(db)
+}
+
+func initIntrProducer(q mq.MQ) event.InteractiveEventProducer {
+	producer, err := event.NewInteractiveEventProducer(q)
+	if err != nil {
+		panic(err)
+	}
+	return producer
 }
