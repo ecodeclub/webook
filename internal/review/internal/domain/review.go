@@ -1,7 +1,12 @@
 package domain
 
+const ReviewBiz = "review"
+
 type Review struct {
 	ID               int64
+	Title            string
+	Desc             string
+	Labels           []string
 	Uid              int64
 	JD               string
 	JDAnalysis       string
