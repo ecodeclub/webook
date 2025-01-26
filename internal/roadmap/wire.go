@@ -19,6 +19,9 @@ package roadmap
 import (
 	"sync"
 
+	"github.com/ecodeclub/webook/internal/roadmap/internal/domain"
+	"github.com/ecodeclub/webook/internal/roadmap/internal/service/biz"
+
 	baguwen "github.com/ecodeclub/webook/internal/question"
 	"github.com/ecodeclub/webook/internal/roadmap/internal/repository"
 	"github.com/ecodeclub/webook/internal/roadmap/internal/repository/dao"
@@ -32,7 +35,7 @@ func InitModule(db *egorm.Component, queModule *baguwen.Module) *Module {
 	wire.Build(
 		web.NewAdminHandler,
 		service.NewAdminService,
-		service.NewConcurrentBizService,
+		NewConcurrentBizService,
 		repository.NewCachedAdminRepository,
 		initAdminDAO,
 
@@ -61,4 +64,11 @@ func initAdminDAO(db *egorm.Component) dao.AdminDAO {
 		adminDAO = dao.NewGORMAdminDAO(db)
 	})
 	return adminDAO
+}
+
+func NewConcurrentBizService(questionSvc baguwen.Service, questionSetSvc baguwen.QuestionSetService) biz.Service {
+	return biz.NewConcurrentBizService(map[string]biz.Strategy{
+		domain.BizQuestion:    biz.NewQuestionStrategy(questionSvc),
+		domain.BizQuestionSet: biz.NewQuestionSetStrategy(questionSetSvc),
+	})
 }

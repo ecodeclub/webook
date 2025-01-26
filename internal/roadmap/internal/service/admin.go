@@ -25,7 +25,12 @@ type AdminService interface {
 	Detail(ctx context.Context, id int64) (domain.Roadmap, error)
 	Save(ctx context.Context, r domain.Roadmap) (int64, error)
 	List(ctx context.Context, offset int, limit int) ([]domain.Roadmap, error)
-	AddEdge(ctx context.Context, rid int64, edge domain.Edge) error
+	SanitizeData()
+
+	SaveNode(ctx context.Context, node domain.Node) (int64, error)
+	DeleteNode(ctx context.Context, id int64) error
+	NodeList(ctx context.Context, rid int64) ([]domain.Node, error)
+	SaveEdge(ctx context.Context, rid int64, edge domain.Edge) error
 	DeleteEdge(ctx context.Context, id int64) error
 }
 
@@ -35,12 +40,28 @@ type adminService struct {
 	repo repository.AdminRepository
 }
 
-func (svc *adminService) DeleteEdge(ctx context.Context, id int64) error {
-	return svc.repo.DeleteEdge(ctx, id)
+func (svc *adminService) SanitizeData() {
+	svc.repo.SanitizeData()
 }
 
-func (svc *adminService) AddEdge(ctx context.Context, rid int64, edge domain.Edge) error {
-	return svc.repo.AddEdge(ctx, rid, edge)
+func (svc *adminService) SaveNode(ctx context.Context, node domain.Node) (int64, error) {
+	return svc.repo.SaveNode(ctx, node)
+}
+
+func (svc *adminService) DeleteNode(ctx context.Context, id int64) error {
+	return svc.repo.DeleteNode(ctx, id)
+}
+
+func (svc *adminService) NodeList(ctx context.Context, rid int64) ([]domain.Node, error) {
+	return svc.repo.NodeList(ctx, rid)
+}
+
+func (svc *adminService) SaveEdge(ctx context.Context, rid int64, edge domain.Edge) error {
+	return svc.repo.SaveEdgeV1(ctx, rid, edge)
+}
+
+func (svc *adminService) DeleteEdge(ctx context.Context, id int64) error {
+	return svc.repo.DeleteEdgeV1(ctx, id)
 }
 
 func (svc *adminService) Detail(ctx context.Context, id int64) (domain.Roadmap, error) {
