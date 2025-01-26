@@ -184,14 +184,13 @@ func (h *ProjectHandler) getCaMap(ctx *ginx.Context, uid int64, cids []int64) (m
 		caMap  map[int64]cases.Case
 		eg     errgroup.Group
 	)
-	pctx := ctx.Request.Context()
 	eg.Go(func() error {
 		var eerr error
-		resMap, eerr = h.examSvc.GetResults(pctx, uid, cids)
+		resMap, eerr = h.examSvc.GetResults(ctx, uid, cids)
 		return eerr
 	})
 	eg.Go(func() error {
-		cas, eerr := h.caseSvc.GetPubByIDs(pctx, cids)
+		cas, eerr := h.caseSvc.GetPubByIDs(ctx, cids)
 		if eerr != nil {
 			return eerr
 		}

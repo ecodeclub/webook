@@ -78,15 +78,7 @@ func (r *reviewDao) Count(ctx context.Context) (int64, error) {
 func (r *reviewDao) save(db *gorm.DB, review Review) (int64, error) {
 
 	err := db.Clauses(clause.OnConflict{
-		DoUpdates: clause.AssignmentColumns([]string{
-			"jd",
-			"jd_analysis",
-			"questions",
-			"question_analysis",
-			"resume",
-			"utime",
-			"status",
-		}),
+		DoUpdates: clause.AssignmentColumns(r.getUpdateCols()),
 	}).Create(&review).Error
 	return review.ID, err
 }
@@ -104,15 +96,7 @@ func (r *reviewDao) Sync(ctx context.Context, c Review) (int64, error) {
 		}
 		pubReview := PublishReview(c)
 		return tx.Clauses(clause.OnConflict{
-			DoUpdates: clause.AssignmentColumns([]string{
-				"jd",
-				"jd_analysis",
-				"questions",
-				"question_analysis",
-				"resume",
-				"utime",
-				"status",
-			}),
+			DoUpdates: clause.AssignmentColumns(r.getUpdateCols()),
 		}).Create(&pubReview).Error
 	})
 	return id, err
@@ -141,4 +125,19 @@ func (r *reviewDao) GetPublishReview(ctx context.Context, reviewId int64) (Publi
 		return PublishReview{}, err
 	}
 	return publishReview, nil
+}
+
+func (r *reviewDao) getUpdateCols() []string {
+	return []string{
+		"jd",
+		"jd_analysis",
+		"questions",
+		"question_analysis",
+		"resume",
+		"utime",
+		"status",
+		"title",
+		"desc",
+		"labels",
+	}
 }
