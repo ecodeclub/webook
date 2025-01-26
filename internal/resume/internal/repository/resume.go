@@ -122,17 +122,14 @@ func (r *resumeProjectRepo) FindProjects(ctx context.Context, uid int64) ([]doma
 
 func (r *resumeProjectRepo) ProjectInfo(ctx context.Context, id int64) (domain.Project, error) {
 	var eg errgroup.Group
-	var project *dao.ResumeProject
+	var project dao.ResumeProject
 	var refCasesMap map[int64][]dao.RefCase
 	var contributions []dao.Contribution
 	var difficulties []dao.Difficulty
 	eg.Go(func() error {
-		pro, err := r.pdao.First(ctx, id)
-		if err != nil {
-			return err
-		}
-		project = &pro
-		return nil
+		var err error
+		project, err = r.pdao.First(ctx, id)
+		return err
 	})
 	eg.Go(func() error {
 		var err error
@@ -155,7 +152,7 @@ func (r *resumeProjectRepo) ProjectInfo(ctx context.Context, id int64) (domain.P
 	if err != nil {
 		return domain.Project{}, err
 	}
-	pro := r.toProjectDomain(*project)
+	pro := r.toProjectDomain(project)
 	pro.Contributions = slice.Map(contributions, func(idx int, src dao.Contribution) domain.Contribution {
 		cas := refCasesMap[src.ID]
 		return r.toContributionDomain(src, cas)

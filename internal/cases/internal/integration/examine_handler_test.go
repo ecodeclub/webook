@@ -57,7 +57,8 @@ func (s *ExamineHandlerTest) SetupSuite() {
 	intrModule := &interactive.Module{
 		Svc: intrSvc,
 	}
-	module, err := startup.InitExamModule(producer, nil, intrModule, &member.Module{}, &ai.Module{Svc: aiSvc})
+	module, err := startup.InitExamModule(producer, nil, intrModule,
+		&member.Module{}, session.DefaultProvider(), &ai.Module{Svc: aiSvc})
 	require.NoError(s.T(), err)
 	hdl := module.ExamineHdl
 	s.db = testioc.InitDB()

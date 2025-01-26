@@ -73,7 +73,9 @@ func (s *AdminSetHandlerTestSuite) SetupSuite() {
 	intrModule := &interactive.Module{}
 
 	module, err := startup.InitModule(s.producer, nil, intrModule,
-		&permission.Module{}, &ai.Module{}, &member.Module{})
+		&permission.Module{}, &ai.Module{},
+		session.DefaultProvider(),
+		&member.Module{})
 	require.NoError(s.T(), err)
 	econf.Set("server", map[string]any{"contextTimeout": "1s"})
 	server := egin.Load("server").Build()

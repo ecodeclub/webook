@@ -19,6 +19,8 @@ package baguwen
 import (
 	"sync"
 
+	"github.com/ecodeclub/ginx/session"
+
 	"github.com/ecodeclub/webook/internal/member"
 
 	"github.com/ecodeclub/webook/internal/ai"
@@ -58,6 +60,7 @@ func InitModule(db *egorm.Component,
 	perm *permission.Module,
 	aiModule *ai.Module,
 	memberModule *member.Module,
+	sp session.Provider,
 	q mq.MQ) (*Module, error) {
 	wire.Build(InitQuestionDAO,
 		cache.NewQuestionECache,

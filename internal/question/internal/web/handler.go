@@ -49,6 +49,7 @@ func NewHandler(intrSvc interactive.Service,
 	examineSvc service.ExamineService,
 	permSvc permission.Service,
 	svc service.Service,
+	sp session.Provider,
 	memberSvc member.Service,
 ) *Handler {
 	return &Handler{
@@ -57,17 +58,13 @@ func NewHandler(intrSvc interactive.Service,
 		examineSvc: examineSvc,
 		svc:        svc,
 		memberSvc:  memberSvc,
-		sp:         session.DefaultProvider(),
+		sp:         sp,
 		truncator:  html_truncate.DefaultHTMLTruncator(),
 	}
 }
 
 func (h *Handler) PublicRoutes(server *gin.Engine) {
-	// 下次发版要删除这个 pub
-	server.POST("/question/pub/list", ginx.B[Page](h.PubList))
 	server.POST("/question/list", ginx.B[Page](h.PubList))
-
-	server.POST("/question/pub/detail", ginx.B[Qid](h.PubDetail))
 	server.POST("/question/detail", ginx.B[Qid](h.PubDetail))
 }
 
@@ -91,6 +88,8 @@ func (h *Handler) PubDetail(ctx *ginx.Context,
 	// 非八股文，我们需要判定是否有权限
 	// 暂时在这里聚合
 	eg.Go(func() error {
+		// uid 可能为 0，在为 0 的时候多查询了用户本身是否已经点赞收藏过的信息
+		// 后续要优化
 		var err error
 		intr, err = h.intrSvc.Get(ctx, domain.QuestionBiz, req.Qid, uid)
 		return err
@@ -98,6 +97,7 @@ func (h *Handler) PubDetail(ctx *ginx.Context,
 
 	eg.Go(func() error {
 		var err error
+		// uid 为 0 的时候，肯定没测试结果，后续要优化
 		examine, err = h.examineSvc.QuestionResult(ctx, uid, req.Qid)
 		return err
 	})
@@ -108,6 +108,8 @@ func (h *Handler) PubDetail(ctx *ginx.Context,
 
 	que := newQuestion(detail, intr)
 	que.ExamineResult = examine.ToUint8()
+	// 记录是否有权限
+	que.Permitted = has
 	return ginx.Result{
 		Data: que,
 	}, err

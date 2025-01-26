@@ -53,7 +53,10 @@ func (s *AdminCaseSetTestSuite) SetupSuite() {
 	intrModule := &interactive.Module{
 		Svc: intrSvc,
 	}
-	module, err := startup.InitModule(s.producer, nil, &ai.Module{}, &member.Module{}, intrModule)
+	module, err := startup.InitModule(s.producer,
+		nil, &ai.Module{}, &member.Module{},
+		session.DefaultProvider(),
+		intrModule)
 	require.NoError(s.T(), err)
 	adminHandler := module.AdminSetHandler
 	econf.Set("server", map[string]any{"contextTimeout": "1s"})

@@ -115,7 +115,7 @@ func (s *HandlerTestSuite) SetupSuite() {
 	}).AnyTimes()
 	module, err := startup.InitModule(nil, nil, &ai.Module{}, &member.Module{
 		Svc: memSvc,
-	}, intrModule)
+	}, session.DefaultProvider(), intrModule)
 	require.NoError(s.T(), err)
 	handler := module.Hdl
 	econf.Set("server", map[string]any{"contextTimeout": "1s"})
@@ -251,7 +251,7 @@ func (s *HandlerTestSuite) TestPubList() {
 		tc := tc
 		s.T().Run(tc.name, func(t *testing.T) {
 			req, err := http.NewRequest(http.MethodPost,
-				"/case/pub/list", iox.NewJSONReader(tc.req))
+				"/case/list", iox.NewJSONReader(tc.req))
 			req.Header.Set("content-type", "application/json")
 			require.NoError(t, err)
 			recorder := test.NewJSONResponseRecorder[web.CasesList]()
@@ -410,6 +410,7 @@ func (s *HandlerTestSuite) TestPubDetail() {
 						CollectCnt: 6,
 					},
 					ExamineResult: 1,
+					Permitted:     true,
 				},
 			},
 		},
@@ -447,6 +448,7 @@ func (s *HandlerTestSuite) TestPubDetail() {
 						CollectCnt: 6,
 					},
 					ExamineResult: 0,
+					Permitted:     true,
 				},
 			},
 		},
@@ -455,7 +457,7 @@ func (s *HandlerTestSuite) TestPubDetail() {
 		tc := tc
 		s.T().Run(tc.name, func(t *testing.T) {
 			req, err := http.NewRequest(http.MethodPost,
-				"/cases/detail", iox.NewJSONReader(tc.req))
+				"/case/detail", iox.NewJSONReader(tc.req))
 			req.Header.Set("content-type", "application/json")
 			tc.before(req)
 			require.NoError(t, err)

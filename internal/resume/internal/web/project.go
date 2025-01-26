@@ -77,7 +77,7 @@ func (h *ProjectHandler) SaveProject(ctx *ginx.Context, req SaveProjectReq, sess
 
 func (h *ProjectHandler) DeleteProject(ctx *ginx.Context, req IDItem, sess session.Session) (ginx.Result, error) {
 	uid := sess.Claims().Uid
-	err := h.svc.DeleteProject(ctx, uid, req.ID)
+	err := h.svc.DeleteProject(ctx.Request.Context(), uid, req.ID)
 	if err != nil {
 		return systemErrorResult, err
 	}

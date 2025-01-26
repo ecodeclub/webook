@@ -78,7 +78,9 @@ func (s *AdminCaseHandlerTestSuite) SetupSuite() {
 	s.knowledgeBaseProducer = eveMocks.NewMockKnowledgeBaseEventProducer(s.ctrl)
 	intrModule := &interactive.Module{}
 
-	module, err := startup.InitModule(s.producer, s.knowledgeBaseProducer, &ai.Module{}, &member.Module{}, intrModule)
+	module, err := startup.InitModule(s.producer,
+		s.knowledgeBaseProducer, &ai.Module{},
+		&member.Module{}, session.DefaultProvider(), intrModule)
 	require.NoError(s.T(), err)
 	handler := module.AdminHandler
 	econf.Set("server", map[string]any{"contextTimeout": "1s"})

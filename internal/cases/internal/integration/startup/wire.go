@@ -17,6 +17,7 @@
 package startup
 
 import (
+	"github.com/ecodeclub/ginx/session"
 	"github.com/ecodeclub/webook/internal/ai"
 	"github.com/ecodeclub/webook/internal/cases"
 	"github.com/ecodeclub/webook/internal/cases/internal/event"
@@ -35,6 +36,7 @@ func InitModule(
 	knowledgeBaseProducer event.KnowledgeBaseEventProducer,
 	aiModule *ai.Module,
 	memberModule *member.Module,
+	sp session.Provider,
 	intrModule *interactive.Module) (*cases.Module, error) {
 	wire.Build(cases.InitCaseDAO,
 		testioc.BaseSet,
@@ -65,6 +67,7 @@ func InitExamModule(
 	knowledgeBaseProducer event.KnowledgeBaseEventProducer,
 	intrModule *interactive.Module,
 	memberModule *member.Module,
+	sp session.Provider,
 	aiModule *ai.Module) (*cases.Module, error) {
 	wire.Build(
 		testioc.BaseSet,

@@ -116,7 +116,9 @@ func (s *HandlerTestSuite) SetupSuite() {
 		}, nil
 	}).AnyTimes()
 	module, err := startup.InitModule(producer, nil, intrModule,
-		&permission.Module{Svc: permSvc}, &ai.Module{}, &member.Module{
+		&permission.Module{Svc: permSvc}, &ai.Module{},
+		session.DefaultProvider(),
+		&member.Module{
 			Svc: memSvc,
 		})
 	require.NoError(s.T(), err)
@@ -396,6 +398,7 @@ func (s *HandlerTestSuite) TestPubDetail() {
 					Liked:      true,
 				},
 				ExamineResult: 2,
+				Permitted:     true,
 			},
 		},
 		{
@@ -444,6 +447,7 @@ func (s *HandlerTestSuite) TestPubDetail() {
 					Liked:      true,
 				},
 				ExamineResult: 0,
+				Permitted:     true,
 			},
 		},
 		{
@@ -587,6 +591,7 @@ func (s *HandlerTestSuite) TestPubDetail() {
 					Collected:  true,
 				},
 				ExamineResult: 2,
+				Permitted:     true,
 			},
 		},
 	}

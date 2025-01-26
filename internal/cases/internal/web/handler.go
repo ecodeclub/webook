@@ -47,6 +47,7 @@ func NewHandler(svc service.Service,
 	examineSvc service.ExamineService,
 	intrSvc interactive.Service,
 	memberSvc member.Service,
+	sp session.Provider,
 ) *Handler {
 	return &Handler{
 		svc:        svc,
@@ -54,17 +55,14 @@ func NewHandler(svc service.Service,
 		examineSvc: examineSvc,
 		logger:     elog.DefaultLogger,
 		memberSvc:  memberSvc,
-		sp:         session.DefaultProvider(),
+		sp:         sp,
 		truncator:  html_truncate.DefaultHTMLTruncator(),
 	}
 }
 
 func (h *Handler) PublicRoutes(server *gin.Engine) {
-	server.POST("/case/pub/list", ginx.B[Page](h.PubList))
-	server.POST("/cases/list", ginx.B[Page](h.PubList))
-	server.POST("/cases/detail", ginx.B(h.PubDetail))
+	server.POST("/case/list", ginx.B[Page](h.PubList))
 	server.POST("/case/detail", ginx.B(h.PubDetail))
-	server.POST("/case/pub/detail", ginx.B(h.PubDetail))
 }
 
 func (h *Handler) PubList(ctx *ginx.Context, req Page) (ginx.Result, error) {
@@ -140,6 +138,7 @@ func (h *Handler) PubDetail(ctx *ginx.Context, req CaseId) (ginx.Result, error) 
 	res := newCase(detail)
 	res.Interactive = newInteractive(intr)
 	res.ExamineResult = exmaineRes.ToUint8()
+	res.Permitted = has
 	return ginx.Result{
 		Data: res,
 	}, err

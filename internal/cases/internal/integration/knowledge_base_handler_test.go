@@ -99,7 +99,9 @@ func (k *KnowledgeBaseTestSuite) TestKnowledgeBaseSync() {
 	}
 	module, err := startup.InitModule(producer, knowledgeProducer, &ai.Module{
 		KnowledgeBaseSvc: svc,
-	}, &member.Module{}, intrModule)
+	}, &member.Module{},
+		session.DefaultProvider(),
+		intrModule)
 	require.NoError(k.T(), err)
 	k.caseSvc = module.Svc
 	wantCa := k.getWantCase(1)
