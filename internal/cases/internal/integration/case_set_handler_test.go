@@ -10,6 +10,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ecodeclub/webook/internal/member"
+
 	"github.com/ecodeclub/ekit/iox"
 	"github.com/ecodeclub/ginx/session"
 	"github.com/ecodeclub/webook/internal/ai"
@@ -75,7 +77,9 @@ func (s *CaseSetTestSuite) SetupSuite() {
 		return res, nil
 	}).AnyTimes()
 
-	module, err := startup.InitExamModule(s.producer, nil, intrModule, &ai.Module{})
+	module, err := startup.InitExamModule(s.producer, nil, intrModule, &member.Module{},
+		session.DefaultProvider(),
+		&ai.Module{})
 	require.NoError(s.T(), err)
 	econf.Set("server", map[string]any{"contextTimeout": "1s"})
 	server := egin.Load("server").Build()

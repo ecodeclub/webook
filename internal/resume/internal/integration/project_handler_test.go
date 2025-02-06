@@ -32,8 +32,6 @@ import (
 	"gorm.io/gorm"
 )
 
-//const uid = 123
-
 type ProjectTestSuite struct {
 	suite.Suite
 	db     *egorm.Component
@@ -1032,6 +1030,7 @@ func (s *ProjectTestSuite) TestResumeInfo() {
 		},
 	}
 	for _, tc := range testcases {
+		tc := tc
 		s.T().Run(tc.name, func(t *testing.T) {
 			tc.before(t)
 			req, err := http.NewRequest(http.MethodPost,

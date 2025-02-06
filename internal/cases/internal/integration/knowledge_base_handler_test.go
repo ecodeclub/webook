@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ecodeclub/webook/internal/member"
+
 	"github.com/ecodeclub/ekit/iox"
 	"github.com/ecodeclub/ginx/session"
 	"github.com/ecodeclub/webook/internal/ai"
@@ -97,7 +99,9 @@ func (k *KnowledgeBaseTestSuite) TestKnowledgeBaseSync() {
 	}
 	module, err := startup.InitModule(producer, knowledgeProducer, &ai.Module{
 		KnowledgeBaseSvc: svc,
-	}, intrModule)
+	}, &member.Module{},
+		session.DefaultProvider(),
+		intrModule)
 	require.NoError(k.T(), err)
 	k.caseSvc = module.Svc
 	wantCa := k.getWantCase(1)
