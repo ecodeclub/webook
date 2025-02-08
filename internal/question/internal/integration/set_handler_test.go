@@ -20,7 +20,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"strconv"
 	"testing"
 	"time"
 
@@ -35,7 +34,6 @@ import (
 	"github.com/ecodeclub/ginx/session"
 	"github.com/ecodeclub/webook/internal/interactive"
 	intrmocks "github.com/ecodeclub/webook/internal/interactive/mocks"
-	"github.com/ecodeclub/webook/internal/pkg/middleware"
 	"github.com/ecodeclub/webook/internal/question/internal/domain"
 	eveMocks "github.com/ecodeclub/webook/internal/question/internal/event/mocks"
 	"github.com/ecodeclub/webook/internal/question/internal/integration/startup"
@@ -99,19 +97,21 @@ func (s *SetHandlerTestSuite) SetupSuite() {
 	require.NoError(s.T(), err)
 	econf.Set("server", map[string]any{"contextTimeout": "1s"})
 	server := egin.Load("server").Build()
-
-	module.QsHdl.PublicRoutes(server.Engine)
 	server.Use(func(ctx *gin.Context) {
+		notlogin := ctx.GetHeader("not_login") == "1"
+		nuid := uid
+		data := map[string]string{
+			"creator": "true",
+		}
+		if notlogin {
+			return
+		}
 		ctx.Set("_session", session.NewMemorySession(session.Claims{
-			Uid: uid,
-			Data: map[string]string{
-				"creator":   "true",
-				"memberDDL": strconv.FormatInt(time.Now().Add(time.Hour).UnixMilli(), 10),
-			},
+			Uid:  int64(nuid),
+			Data: data,
 		}))
 	})
-	module.QsHdl.PrivateRoutes(server.Engine)
-	server.Use(middleware.NewCheckMembershipMiddlewareBuilder(nil).Build())
+	module.QsHdl.PublicRoutes(server.Engine)
 
 	s.server = server
 	s.db = testioc.InitDB()
@@ -347,7 +347,7 @@ func (s *SetHandlerTestSuite) TestQuestionSet_Detail() {
 
 	testCases := []struct {
 		name   string
-		before func(t *testing.T)
+		before func(t *testing.T, req *http.Request)
 		after  func(t *testing.T)
 		req    web.QuestionSetID
 
@@ -356,7 +356,7 @@ func (s *SetHandlerTestSuite) TestQuestionSet_Detail() {
 	}{
 		{
 			name: "空题集",
-			before: func(t *testing.T) {
+			before: func(t *testing.T, req *http.Request) {
 				t.Helper()
 
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
@@ -401,7 +401,7 @@ func (s *SetHandlerTestSuite) TestQuestionSet_Detail() {
 		},
 		{
 			name: "非空题集",
-			before: func(t *testing.T) {
+			before: func(t *testing.T, req *http.Request) {
 				t.Helper()
 
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
@@ -545,14 +545,160 @@ func (s *SetHandlerTestSuite) TestQuestionSet_Detail() {
 				},
 			},
 		},
+		{
+			name: "非空题集-未登录",
+			before: func(t *testing.T, req *http.Request) {
+				t.Helper()
+				req.Header.Set("not_login", "1")
+				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+				defer cancel()
+
+				// 创建一个空题集
+				id, err := s.questionSetDAO.Create(ctx, dao.QuestionSet{
+					Id:          333,
+					Uid:         uid,
+					Title:       "Go",
+					Description: "Go题集",
+					Biz:         "roadmap",
+					BizId:       2,
+					Utime:       now,
+				})
+				require.NoError(t, err)
+				require.Equal(t, int64(333), id)
+
+				// 添加问题
+				questions := []dao.Question{
+					{
+						Id:      714,
+						Uid:     uid + 1,
+						Biz:     "project",
+						BizId:   1,
+						Title:   "Go问题1",
+						Content: "Go问题1",
+						Ctime:   now,
+						Utime:   now,
+					},
+					{
+						Id:      715,
+						Uid:     uid + 2,
+						Biz:     "project",
+						BizId:   1,
+						Title:   "Go问题2",
+						Content: "Go问题2",
+						Ctime:   now,
+						Utime:   now,
+					},
+					{
+						Id:      716,
+						Uid:     uid + 3,
+						Biz:     "project",
+						BizId:   1,
+						Title:   "Go问题3",
+						Content: "Go问题3",
+						Ctime:   now,
+						Utime:   now,
+					},
+				}
+				err = s.db.WithContext(ctx).Create(&questions).Error
+				require.NoError(t, err)
+				qids := []int64{714, 715, 716}
+				require.NoError(t, s.questionSetDAO.UpdateQuestionsByID(ctx, id, qids))
+
+				// 添加用户答题记录，只需要添加一个就可以
+				err = s.db.WithContext(ctx).Create(&dao.QuestionResult{
+					Uid:    uid,
+					Qid:    714,
+					Result: domain.ResultAdvanced.ToUint8(),
+					Ctime:  now,
+					Utime:  now,
+				}).Error
+				require.NoError(t, err)
+
+				// 题集中题目为1
+				qs, err := s.questionSetDAO.GetQuestionsByID(ctx, id)
+				require.NoError(t, err)
+				require.Equal(t, len(qids), len(qs))
+			},
+			after: func(t *testing.T) {
+			},
+			req: web.QuestionSetID{
+				QSID: 333,
+			},
+			wantCode: 200,
+			wantResp: test.Result[web.QuestionSet]{
+				Data: web.QuestionSet{
+					Id:          333,
+					Biz:         "roadmap",
+					BizId:       2,
+					Title:       "Go",
+					Description: "Go题集",
+					Interactive: web.Interactive{
+						ViewCnt:    334,
+						LikeCnt:    335,
+						CollectCnt: 336,
+						Liked:      true,
+						Collected:  false,
+					},
+					Questions: []web.Question{
+						{
+							Id:      714,
+							Biz:     "project",
+							BizId:   1,
+							Title:   "Go问题1",
+							Content: "Go问题1",
+							Interactive: web.Interactive{
+								ViewCnt:    715,
+								LikeCnt:    716,
+								CollectCnt: 717,
+								Liked:      false,
+								Collected:  true,
+							},
+							//ExamineResult: domain.ResultAdvanced.ToUint8(),
+							Utime: now,
+						},
+						{
+							Id:      715,
+							Biz:     "project",
+							BizId:   1,
+							Title:   "Go问题2",
+							Content: "Go问题2",
+							Interactive: web.Interactive{
+								ViewCnt:    716,
+								LikeCnt:    717,
+								CollectCnt: 718,
+								Liked:      true,
+								Collected:  false,
+							},
+							Utime: now,
+						},
+						{
+							Id:      716,
+							Biz:     "project",
+							BizId:   1,
+							Title:   "Go问题3",
+							Content: "Go问题3",
+							Interactive: web.Interactive{
+								ViewCnt:    717,
+								LikeCnt:    718,
+								CollectCnt: 719,
+								Liked:      false,
+								Collected:  true,
+							},
+							Utime: now,
+						},
+					},
+					Utime: now,
+				},
+			},
+		},
 	}
 
 	for _, tc := range testCases {
 		tc := tc
 		s.T().Run(tc.name, func(t *testing.T) {
-			tc.before(t)
 			req, err := http.NewRequest(http.MethodPost,
 				"/question-sets/detail", iox.NewJSONReader(tc.req))
+			tc.before(t, req)
 			req.Header.Set("content-type", "application/json")
 			require.NoError(t, err)
 			recorder := test.NewJSONResponseRecorder[web.QuestionSet]()

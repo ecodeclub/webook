@@ -152,7 +152,6 @@ func (s *HandlerTestSuite) SetupSuite() {
 		}))
 	})
 	module.Hdl.PublicRoutes(server.Engine)
-	module.QsHdl.PrivateRoutes(server.Engine)
 
 	s.server = server
 	s.db = testioc.InitDB()
