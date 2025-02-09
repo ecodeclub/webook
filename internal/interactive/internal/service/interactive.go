@@ -31,7 +31,7 @@ type Service interface {
 	// CollectToggle 如果收藏过，就取消收藏，如果没收藏过，就收藏
 	CollectToggle(ctx context.Context, biz string, bizId, uid int64) error
 	Get(ctx context.Context, biz string, id int64, uid int64) (domain.Interactive, error)
-	GetByIds(ctx context.Context, biz string, ids []int64) (map[int64]domain.Interactive, error)
+	GetByIds(ctx context.Context, biz string, uid int64, ids []int64) (map[int64]domain.Interactive, error)
 
 	// SaveCollection 修改收藏夹
 	SaveCollection(ctx context.Context, collection domain.Collection) (int64, error)
@@ -108,11 +108,12 @@ func (i *interactiveService) Get(ctx context.Context, biz string, id int64, uid 
 	return intr, eg.Wait()
 }
 
-func (i *interactiveService) GetByIds(ctx context.Context, biz string, ids []int64) (map[int64]domain.Interactive, error) {
-	intrs, err := i.repo.GetByIds(ctx, biz, ids)
+func (i *interactiveService) GetByIds(ctx context.Context, biz string, uid int64, ids []int64) (map[int64]domain.Interactive, error) {
+	intrs, err := i.repo.GetByIds(ctx, biz, uid, ids)
 	if err != nil {
 		return nil, err
 	}
+
 	intrMap := make(map[int64]domain.Interactive, len(ids))
 	for _, intr := range intrs {
 		intrMap[intr.BizId] = intr
