@@ -77,8 +77,8 @@ func (s *ProjectTestSuite) SetupSuite() {
 		intr := s.mockInteractive(biz, id)
 		return intr, nil
 	})
-	intrSvc.EXPECT().GetByIds(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context,
-		biz string, ids []int64) (map[int64]interactive.Interactive, error) {
+	intrSvc.EXPECT().GetByIds(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context,
+		biz string, uid int64, ids []int64) (map[int64]interactive.Interactive, error) {
 		res := make(map[int64]interactive.Interactive, len(ids))
 		for _, id := range ids {
 			intr := s.mockInteractive(biz, id)
@@ -92,7 +92,7 @@ func (s *ProjectTestSuite) SetupSuite() {
 		Svc: permSvc,
 	}
 	s.permSvc = permSvc
-	m, err := startup.InitModule(intrModule, permModule)
+	m, err := startup.InitModule(intrModule, permModule, session.DefaultProvider())
 	require.NoError(s.T(), err)
 	s.hdl = m.Hdl
 

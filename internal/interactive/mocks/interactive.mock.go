@@ -234,18 +234,18 @@ func (c *MockServiceGetCall) DoAndReturn(f func(context.Context, string, int64, 
 }
 
 // GetByIds mocks base method.
-func (m *MockService) GetByIds(ctx context.Context, biz string, ids []int64) (map[int64]domain.Interactive, error) {
+func (m *MockService) GetByIds(ctx context.Context, biz string, uid int64, ids []int64) (map[int64]domain.Interactive, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetByIds", ctx, biz, ids)
+	ret := m.ctrl.Call(m, "GetByIds", ctx, biz, uid, ids)
 	ret0, _ := ret[0].(map[int64]domain.Interactive)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetByIds indicates an expected call of GetByIds.
-func (mr *MockServiceMockRecorder) GetByIds(ctx, biz, ids any) *MockServiceGetByIdsCall {
+func (mr *MockServiceMockRecorder) GetByIds(ctx, biz, uid, ids any) *MockServiceGetByIdsCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetByIds", reflect.TypeOf((*MockService)(nil).GetByIds), ctx, biz, ids)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetByIds", reflect.TypeOf((*MockService)(nil).GetByIds), ctx, biz, uid, ids)
 	return &MockServiceGetByIdsCall{Call: call}
 }
 
@@ -261,13 +261,13 @@ func (c *MockServiceGetByIdsCall) Return(arg0 map[int64]domain.Interactive, arg1
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockServiceGetByIdsCall) Do(f func(context.Context, string, []int64) (map[int64]domain.Interactive, error)) *MockServiceGetByIdsCall {
+func (c *MockServiceGetByIdsCall) Do(f func(context.Context, string, int64, []int64) (map[int64]domain.Interactive, error)) *MockServiceGetByIdsCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockServiceGetByIdsCall) DoAndReturn(f func(context.Context, string, []int64) (map[int64]domain.Interactive, error)) *MockServiceGetByIdsCall {
+func (c *MockServiceGetByIdsCall) DoAndReturn(f func(context.Context, string, int64, []int64) (map[int64]domain.Interactive, error)) *MockServiceGetByIdsCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

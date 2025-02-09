@@ -56,9 +56,17 @@ func (h *QuestionSetHandler) PublicRoutes(server *gin.Engine) {
 	g.POST("/detail", ginx.B(h.RetrieveQuestionSetDetail))
 	g.POST("/detail/biz", ginx.B(h.GetDetailByBiz))
 }
-
+func (h *QuestionSetHandler)getUid(gctx *ginx.Context)int64 {
+	sess, err := h.sp.Get(gctx)
+	if err != nil {
+		// 没登录
+		return 0
+	}
+	return sess.Claims().Uid
+}
 // ListQuestionSets 展示个人题集
 func (h *QuestionSetHandler) ListQuestionSets(ctx *ginx.Context, req Page) (ginx.Result, error) {
+	uid := h.getUid(ctx)
 	data, count, err := h.svc.ListDefault(ctx, req.Offset, req.Limit)
 	if err != nil {
 		return systemErrorResult, err
@@ -70,7 +78,7 @@ func (h *QuestionSetHandler) ListQuestionSets(ctx *ginx.Context, req Page) (ginx
 			return src.Id
 		})
 		var err1 error
-		intrs, err1 = h.intrSvc.GetByIds(ctx, "questionSet", ids)
+		intrs, err1 = h.intrSvc.GetByIds(ctx, "questionSet",uid, ids)
 		// 这个数据查询不到也不需要担心
 		if err1 != nil {
 			h.logger.Error("查询题集的点赞数据失败",
@@ -135,7 +143,7 @@ func (h *QuestionSetHandler) getDetail(
 
 	eg.Go(func() error {
 		var eerr error
-		queIntrMap, eerr = h.intrSvc.GetByIds(ctx, "question", qs.Qids())
+		queIntrMap, eerr = h.intrSvc.GetByIds(ctx, "question",uid, qs.Qids())
 		return eerr
 	})
 

@@ -190,7 +190,7 @@ func (i *InteractiveTestSuite) TestGetByIds() {
 	i.initInteractiveData()
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 	defer cancel()
-	res, err := i.svc.GetByIds(ctx, "skill", []int64{1, 2, 3, 4})
+	res, err := i.svc.GetByIds(ctx, "skill", 4, []int64{1, 2, 3, 4})
 	require.NoError(i.T(), err)
 	require.EqualValues(t, map[int64]domain.Interactive{
 		4: {
@@ -203,6 +203,8 @@ func (i *InteractiveTestSuite) TestGetByIds() {
 			ViewCnt:    99,
 			LikeCnt:    88,
 			CollectCnt: 79,
+			Collected:  true,
+			Liked:      true,
 		},
 		2: {
 			Biz:        "skill",
@@ -210,6 +212,8 @@ func (i *InteractiveTestSuite) TestGetByIds() {
 			ViewCnt:    3,
 			LikeCnt:    2,
 			CollectCnt: 9,
+			Collected:  true,
+			Liked:      true,
 		},
 		1: {
 			Biz:        "skill",
@@ -217,6 +221,7 @@ func (i *InteractiveTestSuite) TestGetByIds() {
 			ViewCnt:    1,
 			LikeCnt:    1,
 			CollectCnt: 3,
+			Collected:  true,
 		},
 	}, res)
 }

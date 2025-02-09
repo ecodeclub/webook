@@ -3,6 +3,7 @@
 package startup
 
 import (
+	"github.com/ecodeclub/ginx/session"
 	"github.com/ecodeclub/mq-api"
 	"github.com/ecodeclub/webook/internal/interactive"
 	"github.com/ecodeclub/webook/internal/review"
@@ -15,7 +16,7 @@ import (
 	"github.com/google/wire"
 )
 
-func InitModule(db *egorm.Component, interSvc *interactive.Module, q mq.MQ) *review.Module {
+func InitModule(db *egorm.Component, interSvc *interactive.Module, q mq.MQ,sp session.Provider) *review.Module {
 	wire.Build(
 		initReviewDao,
 		initIntrProducer,

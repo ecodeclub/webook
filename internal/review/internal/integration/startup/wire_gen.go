@@ -7,6 +7,7 @@
 package startup
 
 import (
+	"github.com/ecodeclub/ginx/session"
 	"github.com/ecodeclub/mq-api"
 	"github.com/ecodeclub/webook/internal/interactive"
 	"github.com/ecodeclub/webook/internal/review"
@@ -21,13 +22,13 @@ import (
 
 // Injectors from wire.go:
 
-func InitModule(db *gorm.DB, interSvc *interactive.Module, q mq.MQ) *review.Module {
+func InitModule(db *gorm.DB, interSvc *interactive.Module, q mq.MQ, sp session.Provider) *review.Module {
 	reviewDAO := initReviewDao(db)
 	reviewRepo := repository.NewReviewRepo(reviewDAO)
 	interactiveEventProducer := initIntrProducer(q)
 	reviewSvc := service.NewReviewSvc(reviewRepo, interactiveEventProducer)
 	serviceService := interSvc.Svc
-	handler := web.NewHandler(reviewSvc, serviceService)
+	handler := web.NewHandler(reviewSvc, serviceService, sp)
 	adminHandler := web.NewAdminHandler(reviewSvc)
 	module := &review.Module{
 		Hdl:      handler,
