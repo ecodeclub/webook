@@ -7,12 +7,14 @@
 package startup
 
 import (
+	"os"
+
 	"github.com/ecodeclub/ginx/session"
 	"github.com/ecodeclub/webook/internal/ai"
 	"github.com/ecodeclub/webook/internal/interactive"
 	"github.com/ecodeclub/webook/internal/member"
 	"github.com/ecodeclub/webook/internal/permission"
-	"github.com/ecodeclub/webook/internal/question"
+	baguwen "github.com/ecodeclub/webook/internal/question"
 	"github.com/ecodeclub/webook/internal/question/internal/event"
 	"github.com/ecodeclub/webook/internal/question/internal/job"
 	"github.com/ecodeclub/webook/internal/question/internal/repository"
@@ -20,9 +22,8 @@ import (
 	"github.com/ecodeclub/webook/internal/question/internal/repository/dao"
 	"github.com/ecodeclub/webook/internal/question/internal/service"
 	"github.com/ecodeclub/webook/internal/question/internal/web"
-	"github.com/ecodeclub/webook/internal/test/ioc"
+	testioc "github.com/ecodeclub/webook/internal/test/ioc"
 	"github.com/google/wire"
-	"os"
 )
 
 // Injectors from wire.go:

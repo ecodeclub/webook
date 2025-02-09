@@ -37,9 +37,9 @@ type InteractiveDAO interface {
 		biz string, id int64, uid int64) (UserCollectionBiz, error)
 	Get(ctx context.Context, biz string, id int64) (Interactive, error)
 	GetByIds(ctx context.Context, biz string, ids []int64) ([]Interactive, error)
-	GetUserLikes(ctx context.Context,uid int64, biz string,ids []int64)([]UserLikeBiz,error)
+	GetUserLikes(ctx context.Context, uid int64, biz string, ids []int64) ([]UserLikeBiz, error)
 
-	GetUserCollects(ctx context.Context, uid int64, biz string,ids []int64)([]UserCollectionBiz,error)
+	GetUserCollects(ctx context.Context, uid int64, biz string, ids []int64) ([]UserCollectionBiz, error)
 
 	// 创建收藏夹
 	SaveCollection(ctx context.Context, collection Collection) (int64, error)
@@ -61,7 +61,6 @@ type GORMInteractiveDAO struct {
 	db *egorm.Component
 }
 
-
 func (g *GORMInteractiveDAO) DecrCollectCount(ctx context.Context, biz string, bizid int64) error {
 	return g.db.WithContext(ctx).
 		Model(&Interactive{}).
@@ -79,16 +78,16 @@ func (g *GORMInteractiveDAO) GetUserLikes(ctx context.Context, uid int64, biz st
 	var likes []UserLikeBiz
 	err := g.db.WithContext(ctx).
 		Model(&UserLikeBiz{}).
-		Where("biz = ? AND biz_id in ? and uid = ?", biz, ids,uid).Scan(&likes).Error
-	return likes,err
+		Where("biz = ? AND biz_id in ? and uid = ?", biz, ids, uid).Scan(&likes).Error
+	return likes, err
 }
 
 func (g *GORMInteractiveDAO) GetUserCollects(ctx context.Context, uid int64, biz string, ids []int64) ([]UserCollectionBiz, error) {
 	var collects []UserCollectionBiz
 	err := g.db.WithContext(ctx).
 		Model(&UserCollectionBiz{}).
-		Where("biz = ? AND biz_id in ? and uid = ?", biz, ids,uid).Scan(&collects).Error
-	return collects,err
+		Where("biz = ? AND biz_id in ? and uid = ?", biz, ids, uid).Scan(&collects).Error
+	return collects, err
 }
 
 func (g *GORMInteractiveDAO) SaveCollection(ctx context.Context, collection Collection) (int64, error) {

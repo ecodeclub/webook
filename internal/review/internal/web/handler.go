@@ -18,15 +18,15 @@ type Handler struct {
 	sp      session.Provider
 }
 
-func NewHandler(svc service.ReviewSvc, intrSvc interactive.Service,sp session.Provider) *Handler {
+func NewHandler(svc service.ReviewSvc, intrSvc interactive.Service, sp session.Provider) *Handler {
 	return &Handler{
 		svc:     svc,
 		intrSvc: intrSvc,
 		logger:  elog.DefaultLogger,
-		sp: sp,
+		sp:      sp,
 	}
 }
-func (h *Handler)getUid(gctx *ginx.Context)int64 {
+func (h *Handler) getUid(gctx *ginx.Context) int64 {
 	sess, err := h.sp.Get(gctx)
 	if err != nil {
 		// 没登录
@@ -53,7 +53,7 @@ func (h *Handler) PubList(ctx *ginx.Context, req Page) (ginx.Result, error) {
 			return src.ID
 		})
 		var err1 error
-		intrs, err1 = h.intrSvc.GetByIds(ctx, "review",uid, ids)
+		intrs, err1 = h.intrSvc.GetByIds(ctx, "review", uid, ids)
 		// 这个数据查询不到也不需要担心
 		if err1 != nil {
 			h.logger.Error("查询数据的点赞数据失败",
@@ -71,7 +71,7 @@ func (h *Handler) PubList(ctx *ginx.Context, req Page) (ginx.Result, error) {
 }
 
 // PubDetail 获取已发布的面试评测记录详情
-func (h *Handler) PubDetail(ctx *ginx.Context, req DetailReq,sess session.Session) (ginx.Result, error) {
+func (h *Handler) PubDetail(ctx *ginx.Context, req DetailReq, sess session.Session) (ginx.Result, error) {
 
 	// 调用 service 层获取数据
 	review, err := h.svc.PubInfo(ctx, req.ID)
@@ -79,7 +79,7 @@ func (h *Handler) PubDetail(ctx *ginx.Context, req DetailReq,sess session.Sessio
 		return systemErrorResult, err
 	}
 	var err1 error
-	intr, err1 := h.intrSvc.GetByIds(ctx, "review",sess.Claims().Uid, []int64{req.ID})
+	intr, err1 := h.intrSvc.GetByIds(ctx, "review", sess.Claims().Uid, []int64{req.ID})
 	// 这个数据查询不到也不需要担心
 	if err1 != nil {
 		h.logger.Error("查询数据的点赞数据失败",

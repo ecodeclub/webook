@@ -73,7 +73,7 @@ func (h *Handler) List(ctx *ginx.Context, req Page) (ginx.Result, error) {
 			return src.Id
 		})
 		var err1 error
-		intrs, err1 = h.intrSvc.GetByIds(ctx, domain.BizProject,uid, ids)
+		intrs, err1 = h.intrSvc.GetByIds(ctx, domain.BizProject, uid, ids)
 		// 这个数据查询不到也不需要担心
 		if err1 != nil {
 			h.logger.Error("查询数据的点赞数据失败",
@@ -90,7 +90,7 @@ func (h *Handler) List(ctx *ginx.Context, req Page) (ginx.Result, error) {
 		},
 	}, nil
 }
-func (h *Handler)getUid(gctx *ginx.Context)int64 {
+func (h *Handler) getUid(gctx *ginx.Context) int64 {
 	sess, err := h.sp.Get(gctx)
 	if err != nil {
 		// 没登录

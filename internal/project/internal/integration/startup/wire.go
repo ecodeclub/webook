@@ -25,7 +25,7 @@ import (
 	"github.com/google/wire"
 )
 
-func InitModule(intrModule *interactive.Module, permModule *permission.Module,sp session.Provider) (*project.Module, error) {
+func InitModule(intrModule *interactive.Module, permModule *permission.Module, sp session.Provider) (*project.Module, error) {
 	wire.Build(project.InitModule, testioc.InitDB, testioc.InitMQ)
 	return new(project.Module), nil
 }

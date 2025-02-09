@@ -15,7 +15,7 @@ import (
 	"github.com/google/wire"
 )
 
-func InitModule(db *egorm.Component, interSvc *interactive.Module, q mq.MQ,sp session.Provider) *Module {
+func InitModule(db *egorm.Component, interSvc *interactive.Module, q mq.MQ, sp session.Provider) *Module {
 	wire.Build(
 		initReviewDao,
 		initIntrProducer,

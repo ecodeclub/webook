@@ -17,8 +17,9 @@
 package project
 
 import (
-	"github.com/ecodeclub/ginx/session"
 	"sync"
+
+	"github.com/ecodeclub/ginx/session"
 
 	"github.com/ecodeclub/webook/internal/permission"
 
@@ -40,7 +41,7 @@ func InitModule(db *egorm.Component,
 	permModule *permission.Module,
 	q mq.MQ,
 	sp session.Provider,
-	) (*Module, error) {
+) (*Module, error) {
 	wire.Build(
 		initSyncToSearchEventProducer,
 		initAdminDAO,

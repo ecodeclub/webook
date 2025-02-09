@@ -19,10 +19,11 @@ package integration
 import (
 	"context"
 	"fmt"
-	"github.com/ecodeclub/ginx/session"
 	"net/http"
 	"testing"
 	"time"
+
+	"github.com/ecodeclub/ginx/session"
 
 	"gorm.io/gorm"
 

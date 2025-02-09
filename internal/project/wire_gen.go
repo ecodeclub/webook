@@ -7,6 +7,8 @@
 package project
 
 import (
+	"sync"
+
 	"github.com/ecodeclub/ginx/session"
 	"github.com/ecodeclub/mq-api"
 	"github.com/ecodeclub/webook/internal/interactive"
@@ -18,7 +20,6 @@ import (
 	"github.com/ecodeclub/webook/internal/project/internal/web"
 	"github.com/ego-component/egorm"
 	"gorm.io/gorm"
-	"sync"
 )
 
 // Injectors from wire.go:

@@ -17,8 +17,9 @@ package repository
 import (
 	"context"
 	"errors"
-	"golang.org/x/sync/errgroup"
 	"time"
+
+	"golang.org/x/sync/errgroup"
 
 	"github.com/gotomicro/ego/core/elog"
 
@@ -41,7 +42,7 @@ type InteractiveRepository interface {
 	LikeToggle(ctx context.Context, biz string, id int64, uid int64) error
 	CollectToggle(ctx context.Context, biz string, id int64, uid int64) error
 	Get(ctx context.Context, biz string, id int64) (domain.Interactive, error)
-	GetByIds(ctx context.Context, biz string,uid int64, ids []int64) ([]domain.Interactive, error)
+	GetByIds(ctx context.Context, biz string, uid int64, ids []int64) ([]domain.Interactive, error)
 	Liked(ctx context.Context, biz string, id int64, uid int64) (bool, error)
 	Collected(ctx context.Context, biz string, id int64, uid int64) (bool, error)
 
@@ -162,13 +163,12 @@ func (i *interactiveRepository) Get(ctx context.Context, biz string, id int64) (
 	return i.toDomain(intr), nil
 }
 
-func (i *interactiveRepository) GetByIds(ctx context.Context, biz string,uid int64, ids []int64) ([]domain.Interactive, error) {
+func (i *interactiveRepository) GetByIds(ctx context.Context, biz string, uid int64, ids []int64) ([]domain.Interactive, error) {
 	var (
-		intrs []dao.Interactive
-		likedMap = map[int64]struct{}{}
+		intrs        []dao.Interactive
+		likedMap     = map[int64]struct{}{}
 		collectedMap = map[int64]struct{}{}
-		eg errgroup.Group
-
+		eg           errgroup.Group
 	)
 	eg.Go(func() error {
 		var eerr error
@@ -178,11 +178,11 @@ func (i *interactiveRepository) GetByIds(ctx context.Context, biz string,uid int
 
 	eg.Go(func() error {
 		var eerr error
-		likeds,eerr :=  i.interactiveDao.GetUserLikes(ctx,uid,biz,ids)
+		likeds, eerr := i.interactiveDao.GetUserLikes(ctx, uid, biz, ids)
 		if eerr != nil {
 			return eerr
 		}
-		for _,liked := range likeds {
+		for _, liked := range likeds {
 			likedMap[liked.BizId] = struct{}{}
 		}
 		return eerr
@@ -190,11 +190,11 @@ func (i *interactiveRepository) GetByIds(ctx context.Context, biz string,uid int
 
 	eg.Go(func() error {
 		var eerr error
-		collecteds,eerr :=  i.interactiveDao.GetUserCollects(ctx,uid,biz,ids)
+		collecteds, eerr := i.interactiveDao.GetUserCollects(ctx, uid, biz, ids)
 		if eerr != nil {
 			return eerr
 		}
-		for _,collected := range collecteds {
+		for _, collected := range collecteds {
 			collectedMap[collected.BizId] = struct{}{}
 		}
 		return eerr
@@ -202,14 +202,14 @@ func (i *interactiveRepository) GetByIds(ctx context.Context, biz string,uid int
 
 	err := eg.Wait()
 	if err != nil {
-		return nil,err
+		return nil, err
 	}
 	list := make([]domain.Interactive, 0, len(intrs))
 	for _, intr := range intrs {
 		domainIntr := i.toDomain(intr)
-		_,collected := collectedMap[domainIntr.BizId]
+		_, collected := collectedMap[domainIntr.BizId]
 		domainIntr.Collected = collected
-		_,liked := likedMap[domainIntr.BizId]
+		_, liked := likedMap[domainIntr.BizId]
 		domainIntr.Liked = liked
 		list = append(list, domainIntr)
 	}

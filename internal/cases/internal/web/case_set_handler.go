@@ -47,7 +47,7 @@ func (h *CaseSetHandler) PrivateRoutes(server *gin.Engine) {
 	g.POST("/detail", ginx.BS(h.RetrieveCaseSetDetail))
 	g.POST("/detail/biz", ginx.BS(h.GetDetailByBiz))
 }
-func (h *CaseSetHandler)getUid(gctx *ginx.Context)int64 {
+func (h *CaseSetHandler) getUid(gctx *ginx.Context) int64 {
 	sess, err := h.sp.Get(gctx)
 	if err != nil {
 		// 没登录
@@ -55,6 +55,7 @@ func (h *CaseSetHandler)getUid(gctx *ginx.Context)int64 {
 	}
 	return sess.Claims().Uid
 }
+
 // ListCaseSets 展示个人案例集
 func (h *CaseSetHandler) ListCaseSets(ctx *ginx.Context, req Page) (ginx.Result, error) {
 	uid := h.getUid(ctx)
@@ -69,7 +70,7 @@ func (h *CaseSetHandler) ListCaseSets(ctx *ginx.Context, req Page) (ginx.Result,
 			return src.ID
 		})
 		var err1 error
-		intrs, err1 = h.intrSvc.GetByIds(ctx, "caseSet",uid, ids)
+		intrs, err1 = h.intrSvc.GetByIds(ctx, "caseSet", uid, ids)
 		// 这个数据查询不到也不需要担心
 		if err1 != nil {
 			h.logger.Error("查询案例集的点赞数据失败",
@@ -130,7 +131,7 @@ func (h *CaseSetHandler) getDetail(
 	eg.Go(func() error {
 		var err error
 		cids := cs.Cids()
-		caseIntrMap, err = h.intrSvc.GetByIds(ctx, domain.BizCase,uid, cids)
+		caseIntrMap, err = h.intrSvc.GetByIds(ctx, domain.BizCase, uid, cids)
 		return err
 	})
 
