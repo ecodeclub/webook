@@ -17,6 +17,7 @@
 package startup
 
 import (
+	"github.com/ecodeclub/ginx/session"
 	"github.com/ecodeclub/webook/internal/interactive"
 	"github.com/ecodeclub/webook/internal/permission"
 	"github.com/ecodeclub/webook/internal/project"
@@ -24,7 +25,7 @@ import (
 	"github.com/google/wire"
 )
 
-func InitModule(intrModule *interactive.Module, permModule *permission.Module) (*project.Module, error) {
+func InitModule(intrModule *interactive.Module, permModule *permission.Module, sp session.Provider) (*project.Module, error) {
 	wire.Build(project.InitModule, testioc.InitDB, testioc.InitMQ)
 	return new(project.Module), nil
 }

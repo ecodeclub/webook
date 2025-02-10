@@ -141,7 +141,6 @@ func initGinxServer(sp session.Provider,
 	res.Use(session.CheckLoginMiddleware())
 	user.PrivateRoutes(res.Engine)
 	lhdl.PrivateRoutes(res.Engine)
-	qsh.PrivateRoutes(res.Engine)
 	cosHdl.PrivateRoutes(res.Engine)
 	pHdl.PrivateRoutes(res.Engine)
 	orderHdl.PrivateRoutes(res.Engine)

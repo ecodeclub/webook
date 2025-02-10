@@ -114,8 +114,16 @@ func (h *Handler) PubDetail(ctx *ginx.Context,
 		Data: que,
 	}, err
 }
-
+func (h *Handler) getUid(gctx *ginx.Context) int64 {
+	sess, err := h.sp.Get(gctx)
+	if err != nil {
+		// 没登录
+		return 0
+	}
+	return sess.Claims().Uid
+}
 func (h *Handler) PubList(ctx *ginx.Context, req Page) (ginx.Result, error) {
+	uid := h.getUid(ctx)
 	count, data, err := h.svc.PubList(ctx, req.Offset, req.Limit)
 	if err != nil {
 		return systemErrorResult, err
@@ -127,7 +135,7 @@ func (h *Handler) PubList(ctx *ginx.Context, req Page) (ginx.Result, error) {
 			return src.Id
 		})
 		var err1 error
-		intrs, err1 = h.intrSvc.GetByIds(ctx, "question", ids)
+		intrs, err1 = h.intrSvc.GetByIds(ctx, "question", uid, ids)
 		// 这个数据查询不到也不需要担心
 		if err1 != nil {
 			h.logger.Error("查询数据的点赞数据失败",
