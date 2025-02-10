@@ -26,10 +26,9 @@ func NewHandler(svc service.ReviewSvc, intrSvc interactive.Service) *Handler {
 
 func (h *Handler) PublicRoutes(server *gin.Engine) {
 	server.POST("/review/list", ginx.B[Page](h.PubList))
-}
-func (h *Handler) MemberRoutes(server *gin.Engine) {
 	server.POST("/review/detail", ginx.B[DetailReq](h.PubDetail))
 }
+
 func (h *Handler) PubList(ctx *ginx.Context, req Page) (ginx.Result, error) {
 	// 调用 service 层获取数据
 	reviews, err := h.svc.PubList(ctx, req.Offset, req.Limit)

@@ -80,7 +80,6 @@ func (s *TestSuite) SetupSuite() {
 			},
 		}))
 	})
-	mou.Hdl.MemberRoutes(server.Engine)
 	mou.Hdl.PublicRoutes(server.Engine)
 	reviewDao := dao.NewReviewDAO(db)
 	s.db = db

@@ -166,6 +166,5 @@ func initGinxServer(sp session.Provider,
 	resumePrjHdl.MemberRoutes(res.Engine)
 	resumeAnaHdl.MemberRoutes(res.Engine)
 	aiHdl.MemberRoutes(res.Engine)
-	reviewHdl.MemberRoutes(res.Engine)
 	return res
 }
