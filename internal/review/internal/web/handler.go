@@ -70,24 +70,29 @@ func (h *Handler) PubList(ctx *ginx.Context, req Page) (ginx.Result, error) {
 }
 
 // PubDetail 获取已发布的面试评测记录详情
-func (h *Handler) PubDetail(ctx *ginx.Context, req DetailReq, sess session.Session) (ginx.Result, error) {
-
+func (h *Handler) PubDetail(ctx *ginx.Context, req DetailReq) (ginx.Result, error) {
 	// 调用 service 层获取数据
 	review, err := h.svc.PubInfo(ctx, req.ID)
 	if err != nil {
 		return systemErrorResult, err
 	}
-	var err1 error
-	intr, err1 := h.intrSvc.GetByIds(ctx, "review", sess.Claims().Uid, []int64{req.ID})
-	// 这个数据查询不到也不需要担心
-	if err1 != nil {
-		h.logger.Error("查询数据的点赞数据失败",
-			elog.Any("id", req.ID),
-			elog.FieldErr(err))
+
+	var intr interactive.Interactive
+	sess, err := h.sp.Get(ctx)
+	if err == nil {
+		uid := sess.Claims().Uid
+		var err1 error
+		intr, err1 = h.intrSvc.Get(ctx, "review", req.ID, uid)
+		// 这个数据查询不到也不需要担心
+		if err1 != nil {
+			h.logger.Error("查询数据的点赞数据失败",
+				elog.Any("id", req.ID),
+				elog.FieldErr(err))
+		}
 	}
 
 	// 转换为展示层对象并返回
 	return ginx.Result{
-		Data: newReviewWithInteractive(review, intr[req.ID]),
+		Data: newReviewWithInteractive(review, intr),
 	}, nil
 }

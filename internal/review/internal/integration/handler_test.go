@@ -66,6 +66,10 @@ func (s *TestSuite) SetupSuite() {
 		}
 		return res, nil
 	}).AnyTimes()
+
+	svc.EXPECT().Get(gomock.Any(), "review", gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, biz string, id, uid int64) (interactive.Interactive, error) {
+		return mockInteractive(biz, id), nil
+	}).AnyTimes()
 	mou := startup.InitModule(db, &interactive.Module{
 		Svc: svc,
 	}, testmq, session.DefaultProvider())
