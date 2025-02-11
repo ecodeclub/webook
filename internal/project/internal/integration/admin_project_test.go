@@ -23,6 +23,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ecodeclub/ginx/session"
+
 	"gorm.io/gorm"
 
 	"github.com/ecodeclub/webook/internal/permission"
@@ -65,7 +67,7 @@ func (s *AdminProjectTestSuite) SetupSuite() {
 		Svc: intrSvc,
 	}
 	permModule := &permission.Module{}
-	m, err := startup.InitModule(intrModule, permModule)
+	m, err := startup.InitModule(intrModule, permModule, session.DefaultProvider())
 	require.NoError(s.T(), err)
 	s.hdl = m.AdminHdl
 

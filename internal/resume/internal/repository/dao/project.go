@@ -114,7 +114,8 @@ func (r *resumeProjectDAO) SaveDifficulty(ctx context.Context, difficulty Diffic
 func (r *resumeProjectDAO) FindRefCases(ctx context.Context, contributionIds []int64) (map[int64][]RefCase, error) {
 	var refCases []RefCase
 	err := r.db.WithContext(ctx).
-		Where("contribution_id in ?", contributionIds).Find(&refCases).Error
+		Where("contribution_id in ?", contributionIds).
+		Find(&refCases).Error
 	if err != nil {
 		return nil, err
 	}
@@ -129,7 +130,6 @@ func (r *resumeProjectDAO) FindRefCases(ctx context.Context, contributionIds []i
 		}
 	}
 	return refCaseMap, err
-
 }
 
 func (r *resumeProjectDAO) FindContributions(ctx context.Context, projectId int64) ([]Contribution, error) {
@@ -199,7 +199,7 @@ func (r *resumeProjectDAO) Upsert(ctx context.Context, pro ResumeProject) (int64
 
 func (r *resumeProjectDAO) Delete(ctx context.Context, uid, id int64) error {
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		res := tx.WithContext(ctx).Model(&ResumeProject{}).Where("id = ? and uid = ?", id, uid).Delete(&ResumeProject{})
+		res := tx.Model(&ResumeProject{}).Where("id = ? and uid = ?", id, uid).Delete(&ResumeProject{})
 		if res.Error != nil {
 			return res.Error
 		}
@@ -207,19 +207,19 @@ func (r *resumeProjectDAO) Delete(ctx context.Context, uid, id int64) error {
 			return errors.New("删除失败")
 		}
 		var ids []int64
-		err := tx.WithContext(ctx).Model(&Contribution{}).Select("id").Where("project_id = ?", id).Find(&ids).Error
+		err := tx.Model(&Contribution{}).Select("id").Where("project_id = ?", id).Find(&ids).Error
 		if err != nil {
 			return err
 		}
-		err = tx.WithContext(ctx).Model(&Contribution{}).Where("project_id = ?", id).Delete(&Contribution{}).Error
+		err = tx.Model(&Contribution{}).Where("project_id = ?", id).Delete(&Contribution{}).Error
 		if err != nil {
 			return err
 		}
-		err = tx.WithContext(ctx).Model(&Difficulty{}).Where("project_id = ?", id).Delete(&Difficulty{}).Error
+		err = tx.Model(&Difficulty{}).Where("project_id = ?", id).Delete(&Difficulty{}).Error
 		if err != nil {
 			return err
 		}
-		return tx.WithContext(ctx).Model(&RefCase{}).Where("contribution_id in ?", ids).Delete(&RefCase{}).Error
+		return tx.Model(&RefCase{}).Where("contribution_id in ?", ids).Delete(&RefCase{}).Error
 	})
 }
 

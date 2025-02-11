@@ -23,6 +23,7 @@ import (
 
 type ProjectDAO interface {
 	List(ctx context.Context, offset int, limit int) ([]PubProject, error)
+	Count(ctx context.Context) (int64, error)
 	GetById(ctx context.Context, id int64) (PubProject, error)
 	BriefById(ctx context.Context, id int64) (PubProject, error)
 	Resumes(ctx context.Context, pid int64) ([]PubProjectResume, error)
@@ -104,6 +105,15 @@ func (dao *GORMProjectDAO) List(ctx context.Context, offset int, limit int) ([]P
 		Order("utime DESC").
 		Limit(limit).Offset(offset).Find(&res).Error
 	return res, err
+}
+
+func (dao *GORMProjectDAO) Count(ctx context.Context) (int64, error) {
+	var count int64
+	err := dao.db.WithContext(ctx).
+		Model(&PubProject{}).
+		Where("status = ?",
+			domain.ProjectStatusPublished.ToUint8()).Count(&count).Error
+	return count, err
 }
 
 func NewGORMProjectDAO(db *egorm.Component) ProjectDAO {

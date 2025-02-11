@@ -33,16 +33,20 @@ type Handler struct {
 	intrSvc interactive.Service
 	permSvc permission.Service
 	logger  *elog.Component
+	sp      session.Provider
 }
 
 func NewHandler(svc service.Service,
 	permSvc permission.Service,
-	intrSvc interactive.Service) *Handler {
+	intrSvc interactive.Service,
+	sp session.Provider,
+) *Handler {
 	return &Handler{
 		svc:     svc,
 		intrSvc: intrSvc,
 		permSvc: permSvc,
 		logger:  elog.DefaultLogger,
+		sp:      sp,
 	}
 }
 
@@ -57,7 +61,8 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 }
 
 func (h *Handler) List(ctx *ginx.Context, req Page) (ginx.Result, error) {
-	data, err := h.svc.List(ctx, req.Offset, req.Limit)
+	uid := h.getUid(ctx)
+	count, data, err := h.svc.List(ctx, req.Offset, req.Limit)
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -68,7 +73,7 @@ func (h *Handler) List(ctx *ginx.Context, req Page) (ginx.Result, error) {
 			return src.Id
 		})
 		var err1 error
-		intrs, err1 = h.intrSvc.GetByIds(ctx, domain.BizProject, ids)
+		intrs, err1 = h.intrSvc.GetByIds(ctx, domain.BizProject, uid, ids)
 		// 这个数据查询不到也不需要担心
 		if err1 != nil {
 			h.logger.Error("查询数据的点赞数据失败",
@@ -77,12 +82,22 @@ func (h *Handler) List(ctx *ginx.Context, req Page) (ginx.Result, error) {
 		}
 	}
 	return ginx.Result{
-		Data: slice.Map(data, func(idx int, src domain.Project) Project {
-			return newProject(src, intrs[src.Id])
-		}),
+		Data: ProjectList{
+			Total: count,
+			Projects: slice.Map(data, func(idx int, src domain.Project) Project {
+				return newProject(src, intrs[src.Id])
+			}),
+		},
 	}, nil
 }
-
+func (h *Handler) getUid(gctx *ginx.Context) int64 {
+	sess, err := h.sp.Get(gctx)
+	if err != nil {
+		// 没登录
+		return 0
+	}
+	return sess.Claims().Uid
+}
 func (h *Handler) Detail(ctx *ginx.Context, req IdReq, sess session.Session) (ginx.Result, error) {
 	var (
 		eg     errgroup.Group

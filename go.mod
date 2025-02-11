@@ -6,9 +6,8 @@ require (
 	github.com/bwmarrin/snowflake v0.3.0
 	github.com/ecodeclub/ecache v0.0.0-20240111145855-75679834beca
 	github.com/ecodeclub/ekit v0.0.9-0.20240331142359-871f65136a9b
-	github.com/ecodeclub/ginx v0.0.0-20240529151605-6f3c1e323607
+	github.com/ecodeclub/ginx v0.0.0-20250123094857-7acefcc057ee
 	github.com/ecodeclub/mq-api v0.0.0-20240508035004-fd7de3346cfe
-	github.com/ecodeclub/webook-private v0.0.0-20240328102016-f96c72f49853
 	github.com/ego-component/egorm v1.1.1
 	github.com/gin-contrib/cors v1.5.0
 	github.com/gin-gonic/gin v1.9.1
@@ -16,6 +15,7 @@ require (
 	github.com/google/wire v0.6.0
 	github.com/gotomicro/ego v1.1.19
 	github.com/lithammer/shortuuid/v4 v4.0.0
+	github.com/lukasjarosch/go-docx v0.5.0
 	github.com/olivere/elastic/v7 v7.0.32
 	github.com/pkg/errors v0.9.1
 	github.com/redis/go-redis/v9 v9.4.0
@@ -24,7 +24,7 @@ require (
 	github.com/wechatpay-apiv3/wechatpay-go v0.2.18
 	github.com/yankeguo/zhipu v0.1.0
 	go.uber.org/mock v0.3.0
-	golang.org/x/sync v0.6.0
+	golang.org/x/sync v0.7.0
 	gorm.io/gorm v1.25.1
 )
 
@@ -64,6 +64,7 @@ require (
 	github.com/golang-sql/sqlexp v0.1.0 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/google/cel-go v0.11.3 // indirect
+	github.com/google/go-cmp v0.6.0 // indirect
 	github.com/google/pprof v0.0.0-20211214055906-6f57359322fd // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/gotomicro/logrotate v0.0.0-20211108034117-46d53eedc960 // indirect
@@ -123,11 +124,11 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.26.0 // indirect
 	golang.org/x/arch v0.7.0 // indirect
-	golang.org/x/crypto v0.23.0 // indirect
+	golang.org/x/crypto v0.25.0 // indirect
 	golang.org/x/exp v0.0.0-20231006140011-7918f672742d // indirect
-	golang.org/x/net v0.25.0 // indirect
-	golang.org/x/sys v0.20.0 // indirect
-	golang.org/x/text v0.15.0 // indirect
+	golang.org/x/net v0.27.0 // indirect
+	golang.org/x/sys v0.22.0 // indirect
+	golang.org/x/text v0.16.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20230711160842-782d3b101e98 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20230711160842-782d3b101e98 // indirect
 	google.golang.org/grpc v1.58.1 // indirect

@@ -84,7 +84,7 @@ func (s *KnowledgeJobStarter) Export(ctx ejob.Context, writer io.Writer) error {
 func (s *KnowledgeJobStarter) Batch(ctx ejob.Context, offset, limit int, writer *csv.Writer) (int, error) {
 	batchCtx, cancel := context.WithTimeout(ctx.Ctx, time.Second*3)
 	defer cancel()
-	ques, err := s.svc.PubList(batchCtx, offset, limit)
+	_, ques, err := s.svc.PubList(batchCtx, offset, limit)
 	if err != nil {
 		return 0, err
 	}

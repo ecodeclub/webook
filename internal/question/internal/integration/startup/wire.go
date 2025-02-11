@@ -19,6 +19,10 @@ package startup
 import (
 	"os"
 
+	"github.com/ecodeclub/ginx/session"
+
+	"github.com/ecodeclub/webook/internal/member"
+
 	"github.com/ecodeclub/webook/internal/ai"
 
 	"github.com/ecodeclub/webook/internal/interactive"
@@ -35,9 +39,12 @@ import (
 )
 
 func InitModule(p event.SyncDataToSearchEventProducer,
+	knowledgeBaseP event.KnowledgeBaseEventProducer,
 	intrModule *interactive.Module,
 	permModule *permission.Module,
 	aiModule *ai.Module,
+	sp session.Provider,
+	memberModule *member.Module,
 ) (*baguwen.Module, error) {
 	wire.Build(
 		testioc.BaseSet,
@@ -45,7 +52,8 @@ func InitModule(p event.SyncDataToSearchEventProducer,
 		event.NewInteractiveEventProducer,
 		wire.FieldsOf(new(*interactive.Module), "Svc"),
 		wire.FieldsOf(new(*permission.Module), "Svc"),
-		wire.FieldsOf(new(*ai.Module), "Svc"),
+		wire.FieldsOf(new(*member.Module), "Svc"),
+		wire.FieldsOf(new(*ai.Module), "Svc", "KnowledgeBaseSvc"),
 	)
 	return new(baguwen.Module), nil
 }
@@ -63,9 +71,15 @@ var moduleSet = wire.NewSet(baguwen.InitQuestionDAO,
 	repository.NewQuestionSetRepository,
 	service.NewQuestionSetService,
 	web.NewQuestionSetHandler,
+	initKnowledgeBaseSvc,
+	web.NewKnowledgeBaseHandler,
 	wire.Struct(new(baguwen.Module), "*"),
 )
 
 func initKnowledgeJobStarter(svc service.Service) *job.KnowledgeJobStarter {
 	return job.NewKnowledgeJobStarter(svc, os.TempDir())
+}
+
+func initKnowledgeBaseSvc(svc ai.KnowledgeBaseService, queRepo repository.Repository) service.QuestionKnowledgeBase {
+	return service.NewQuestionKnowledgeBase("knowledge_id", queRepo, svc)
 }

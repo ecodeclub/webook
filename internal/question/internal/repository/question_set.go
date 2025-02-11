@@ -35,6 +35,7 @@ type QuestionSetRepository interface {
 	GetByIDsWithQuestion(ctx context.Context, ids []int64) ([]domain.QuestionSet, error)
 	ListByBiz(ctx context.Context, offset, limit int, biz string) ([]domain.QuestionSet, error)
 	GetByBiz(ctx context.Context, biz string, bizId int64) (domain.QuestionSet, error)
+	CountByBiz(ctx context.Context, biz string) (int64, error)
 }
 
 var _ QuestionSetRepository = &questionSetRepository{}
@@ -44,6 +45,9 @@ type questionSetRepository struct {
 	logger *elog.Component
 }
 
+func (q *questionSetRepository) CountByBiz(ctx context.Context, biz string) (int64, error) {
+	return q.dao.CountByBiz(ctx, biz)
+}
 func (q *questionSetRepository) GetByIDsWithQuestion(ctx context.Context, ids []int64) ([]domain.QuestionSet, error) {
 	qsets, questionMap, err := q.dao.GetByIDsWithQuestions(ctx, ids)
 	if err != nil {

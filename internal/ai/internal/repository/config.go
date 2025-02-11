@@ -60,18 +60,7 @@ func (r *CachedConfigRepository) List(ctx context.Context) ([]domain.BizConfig, 
 		return nil, err
 	}
 	return slice.Map(configs, func(idx int, src dao.BizConfig) domain.BizConfig {
-		return domain.BizConfig{
-			Id:             src.Id,
-			Biz:            src.Biz,
-			Model:          src.Model,
-			Price:          src.Price,
-			Temperature:    src.Temperature,
-			TopP:           src.TopP,
-			SystemPrompt:   src.SystemPrompt,
-			MaxInput:       src.MaxInput,
-			KnowledgeId:    src.KnowledgeId,
-			PromptTemplate: src.PromptTemplate,
-		}
+		return r.toDomain(src)
 	}), nil
 }
 
@@ -81,32 +70,28 @@ func (r *CachedConfigRepository) GetById(ctx context.Context, id int64) (domain.
 		return domain.BizConfig{}, err
 	}
 
-	return domain.BizConfig{
-		Id:             cfg.Id,
-		Biz:            cfg.Biz,
-		Model:          cfg.Model,
-		Price:          cfg.Price,
-		Temperature:    cfg.Temperature,
-		TopP:           cfg.TopP,
-		SystemPrompt:   cfg.SystemPrompt,
-		MaxInput:       cfg.MaxInput,
-		KnowledgeId:    cfg.KnowledgeId,
-		PromptTemplate: cfg.PromptTemplate,
-	}, nil
+	return r.toDomain(cfg), nil
 }
 func (repo *CachedConfigRepository) GetConfig(ctx context.Context, biz string) (domain.BizConfig, error) {
 	res, err := repo.dao.GetConfig(ctx, biz)
 	if err != nil {
 		return domain.BizConfig{}, err
 	}
+	return repo.toDomain(res), nil
+}
+
+func (repo *CachedConfigRepository) toDomain(src dao.BizConfig) domain.BizConfig {
 	return domain.BizConfig{
-		Model:          res.Model,
-		Price:          res.Price,
-		Temperature:    res.Temperature,
-		TopP:           res.TopP,
-		SystemPrompt:   res.SystemPrompt,
-		MaxInput:       res.MaxInput,
-		PromptTemplate: res.PromptTemplate,
-		KnowledgeId:    res.KnowledgeId,
-	}, nil
+		Id:             src.Id,
+		Biz:            src.Biz,
+		Model:          src.Model,
+		Price:          src.Price,
+		Temperature:    src.Temperature,
+		TopP:           src.TopP,
+		SystemPrompt:   src.SystemPrompt,
+		MaxInput:       src.MaxInput,
+		KnowledgeId:    src.KnowledgeId,
+		PromptTemplate: src.PromptTemplate,
+		Utime:          src.Utime,
+	}
 }

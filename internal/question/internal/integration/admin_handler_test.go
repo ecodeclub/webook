@@ -26,6 +26,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ecodeclub/webook/internal/member"
+
 	"github.com/ecodeclub/webook/internal/ai"
 
 	"github.com/ecodeclub/webook/internal/permission"
@@ -61,10 +63,11 @@ import (
 
 type AdminHandlerTestSuite struct {
 	BaseTestSuite
-	server   *egin.Component
-	rdb      ecache.Cache
-	dao      dao.QuestionDAO
-	producer *eveMocks.MockSyncEventProducer
+	server                *egin.Component
+	rdb                   ecache.Cache
+	dao                   dao.QuestionDAO
+	producer              *eveMocks.MockSyncEventProducer
+	knowledgeBaseProducer *eveMocks.MockKnowledgeBaseEventProducer
 }
 
 func (s *AdminHandlerTestSuite) SetupSuite() {
@@ -72,7 +75,7 @@ func (s *AdminHandlerTestSuite) SetupSuite() {
 
 	ctrl := gomock.NewController(s.T())
 	s.producer = eveMocks.NewMockSyncEventProducer(ctrl)
-
+	s.knowledgeBaseProducer = eveMocks.NewMockKnowledgeBaseEventProducer(ctrl)
 	intrSvc := intrmocks.NewMockService(ctrl)
 	intrModule := &interactive.Module{
 		Svc: intrSvc,
@@ -91,8 +94,8 @@ func (s *AdminHandlerTestSuite) SetupSuite() {
 		intr := s.mockInteractive(biz, id)
 		return intr, nil
 	})
-	intrSvc.EXPECT().GetByIds(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context,
-		biz string, ids []int64) (map[int64]interactive.Interactive, error) {
+	intrSvc.EXPECT().GetByIds(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context,
+		biz string, uid int64, ids []int64) (map[int64]interactive.Interactive, error) {
 		res := make(map[int64]interactive.Interactive, len(ids))
 		for _, id := range ids {
 			intr := s.mockInteractive(biz, id)
@@ -101,7 +104,11 @@ func (s *AdminHandlerTestSuite) SetupSuite() {
 		return res, nil
 	}).AnyTimes()
 
-	module, err := startup.InitModule(s.producer, intrModule, &permission.Module{}, &ai.Module{})
+	module, err := startup.InitModule(s.producer,
+		s.knowledgeBaseProducer, intrModule,
+		&permission.Module{}, &ai.Module{},
+		session.DefaultProvider(),
+		&member.Module{})
 	require.NoError(s.T(), err)
 	econf.Set("server", map[string]any{"contextTimeout": "1s"})
 	server := egin.Load("server").Build()
@@ -326,6 +333,7 @@ func (s *AdminHandlerTestSuite) TestSync() {
 			name: "全部新建",
 			before: func(t *testing.T) {
 				s.producer.EXPECT().Produce(gomock.Any(), gomock.Any()).Return(nil)
+				s.knowledgeBaseProducer.EXPECT().Produce(gomock.Any(), gomock.Any()).Return(nil)
 			},
 			after: func(t *testing.T) {
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
@@ -369,6 +377,7 @@ func (s *AdminHandlerTestSuite) TestSync() {
 			name: "部分更新",
 			before: func(t *testing.T) {
 				s.producer.EXPECT().Produce(gomock.Any(), gomock.Any()).Return(nil)
+				s.knowledgeBaseProducer.EXPECT().Produce(gomock.Any(), gomock.Any()).Return(nil)
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 				defer cancel()
 				err := s.db.WithContext(ctx).Create(&dao.Question{
@@ -613,6 +622,21 @@ func (s *AdminHandlerTestSuite) TestQuestionEvent() {
 		mu.Unlock()
 		return nil
 	}).Times(2)
+	s.knowledgeBaseProducer.EXPECT().Produce(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, knowledgeBaseEvent event.KnowledgeBaseEvent) error {
+		assert.Equal(t, "question", knowledgeBaseEvent.Biz)
+		var que domain.Question
+		json.Unmarshal(knowledgeBaseEvent.Data, &que)
+		que.Answer.Basic.Id = 0
+		que.Answer.Advanced.Id = 0
+		que.Answer.Analysis.Id = 0
+		que.Answer.Intermediate.Id = 0
+		que.Utime = time.UnixMilli(123)
+		assert.Equal(t, que.Id, knowledgeBaseEvent.BizID)
+		assert.Equal(t, fmt.Sprintf("question_%d", que.Id), knowledgeBaseEvent.Name)
+		assert.Equal(t, ai.RepositoryBaseTypeRetrieval, knowledgeBaseEvent.Type)
+		assert.Equal(t, s.getWantQuestion(que.Id), que)
+		return nil
+	})
 	// 保存
 	saveReq := web.SaveReq{
 		Question: web.Question{
@@ -696,6 +720,7 @@ func (s *AdminHandlerTestSuite) TestQuestionEvent() {
 			},
 		},
 	}, ans)
+
 }
 
 func (s *AdminHandlerTestSuite) removeId(ele event.AnswerElement) event.AnswerElement {
@@ -716,4 +741,34 @@ func (s *AdminHandlerTestSuite) buildEventEle(idx int64) event.AnswerElement {
 
 func TestAdminHandler(t *testing.T) {
 	suite.Run(t, new(AdminHandlerTestSuite))
+}
+
+func (s *AdminHandlerTestSuite) getWantQuestion(id int64) domain.Question {
+	que := domain.Question{
+		Id:      id,
+		Uid:     uid,
+		Biz:     "project",
+		BizId:   id,
+		Title:   fmt.Sprintf("面试题%d", id),
+		Content: "面试题内容",
+		Status:  domain.PublishedStatus,
+		Answer: domain.Answer{
+			Analysis:     s.getAnswerElement(0),
+			Basic:        s.getAnswerElement(1),
+			Intermediate: s.getAnswerElement(2),
+			Advanced:     s.getAnswerElement(3),
+		},
+		Utime: time.UnixMilli(123),
+	}
+	return que
+}
+
+func (s *AdminHandlerTestSuite) getAnswerElement(idx int64) domain.AnswerElement {
+	return domain.AnswerElement{
+		Content:   fmt.Sprintf("这是解析 %d", idx),
+		Keywords:  fmt.Sprintf("关键字 %d", idx),
+		Shorthand: fmt.Sprintf("快速记忆法 %d", idx),
+		Highlight: fmt.Sprintf("亮点 %d", idx),
+		Guidance:  fmt.Sprintf("引导点 %d", idx),
+	}
 }

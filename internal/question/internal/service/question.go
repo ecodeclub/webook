@@ -40,16 +40,17 @@ type Service interface {
 	Delete(ctx context.Context, qid int64) error
 
 	// PubList 只会返回八股文的数据
-	PubList(ctx context.Context, offset int, limit int) ([]domain.Question, error)
+	PubList(ctx context.Context, offset int, limit int) (int64, []domain.Question, error)
 	// GetPubByIDs 目前只会获取基础信息，也就是不包括答案在内的信息
 	GetPubByIDs(ctx context.Context, ids []int64) ([]domain.Question, error)
 	PubDetail(ctx context.Context, qid int64) (domain.Question, error)
 }
 
 type service struct {
-	repo         repository.Repository
-	syncProducer event.SyncDataToSearchEventProducer
-	intrProducer event.InteractiveEventProducer
+	repo                  repository.Repository
+	syncProducer          event.SyncDataToSearchEventProducer
+	intrProducer          event.InteractiveEventProducer
+	knowledgeBaseProducer event.KnowledgeBaseEventProducer
 
 	logger      *elog.Component
 	syncTimeout time.Duration
@@ -102,8 +103,23 @@ func (s *service) List(ctx context.Context, offset int, limit int) ([]domain.Que
 	return qs, total, eg.Wait()
 }
 
-func (s *service) PubList(ctx context.Context, offset int, limit int) ([]domain.Question, error) {
-	return s.repo.PubList(ctx, offset, limit, domain.DefaultBiz)
+func (s *service) PubList(ctx context.Context, offset int, limit int) (int64, []domain.Question, error) {
+	var (
+		eg    errgroup.Group
+		qs    []domain.Question
+		total int64
+	)
+	eg.Go(func() error {
+		var err error
+		qs, err = s.repo.PubList(ctx, offset, limit, domain.DefaultBiz)
+		return err
+	})
+	eg.Go(func() error {
+		var err error
+		total, err = s.repo.PubCount(ctx, domain.DefaultBiz)
+		return err
+	})
+	return total, qs, eg.Wait()
 }
 
 func (s *service) Save(ctx context.Context, question *domain.Question) (int64, error) {
@@ -118,7 +134,13 @@ func (s *service) Save(ctx context.Context, question *domain.Question) (int64, e
 	if err != nil {
 		return 0, err
 	}
-	s.syncQuestion(id)
+	qctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	que, eerr := s.getQuestion(ctx, id)
+	if eerr != nil {
+		return id, nil
+	}
+	s.syncQuestion(qctx, que)
 	return id, nil
 }
 
@@ -128,36 +150,68 @@ func (s *service) Publish(ctx context.Context, question *domain.Question) (int64
 	if err != nil {
 		return 0, err
 	}
-	s.syncQuestion(id)
+	// 获取问题
+	qctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	que, eerr := s.getQuestion(qctx, id)
+	if eerr != nil {
+		return id, nil
+	}
+	// 同步到搜索服务
+	s.syncQuestion(qctx, que)
+	// 上传到知识库
+	s.uploadQuestion(qctx, que)
 	return id, nil
 }
 
 func NewService(repo repository.Repository,
 	syncEvent event.SyncDataToSearchEventProducer,
-	intrEvent event.InteractiveEventProducer) Service {
+	intrEvent event.InteractiveEventProducer,
+	knowledgeBaseProducer event.KnowledgeBaseEventProducer,
+) Service {
 	return &service{
-		repo:         repo,
-		syncProducer: syncEvent,
-		intrProducer: intrEvent,
-		logger:       elog.DefaultLogger,
-		syncTimeout:  10 * time.Second,
+		repo:                  repo,
+		syncProducer:          syncEvent,
+		intrProducer:          intrEvent,
+		knowledgeBaseProducer: knowledgeBaseProducer,
+		logger:                elog.DefaultLogger,
+		syncTimeout:           10 * time.Second,
 	}
 }
 
-func (s *service) syncQuestion(id int64) {
-	ctx, cancel := context.WithTimeout(context.Background(), s.syncTimeout)
-	defer cancel()
+func (s *service) syncQuestion(ctx context.Context, que domain.Question) {
+	evt := event.NewQuestionEvent(que)
+	err := s.syncProducer.Produce(ctx, evt)
+	if err != nil {
+		s.logger.Error("发送同步搜索信息",
+			elog.FieldErr(err),
+			elog.Any("event", evt),
+		)
+	}
+}
+
+func (s *service) getQuestion(ctx context.Context, id int64) (domain.Question, error) {
 	que, err := s.repo.GetById(ctx, id)
 	if err != nil {
 		s.logger.Error("发送同步搜索信息",
 			elog.FieldErr(err),
 		)
+		return domain.Question{}, err
+	}
+	return que, nil
+}
+
+func (s *service) uploadQuestion(ctx context.Context, que domain.Question) {
+	evt, err := event.NewKnowledgeBaseEvent(que)
+	if err != nil {
+		s.logger.Error("获取知识库事件失败",
+			elog.FieldErr(err),
+		)
 		return
 	}
-	evt := event.NewQuestionEvent(que)
-	err = s.syncProducer.Produce(ctx, evt)
+	err = s.knowledgeBaseProducer.Produce(ctx, evt)
 	if err != nil {
-		s.logger.Error("发送同步搜索信息",
+		s.logger.Error("发送上传知识库事件失败",
 			elog.FieldErr(err),
 			elog.Any("event", evt),
 		)

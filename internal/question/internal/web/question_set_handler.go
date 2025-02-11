@@ -15,8 +15,6 @@
 package web
 
 import (
-	"context"
-
 	"github.com/ecodeclub/webook/internal/interactive"
 	"golang.org/x/sync/errgroup"
 
@@ -29,41 +27,48 @@ import (
 	"github.com/gotomicro/ego/core/elog"
 )
 
-var _ ginx.Handler = (*QuestionSetHandler)(nil)
-
 type QuestionSetHandler struct {
 	svc        service.QuestionSetService
 	examineSvc service.ExamineService
 	logger     *elog.Component
 	intrSvc    interactive.Service
+	sp         session.Provider
 }
 
 func NewQuestionSetHandler(
 	svc service.QuestionSetService,
 	examineSvc service.ExamineService,
-	intrSvc interactive.Service) *QuestionSetHandler {
+	intrSvc interactive.Service,
+	sp session.Provider,
+) *QuestionSetHandler {
 	return &QuestionSetHandler{
 		svc:        svc,
 		intrSvc:    intrSvc,
 		examineSvc: examineSvc,
 		logger:     elog.DefaultLogger,
+		sp:         sp,
 	}
 }
 
 func (h *QuestionSetHandler) PublicRoutes(server *gin.Engine) {
 	g := server.Group("/question-sets")
 	g.POST("/list", ginx.B[Page](h.ListQuestionSets))
+	g.POST("/detail", ginx.B(h.RetrieveQuestionSetDetail))
+	g.POST("/detail/biz", ginx.B(h.GetDetailByBiz))
 }
-
-func (h *QuestionSetHandler) PrivateRoutes(server *gin.Engine) {
-	g := server.Group("/question-sets")
-	g.POST("/detail", ginx.BS(h.RetrieveQuestionSetDetail))
-	g.POST("/detail/biz", ginx.BS(h.GetDetailByBiz))
+func (h *QuestionSetHandler) getUid(gctx *ginx.Context) int64 {
+	sess, err := h.sp.Get(gctx)
+	if err != nil {
+		// 没登录
+		return 0
+	}
+	return sess.Claims().Uid
 }
 
 // ListQuestionSets 展示个人题集
 func (h *QuestionSetHandler) ListQuestionSets(ctx *ginx.Context, req Page) (ginx.Result, error) {
-	data, err := h.svc.ListDefault(ctx, req.Offset, req.Limit)
+	uid := h.getUid(ctx)
+	data, count, err := h.svc.ListDefault(ctx, req.Offset, req.Limit)
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -74,7 +79,7 @@ func (h *QuestionSetHandler) ListQuestionSets(ctx *ginx.Context, req Page) (ginx
 			return src.Id
 		})
 		var err1 error
-		intrs, err1 = h.intrSvc.GetByIds(ctx, "questionSet", ids)
+		intrs, err1 = h.intrSvc.GetByIds(ctx, "questionSet", uid, ids)
 		// 这个数据查询不到也不需要担心
 		if err1 != nil {
 			h.logger.Error("查询题集的点赞数据失败",
@@ -84,6 +89,7 @@ func (h *QuestionSetHandler) ListQuestionSets(ctx *ginx.Context, req Page) (ginx
 	}
 	return ginx.Result{
 		Data: QuestionSetList{
+			Total: count,
 			QuestionSets: slice.Map(data, func(idx int, src domain.QuestionSet) QuestionSet {
 				qs := newQuestionSet(src)
 				qs.Interactive = newInteractive(intrs[src.Id])
@@ -95,36 +101,40 @@ func (h *QuestionSetHandler) ListQuestionSets(ctx *ginx.Context, req Page) (ginx
 
 func (h *QuestionSetHandler) GetDetailByBiz(
 	ctx *ginx.Context,
-	req BizReq, sess session.Session) (ginx.Result, error) {
+	req BizReq) (ginx.Result, error) {
 	data, err := h.svc.DetailByBiz(ctx, req.Biz, req.BizId)
 	if err != nil {
 		return systemErrorResult, err
 	}
-	return h.getDetail(ctx, sess.Claims().Uid, data)
+	return h.getDetail(ctx, data)
 }
 
 // RetrieveQuestionSetDetail 题集详情
 func (h *QuestionSetHandler) RetrieveQuestionSetDetail(
 	ctx *ginx.Context,
-	req QuestionSetID, sess session.Session) (ginx.Result, error) {
-
+	req QuestionSetID) (ginx.Result, error) {
 	data, err := h.svc.Detail(ctx.Request.Context(), req.QSID)
 	if err != nil {
 		return systemErrorResult, err
 	}
-	return h.getDetail(ctx, sess.Claims().Uid, data)
+
+	return h.getDetail(ctx, data)
 }
 
 func (h *QuestionSetHandler) getDetail(
-	ctx context.Context,
-	uid int64,
+	ctx *ginx.Context,
 	qs domain.QuestionSet) (ginx.Result, error) {
 	var (
 		eg         errgroup.Group
 		intr       interactive.Interactive
 		queIntrMap map[int64]interactive.Interactive
 		resultMap  map[int64]domain.ExamineResult
+		uid        int64
 	)
+	sess, err := h.sp.Get(ctx)
+	if err == nil {
+		uid = sess.Claims().Uid
+	}
 
 	eg.Go(func() error {
 		var err error
@@ -134,7 +144,7 @@ func (h *QuestionSetHandler) getDetail(
 
 	eg.Go(func() error {
 		var eerr error
-		queIntrMap, eerr = h.intrSvc.GetByIds(ctx, "question", qs.Qids())
+		queIntrMap, eerr = h.intrSvc.GetByIds(ctx, "question", uid, qs.Qids())
 		return eerr
 	})
 
@@ -144,7 +154,7 @@ func (h *QuestionSetHandler) getDetail(
 		return err
 	})
 
-	err := eg.Wait()
+	err = eg.Wait()
 	if err != nil {
 		return systemErrorResult, err
 	}

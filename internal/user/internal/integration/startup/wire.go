@@ -17,6 +17,7 @@
 package startup
 
 import (
+	"github.com/ecodeclub/ginx/session"
 	"github.com/ecodeclub/mq-api"
 	"github.com/ecodeclub/webook/internal/member"
 	"github.com/ecodeclub/webook/internal/permission"
@@ -33,7 +34,10 @@ import (
 
 func InitHandler(weSvc wechatWebOAuth2Service,
 	weMiniSvc wechatMiniOAuth2Service,
-	mem *member.Module, perm *permission.Module, creators []string) *user.Handler {
+	mem *member.Module,
+	perm *permission.Module,
+	sp session.Provider,
+	creators []string) *user.Handler {
 	wire.Build(iniHandler,
 		testioc.BaseSet,
 		wire.FieldsOf(new(*member.Module), "Svc"),
@@ -51,8 +55,10 @@ func iniHandler(
 	weMiniSvc wechatMiniOAuth2Service,
 	userSvc service.UserService,
 	memberSvc member.Service,
-	permissionSvc permission.Service, creators []string) *web.Handler {
-	return web.NewHandler(weSvc, weMiniSvc, userSvc, memberSvc, permissionSvc, creators)
+	permissionSvc permission.Service,
+	sp session.Provider,
+	creators []string) *web.Handler {
+	return web.NewHandler(weSvc, weMiniSvc, userSvc, memberSvc, permissionSvc, sp, creators)
 }
 func InitModule() *user.Module {
 	wire.Build(

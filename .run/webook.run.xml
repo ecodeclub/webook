@@ -5,7 +5,7 @@
     <go_parameters value="--tags=mock" />
     <parameters value="--config=config/local.yaml" />
     <envs>
-      <env name="EGO_DEBUG" value="false" />
+      <env name="EGO_DEBUG" value="true" />
     </envs>
     <kind value="PACKAGE" />
     <package value="github.com/ecodeclub/webook" />

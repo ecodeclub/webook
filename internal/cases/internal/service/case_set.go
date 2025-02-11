@@ -23,7 +23,7 @@ type CaseSetService interface {
 	GetByIdsWithCases(ctx context.Context, ids []int64) ([]domain.CaseSet, error)
 
 	ListByBiz(ctx context.Context, offset, limit int, biz string) ([]domain.CaseSet, error)
-	ListDefault(ctx context.Context, offset, limit int) ([]domain.CaseSet, error)
+	ListDefault(ctx context.Context, offset, limit int) (int64, []domain.CaseSet, error)
 	GetByBiz(ctx context.Context, biz string, bizId int64) (domain.CaseSet, error)
 	GetCandidates(ctx context.Context, id int64, offset int, limit int) ([]domain.Case, int64, error)
 }
@@ -64,8 +64,23 @@ func (c *caseSetSvc) GetCandidates(ctx context.Context, id int64, offset int, li
 	return c.caRepo.Exclude(ctx, cids, offset, limit)
 }
 
-func (c *caseSetSvc) ListDefault(ctx context.Context, offset, limit int) ([]domain.CaseSet, error) {
-	return c.repo.ListByBiz(ctx, offset, limit, domain.DefaultBiz)
+func (c *caseSetSvc) ListDefault(ctx context.Context, offset, limit int) (int64, []domain.CaseSet, error) {
+	var (
+		eg    errgroup.Group
+		total int64
+		css   []domain.CaseSet
+	)
+	eg.Go(func() error {
+		var err error
+		css, err = c.repo.ListByBiz(ctx, offset, limit, domain.DefaultBiz)
+		return err
+	})
+	eg.Go(func() error {
+		var err error
+		total, err = c.repo.CountByBiz(ctx, domain.DefaultBiz)
+		return err
+	})
+	return total, css, eg.Wait()
 }
 
 func (c *caseSetSvc) ListByBiz(ctx context.Context, offset, limit int, biz string) ([]domain.CaseSet, error) {

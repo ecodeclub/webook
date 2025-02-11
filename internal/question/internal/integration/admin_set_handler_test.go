@@ -25,6 +25,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ecodeclub/webook/internal/member"
+
 	"github.com/ecodeclub/webook/internal/question/internal/service"
 
 	"github.com/ecodeclub/webook/internal/ai"
@@ -60,7 +62,8 @@ type AdminSetHandlerTestSuite struct {
 	dao            dao.QuestionDAO
 	questionSetDAO dao.QuestionSetDAO
 	producer       *eveMocks.MockSyncEventProducer
-	setSvc         service.QuestionSetService
+
+	setSvc service.QuestionSetService
 }
 
 func (s *AdminSetHandlerTestSuite) SetupSuite() {
@@ -69,8 +72,10 @@ func (s *AdminSetHandlerTestSuite) SetupSuite() {
 
 	intrModule := &interactive.Module{}
 
-	module, err := startup.InitModule(s.producer, intrModule,
-		&permission.Module{}, &ai.Module{})
+	module, err := startup.InitModule(s.producer, nil, intrModule,
+		&permission.Module{}, &ai.Module{},
+		session.DefaultProvider(),
+		&member.Module{})
 	require.NoError(s.T(), err)
 	econf.Set("server", map[string]any{"contextTimeout": "1s"})
 	server := egin.Load("server").Build()

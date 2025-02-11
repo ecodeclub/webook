@@ -19,17 +19,21 @@ type CaseSetHandler struct {
 	examineSvc service.ExamineService
 	logger     *elog.Component
 	intrSvc    interactive.Service
+	sp         session.Provider
 }
 
 func NewCaseSetHandler(
 	svc service.CaseSetService,
 	examineSvc service.ExamineService,
-	intrSvc interactive.Service) *CaseSetHandler {
+	intrSvc interactive.Service,
+	sp session.Provider,
+) *CaseSetHandler {
 	return &CaseSetHandler{
 		svc:        svc,
 		intrSvc:    intrSvc,
 		examineSvc: examineSvc,
 		logger:     elog.DefaultLogger,
+		sp:         sp,
 	}
 }
 
@@ -43,10 +47,19 @@ func (h *CaseSetHandler) PrivateRoutes(server *gin.Engine) {
 	g.POST("/detail", ginx.BS(h.RetrieveCaseSetDetail))
 	g.POST("/detail/biz", ginx.BS(h.GetDetailByBiz))
 }
+func (h *CaseSetHandler) getUid(gctx *ginx.Context) int64 {
+	sess, err := h.sp.Get(gctx)
+	if err != nil {
+		// 没登录
+		return 0
+	}
+	return sess.Claims().Uid
+}
 
 // ListCaseSets 展示个人案例集
 func (h *CaseSetHandler) ListCaseSets(ctx *ginx.Context, req Page) (ginx.Result, error) {
-	data, err := h.svc.ListDefault(ctx, req.Offset, req.Limit)
+	uid := h.getUid(ctx)
+	count, data, err := h.svc.ListDefault(ctx, req.Offset, req.Limit)
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -57,7 +70,7 @@ func (h *CaseSetHandler) ListCaseSets(ctx *ginx.Context, req Page) (ginx.Result,
 			return src.ID
 		})
 		var err1 error
-		intrs, err1 = h.intrSvc.GetByIds(ctx, "caseSet", ids)
+		intrs, err1 = h.intrSvc.GetByIds(ctx, "caseSet", uid, ids)
 		// 这个数据查询不到也不需要担心
 		if err1 != nil {
 			h.logger.Error("查询案例集的点赞数据失败",
@@ -67,6 +80,7 @@ func (h *CaseSetHandler) ListCaseSets(ctx *ginx.Context, req Page) (ginx.Result,
 	}
 	return ginx.Result{
 		Data: CaseSetList{
+			Total: count,
 			CaseSets: slice.Map(data, func(idx int, src domain.CaseSet) CaseSet {
 				qs := newCaseSet(src)
 				qs.Interactive = newInteractive(intrs[src.ID])
@@ -117,7 +131,7 @@ func (h *CaseSetHandler) getDetail(
 	eg.Go(func() error {
 		var err error
 		cids := cs.Cids()
-		caseIntrMap, err = h.intrSvc.GetByIds(ctx, domain.BizCase, cids)
+		caseIntrMap, err = h.intrSvc.GetByIds(ctx, domain.BizCase, uid, cids)
 		return err
 	})
 

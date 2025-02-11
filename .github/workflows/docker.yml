@@ -23,7 +23,7 @@ on:
 #  schedule:
 #    - cron: '29 21 * * *'
   push:
-    branches: [ "main", "actions" ]
+    branches: [ "main", "actions", "beta"]
     # Publish semver tags as releases.
 #    tags: [ 'v*.*.*' ]
 #  pull_request:
@@ -34,7 +34,7 @@ env:
   REGISTRY: ''
   # github.repository as <account>/<repo>
   IMAGE_NAME: ${{ github.repository }}
-  TAGS: flycash/webook:latest
+  TAGS: flycash/webook_beta:latest
 
 
 jobs:
@@ -48,31 +48,31 @@ jobs:
       id-token: write
 
     steps:
-      - name: Checkout Private GO
-        uses: actions/checkout@v4
-        with:
-          repository: ecodeclub/webook-private
-          ssh-key: ${{ secrets.WEBOOK_PRIVATE_DEPLOY_KEY }}
-          path: 'webook-private'
+#      - name: Checkout Private GO
+#        uses: actions/checkout@v4
+#        with:
+#          repository: ecodeclub/webook-private
+#          ssh-key: ${{ secrets.WEBOOK_PRIVATE_DEPLOY_KEY }}
+#          path: 'webook-private'
 
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           path: 'webook'
 #          指定分支
-          ref: 'main'
+          ref: 'beta'
       - name: Set up Go
         uses: actions/setup-go@v2
         with:
           go-version: '1.21'
 
-      - name: Init Go work
-        working-directory: ./webook
-        run: mv go_build.work go.work
+#      - name: Init Go work
+#        working-directory: ./webook
+#        run: mv go_build.work go.work
 
-      - name: go work sync
-        working-directory: ./webook
-        run: go work sync
+#      - name: go work sync
+#        working-directory: ./webook
+#        run: go work sync
 
       - name: go mod tidy
         working-directory: ./webook

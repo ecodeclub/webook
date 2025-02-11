@@ -18,6 +18,7 @@ package user
 
 import (
 	"github.com/ecodeclub/ecache"
+	"github.com/ecodeclub/ginx/session"
 	"github.com/ecodeclub/mq-api"
 	"github.com/ecodeclub/webook/internal/member"
 	"github.com/ecodeclub/webook/internal/permission"
@@ -42,6 +43,7 @@ func InitHandler(db *egorm.Component,
 	cache ecache.Cache,
 	q mq.MQ, creators []string,
 	memberSvc *member.Module,
+	sp session.Provider,
 	permissionSvc *permission.Module) *Handler {
 	wire.Build(
 		ProviderSet,

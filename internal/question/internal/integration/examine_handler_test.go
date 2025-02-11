@@ -22,6 +22,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ecodeclub/webook/internal/member"
+
 	"github.com/ecodeclub/webook/internal/ai"
 	aimocks "github.com/ecodeclub/webook/internal/ai/mocks"
 	"go.uber.org/mock/gomock"
@@ -63,7 +65,10 @@ func (s *ExamineHandlerTest) SetupSuite() {
 			Answer: "最终评分 \n 1",
 		}, nil
 	}).AnyTimes()
-	module, err := startup.InitModule(nil, &interactive.Module{}, &permission.Module{}, &ai.Module{Svc: aiSvc})
+	module, err := startup.InitModule(nil, nil, &interactive.Module{},
+		&permission.Module{}, &ai.Module{Svc: aiSvc},
+		session.DefaultProvider(),
+		&member.Module{})
 	require.NoError(s.T(), err)
 	hdl := module.ExamineHdl
 	s.db = testioc.InitDB()

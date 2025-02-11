@@ -46,6 +46,7 @@ type Handler struct {
 	// 白名单
 	creators []string
 	logger   *elog.Component
+	sp       session.Provider
 }
 
 func NewHandler(
@@ -55,7 +56,9 @@ func NewHandler(
 	weMiniSvc service.OAuth2Service,
 	userSvc service.UserService,
 	memberSvc member.Service,
-	permissionSvc permission.Service, creators []string) *Handler {
+	permissionSvc permission.Service,
+	sp session.Provider,
+	creators []string) *Handler {
 	return &Handler{
 		weSvc:         weSvc,
 		weMiniSvc:     weMiniSvc,
@@ -64,12 +67,14 @@ func NewHandler(
 		permissionSvc: permissionSvc,
 		creators:      creators,
 		logger:        elog.DefaultLogger,
+		sp:            sp,
 	}
 }
 
 func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	users := server.Group("/users")
 	users.GET("/profile", ginx.S(h.Profile))
+	users.POST("/logout", ginx.W(h.Logout))
 	users.POST("/profile", ginx.BS[EditReq](h.Edit))
 }
 
@@ -80,9 +85,20 @@ func (h *Handler) PublicRoutes(server *gin.Engine) {
 	oauth2.GET("/mock/login", appidFunc, ginx.W(h.MockLogin))
 	// 扫码登录回调
 	oauth2.Any("/wechat/callback", appidFunc, ginx.B[WechatCallback](h.Callback))
+
 	// 小程序登录回调
 	oauth2.Any("/wechat/mini/callback", appidFunc, ginx.B[WechatCallback](h.MiniCallback))
 	oauth2.Any("/wechat/token/refresh", appidFunc, ginx.W(h.RefreshAccessToken))
+}
+
+func (h *Handler) Logout(ctx *ginx.Context) (ginx.Result, error) {
+	err := h.sp.Destroy(ctx)
+	if err != nil {
+		return systemErrorResult, nil
+	}
+	return ginx.Result{
+		Msg: "OK",
+	}, nil
 }
 
 func (h *Handler) WechatAuthURL(ctx *ginx.Context) (ginx.Result, error) {

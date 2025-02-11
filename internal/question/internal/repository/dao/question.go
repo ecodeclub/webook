@@ -30,6 +30,8 @@ type QuestionDAO interface {
 	GetByID(ctx context.Context, id int64) (Question, []AnswerElement, error)
 	List(ctx context.Context, offset int, limit int) ([]Question, error)
 	Count(ctx context.Context) (int64, error)
+	// 用于
+	Ids(ctx context.Context) ([]int64, error)
 	// Delete 会直接删除制作库和线上库的数据
 	Delete(ctx context.Context, qid int64) error
 
@@ -37,7 +39,7 @@ type QuestionDAO interface {
 
 	// 线上库 API
 	PubList(ctx context.Context, offset int, limit int, biz string) ([]PublishQuestion, error)
-	PubCount(ctx context.Context) (int64, error)
+	PubCount(ctx context.Context, biz string) (int64, error)
 	GetPubByID(ctx context.Context, qid int64) (PublishQuestion, []PublishAnswerElement, error)
 	GetPubByIDs(ctx context.Context, qids []int64) ([]PublishQuestion, error)
 	NotInTotal(ctx context.Context, ids []int64) (int64, error)
@@ -46,6 +48,16 @@ type QuestionDAO interface {
 
 type GORMQuestionDAO struct {
 	db *egorm.Component
+}
+
+func (g *GORMQuestionDAO) Ids(ctx context.Context) ([]int64, error) {
+	var ids []int64
+	err := g.db.WithContext(ctx).
+		Select("id").
+		Model(&Question{}).
+		Where("status = ? ", 2).
+		Scan(&ids).Error
+	return ids, err
 }
 
 func (g *GORMQuestionDAO) NotInTotal(ctx context.Context, ids []int64) (int64, error) {
@@ -180,12 +192,13 @@ func (g *GORMQuestionDAO) PubList(ctx context.Context, offset int, limit int, bi
 	return res, err
 }
 
-func (g *GORMQuestionDAO) PubCount(ctx context.Context) (int64, error) {
+func (g *GORMQuestionDAO) PubCount(ctx context.Context, biz string) (int64, error) {
 	var res int64
-	err := g.db.WithContext(ctx).Model(&PublishQuestion{}).Select("COUNT(id)").Count(&res).Error
+	err := g.db.WithContext(ctx).
+		Where("biz = ?", biz).
+		Model(&PublishQuestion{}).Select("COUNT(id)").Count(&res).Error
 	return res, err
 }
-
 func (g *GORMQuestionDAO) GetByID(ctx context.Context, id int64) (Question, []AnswerElement, error) {
 	var q Question
 	db := g.db.WithContext(ctx)

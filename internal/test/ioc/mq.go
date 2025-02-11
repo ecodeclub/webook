@@ -91,6 +91,10 @@ func initMQ() (mq.MQ, error) {
 			Name:       "create_product",
 			Partitions: 1,
 		},
+		{
+			Name:       "knowledge_base_upload_topic",
+			Partitions: 1,
+		},
 	}
 	// 替换用内存实现，方便测试
 	qq := memory.NewMQ()

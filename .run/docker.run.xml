@@ -1,5 +1,5 @@
 <component name="ProjectRunConfigurationManager">
-  <configuration default="false" name="docker" type="docker-deploy" factoryName="docker-compose.yml" server-name="Docker">
+  <configuration default="false" name=".script/integration_test_compose.yml: Compose 部署" type="docker-deploy" factoryName="docker-compose.yml" server-name="Docker">
     <deployment type="docker-compose.yml">
       <settings>
         <option name="envFilePath" value="" />
