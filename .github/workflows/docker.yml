@@ -34,7 +34,7 @@ env:
   REGISTRY: ''
   # github.repository as <account>/<repo>
   IMAGE_NAME: ${{ github.repository }}
-  TAGS: flycash/webook_beta:latest
+  TAGS: flycash/webook:latest
 
 
 jobs:
@@ -60,7 +60,7 @@ jobs:
         with:
           path: 'webook'
 #          指定分支
-          ref: 'beta'
+          ref: 'main'
       - name: Set up Go
         uses: actions/setup-go@v2
         with:
