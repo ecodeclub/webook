@@ -5,6 +5,7 @@
 //
 //	mockgen -source=./native.go -package=wechatmocks -destination=./mocks/native.mock.go -typed NativeAPIService
 //
+
 // Package wechatmocks is a generated GoMock package.
 package wechatmocks
 
@@ -22,6 +23,7 @@ import (
 type MockNativeAPIService struct {
 	ctrl     *gomock.Controller
 	recorder *MockNativeAPIServiceMockRecorder
+	isgomock struct{}
 }
 
 // MockNativeAPIServiceMockRecorder is the mock recorder for MockNativeAPIService.
@@ -52,31 +54,31 @@ func (m *MockNativeAPIService) Prepay(ctx context.Context, req native.PrepayRequ
 }
 
 // Prepay indicates an expected call of Prepay.
-func (mr *MockNativeAPIServiceMockRecorder) Prepay(ctx, req any) *NativeAPIServicePrepayCall {
+func (mr *MockNativeAPIServiceMockRecorder) Prepay(ctx, req any) *MockNativeAPIServicePrepayCall {
 	mr.mock.ctrl.T.Helper()
 	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Prepay", reflect.TypeOf((*MockNativeAPIService)(nil).Prepay), ctx, req)
-	return &NativeAPIServicePrepayCall{Call: call}
+	return &MockNativeAPIServicePrepayCall{Call: call}
 }
 
-// NativeAPIServicePrepayCall wrap *gomock.Call
-type NativeAPIServicePrepayCall struct {
+// MockNativeAPIServicePrepayCall wrap *gomock.Call
+type MockNativeAPIServicePrepayCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *NativeAPIServicePrepayCall) Return(resp *native.PrepayResponse, result *core.APIResult, err error) *NativeAPIServicePrepayCall {
+func (c *MockNativeAPIServicePrepayCall) Return(resp *native.PrepayResponse, result *core.APIResult, err error) *MockNativeAPIServicePrepayCall {
 	c.Call = c.Call.Return(resp, result, err)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *NativeAPIServicePrepayCall) Do(f func(context.Context, native.PrepayRequest) (*native.PrepayResponse, *core.APIResult, error)) *NativeAPIServicePrepayCall {
+func (c *MockNativeAPIServicePrepayCall) Do(f func(context.Context, native.PrepayRequest) (*native.PrepayResponse, *core.APIResult, error)) *MockNativeAPIServicePrepayCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *NativeAPIServicePrepayCall) DoAndReturn(f func(context.Context, native.PrepayRequest) (*native.PrepayResponse, *core.APIResult, error)) *NativeAPIServicePrepayCall {
+func (c *MockNativeAPIServicePrepayCall) DoAndReturn(f func(context.Context, native.PrepayRequest) (*native.PrepayResponse, *core.APIResult, error)) *MockNativeAPIServicePrepayCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -92,31 +94,31 @@ func (m *MockNativeAPIService) QueryOrderByOutTradeNo(ctx context.Context, req n
 }
 
 // QueryOrderByOutTradeNo indicates an expected call of QueryOrderByOutTradeNo.
-func (mr *MockNativeAPIServiceMockRecorder) QueryOrderByOutTradeNo(ctx, req any) *NativeAPIServiceQueryOrderByOutTradeNoCall {
+func (mr *MockNativeAPIServiceMockRecorder) QueryOrderByOutTradeNo(ctx, req any) *MockNativeAPIServiceQueryOrderByOutTradeNoCall {
 	mr.mock.ctrl.T.Helper()
 	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryOrderByOutTradeNo", reflect.TypeOf((*MockNativeAPIService)(nil).QueryOrderByOutTradeNo), ctx, req)
-	return &NativeAPIServiceQueryOrderByOutTradeNoCall{Call: call}
+	return &MockNativeAPIServiceQueryOrderByOutTradeNoCall{Call: call}
 }
 
-// NativeAPIServiceQueryOrderByOutTradeNoCall wrap *gomock.Call
-type NativeAPIServiceQueryOrderByOutTradeNoCall struct {
+// MockNativeAPIServiceQueryOrderByOutTradeNoCall wrap *gomock.Call
+type MockNativeAPIServiceQueryOrderByOutTradeNoCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *NativeAPIServiceQueryOrderByOutTradeNoCall) Return(resp *payments.Transaction, result *core.APIResult, err error) *NativeAPIServiceQueryOrderByOutTradeNoCall {
+func (c *MockNativeAPIServiceQueryOrderByOutTradeNoCall) Return(resp *payments.Transaction, result *core.APIResult, err error) *MockNativeAPIServiceQueryOrderByOutTradeNoCall {
 	c.Call = c.Call.Return(resp, result, err)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *NativeAPIServiceQueryOrderByOutTradeNoCall) Do(f func(context.Context, native.QueryOrderByOutTradeNoRequest) (*payments.Transaction, *core.APIResult, error)) *NativeAPIServiceQueryOrderByOutTradeNoCall {
+func (c *MockNativeAPIServiceQueryOrderByOutTradeNoCall) Do(f func(context.Context, native.QueryOrderByOutTradeNoRequest) (*payments.Transaction, *core.APIResult, error)) *MockNativeAPIServiceQueryOrderByOutTradeNoCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *NativeAPIServiceQueryOrderByOutTradeNoCall) DoAndReturn(f func(context.Context, native.QueryOrderByOutTradeNoRequest) (*payments.Transaction, *core.APIResult, error)) *NativeAPIServiceQueryOrderByOutTradeNoCall {
+func (c *MockNativeAPIServiceQueryOrderByOutTradeNoCall) DoAndReturn(f func(context.Context, native.QueryOrderByOutTradeNoRequest) (*payments.Transaction, *core.APIResult, error)) *MockNativeAPIServiceQueryOrderByOutTradeNoCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

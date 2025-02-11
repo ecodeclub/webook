@@ -50,8 +50,9 @@ type (
 )
 
 const (
-	ChannelTypeCredit = domain.ChannelTypeCredit
-	ChannelTypeWechat = domain.ChannelTypeWechat
+	ChannelTypeCredit   = domain.ChannelTypeCredit
+	ChannelTypeWechat   = domain.ChannelTypeWechat
+	ChannelTypeWechatJS = domain.ChannelTypeWechatJS
 
 	StatusUnpaid      = domain.PaymentStatusUnpaid
 	StatusProcessing  = domain.PaymentStatusProcessing
@@ -64,32 +65,42 @@ func InitModule(db *egorm.Component,
 	c ecache.Cache,
 	cm *credit.Module) (*Module, error) {
 	wire.Build(
-		ioc.InitWechatNativeService,
+
 		ioc.InitWechatConfig,
-		ioc.InitWechatNotifyHandler,
-		convertToNotifyHandler,
+
+		// 构建Svc
+		// 构造NativePaymentService
 		ioc.InitWechatClient,
 		ioc.InitNativeApiService,
-		convertToNativeAPIService,
-		initDAO,
-		event.NewPaymentEventProducer,
-		web.NewHandler,
-		service.NewService,
-		repository.NewPaymentRepository,
-		sequencenumber.NewGenerator,
-		initSyncWechatOrderJob,
+		wire.Bind(new(wechat.NativeAPIService), new(*native.NativeApiService)),
+		ioc.InitWechatNativeService,
+		// 构造JSAPaymentService
+		newPaymentServices,
 		wire.FieldsOf(new(*credit.Module), "Svc"),
+		sequencenumber.NewGenerator,
+		initDAO,
+		repository.NewPaymentRepository,
+		event.NewPaymentEventProducer,
+		service.NewService,
+
+		// 构建Hdl
+		ioc.InitWechatNotifyHandler,
+		wire.Bind(new(wechat.NotifyHandler), new(*notify.Handler)),
+
+		web.NewHandler,
+
+		// 构建SyncWechatOrderJob
+		initSyncWechatOrderJob,
+
 		wire.Struct(new(Module), "*"),
 	)
 	return new(Module), nil
 }
 
-func convertToNotifyHandler(h *notify.Handler) wechat.NotifyHandler {
-	return h
-}
-
-func convertToNativeAPIService(n *native.NativeApiService) wechat.NativeAPIService {
-	return n
+func newPaymentServices(n *wechat.NativePaymentService) map[ChannelType]service.PaymentService {
+	return map[ChannelType]service.PaymentService{
+		ChannelTypeWechat: n,
+	}
 }
 
 var (

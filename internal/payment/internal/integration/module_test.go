@@ -305,6 +305,7 @@ func (s *PaymentModuleTestSuite) TestService_GetPaymentChannels() {
 	require.Equal(t, []domain.PaymentChannel{
 		{Type: domain.ChannelTypeCredit, Desc: "积分"},
 		{Type: domain.ChannelTypeWechat, Desc: "微信"},
+		// {Type: domain.ChannelTypeWechatJS, Desc: "微信小程序"},
 	}, channels)
 }
 

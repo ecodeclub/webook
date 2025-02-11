@@ -21,8 +21,9 @@ func (c ChannelType) ToUnit8() uint8 {
 }
 
 const (
-	ChannelTypeCredit ChannelType = 1
-	ChannelTypeWechat ChannelType = 2
+	ChannelTypeCredit   ChannelType = 1
+	ChannelTypeWechat   ChannelType = 2
+	ChannelTypeWechatJS ChannelType = 3
 )
 
 type PaymentStatus uint8
@@ -73,11 +74,14 @@ type PaymentChannel struct {
 type PaymentRecord struct {
 	PaymentID int64
 	// 第三方那边返回的 ID TxnID string
-	PaymentNO3rd  string
-	Description   string
-	Channel       ChannelType
-	Amount        int64
-	PaidAt        int64
-	Status        PaymentStatus
+	PaymentNO3rd string
+	Description  string
+	Channel      ChannelType
+	Amount       int64
+	PaidAt       int64
+	Status       PaymentStatus
+	// Native 支付方式使用
 	WechatCodeURL string
+	// JSAPI 支付方式使用
+	WechatPrepayID string
 }
