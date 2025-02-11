@@ -35,6 +35,7 @@ import (
 	"github.com/ego-component/egorm"
 	"github.com/google/wire"
 	"github.com/wechatpay-apiv3/wechatpay-go/core/notify"
+	"github.com/wechatpay-apiv3/wechatpay-go/services/payments/jsapi"
 	"github.com/wechatpay-apiv3/wechatpay-go/services/payments/native"
 	"gorm.io/gorm"
 )
@@ -73,9 +74,13 @@ func InitModule(db *egorm.Component,
 		ioc.InitWechatClient,
 		ioc.InitNativeApiService,
 		wire.Bind(new(wechat.NativeAPIService), new(*native.NativeApiService)),
-		ioc.InitWechatNativeService,
+		ioc.InitWechatNativePaymentService,
 		// 构造JSAPaymentService
+		ioc.InitJSApiService,
+		wire.Bind(new(wechat.JSAPIService), new(*jsapi.JsapiApiService)),
+		ioc.InitWechatJSAPIPaymentService,
 		newPaymentServices,
+
 		wire.FieldsOf(new(*credit.Module), "Svc"),
 		sequencenumber.NewGenerator,
 		initDAO,
@@ -97,9 +102,10 @@ func InitModule(db *egorm.Component,
 	return new(Module), nil
 }
 
-func newPaymentServices(n *wechat.NativePaymentService) map[ChannelType]service.PaymentService {
+func newPaymentServices(n *wechat.NativePaymentService, j *wechat.JSAPIPaymentService) map[ChannelType]service.PaymentService {
 	return map[ChannelType]service.PaymentService{
-		ChannelTypeWechat: n,
+		ChannelTypeWechat:   n,
+		ChannelTypeWechatJS: j,
 	}
 }
 

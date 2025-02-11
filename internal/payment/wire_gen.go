@@ -32,8 +32,10 @@ func InitModule(db *gorm.DB, mq2 mq.MQ, c ecache.Cache, cm *credit.Module) (*Mod
 	handler := ioc.InitWechatNotifyHandler(wechatConfig)
 	client := ioc.InitWechatClient(wechatConfig)
 	nativeApiService := ioc.InitNativeApiService(client)
-	nativePaymentService := ioc.InitWechatNativeService(nativeApiService, wechatConfig)
-	v := newPaymentServices(nativePaymentService)
+	nativePaymentService := ioc.InitWechatNativePaymentService(nativeApiService, wechatConfig)
+	jsapiApiService := ioc.InitJSApiService(client)
+	jsapiPaymentService := ioc.InitWechatJSAPIPaymentService(jsapiApiService, wechatConfig)
+	v := newPaymentServices(nativePaymentService, jsapiPaymentService)
 	serviceService := cm.Svc
 	generator := sequencenumber.NewGenerator()
 	daoPaymentDAO := initDAO(db)
@@ -76,9 +78,10 @@ const (
 	StatusPaidFailed  = domain.PaymentStatusPaidFailed
 )
 
-func newPaymentServices(n *wechat.NativePaymentService) map[ChannelType]service.PaymentService {
+func newPaymentServices(n *wechat.NativePaymentService, j *wechat.JSAPIPaymentService) map[ChannelType]service.PaymentService {
 	return map[ChannelType]service.PaymentService{
-		ChannelTypeWechat: n,
+		ChannelTypeWechat:   n,
+		ChannelTypeWechatJS: j,
 	}
 }
 

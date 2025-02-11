@@ -52,8 +52,9 @@ type CreateOrderReq struct {
 }
 
 type CreateOrderResp struct {
-	SN            string `json:"sn"`
-	WechatCodeURL string `json:"wechatCodeURL,omitempty"`
+	SN             string `json:"sn"`
+	WechatCodeURL  string `json:"wechatCodeURL,omitempty"`
+	WechatPrepayID string `json:"wechatPrepayID,omitempty"`
 }
 
 // OrderSNReq 继续支付订单、获取订单状态、获取订单详情、取消订单
@@ -63,7 +64,8 @@ type OrderSNReq struct {
 
 // RepayOrderResp 继续支付
 type RepayOrderResp struct {
-	WechatCodeURL string `json:"wechatCodeURL,omitempty"`
+	WechatCodeURL  string `json:"wechatCodeURL,omitempty"`
+	WechatPrepayID string `json:"wechatPrepayID,omitempty"`
 }
 
 // RetrieveOrderStatusResp 获取订单状态

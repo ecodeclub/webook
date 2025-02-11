@@ -62,7 +62,7 @@ func (s *SyncWechatOrderJob) Run(ctx context.Context) error {
 
 		for _, pmt := range payments {
 			_, ok := slice.Find(pmt.Records, func(src domain.PaymentRecord) bool {
-				return src.Channel == domain.ChannelTypeWechat
+				return src.Channel == domain.ChannelTypeWechat || src.Channel == domain.ChannelTypeWechatJS
 			})
 			if !ok {
 				// 非微信支付渠道支付,直接关闭

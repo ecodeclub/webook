@@ -35,7 +35,7 @@ import (
 
 var serviceSet = wire.NewSet(
 	initWechatConfig,
-	ioc.InitWechatNativeService,
+
 	wire.FieldsOf(new(*credit.Module), "Svc"),
 
 	sequencenumber.NewGenerator,
@@ -47,18 +47,21 @@ var serviceSet = wire.NewSet(
 
 func InitService(p event.PaymentEventProducer,
 	cm *credit.Module,
-	native wechat.NativeAPIService) payment.Service {
+	native wechat.NativeAPIService, js wechat.JSAPIService) payment.Service {
 	wire.Build(
 		serviceSet,
+		ioc.InitWechatNativePaymentService,
+		ioc.InitWechatJSAPIPaymentService,
 		newPaymentServices,
 		service.NewService,
 	)
 	return nil
 }
 
-func newPaymentServices(n *wechat.NativePaymentService) map[payment.ChannelType]service.PaymentService {
+func newPaymentServices(n *wechat.NativePaymentService, j *wechat.JSAPIPaymentService) map[payment.ChannelType]service.PaymentService {
 	return map[payment.ChannelType]service.PaymentService{
-		payment.ChannelTypeWechat: n,
+		payment.ChannelTypeWechat:   n,
+		payment.ChannelTypeWechatJS: j,
 	}
 }
 

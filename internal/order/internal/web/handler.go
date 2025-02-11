@@ -137,15 +137,22 @@ func (h *Handler) CreateOrder(ctx *ginx.Context, req CreateOrderReq, sess sessio
 		return systemErrorResult, err
 	}
 
-	wechatCodeURL, err := h.processPaymentForOrder(ctx.Request.Context(), p.ID)
+	channelType, resp, err := h.processPaymentForOrder(ctx.Request.Context(), p.ID)
 	if err != nil {
 		return systemErrorResult, err
+	}
+	var wechatCodeURL, wechatPrepayID string
+	if channelType == payment.ChannelTypeWechat {
+		wechatCodeURL = resp
+	} else if channelType == payment.ChannelTypeWechatJS {
+		wechatPrepayID = resp
 	}
 
 	return ginx.Result{
 		Data: CreateOrderResp{
-			SN:            order.SN,
-			WechatCodeURL: wechatCodeURL,
+			SN:             order.SN,
+			WechatCodeURL:  wechatCodeURL,
+			WechatPrepayID: wechatPrepayID,
 		},
 	}, nil
 }
@@ -243,8 +250,13 @@ func (h *Handler) createPayment(ctx context.Context, order domain.Order, payment
 	orderDescription := "面窝吧"
 	records := make([]payment.Record, 0, len(paymentChannels))
 	realTotalAmt := int64(0)
+	channelsSet := map[payment.ChannelType]struct{}{
+		payment.ChannelTypeCredit:   {},
+		payment.ChannelTypeWechat:   {},
+		payment.ChannelTypeWechatJS: {},
+	}
 	for _, pc := range paymentChannels {
-		if pc.Type != int64(payment.ChannelTypeCredit) && pc.Type != int64(payment.ChannelTypeWechat) {
+		if _, ok := channelsSet[payment.ChannelType(pc.Type)]; !ok {
 			return payment.Payment{}, fmt.Errorf("支付渠道非法")
 		}
 		records = append(records, payment.Record{
@@ -266,19 +278,26 @@ func (h *Handler) createPayment(ctx context.Context, order domain.Order, payment
 	})
 }
 
-func (h *Handler) processPaymentForOrder(ctx context.Context, pmtID int64) (string, error) {
+func (h *Handler) processPaymentForOrder(ctx context.Context, pmtID int64) (payment.ChannelType, string, error) {
 	p, err := h.paymentSvc.PayByID(ctx, pmtID)
 	if err != nil {
-		return "", fmt.Errorf("执行支付失败: %w, pmtID: %d", err, pmtID)
+		return 0, "", fmt.Errorf("执行支付失败: %w, pmtID: %d", err, pmtID)
 	}
 	// 微信支付需要返回二维码URL
-	var wechatCodeURL string
+	var prepayResp string
+	var channelType payment.ChannelType
 	for _, r := range p.Records {
 		if payment.ChannelTypeWechat == r.Channel {
-			wechatCodeURL = r.WechatCodeURL
+			prepayResp = r.WechatCodeURL
+			channelType = r.Channel
+			break
+		} else if payment.ChannelTypeWechatJS == r.Channel {
+			prepayResp = r.WechatPrepayID
+			channelType = r.Channel
+			break
 		}
 	}
-	return wechatCodeURL, nil
+	return channelType, prepayResp, nil
 }
 
 // RepayOrder 继续支付订单
@@ -294,13 +313,21 @@ func (h *Handler) RepayOrder(ctx *ginx.Context, req OrderSNReq, sess session.Ses
 		return systemErrorResult, fmt.Errorf("订单状态非法: %w, uid: %d, sn: %s", err, uid, req.SN)
 	}
 
-	wechatCodeURL, err := h.processPaymentForOrder(ctx.Request.Context(), order.Payment.ID)
+	channelType, resp, err := h.processPaymentForOrder(ctx.Request.Context(), order.Payment.ID)
 	if err != nil {
 		return systemErrorResult, fmt.Errorf("执行支付失败: %w", err)
 	}
+	var wechatCodeURL, wechatPrepayID string
+	if channelType == payment.ChannelTypeWechat {
+		wechatCodeURL = resp
+	} else if channelType == payment.ChannelTypeWechatJS {
+		wechatPrepayID = resp
+	}
+
 	return ginx.Result{
 		Data: RepayOrderResp{
-			WechatCodeURL: wechatCodeURL,
+			WechatCodeURL:  wechatCodeURL,
+			WechatPrepayID: wechatPrepayID,
 		},
 	}, nil
 }

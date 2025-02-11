@@ -25,10 +25,11 @@ import (
 
 // Injectors from wire.go:
 
-func InitService(p event.PaymentEventProducer, cm *credit.Module, native wechat.NativeAPIService) service.Service {
+func InitService(p event.PaymentEventProducer, cm *credit.Module, native wechat.NativeAPIService, js wechat.JSAPIService) service.Service {
 	wechatConfig := initWechatConfig()
-	nativePaymentService := ioc.InitWechatNativeService(native, wechatConfig)
-	v := newPaymentServices(nativePaymentService)
+	nativePaymentService := ioc.InitWechatNativePaymentService(native, wechatConfig)
+	jsapiPaymentService := ioc.InitWechatJSAPIPaymentService(js, wechatConfig)
+	v := newPaymentServices(nativePaymentService, jsapiPaymentService)
 	serviceService := cm.Svc
 	generator := sequencenumber.NewGenerator()
 	db := testioc.InitDB()
@@ -41,11 +42,11 @@ func InitService(p event.PaymentEventProducer, cm *credit.Module, native wechat.
 // wire.go:
 
 var serviceSet = wire.NewSet(
-	initWechatConfig, ioc.InitWechatNativeService, wire.FieldsOf(new(*credit.Module), "Svc"), sequencenumber.NewGenerator, testioc.BaseSet, InitDAO, repository.NewPaymentRepository,
+	initWechatConfig, wire.FieldsOf(new(*credit.Module), "Svc"), sequencenumber.NewGenerator, testioc.BaseSet, InitDAO, repository.NewPaymentRepository,
 )
 
-func newPaymentServices(n *wechat.NativePaymentService) map[payment.ChannelType]service.PaymentService {
-	return map[payment.ChannelType]service.PaymentService{payment.ChannelTypeWechat: n}
+func newPaymentServices(n *wechat.NativePaymentService, j *wechat.JSAPIPaymentService) map[payment.ChannelType]service.PaymentService {
+	return map[payment.ChannelType]service.PaymentService{payment.ChannelTypeWechat: n, payment.ChannelTypeWechatJS: j}
 }
 
 var (

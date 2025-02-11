@@ -34,6 +34,10 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
+var (
+	invalidCombinationPayment = errors.New("非法组合支付")
+)
+
 //go:generate mockgen -source=service.go -package=paymentmocks -destination=../../mocks/payment.mock.go -typed Service
 type Service interface {
 	CreatePayment(ctx context.Context, pmt domain.Payment) (domain.Payment, error)
@@ -137,11 +141,7 @@ func (s *service) PayByID(ctx context.Context, pmtID int64) (domain.Payment, err
 
 func (s *service) executePayment(ctx context.Context, pmt *domain.Payment) error {
 
-	channels := slice.Map(pmt.Records, func(idx int, src domain.PaymentRecord) domain.ChannelType {
-		return pmt.Records[idx].Channel
-	})
-	slices.Sort(channels)
-
+	channels := s.getChannelTypes(pmt)
 	switch len(channels) {
 	case 1:
 		switch channels[0] {
@@ -153,39 +153,28 @@ func (s *service) executePayment(ctx context.Context, pmt *domain.Payment) error
 			return s.prepay(ctx, pmt, channels[0])
 		}
 	case 2:
-		if channels[0] != domain.ChannelTypeCredit {
-			return errors.New("非法组合支付")
+		if channels[0] != domain.ChannelTypeCredit || channels[1] == domain.ChannelTypeCredit {
+			return invalidCombinationPayment
 		}
 		// 混合预支付
 		return s.prepayByCreditAnd3rdPayment(ctx, pmt, channels[1])
 	}
-	return errors.New("非法组合支付")
+	return invalidCombinationPayment
+}
+
+func (s *service) getChannelTypes(pmt *domain.Payment) []domain.ChannelType {
+	channels := slice.Map(pmt.Records, func(idx int, src domain.PaymentRecord) domain.ChannelType {
+		return pmt.Records[idx].Channel
+	})
+	slices.Sort(channels)
+	return channels
 }
 
 func (s *service) payByCredit(ctx context.Context, pmt *domain.Payment) error {
 
-	idx := slice.IndexFunc(pmt.Records, func(src domain.PaymentRecord) bool {
-		return src.Channel == domain.ChannelTypeCredit
-	})
-
-	if idx == -1 || pmt.Records[idx].Amount == 0 {
-		return fmt.Errorf("缺少积分支付金额信息")
-	}
-
-	tid, err := s.creditSvc.TryDeductCredits(ctx, credit.Credit{
-		Uid: pmt.PayerID,
-		Logs: []credit.CreditLog{
-			{
-				Key:          pmt.OrderSN,
-				ChangeAmount: pmt.Records[idx].Amount,
-				Biz:          "order",
-				BizId:        pmt.OrderID,
-				Desc:         pmt.Records[idx].Description,
-			},
-		},
-	})
+	idx, tid, err := s.getCreditIndexAndDeductID(ctx, pmt)
 	if err != nil {
-		return fmt.Errorf("预扣积分失败: %w", err)
+		return err
 	}
 
 	err = s.creditSvc.ConfirmDeductCredits(ctx, pmt.PayerID, tid)
@@ -208,6 +197,33 @@ func (s *service) payByCredit(ctx context.Context, pmt *domain.Payment) error {
 		return err
 	}
 	return s.sendPaymentEvent(ctx, pmt)
+}
+
+func (s *service) getCreditIndexAndDeductID(ctx context.Context, pmt *domain.Payment) (int, int64, error) {
+	idx := slice.IndexFunc(pmt.Records, func(src domain.PaymentRecord) bool {
+		return src.Channel == domain.ChannelTypeCredit
+	})
+
+	if idx == -1 || pmt.Records[idx].Amount == 0 {
+		return 0, 0, fmt.Errorf("缺少积分支付金额信息")
+	}
+
+	tid, err := s.creditSvc.TryDeductCredits(ctx, credit.Credit{
+		Uid: pmt.PayerID,
+		Logs: []credit.CreditLog{
+			{
+				Key:          pmt.OrderSN,
+				ChangeAmount: pmt.Records[idx].Amount,
+				Biz:          "order",
+				BizId:        pmt.OrderID,
+				Desc:         pmt.Records[idx].Description,
+			},
+		},
+	})
+	if err != nil {
+		return 0, 0, fmt.Errorf("预扣积分失败: %w", err)
+	}
+	return idx, tid, nil
 }
 
 func (s *service) sendPaymentEvent(ctx context.Context, pmt *domain.Payment) error {
@@ -256,28 +272,9 @@ func (s *service) prepay(ctx context.Context, pmt *domain.Payment, channel domai
 
 func (s *service) prepayByCreditAnd3rdPayment(ctx context.Context, pmt *domain.Payment, channel domain.ChannelType) error {
 
-	creditIdx := slice.IndexFunc(pmt.Records, func(src domain.PaymentRecord) bool {
-		return src.Channel == domain.ChannelTypeCredit
-	})
-
-	if creditIdx == -1 || pmt.Records[creditIdx].Amount == 0 {
-		return fmt.Errorf("缺少积分支付金额信息")
-	}
-
-	tid, err := s.creditSvc.TryDeductCredits(context.Background(), credit.Credit{
-		Uid: pmt.PayerID,
-		Logs: []credit.CreditLog{
-			{
-				Key:          pmt.OrderSN,
-				ChangeAmount: pmt.Records[creditIdx].Amount,
-				Biz:          "order",
-				BizId:        pmt.OrderID,
-				Desc:         pmt.Records[creditIdx].Description,
-			},
-		},
-	})
+	creditIdx, tid, err := s.getCreditIndexAndDeductID(ctx, pmt)
 	if err != nil {
-		return fmt.Errorf("预扣积分失败: %w", err)
+		return err
 	}
 
 	thirdPartyPayment := s.thirdPartyPayments[channel]
@@ -288,17 +285,17 @@ func (s *service) prepayByCreditAnd3rdPayment(ctx context.Context, pmt *domain.P
 	}
 
 	// 设置字段
-	wechatIdx := slice.IndexFunc(pmt.Records, func(src domain.PaymentRecord) bool {
+	channelIdx := slice.IndexFunc(pmt.Records, func(src domain.PaymentRecord) bool {
 		return src.Channel == thirdPartyPayment.Name()
 	})
 
 	pmt.Status = domain.PaymentStatusProcessing
 	if thirdPartyPayment.Name() == domain.ChannelTypeWechat {
-		pmt.Records[wechatIdx].WechatCodeURL = resp
+		pmt.Records[channelIdx].WechatCodeURL = resp
 	} else if thirdPartyPayment.Name() == domain.ChannelTypeWechatJS {
-		pmt.Records[wechatIdx].WechatPrepayID = resp
+		pmt.Records[channelIdx].WechatPrepayID = resp
 	}
-	pmt.Records[wechatIdx].Status = domain.PaymentStatusProcessing
+	pmt.Records[channelIdx].Status = domain.PaymentStatusProcessing
 	pmt.Records[creditIdx].PaymentNO3rd = strconv.FormatInt(tid, 10)
 	pmt.Records[creditIdx].Status = domain.PaymentStatusProcessing
 
@@ -312,7 +309,12 @@ func (s *service) prepayByCreditAnd3rdPayment(ctx context.Context, pmt *domain.P
 }
 
 func (s *service) HandleWechatCallback(ctx context.Context, txn *payments.Transaction) error {
-	pmt, err := s.thirdPartyPayments[domain.ChannelTypeWechat].ConvertCallbackTransactionToDomain(txn)
+	channelType, err := strconv.ParseInt(*txn.Attach, 10, 64)
+	if err != nil {
+		return fmt.Errorf("解析附加数据失败：%w", err)
+	}
+
+	pmt, err := s.thirdPartyPayments[domain.ChannelType(channelType)].ConvertCallbackTransactionToDomain(txn)
 	if err != nil {
 		return err
 	}
@@ -428,15 +430,19 @@ func (s *service) CloseTimeoutPayment(ctx context.Context, pmt domain.Payment) e
 }
 
 func (s *service) SyncWechatInfo(ctx context.Context, pmt domain.Payment) error {
-	p, err := s.thirdPartyPayments[domain.ChannelTypeWechat].QueryOrderBySN(ctx, pmt.OrderSN)
+
+	channelTypes := s.getChannelTypes(&pmt)
+	channelType := channelTypes[len(channelTypes)-1]
+	p, err := s.thirdPartyPayments[channelType].QueryOrderBySN(ctx, pmt.OrderSN)
 	if err != nil {
 		return err
 	}
 
 	if p.Status == domain.PaymentStatusTimeoutClosed {
 		idx := slice.IndexFunc(pmt.Records, func(src domain.PaymentRecord) bool {
-			return src.Channel == domain.ChannelTypeWechat
+			return src.Channel == channelType
 		})
+		// p.Records是通过第三方支付响应构造的，所以Records中只有一个元素可以安全使用0
 		pmt.Records[idx].PaymentNO3rd = p.Records[0].PaymentNO3rd
 		return s.CloseTimeoutPayment(ctx, pmt)
 	}
