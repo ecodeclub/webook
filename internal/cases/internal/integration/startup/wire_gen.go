@@ -7,6 +7,7 @@
 package startup
 
 import (
+	"github.com/ecodeclub/ginx/session"
 	"github.com/ecodeclub/webook/internal/ai"
 	"github.com/ecodeclub/webook/internal/cases"
 	"github.com/ecodeclub/webook/internal/cases/internal/event"
@@ -15,12 +16,13 @@ import (
 	"github.com/ecodeclub/webook/internal/cases/internal/service"
 	"github.com/ecodeclub/webook/internal/cases/internal/web"
 	"github.com/ecodeclub/webook/internal/interactive"
+	"github.com/ecodeclub/webook/internal/member"
 	testioc "github.com/ecodeclub/webook/internal/test/ioc"
 )
 
 // Injectors from wire.go:
 
-func InitModule(syncProducer event.SyncEventProducer, knowledgeBaseProducer event.KnowledgeBaseEventProducer, aiModule *ai.Module, intrModule *interactive.Module) (*cases.Module, error) {
+func InitModule(syncProducer event.SyncEventProducer, knowledgeBaseProducer event.KnowledgeBaseEventProducer, aiModule *ai.Module, memberModule *member.Module, sp session.Provider, intrModule *interactive.Module) (*cases.Module, error) {
 	db := testioc.InitDB()
 	caseDAO := cases.InitCaseDAO(db)
 	caseRepo := repository.NewCaseRepo(caseDAO)
@@ -36,7 +38,8 @@ func InitModule(syncProducer event.SyncEventProducer, knowledgeBaseProducer even
 	llmService := aiModule.Svc
 	examineService := service.NewLLMExamineService(caseRepo, examineRepository, llmService)
 	service2 := intrModule.Svc
-	handler := web.NewHandler(serviceService, examineService, service2)
+	service3 := memberModule.Svc
+	handler := web.NewHandler(serviceService, examineService, service2, service3, sp)
 	caseSetDAO := dao.NewCaseSetDAO(db)
 	caseSetRepository := repository.NewCaseSetRepo(caseSetDAO)
 	caseSetService := service.NewCaseSetService(caseSetRepository, caseRepo, interactiveEventProducer)
@@ -55,7 +58,7 @@ func InitModule(syncProducer event.SyncEventProducer, knowledgeBaseProducer even
 	return module, nil
 }
 
-func InitExamModule(syncProducer event.SyncEventProducer, knowledgeBaseProducer event.KnowledgeBaseEventProducer, intrModule *interactive.Module, aiModule *ai.Module) (*cases.Module, error) {
+func InitExamModule(syncProducer event.SyncEventProducer, knowledgeBaseProducer event.KnowledgeBaseEventProducer, intrModule *interactive.Module, memberModule *member.Module, sp session.Provider, aiModule *ai.Module) (*cases.Module, error) {
 	db := testioc.InitDB()
 	caseDAO := cases.InitCaseDAO(db)
 	caseRepo := repository.NewCaseRepo(caseDAO)
@@ -73,11 +76,12 @@ func InitExamModule(syncProducer event.SyncEventProducer, knowledgeBaseProducer 
 	llmService := aiModule.Svc
 	examineService := service.NewLLMExamineService(caseRepo, examineRepository, llmService)
 	service2 := intrModule.Svc
-	handler := web.NewHandler(serviceService, examineService, service2)
+	service3 := memberModule.Svc
+	handler := web.NewHandler(serviceService, examineService, service2, service3, sp)
 	adminCaseSetHandler := web.NewAdminCaseSetHandler(caseSetService)
 	adminCaseHandler := web.NewAdminCaseHandler(serviceService)
 	examineHandler := web.NewExamineHandler(examineService)
-	caseSetHandler := web.NewCaseSetHandler(caseSetService, examineService, service2)
+	caseSetHandler := web.NewCaseSetHandler(caseSetService, examineService, service2, sp)
 	repositoryBaseSvc := aiModule.KnowledgeBaseSvc
 	knowledgeBaseService := initKnowledgeBaseSvc(repositoryBaseSvc, caseRepo)
 	knowledgeBaseHandler := web.NewKnowledgeBaseHandler(knowledgeBaseService)

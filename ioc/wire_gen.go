@@ -66,7 +66,7 @@ func InitApp() (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	baguwenModule, err := baguwen.InitModule(db, interactiveModule, cache, permissionModule, aiModule, mq)
+	baguwenModule, err := baguwen.InitModule(db, interactiveModule, cache, permissionModule, aiModule, module, provider, mq)
 	if err != nil {
 		return nil, err
 	}
@@ -74,10 +74,10 @@ func InitApp() (*App, error) {
 	examineHandler := baguwenModule.ExamineHdl
 	questionSetHandler := baguwenModule.QsHdl
 	webHandler := label.InitHandler(db)
-	handler2 := InitUserHandler(db, cache, mq, module, permissionModule)
+	handler2 := InitUserHandler(db, provider, cache, mq, module, permissionModule)
 	config := InitCosConfig()
 	handler3 := cos.InitHandler(config)
-	casesModule, err := cases.InitModule(db, interactiveModule, aiModule, mq)
+	casesModule, err := cases.InitModule(db, interactiveModule, aiModule, module, provider, mq)
 	if err != nil {
 		return nil, err
 	}
@@ -104,7 +104,7 @@ func InitApp() (*App, error) {
 		return nil, err
 	}
 	handler8 := orderModule.Hdl
-	projectModule, err := project.InitModule(db, interactiveModule, permissionModule, mq)
+	projectModule, err := project.InitModule(db, interactiveModule, permissionModule, mq, provider)
 	if err != nil {
 		return nil, err
 	}
@@ -136,7 +136,7 @@ func InitApp() (*App, error) {
 	projectHandler := resumeModule.PrjHdl
 	analysisHandler := resumeModule.AnalysisHandler
 	handler17 := aiModule.Hdl
-	reviewModule := review.InitModule(db, interactiveModule, mq)
+	reviewModule := review.InitModule(db, interactiveModule, mq, provider)
 	handler18 := reviewModule.Hdl
 	component := initGinxServer(provider, checkMembershipMiddlewareBuilder, localActiveLimit, checkPermissionMiddlewareBuilder, handler, examineHandler, questionSetHandler, webHandler, handler2, handler3, handler4, handler5, handler6, handler7, handler8, handler9, handler10, handler11, handler12, handler13, handler14, handler15, handler16, caseSetHandler, webExamineHandler, projectHandler, analysisHandler, handler17, handler18)
 	adminHandler := projectModule.AdminHdl

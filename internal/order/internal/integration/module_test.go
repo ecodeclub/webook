@@ -187,7 +187,7 @@ func (s *OrderModuleTestSuite) TestHandler_PreviewOrder() {
 						RealTotalAmt:     990,
 						Items: []web.OrderItem{
 							{
-								SPU: web.SPU{Category: "code"},
+								SPU: web.SPU{Category0: "code", Category1: "member"},
 								SKU: web.SKU{
 									SN:            "SKU100",
 									Image:         "SKUImage100",
@@ -1463,7 +1463,7 @@ func (s *OrderModuleTestSuite) TestHandler_ListOrders() {
 							Status:           domain.StatusProcessing.ToUint8(),
 							Items: []web.OrderItem{
 								{
-									SPU: web.SPU{Category: "code"},
+									SPU: web.SPU{Category0: "code", Category1: "member"},
 									SKU: web.SKU{
 										SN:            fmt.Sprintf("SKUSN-%d", 199),
 										Image:         fmt.Sprintf("SKUImage-%d", 199),
@@ -1487,7 +1487,7 @@ func (s *OrderModuleTestSuite) TestHandler_ListOrders() {
 							Status:           domain.StatusTimeoutClosed.ToUint8(),
 							Items: []web.OrderItem{
 								{
-									SPU: web.SPU{Category: "code"},
+									SPU: web.SPU{Category0: "code", Category1: "member"},
 									SKU: web.SKU{
 										SN:            fmt.Sprintf("SKUSN-%d", 197),
 										Image:         fmt.Sprintf("SKUImage-%d", 197),
@@ -1614,7 +1614,7 @@ func (s *OrderModuleTestSuite) TestHandler_RetrieveOrderDetail() {
 						Status:           domain.StatusProcessing.ToUint8(),
 						Items: []web.OrderItem{
 							{
-								SPU: web.SPU{Category: "code"},
+								SPU: web.SPU{Category0: "code", Category1: "member"},
 								SKU: web.SKU{
 									SN:            fmt.Sprintf("SKUSN-%d", 1),
 									Image:         fmt.Sprintf("SKUImage-%d", 1),

@@ -9,6 +9,7 @@ package cases
 import (
 	"sync"
 
+	"github.com/ecodeclub/ginx/session"
 	"github.com/ecodeclub/mq-api"
 	"github.com/ecodeclub/webook/internal/ai"
 	"github.com/ecodeclub/webook/internal/cases/internal/event"
@@ -17,13 +18,14 @@ import (
 	"github.com/ecodeclub/webook/internal/cases/internal/service"
 	"github.com/ecodeclub/webook/internal/cases/internal/web"
 	"github.com/ecodeclub/webook/internal/interactive"
+	"github.com/ecodeclub/webook/internal/member"
 	"github.com/ego-component/egorm"
 	"gorm.io/gorm"
 )
 
 // Injectors from wire.go:
 
-func InitModule(db *gorm.DB, intrModule *interactive.Module, aiModule *ai.Module, q mq.MQ) (*Module, error) {
+func InitModule(db *gorm.DB, intrModule *interactive.Module, aiModule *ai.Module, memberModule *member.Module, sp session.Provider, q mq.MQ) (*Module, error) {
 	caseDAO := InitCaseDAO(db)
 	caseRepo := repository.NewCaseRepo(caseDAO)
 	interactiveEventProducer, err := event.NewInteractiveEventProducer(q)
@@ -44,11 +46,12 @@ func InitModule(db *gorm.DB, intrModule *interactive.Module, aiModule *ai.Module
 	llmService := aiModule.Svc
 	examineService := service.NewLLMExamineService(caseRepo, examineRepository, llmService)
 	service2 := intrModule.Svc
-	handler := web.NewHandler(serviceService, examineService, service2)
+	service3 := memberModule.Svc
+	handler := web.NewHandler(serviceService, examineService, service2, service3, sp)
 	adminCaseSetHandler := web.NewAdminCaseSetHandler(caseSetService)
 	adminCaseHandler := web.NewAdminCaseHandler(serviceService)
 	examineHandler := web.NewExamineHandler(examineService)
-	caseSetHandler := web.NewCaseSetHandler(caseSetService, examineService, service2)
+	caseSetHandler := web.NewCaseSetHandler(caseSetService, examineService, service2, sp)
 	repositoryBaseSvc := aiModule.KnowledgeBaseSvc
 	knowledgeBaseService := InitKnowledgeBaseSvc(repositoryBaseSvc, caseRepo)
 	knowledgeBaseHandler := web.NewKnowledgeBaseHandler(knowledgeBaseService)

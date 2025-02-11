@@ -30,7 +30,6 @@ import (
 
 	"github.com/ecodeclub/ginx"
 	"github.com/ecodeclub/ginx/session"
-	"github.com/ecodeclub/webook-private/nonsense"
 	"github.com/ecodeclub/webook/internal/marketing"
 	"github.com/ecodeclub/webook/internal/project"
 	"github.com/gin-contrib/cors"
@@ -71,7 +70,7 @@ func InitAdminServer(prj *project.AdminHandler,
 	})
 
 	// 安全校验
-	res.Use(nonsense.NonSenseV1)
+	//res.Use(nonsense.NonSenseV1)
 	// 登录校验
 	res.Use(session.CheckLoginMiddleware())
 	res.Use(AdminPermission())

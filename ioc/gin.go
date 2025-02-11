@@ -45,8 +45,6 @@ import (
 	"github.com/ecodeclub/webook/internal/pkg/middleware"
 	"github.com/ecodeclub/webook/internal/skill"
 
-	"github.com/ecodeclub/webook-private/nonsense"
-
 	"github.com/ecodeclub/webook/internal/cases"
 
 	"github.com/ecodeclub/webook/internal/label"
@@ -125,8 +123,9 @@ func initGinxServer(sp session.Provider,
 	// 虽然叫做 NonSense，但是我还是得告诉你，这是一个安全校验机制
 	// 但是我并不能在开源里面放出来，因为知道了如何校验，就知道了如何破解
 	// 虽然理论上可以用 plugin 机制，但是 plugin 机制比较容易遇到不兼容的问题
-	// 实在不想处理
-	res.Use(nonsense.NonSenseV1)
+	// 实在不想处理，暂时取消，因为在 server 端渲染的情况下，没有特别大的意义了
+	// res.Use(nonsense.NonSenseV1)
+
 	res.Use(localActiveLimiterMiddleware.Build())
 	user.PublicRoutes(res.Engine)
 	qh.PublicRoutes(res.Engine)
@@ -137,11 +136,11 @@ func initGinxServer(sp session.Provider,
 	csHdl.PublicRoutes(res.Engine)
 	prjHdl.PublicRoutes(res.Engine)
 	reviewHdl.PublicRoutes(res.Engine)
+
 	// 登录校验
 	res.Use(session.CheckLoginMiddleware())
 	user.PrivateRoutes(res.Engine)
 	lhdl.PrivateRoutes(res.Engine)
-	qsh.PrivateRoutes(res.Engine)
 	cosHdl.PrivateRoutes(res.Engine)
 	pHdl.PrivateRoutes(res.Engine)
 	orderHdl.PrivateRoutes(res.Engine)
@@ -159,15 +158,12 @@ func initGinxServer(sp session.Provider,
 
 	// 会员校验
 	res.Use(checkMembershipMiddleware.Build())
-	qh.MemberRoutes(res.Engine)
 	examineHdl.MemberRoutes(res.Engine)
-	caseHdl.MemberRoutes(res.Engine)
 	fbHdl.MemberRoutes(res.Engine)
 	skillHdl.MemberRoutes(res.Engine)
 	caseExamineHdl.MemberRoutes(res.Engine)
 	resumePrjHdl.MemberRoutes(res.Engine)
 	resumeAnaHdl.MemberRoutes(res.Engine)
 	aiHdl.MemberRoutes(res.Engine)
-	reviewHdl.MemberRoutes(res.Engine)
 	return res
 }

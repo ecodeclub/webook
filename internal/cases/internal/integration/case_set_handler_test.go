@@ -10,6 +10,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ecodeclub/webook/internal/member"
+
 	"github.com/ecodeclub/ekit/iox"
 	"github.com/ecodeclub/ginx/session"
 	"github.com/ecodeclub/webook/internal/ai"
@@ -65,8 +67,8 @@ func (s *CaseSetTestSuite) SetupSuite() {
 		intr := s.mockInteractive(biz, id)
 		return intr, nil
 	})
-	intrSvc.EXPECT().GetByIds(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context,
-		biz string, ids []int64) (map[int64]interactive.Interactive, error) {
+	intrSvc.EXPECT().GetByIds(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context,
+		biz string, uid int64, ids []int64) (map[int64]interactive.Interactive, error) {
 		res := make(map[int64]interactive.Interactive, len(ids))
 		for _, id := range ids {
 			intr := s.mockInteractive(biz, id)
@@ -75,7 +77,9 @@ func (s *CaseSetTestSuite) SetupSuite() {
 		return res, nil
 	}).AnyTimes()
 
-	module, err := startup.InitExamModule(s.producer, nil, intrModule, &ai.Module{})
+	module, err := startup.InitExamModule(s.producer, nil, intrModule, &member.Module{},
+		session.DefaultProvider(),
+		&ai.Module{})
 	require.NoError(s.T(), err)
 	econf.Set("server", map[string]any{"contextTimeout": "1s"})
 	server := egin.Load("server").Build()

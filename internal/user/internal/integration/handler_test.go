@@ -90,7 +90,7 @@ func (s *HandleTestSuite) SetupSuite() {
 		&member.Module{Svc: memSvc},
 		&permission.Module{
 			Svc: permSvc,
-		}, nil)
+		}, session.DefaultProvider(), nil)
 	s.mockWeSvc = wesvc
 	s.mockWeMiniSvc = weMiniSvc
 	server.Use(func(ctx *gin.Context) {
@@ -564,7 +564,7 @@ func (s *HandlerWithAppTestSuite) SetupSuite() {
 		&member.Module{Svc: memSvc},
 		&permission.Module{
 			Svc: permSvc,
-		}, nil)
+		}, session.DefaultProvider(), nil)
 	s.mockWeSvc = wesvc
 	s.mockWeMiniSvc = weMiniSvc
 	//

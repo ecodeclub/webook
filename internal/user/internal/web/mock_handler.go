@@ -27,6 +27,10 @@ import (
 // MockLogin 模拟的，用来开发测试环境省略登录过程
 func (h *Handler) MockLogin(ctx *ginx.Context) (ginx.Result, error) {
 	const uid = 1
+	profile, err := h.userSvc.Profile(ctx, uid)
+	if err != nil {
+		return systemErrorResult, err
+	}
 	// 构建session
 	jwtData := map[string]string{}
 	jwtData["creator"] = strconv.FormatBool(true)
@@ -34,11 +38,15 @@ func (h *Handler) MockLogin(ctx *ginx.Context) (ginx.Result, error) {
 	memberDDL := time.Now().Add(time.Hour * 24).UnixMilli()
 	jwtData["memberDDL"] = strconv.FormatInt(memberDDL, 10)
 
-	_, err := session.NewSessionBuilder(ctx, uid).SetJwtData(jwtData).Build()
+	_, err = session.NewSessionBuilder(ctx, uid).SetJwtData(jwtData).Build()
 	if err != nil {
 		return systemErrorResult, err
 	}
+	res := newProfile(profile)
+	res.IsCreator = true
+	res.MemberDDL = memberDDL
 	return ginx.Result{
-		Msg: "OK",
+		Msg:  "OK",
+		Data: res,
 	}, nil
 }

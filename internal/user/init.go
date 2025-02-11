@@ -16,6 +16,7 @@ package user
 
 import (
 	"github.com/ecodeclub/ecache"
+	"github.com/ecodeclub/ginx/session"
 	"github.com/ecodeclub/mq-api"
 	"github.com/ecodeclub/webook/internal/member"
 	"github.com/ecodeclub/webook/internal/permission"
@@ -32,8 +33,9 @@ func iniHandler(
 	weMiniSvc wechatMiniOAuth2Service,
 	userSvc service.UserService,
 	memberSvc member.Service,
+	sp session.Provider,
 	permissionSvc permission.Service, creators []string) *Handler {
-	return web.NewHandler(weSvc, weMiniSvc, userSvc, memberSvc, permissionSvc, creators)
+	return web.NewHandler(weSvc, weMiniSvc, userSvc, memberSvc, permissionSvc, sp, creators)
 }
 
 func initWechatMiniOAuthService() wechatMiniOAuth2Service {

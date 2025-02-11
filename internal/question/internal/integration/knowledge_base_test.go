@@ -11,6 +11,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ecodeclub/webook/internal/member"
+
 	"github.com/ecodeclub/ekit/iox"
 	"github.com/ecodeclub/ginx/session"
 	"github.com/ecodeclub/webook/internal/ai"
@@ -114,7 +116,9 @@ func (k *KnowledgeBaseTestSuite) TestKnowledgeBaseSync() {
 	}
 	module, err := startup.InitModule(nil, nil, intrModule, &permission.Module{}, &ai.Module{
 		KnowledgeBaseSvc: svc,
-	})
+	},
+		session.DefaultProvider(),
+		&member.Module{})
 	require.NoError(k.T(), err)
 	econf.Set("server", map[string]any{"contextTimeout": "1s"})
 	server := egin.Load("server").Build()
