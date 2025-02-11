@@ -44,6 +44,7 @@ func InitSession(cmd redis.Cmdable) session.Provider {
 		Name:     "ssid",
 		Secure:   true,
 		HttpOnly: true,
+		Domain:   ".mianshi.icu",
 	}
 	headerC := header.NewTokenCarrier()
 	sp.TokenCarrier = mixin.NewTokenCarrier(headerC, cookieC)
