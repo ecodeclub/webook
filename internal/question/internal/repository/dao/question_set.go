@@ -29,6 +29,8 @@ type QuestionSetDAO interface {
 	GetByID(ctx context.Context, id int64) (QuestionSet, error)
 
 	GetQuestionsByID(ctx context.Context, id int64) ([]Question, error)
+	GetPubQuestionsByID(ctx context.Context, id int64) ([]PublishQuestion, error)
+
 	UpdateQuestionsByID(ctx context.Context, id int64, qids []int64) error
 	CountByBiz(ctx context.Context, biz string) (int64, error)
 	Count(ctx context.Context) (int64, error)
@@ -149,6 +151,21 @@ func (g *GORMQuestionSetDAO) GetQuestionsByID(ctx context.Context, id int64) ([]
 		questionIDs[i] = qsq[i].QID
 	}
 	var q []Question
+	err := tx.WithContext(ctx).Where("id IN ?", questionIDs).Order("id ASC").Find(&q).Error
+	return q, err
+}
+
+func (g *GORMQuestionSetDAO) GetPubQuestionsByID(ctx context.Context, id int64) ([]PublishQuestion, error) {
+	var qsq []QuestionSetQuestion
+	tx := g.db.WithContext(ctx)
+	if err := tx.Find(&qsq, "qs_id = ?", id).Error; err != nil {
+		return nil, err
+	}
+	questionIDs := make([]int64, len(qsq))
+	for i := range qsq {
+		questionIDs[i] = qsq[i].QID
+	}
+	var q []PublishQuestion
 	err := tx.WithContext(ctx).Where("id IN ?", questionIDs).Order("id ASC").Find(&q).Error
 	return q, err
 }
