@@ -47,6 +47,8 @@ web:
 
 session:
   sessionEncryptedKey: "abcd"
+  cookie:
+    domain: ".mianshi.icu"
 
 kafka:
   network: tcp

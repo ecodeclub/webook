@@ -354,6 +354,7 @@ func (s *SetHandlerTestSuite) TestQuestionSet_Detail() {
 		wantCode int
 		wantResp test.Result[web.QuestionSet]
 	}{
+
 		{
 			name: "空题集",
 			before: func(t *testing.T, req *http.Request) {
@@ -421,7 +422,7 @@ func (s *SetHandlerTestSuite) TestQuestionSet_Detail() {
 				require.Equal(t, int64(322), id)
 
 				// 添加问题
-				questions := []dao.Question{
+				questions := []dao.PublishQuestion{
 					{
 						Id:      614,
 						Uid:     uid + 1,
@@ -469,7 +470,7 @@ func (s *SetHandlerTestSuite) TestQuestionSet_Detail() {
 				require.NoError(t, err)
 
 				// 题集中题目为1
-				qs, err := s.questionSetDAO.GetQuestionsByID(ctx, id)
+				qs, err := s.questionSetDAO.GetPubQuestionsByID(ctx, id)
 				require.NoError(t, err)
 				require.Equal(t, len(qids), len(qs))
 			},
@@ -567,7 +568,7 @@ func (s *SetHandlerTestSuite) TestQuestionSet_Detail() {
 				require.Equal(t, int64(333), id)
 
 				// 添加问题
-				questions := []dao.Question{
+				questions := []dao.PublishQuestion{
 					{
 						Id:      714,
 						Uid:     uid + 1,
@@ -615,7 +616,7 @@ func (s *SetHandlerTestSuite) TestQuestionSet_Detail() {
 				require.NoError(t, err)
 
 				// 题集中题目为1
-				qs, err := s.questionSetDAO.GetQuestionsByID(ctx, id)
+				qs, err := s.questionSetDAO.GetPubQuestionsByID(ctx, id)
 				require.NoError(t, err)
 				require.Equal(t, len(qids), len(qs))
 			},
@@ -681,6 +682,166 @@ func (s *SetHandlerTestSuite) TestQuestionSet_Detail() {
 								ViewCnt:    717,
 								LikeCnt:    718,
 								CollectCnt: 719,
+								Liked:      false,
+								Collected:  true,
+							},
+							Utime: now,
+						},
+					},
+					Utime: now,
+				},
+			},
+		},
+		{
+			name: "非空题集-忽略未发布",
+			before: func(t *testing.T, req *http.Request) {
+				t.Helper()
+
+				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+				defer cancel()
+
+				// 创建一个空题集
+				id, err := s.questionSetDAO.Create(ctx, dao.QuestionSet{
+					Id:          433,
+					Uid:         uid,
+					Title:       "Go",
+					Description: "Go题集",
+					Biz:         "roadmap",
+					BizId:       2,
+					Utime:       now,
+				})
+				require.NoError(t, err)
+				require.Equal(t, int64(433), id)
+
+				// 添加问题
+				questions := []dao.PublishQuestion{
+					{
+						Id:      814,
+						Uid:     uid + 1,
+						Biz:     "project",
+						BizId:   1,
+						Title:   "Go问题1",
+						Content: "Go问题1",
+						Ctime:   now,
+						Utime:   now,
+					},
+					{
+						Id:      815,
+						Uid:     uid + 2,
+						Biz:     "project",
+						BizId:   1,
+						Title:   "Go问题2",
+						Content: "Go问题2",
+						Ctime:   now,
+						Utime:   now,
+					},
+					{
+						Id:      816,
+						Uid:     uid + 3,
+						Biz:     "project",
+						BizId:   1,
+						Title:   "Go问题3",
+						Content: "Go问题3",
+						Ctime:   now,
+						Utime:   now,
+					},
+				}
+				err = s.db.WithContext(ctx).Create(&questions).Error
+				require.NoError(t, err)
+
+				err = s.db.WithContext(ctx).Create(&dao.Question{
+					Id:      817,
+					Uid:     uid + 3,
+					Biz:     "project",
+					BizId:   1,
+					Title:   "Go问题3",
+					Content: "Go问题3",
+					Status:  domain.UnPublishedStatus.ToUint8(),
+					Ctime:   now,
+					Utime:   now,
+				}).Error
+				require.NoError(t, err)
+				// 817 还没发布
+				qids := []int64{814, 815, 816, 817}
+				require.NoError(t, s.questionSetDAO.UpdateQuestionsByID(ctx, id, qids))
+
+				// 添加用户答题记录，只需要添加一个就可以
+				err = s.db.WithContext(ctx).Create(&dao.QuestionResult{
+					Uid:    uid,
+					Qid:    814,
+					Result: domain.ResultAdvanced.ToUint8(),
+					Ctime:  now,
+					Utime:  now,
+				}).Error
+				require.NoError(t, err)
+
+				// 题集中题目为1
+				qs, err := s.questionSetDAO.GetPubQuestionsByID(ctx, id)
+				require.NoError(t, err)
+				require.Equal(t, len(questions), len(qs))
+			},
+			after: func(t *testing.T) {
+			},
+			req: web.QuestionSetID{
+				QSID: 433,
+			},
+			wantCode: 200,
+			wantResp: test.Result[web.QuestionSet]{
+				Data: web.QuestionSet{
+					Id:          433,
+					Biz:         "roadmap",
+					BizId:       2,
+					Title:       "Go",
+					Description: "Go题集",
+					Interactive: web.Interactive{
+						ViewCnt:    434,
+						LikeCnt:    435,
+						CollectCnt: 436,
+						Liked:      true,
+						Collected:  false,
+					},
+					Questions: []web.Question{
+						{
+							Id:      814,
+							Biz:     "project",
+							BizId:   1,
+							Title:   "Go问题1",
+							Content: "Go问题1",
+							Interactive: web.Interactive{
+								ViewCnt:    815,
+								LikeCnt:    816,
+								CollectCnt: 817,
+								Liked:      false,
+								Collected:  true,
+							},
+							ExamineResult: domain.ResultAdvanced.ToUint8(),
+							Utime:         now,
+						},
+						{
+							Id:      815,
+							Biz:     "project",
+							BizId:   1,
+							Title:   "Go问题2",
+							Content: "Go问题2",
+							Interactive: web.Interactive{
+								ViewCnt:    816,
+								LikeCnt:    817,
+								CollectCnt: 818,
+								Liked:      true,
+								Collected:  false,
+							},
+							Utime: now,
+						},
+						{
+							Id:      816,
+							Biz:     "project",
+							BizId:   1,
+							Title:   "Go问题3",
+							Content: "Go问题3",
+							Interactive: web.Interactive{
+								ViewCnt:    817,
+								LikeCnt:    818,
+								CollectCnt: 819,
 								Liked:      false,
 								Collected:  true,
 							},

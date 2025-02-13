@@ -30,6 +30,9 @@ import (
 func InitSession(cmd redis.Cmdable) session.Provider {
 	type Config struct {
 		SessionEncryptedKey string `yaml:"sessionEncryptedKey"`
+		Cookie              struct {
+			Domain string `yaml:"domain"`
+		} `yaml:"cookie"`
 	}
 	var cfg Config
 	err := econf.UnmarshalKey("session", &cfg)
@@ -44,7 +47,7 @@ func InitSession(cmd redis.Cmdable) session.Provider {
 		Name:     "ssid",
 		Secure:   true,
 		HttpOnly: true,
-		Domain:   ".mianshi.icu",
+		Domain:   cfg.Cookie.Domain,
 	}
 	headerC := header.NewTokenCarrier()
 	sp.TokenCarrier = mixin.NewTokenCarrier(headerC, cookieC)
