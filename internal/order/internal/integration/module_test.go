@@ -530,7 +530,7 @@ func (s *OrderModuleTestSuite) TestHandler_CreateOrder() {
 			},
 		},
 		{
-			name: "创建成功_积分和微信组合支付",
+			name: "创建成功_积分和微信Native组合支付",
 			newHandlerFunc: func(t *testing.T, ctrl *gomock.Controller) *web.Handler {
 				t.Helper()
 
@@ -618,6 +618,105 @@ func (s *OrderModuleTestSuite) TestHandler_CreateOrder() {
 				t.Helper()
 				assert.NotZero(t, result.Data.SN)
 				assert.NotZero(t, result.Data.WechatCodeURL)
+				assert.Zero(t, result.Data.WechatPrepayID)
+			},
+			after: func(t *testing.T) {
+				t.Helper()
+				orders, _, err := s.svc.FindUserVisibleOrdersByUID(context.Background(), testUID, 1, 1)
+				require.NoError(t, err)
+				require.Equal(t, domain.StatusProcessing, orders[0].Status)
+			},
+		},
+		{
+			name: "创建成功_积分和微信JSAPI组合支付",
+			newHandlerFunc: func(t *testing.T, ctrl *gomock.Controller) *web.Handler {
+				t.Helper()
+
+				mockPaymentSvc := paymentmocks.NewMockService(ctrl)
+				id := int64(3)
+				var pmt *payment.Payment
+				mockPaymentSvc.EXPECT().CreatePayment(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, p payment.Payment) (payment.Payment, error) {
+					pmt = &payment.Payment{
+						ID:               id,
+						SN:               fmt.Sprintf("PaymentSN-create-order-%d", id),
+						OrderID:          p.OrderID,
+						OrderSN:          p.OrderSN,
+						PayerID:          p.PayerID,
+						OrderDescription: p.OrderDescription,
+						TotalAmount:      p.TotalAmount,
+						Records: []payment.Record{
+							{
+								PaymentNO3rd: "credit-1",
+								Channel:      payment.ChannelTypeCredit,
+								Amount:       1000,
+							},
+							{
+								PaymentNO3rd: "wechat-3",
+								Channel:      payment.ChannelTypeWechatJS,
+								Amount:       8990,
+							},
+						},
+					}
+					return *pmt, nil
+				})
+
+				mockPaymentSvc.EXPECT().PayByID(gomock.Any(), id).DoAndReturn(func(ctx context.Context, i int64) (payment.Payment, error) {
+					pmt.Records[0].Status = payment.StatusProcessing
+					pmt.Records[1].Status = payment.StatusProcessing
+					pmt.Records[1].WechatPrepayID = "webchat_prepay_id"
+					return *pmt, nil
+				})
+				pm := &payment.Module{Svc: mockPaymentSvc}
+
+				mockProductSvc := productmocks.NewMockService(ctrl)
+				spuId := int64(101)
+				mockProductSvc.EXPECT().FindSKUBySN(gomock.Any(), gomock.Any()).Return(product.SKU{
+					ID:       101,
+					SPUID:    spuId,
+					SN:       "SKU101",
+					Image:    "SKUImage101",
+					Name:     "商品SKU101",
+					Desc:     "商品SKU101",
+					Price:    9900,
+					Stock:    1,
+					SaleType: product.SaleTypeUnlimited, // 无限制
+					Status:   product.StatusOnShelf,
+				}, nil)
+				mockProductSvc.EXPECT().FindSPUByID(gomock.Any(), spuId).Return(product.SPU{
+					ID:        spuId,
+					SN:        "SPU-SKU101",
+					Name:      "SPU-商品SKU101",
+					Desc:      "SPU-商品SKU101",
+					Category0: "code",
+					Category1: "member",
+				}, nil)
+				ppm := &product.Module{Svc: mockProductSvc}
+
+				cm := &credit.Module{Svc: creditmocks.NewMockService(ctrl)}
+
+				handler, err := startup.InitHandler(pm, ppm, cm)
+				require.NoError(t, err)
+				return handler
+			},
+			req: web.CreateOrderReq{
+				RequestID: "requestID03",
+				SKUs: []web.SKU{
+					{
+						SN:       "SKU101",
+						Quantity: 1,
+					},
+				},
+				PaymentItems: []web.PaymentItem{
+					{Type: int64(payment.ChannelTypeCredit), Amount: 1000},
+					{Type: int64(payment.ChannelTypeWechatJS), Amount: 8900},
+				},
+			},
+			wantCode: 200,
+			assertRespFunc: func(t *testing.T, result test.Result[web.CreateOrderResp]) {
+				t.Helper()
+				assert.NotZero(t, result.Data.SN)
+				assert.NotZero(t, result.Data.WechatPrepayID)
+				assert.Zero(t, result.Data.WechatCodeURL)
 			},
 			after: func(t *testing.T) {
 				t.Helper()
@@ -996,7 +1095,7 @@ func (s *OrderModuleTestSuite) TestHandler_Repay() {
 		assertRespFunc func(t *testing.T, result test.Result[web.RepayOrderResp])
 	}{
 		{
-			name: "继续支付订单成功_返回二维码",
+			name: "继续支付订单成功_微信Native支付_返回二维码",
 			before: func(t *testing.T) {
 				t.Helper()
 				_, err := s.dao.CreateOrder(context.Background(), dao.Order{
@@ -1057,10 +1156,11 @@ func (s *OrderModuleTestSuite) TestHandler_Repay() {
 			assertRespFunc: func(t *testing.T, result test.Result[web.RepayOrderResp]) {
 				t.Helper()
 				assert.NotZero(t, result.Data.WechatCodeURL)
+				assert.Zero(t, result.Data.WechatPrepayID)
 			},
 		},
 		{
-			name: "继续支付订单成功_不返回二维码",
+			name: "继续支付订单成功_微信Native支付_不返回二维码",
 			before: func(t *testing.T) {
 				t.Helper()
 				_, err := s.dao.CreateOrder(context.Background(), dao.Order{
@@ -1114,6 +1214,130 @@ func (s *OrderModuleTestSuite) TestHandler_Repay() {
 			assertRespFunc: func(t *testing.T, result test.Result[web.RepayOrderResp]) {
 				t.Helper()
 				assert.Zero(t, result.Data.WechatCodeURL)
+				assert.Zero(t, result.Data.WechatPrepayID)
+			},
+		},
+		{
+			name: "继续支付订单成功_微信JSAPI支付_返回PrepayID",
+			before: func(t *testing.T) {
+				t.Helper()
+				_, err := s.dao.CreateOrder(context.Background(), dao.Order{
+					Id:               11214,
+					SN:               "orderSN-repay-11214",
+					BuyerId:          testUID,
+					PaymentId:        sqlx.NewNullInt64(214),
+					PaymentSn:        sqlx.NewNullString("paymentSN-repay-214"),
+					OriginalTotalAmt: 9900,
+					RealTotalAmt:     9900,
+					Status:           domain.StatusProcessing.ToUint8(),
+				}, []dao.OrderItem{
+					s.newOrderItemDAO(11214, 1),
+				})
+				require.NoError(t, err)
+			},
+			newHandlerFunc: func(t *testing.T, ctrl *gomock.Controller) *web.Handler {
+				t.Helper()
+
+				mockPaymentSvc := paymentmocks.NewMockService(ctrl)
+				id := int64(214)
+				mockPaymentSvc.EXPECT().PayByID(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, pmtID int64) (payment.Payment, error) {
+					return payment.Payment{
+						ID:          id,
+						SN:          fmt.Sprintf("paymentSN-repay-%d", id),
+						OrderID:     11214,
+						OrderSN:     fmt.Sprintf("orderSN-repay-11%d", id),
+						TotalAmount: 9990,
+						Records: []payment.Record{
+							{
+								PaymentNO3rd: "credit-1",
+								Channel:      payment.ChannelTypeCredit,
+								Amount:       1000,
+								Status:       payment.StatusProcessing,
+							},
+							{
+								PaymentNO3rd:   "wechat-3",
+								Channel:        payment.ChannelTypeWechatJS,
+								Amount:         8990,
+								Status:         payment.StatusProcessing,
+								WechatPrepayID: fmt.Sprintf("webchat_repay-%d", id),
+							},
+						},
+					}, nil
+				})
+				pm := &payment.Module{Svc: mockPaymentSvc}
+				ppm := &product.Module{Svc: productmocks.NewMockService(ctrl)}
+				cm := &credit.Module{Svc: creditmocks.NewMockService(ctrl)}
+				handler, err := startup.InitHandler(pm, ppm, cm)
+				require.NoError(t, err)
+				return handler
+
+			},
+			req: web.OrderSNReq{
+				SN: "orderSN-repay-11214",
+			},
+			wantCode: 200,
+			assertRespFunc: func(t *testing.T, result test.Result[web.RepayOrderResp]) {
+				t.Helper()
+				assert.NotZero(t, result.Data.WechatPrepayID)
+				assert.Zero(t, result.Data.WechatCodeURL)
+			},
+		},
+		{
+			name: "继续支付订单成功_微信JSAPI支付_不返回PrepayID",
+			before: func(t *testing.T) {
+				t.Helper()
+				_, err := s.dao.CreateOrder(context.Background(), dao.Order{
+					Id:               11215,
+					SN:               "orderSN-repay-11215",
+					BuyerId:          testUID,
+					PaymentId:        sqlx.NewNullInt64(215),
+					PaymentSn:        sqlx.NewNullString("paymentSN-repay-215"),
+					OriginalTotalAmt: 9900,
+					RealTotalAmt:     9900,
+					Status:           domain.StatusProcessing.ToUint8(),
+				}, []dao.OrderItem{
+					s.newOrderItemDAO(11215, 1),
+				})
+				require.NoError(t, err)
+			},
+			newHandlerFunc: func(t *testing.T, ctrl *gomock.Controller) *web.Handler {
+				t.Helper()
+
+				mockPaymentSvc := paymentmocks.NewMockService(ctrl)
+				id := int64(215)
+				mockPaymentSvc.EXPECT().PayByID(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, pmtID int64) (payment.Payment, error) {
+					return payment.Payment{
+						ID:          id,
+						SN:          fmt.Sprintf("paymentSN-repay-%d", id),
+						OrderID:     11215,
+						OrderSN:     fmt.Sprintf("orderSN-repay-11%d", id),
+						TotalAmount: 9990,
+						Records: []payment.Record{
+							{
+								PaymentNO3rd: "credit-1",
+								Channel:      payment.ChannelTypeCredit,
+								Amount:       9990,
+								Status:       payment.StatusProcessing,
+							},
+						},
+					}, nil
+				})
+				pm := &payment.Module{Svc: mockPaymentSvc}
+				ppm := &product.Module{Svc: productmocks.NewMockService(ctrl)}
+				cm := &credit.Module{Svc: creditmocks.NewMockService(ctrl)}
+				handler, err := startup.InitHandler(pm, ppm, cm)
+				require.NoError(t, err)
+				return handler
+
+			},
+			req: web.OrderSNReq{
+				SN: "orderSN-repay-11215",
+			},
+			wantCode: 200,
+			assertRespFunc: func(t *testing.T, result test.Result[web.RepayOrderResp]) {
+				t.Helper()
+				assert.Zero(t, result.Data.WechatCodeURL)
+				assert.Zero(t, result.Data.WechatPrepayID)
 			},
 		},
 	}

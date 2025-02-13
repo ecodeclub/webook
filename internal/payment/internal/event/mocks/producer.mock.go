@@ -5,6 +5,7 @@
 //
 //	mockgen -source=./producer.go -package=evtmocks -destination=./mocks/producer.mock.go -typed PaymentEventProducer
 //
+
 // Package evtmocks is a generated GoMock package.
 package evtmocks
 
@@ -20,6 +21,7 @@ import (
 type MockPaymentEventProducer struct {
 	ctrl     *gomock.Controller
 	recorder *MockPaymentEventProducerMockRecorder
+	isgomock struct{}
 }
 
 // MockPaymentEventProducerMockRecorder is the mock recorder for MockPaymentEventProducer.
@@ -48,31 +50,31 @@ func (m *MockPaymentEventProducer) Produce(ctx context.Context, evt event.Paymen
 }
 
 // Produce indicates an expected call of Produce.
-func (mr *MockPaymentEventProducerMockRecorder) Produce(ctx, evt any) *PaymentEventProducerProduceCall {
+func (mr *MockPaymentEventProducerMockRecorder) Produce(ctx, evt any) *MockPaymentEventProducerProduceCall {
 	mr.mock.ctrl.T.Helper()
 	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Produce", reflect.TypeOf((*MockPaymentEventProducer)(nil).Produce), ctx, evt)
-	return &PaymentEventProducerProduceCall{Call: call}
+	return &MockPaymentEventProducerProduceCall{Call: call}
 }
 
-// PaymentEventProducerProduceCall wrap *gomock.Call
-type PaymentEventProducerProduceCall struct {
+// MockPaymentEventProducerProduceCall wrap *gomock.Call
+type MockPaymentEventProducerProduceCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *PaymentEventProducerProduceCall) Return(arg0 error) *PaymentEventProducerProduceCall {
+func (c *MockPaymentEventProducerProduceCall) Return(arg0 error) *MockPaymentEventProducerProduceCall {
 	c.Call = c.Call.Return(arg0)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *PaymentEventProducerProduceCall) Do(f func(context.Context, event.PaymentEvent) error) *PaymentEventProducerProduceCall {
+func (c *MockPaymentEventProducerProduceCall) Do(f func(context.Context, event.PaymentEvent) error) *MockPaymentEventProducerProduceCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *PaymentEventProducerProduceCall) DoAndReturn(f func(context.Context, event.PaymentEvent) error) *PaymentEventProducerProduceCall {
+func (c *MockPaymentEventProducerProduceCall) DoAndReturn(f func(context.Context, event.PaymentEvent) error) *MockPaymentEventProducerProduceCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

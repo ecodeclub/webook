@@ -25,27 +25,27 @@ import (
 	"github.com/gotomicro/ego/core/elog"
 	"github.com/wechatpay-apiv3/wechatpay-go/core"
 	"github.com/wechatpay-apiv3/wechatpay-go/services/payments"
-	"github.com/wechatpay-apiv3/wechatpay-go/services/payments/native"
+	"github.com/wechatpay-apiv3/wechatpay-go/services/payments/jsapi"
 )
 
-//go:generate mockgen -source=./native.go -package=wechatmocks -destination=./mocks/native.mock.go -typed NativeAPIService
-type NativeAPIService interface {
-	Prepay(ctx context.Context, req native.PrepayRequest) (resp *native.PrepayResponse, result *core.APIResult, err error)
-	QueryOrderByOutTradeNo(ctx context.Context, req native.QueryOrderByOutTradeNoRequest) (resp *payments.Transaction, result *core.APIResult, err error)
+//go:generate mockgen -source=./jsapi.go -package=wechatmocks -destination=./mocks/jsapi.mock.go -typed JSAPIService
+type JSAPIService interface {
+	Prepay(ctx context.Context, req jsapi.PrepayRequest) (resp *jsapi.PrepayResponse, result *core.APIResult, err error)
+	QueryOrderByOutTradeNo(ctx context.Context, req jsapi.QueryOrderByOutTradeNoRequest) (resp *payments.Transaction, result *core.APIResult, err error)
 }
 
-type NativePaymentService struct {
-	svc NativeAPIService
+type JSAPIPaymentService struct {
+	svc JSAPIService
 	basePaymentService
 }
 
-func NewNativePaymentService(svc NativeAPIService, appid, mchid, notifyURL string) *NativePaymentService {
-	return &NativePaymentService{
+func NewJSAPIPaymentService(svc JSAPIService, appid, mchid, notifyURL string) *JSAPIPaymentService {
+	return &JSAPIPaymentService{
 		svc: svc,
 		basePaymentService: basePaymentService{
 			l:                           elog.DefaultLogger,
-			name:                        domain.ChannelTypeWechat,
-			desc:                        "微信",
+			name:                        domain.ChannelTypeWechatJS,
+			desc:                        "微信小程序",
 			appID:                       appid,
 			mchID:                       mchid,
 			notifyURL:                   notifyURL,
@@ -54,48 +54,49 @@ func NewNativePaymentService(svc NativeAPIService, appid, mchid, notifyURL strin
 	}
 }
 
-func (n *NativePaymentService) Name() domain.ChannelType {
+func (n *JSAPIPaymentService) Name() domain.ChannelType {
 	return n.name
 }
 
-func (n *NativePaymentService) Desc() string {
+func (n *JSAPIPaymentService) Desc() string {
 	return n.desc
 }
 
-func (n *NativePaymentService) Prepay(ctx context.Context, pmt domain.Payment) (string, error) {
+func (n *JSAPIPaymentService) Prepay(ctx context.Context, pmt domain.Payment) (string, error) {
 
 	r, ok := slice.Find(pmt.Records, func(src domain.PaymentRecord) bool {
-		return src.Channel == domain.ChannelTypeWechat
+		return src.Channel == domain.ChannelTypeWechatJS
 	})
 	if !ok || r.Amount == 0 {
 		return "", fmt.Errorf("缺少微信支付金额信息")
 	}
 
 	resp, _, err := n.svc.Prepay(ctx,
-		native.PrepayRequest{
+		jsapi.PrepayRequest{
 			Appid:       core.String(n.appID),
 			Mchid:       core.String(n.mchID),
 			Description: core.String(pmt.OrderDescription),
 			OutTradeNo:  core.String(pmt.OrderSN),
 			TimeExpire:  core.Time(time.Now().Add(time.Minute * 30)),
 			NotifyUrl:   core.String(n.notifyURL),
-			Amount: &native.Amount{
+			Amount: &jsapi.Amount{
 				Currency: core.String("CNY"),
 				Total:    core.Int64(r.Amount),
 			},
-			Attach: core.String(strconv.FormatInt(int64(domain.ChannelTypeWechat), 10)),
+			Payer:  &jsapi.Payer{Openid: core.String(strconv.FormatInt(pmt.PayerID, 10))},
+			Attach: core.String(strconv.FormatInt(int64(domain.ChannelTypeWechatJS), 10)),
 		},
 	)
 	if err != nil {
 		return "", fmt.Errorf("微信预支付失败: %w", err)
 	}
 
-	return *resp.CodeUrl, nil
+	return *resp.PrepayId, nil
 }
 
 // QueryOrderBySN 同步信息 定时任务调用此方法同步状态信息
-func (n *NativePaymentService) QueryOrderBySN(ctx context.Context, orderSN string) (domain.Payment, error) {
-	txn, _, err := n.svc.QueryOrderByOutTradeNo(ctx, native.QueryOrderByOutTradeNoRequest{
+func (n *JSAPIPaymentService) QueryOrderBySN(ctx context.Context, orderSN string) (domain.Payment, error) {
+	txn, _, err := n.svc.QueryOrderByOutTradeNo(ctx, jsapi.QueryOrderByOutTradeNoRequest{
 		OutTradeNo: core.String(orderSN),
 		Mchid:      core.String(n.mchID),
 	})

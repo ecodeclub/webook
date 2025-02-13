@@ -34,23 +34,35 @@ import (
 )
 
 var serviceSet = wire.NewSet(
-	testioc.BaseSet,
 	initWechatConfig,
-	ioc.InitWechatNativeService,
+
+	wire.FieldsOf(new(*credit.Module), "Svc"),
+
+	sequencenumber.NewGenerator,
+	testioc.BaseSet,
+
 	InitDAO,
 	repository.NewPaymentRepository,
-	sequencenumber.NewGenerator,
-	service.NewService,
 )
 
 func InitService(p event.PaymentEventProducer,
 	cm *credit.Module,
-	native wechat.NativeAPIService) payment.Service {
+	native wechat.NativeAPIService, js wechat.JSAPIService) payment.Service {
 	wire.Build(
 		serviceSet,
-		wire.FieldsOf(new(*credit.Module), "Svc"),
+		ioc.InitWechatNativePaymentService,
+		ioc.InitWechatJSAPIPaymentService,
+		newPaymentServices,
+		service.NewService,
 	)
 	return nil
+}
+
+func newPaymentServices(n *wechat.NativePaymentService, j *wechat.JSAPIPaymentService) map[payment.ChannelType]service.PaymentService {
+	return map[payment.ChannelType]service.PaymentService{
+		payment.ChannelTypeWechat:   n,
+		payment.ChannelTypeWechatJS: j,
+	}
 }
 
 var (
@@ -68,7 +80,8 @@ func InitDAO(db *gorm.DB) dao.PaymentDAO {
 
 func initWechatConfig() ioc.WechatConfig {
 	return ioc.WechatConfig{
-		AppID: "MockAPPID",
-		MchID: "MockMchID",
+		AppID:            "MockAPPID",
+		MchID:            "MockMchID",
+		PaymentNotifyURL: "MockPaymentNotifyURL",
 	}
 }
