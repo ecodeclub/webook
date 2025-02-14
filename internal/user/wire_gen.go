@@ -15,14 +15,13 @@ import (
 	"github.com/ecodeclub/webook/internal/user/internal/repository"
 	"github.com/ecodeclub/webook/internal/user/internal/repository/cache"
 	"github.com/ecodeclub/webook/internal/user/internal/service"
-	"github.com/ecodeclub/webook/internal/user/internal/web"
 	"github.com/google/wire"
 	"gorm.io/gorm"
 )
 
 // Injectors from wire.go:
 
-func InitHandler(db *gorm.DB, cache2 ecache.Cache, q mq.MQ, creators []string, memberSvc *member.Module, sp session.Provider, permissionSvc *permission.Module) *web.Handler {
+func InitModule(db *gorm.DB, cache2 ecache.Cache, q mq.MQ, creators []string, memberSvc *member.Module, sp session.Provider, permissionSvc *permission.Module) *Module {
 	userWechatWebOAuth2Service := initWechatWebOAuthService(cache2)
 	userWechatMiniOAuth2Service := initWechatMiniOAuthService()
 	userDAO := initDAO(db)
@@ -33,7 +32,11 @@ func InitHandler(db *gorm.DB, cache2 ecache.Cache, q mq.MQ, creators []string, m
 	serviceService := memberSvc.Svc
 	service2 := permissionSvc.Svc
 	handler := iniHandler(userWechatWebOAuth2Service, userWechatMiniOAuth2Service, userService, serviceService, sp, service2, creators)
-	return handler
+	module := &Module{
+		Hdl: handler,
+		Svc: userService,
+	}
+	return module
 }
 
 // wire.go:

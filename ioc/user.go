@@ -25,12 +25,12 @@ import (
 	"github.com/gotomicro/ego/core/econf"
 )
 
-func InitUserHandler(db *egorm.Component,
+func InitUserModule(db *egorm.Component,
 	sp session.Provider,
 	ec ecache.Cache,
 	q mq.MQ,
 	memModule *member.Module,
-	perm *permission.Module) *user.Handler {
+	perm *permission.Module) *user.Module {
 	type UserConfig struct {
 		Creators []string `json:"creators"`
 	}
@@ -39,5 +39,5 @@ func InitUserHandler(db *egorm.Component,
 	if err != nil {
 		panic(err)
 	}
-	return user.InitHandler(db, ec, q, cfg.Creators, memModule, sp, perm)
+	return user.InitModule(db, ec, q, cfg.Creators, memModule, sp, perm)
 }

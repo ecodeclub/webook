@@ -618,7 +618,7 @@ func (s *OrderModuleTestSuite) TestHandler_CreateOrder() {
 				t.Helper()
 				assert.NotZero(t, result.Data.SN)
 				assert.NotZero(t, result.Data.WechatCodeURL)
-				assert.Zero(t, result.Data.WechatPrepayID)
+				assert.Zero(t, result.Data.WechatJsAPI.PrepayId)
 			},
 			after: func(t *testing.T) {
 				t.Helper()
@@ -663,7 +663,7 @@ func (s *OrderModuleTestSuite) TestHandler_CreateOrder() {
 				mockPaymentSvc.EXPECT().PayByID(gomock.Any(), id).DoAndReturn(func(ctx context.Context, i int64) (payment.Payment, error) {
 					pmt.Records[0].Status = payment.StatusProcessing
 					pmt.Records[1].Status = payment.StatusProcessing
-					pmt.Records[1].WechatPrepayID = "webchat_prepay_id"
+					pmt.Records[1].WechatJsAPIResp.PrepayId = "webchat_prepay_id"
 					return *pmt, nil
 				})
 				pm := &payment.Module{Svc: mockPaymentSvc}
@@ -715,7 +715,7 @@ func (s *OrderModuleTestSuite) TestHandler_CreateOrder() {
 			assertRespFunc: func(t *testing.T, result test.Result[web.CreateOrderResp]) {
 				t.Helper()
 				assert.NotZero(t, result.Data.SN)
-				assert.NotZero(t, result.Data.WechatPrepayID)
+				assert.NotZero(t, result.Data.WechatJsAPI.PrepayId)
 				assert.Zero(t, result.Data.WechatCodeURL)
 			},
 			after: func(t *testing.T) {
@@ -1092,7 +1092,7 @@ func (s *OrderModuleTestSuite) TestHandler_Repay() {
 		newHandlerFunc func(t *testing.T, ctrl *gomock.Controller) *web.Handler
 		req            web.OrderSNReq
 		wantCode       int
-		assertRespFunc func(t *testing.T, result test.Result[web.RepayOrderResp])
+		assertRespFunc func(t *testing.T, result test.Result[web.CreateOrderResp])
 	}{
 		{
 			name: "继续支付订单成功_微信Native支付_返回二维码",
@@ -1153,10 +1153,10 @@ func (s *OrderModuleTestSuite) TestHandler_Repay() {
 				SN: "orderSN-repay-11212",
 			},
 			wantCode: 200,
-			assertRespFunc: func(t *testing.T, result test.Result[web.RepayOrderResp]) {
+			assertRespFunc: func(t *testing.T, result test.Result[web.CreateOrderResp]) {
 				t.Helper()
 				assert.NotZero(t, result.Data.WechatCodeURL)
-				assert.Zero(t, result.Data.WechatPrepayID)
+				assert.Zero(t, result.Data.WechatJsAPI)
 			},
 		},
 		{
@@ -1211,10 +1211,10 @@ func (s *OrderModuleTestSuite) TestHandler_Repay() {
 				SN: "orderSN-repay-11213",
 			},
 			wantCode: 200,
-			assertRespFunc: func(t *testing.T, result test.Result[web.RepayOrderResp]) {
+			assertRespFunc: func(t *testing.T, result test.Result[web.CreateOrderResp]) {
 				t.Helper()
 				assert.Zero(t, result.Data.WechatCodeURL)
-				assert.Zero(t, result.Data.WechatPrepayID)
+				assert.Zero(t, result.Data.WechatJsAPI.PrepayId)
 			},
 		},
 		{
@@ -1255,11 +1255,13 @@ func (s *OrderModuleTestSuite) TestHandler_Repay() {
 								Status:       payment.StatusProcessing,
 							},
 							{
-								PaymentNO3rd:   "wechat-3",
-								Channel:        payment.ChannelTypeWechatJS,
-								Amount:         8990,
-								Status:         payment.StatusProcessing,
-								WechatPrepayID: fmt.Sprintf("webchat_repay-%d", id),
+								PaymentNO3rd: "wechat-3",
+								Channel:      payment.ChannelTypeWechatJS,
+								Amount:       8990,
+								Status:       payment.StatusProcessing,
+								WechatJsAPIResp: payment.WechatJsAPIPrepayResponse{
+									PrepayId: fmt.Sprintf("webchat_repay-%d", id),
+								},
 							},
 						},
 					}, nil
@@ -1276,9 +1278,9 @@ func (s *OrderModuleTestSuite) TestHandler_Repay() {
 				SN: "orderSN-repay-11214",
 			},
 			wantCode: 200,
-			assertRespFunc: func(t *testing.T, result test.Result[web.RepayOrderResp]) {
+			assertRespFunc: func(t *testing.T, result test.Result[web.CreateOrderResp]) {
 				t.Helper()
-				assert.NotZero(t, result.Data.WechatPrepayID)
+				assert.NotZero(t, result.Data.WechatJsAPI.PrepayId)
 				assert.Zero(t, result.Data.WechatCodeURL)
 			},
 		},
@@ -1334,10 +1336,10 @@ func (s *OrderModuleTestSuite) TestHandler_Repay() {
 				SN: "orderSN-repay-11215",
 			},
 			wantCode: 200,
-			assertRespFunc: func(t *testing.T, result test.Result[web.RepayOrderResp]) {
+			assertRespFunc: func(t *testing.T, result test.Result[web.CreateOrderResp]) {
 				t.Helper()
 				assert.Zero(t, result.Data.WechatCodeURL)
-				assert.Zero(t, result.Data.WechatPrepayID)
+				assert.Zero(t, result.Data.WechatJsAPI.PrepayId)
 			},
 		},
 	}
@@ -1353,7 +1355,7 @@ func (s *OrderModuleTestSuite) TestHandler_Repay() {
 			req.Header.Set("content-type", "application/json")
 			require.NoError(t, err)
 
-			recorder := test.NewJSONResponseRecorder[web.RepayOrderResp]()
+			recorder := test.NewJSONResponseRecorder[web.CreateOrderResp]()
 			server := s.newGinServer(tc.newHandlerFunc(t, ctrl))
 			server.ServeHTTP(recorder, req)
 			require.Equal(t, tc.wantCode, recorder.Code)
