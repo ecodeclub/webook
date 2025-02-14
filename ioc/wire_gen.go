@@ -23,7 +23,7 @@ import (
 	"github.com/ecodeclub/webook/internal/pkg/middleware"
 	"github.com/ecodeclub/webook/internal/product"
 	"github.com/ecodeclub/webook/internal/project"
-	baguwen "github.com/ecodeclub/webook/internal/question"
+	"github.com/ecodeclub/webook/internal/question"
 	"github.com/ecodeclub/webook/internal/recon"
 	"github.com/ecodeclub/webook/internal/resume"
 	"github.com/ecodeclub/webook/internal/review"
@@ -77,7 +77,7 @@ func InitApp() (*App, error) {
 	handler2 := InitUserHandler(db, provider, cache, mq, module, permissionModule)
 	config := InitCosConfig()
 	handler3 := cos.InitHandler(config)
-	casesModule, err := cases.InitModule(db, interactiveModule, aiModule, module, provider, mq)
+	casesModule, err := cases.InitModule(db, interactiveModule, aiModule, module, provider, cache, mq)
 	if err != nil {
 		return nil, err
 	}

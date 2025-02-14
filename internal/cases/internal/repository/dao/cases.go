@@ -19,7 +19,7 @@ type CaseDAO interface {
 	List(ctx context.Context, offset, limit int) ([]Case, error)
 	Count(ctx context.Context) (int64, error)
 
-	Sync(ctx context.Context, c Case) (int64, error)
+	Sync(ctx context.Context, c Case) (Case, error)
 	// 提供给同步到知识库用
 	Ids(ctx context.Context) ([]int64, error)
 	// 线上库
@@ -102,20 +102,21 @@ func (ca *caseDAO) List(ctx context.Context, offset, limit int) ([]Case, error) 
 	return caseList, err
 }
 
-func (ca *caseDAO) Sync(ctx context.Context, c Case) (int64, error) {
-	var id = c.Id
+
+func (ca *caseDAO) Sync(ctx context.Context, c Case) (Case, error) {
 	err := ca.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var err error
-		id, err = ca.save(tx, &c)
+		id, err := ca.save(tx, &c)
 		if err != nil {
 			return err
 		}
+		c.Id = id
 		pubC := PublishCase(c)
 		return tx.Clauses(clause.OnConflict{
 			DoUpdates: clause.AssignmentColumns(ca.updateColumns),
 		}).Create(&pubC).Error
 	})
-	return id, err
+	return c, err
 }
 
 func (ca *caseDAO) PublishCaseList(ctx context.Context, offset, limit int) ([]PublishCase, error) {

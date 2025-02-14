@@ -18,6 +18,7 @@ package integration
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -297,8 +298,10 @@ func (s *HandlerTestSuite) TestPubDetail() {
 	require.NoError(s.T(), err)
 
 	testCases := []struct {
-		name     string
-		before   func(req *http.Request)
+		name   string
+		before func(req *http.Request)
+		// 校验数据
+		after    func()
 		req      web.CaseId
 		wantCode int
 		wantResp test.Result[web.Case]
@@ -310,6 +313,9 @@ func (s *HandlerTestSuite) TestPubDetail() {
 			},
 			req: web.CaseId{
 				Cid: 3,
+			},
+			after: func() {
+
 			},
 			wantCode: 200,
 			wantResp: test.Result[web.Case]{
@@ -348,6 +354,9 @@ func (s *HandlerTestSuite) TestPubDetail() {
 			req: web.CaseId{
 				Cid: 3,
 			},
+			after: func() {
+
+			},
 			wantCode: 200,
 			wantResp: test.Result[web.Case]{
 				Data: web.Case{
@@ -383,6 +392,9 @@ func (s *HandlerTestSuite) TestPubDetail() {
 			},
 			req: web.CaseId{
 				Cid: 3,
+			},
+			after: func() {
+
 			},
 			wantCode: 200,
 			wantResp: test.Result[web.Case]{
@@ -422,6 +434,9 @@ func (s *HandlerTestSuite) TestPubDetail() {
 			req: web.CaseId{
 				Cid: 3,
 			},
+			after: func() {
+
+			},
 			wantCode: 200,
 			wantResp: test.Result[web.Case]{
 				Data: web.Case{
@@ -452,6 +467,163 @@ func (s *HandlerTestSuite) TestPubDetail() {
 				},
 			},
 		},
+		{
+			name: "未命中缓存",
+			before: func(req *http.Request) {
+				err = s.db.Create(&dao.PublishCase{
+					Id:           4,
+					Uid:          uid,
+					Introduction: "redis案例介绍",
+					Labels: sqlx.JsonColumn[[]string]{
+						Valid: true,
+						Val:   []string{"Redis"},
+					},
+					Status:     domain.PublishedStatus.ToUint8(),
+					Title:      "redis案例标题",
+					Content:    `123321`,
+					GithubRepo: "redis github仓库",
+					GiteeRepo:  "redis gitee仓库",
+					Keywords:   "redis_keywords",
+					Shorthand:  "redis_shorthand",
+					Highlight:  "redis_highlight",
+					Guidance:   "redis_guidance",
+					Biz:        "ai",
+					BizId:      13,
+					Utime:      1739519892000,
+					Ctime:      1739519892000,
+				}).Error
+				require.NoError(s.T(), err)
+			},
+			req: web.CaseId{
+				Cid: 4,
+			},
+			wantCode: 200,
+			after: func() {
+				s.cacheAssertCase(domain.Case{
+					Id:           4,
+					Uid:          uid,
+					Introduction: "redis案例介绍",
+					Labels:       []string{"Redis"},
+					Status:       domain.PublishedStatus,
+					Title:        "redis案例标题",
+					Content:      `123321`,
+					GithubRepo:   "redis github仓库",
+					GiteeRepo:    "redis gitee仓库",
+					Keywords:     "redis_keywords",
+					Shorthand:    "redis_shorthand",
+					Highlight:    "redis_highlight",
+					Guidance:     "redis_guidance",
+					Biz:          "ai",
+					BizId:        13,
+				})
+			},
+			wantResp: test.Result[web.Case]{
+				Data: web.Case{
+					Id:           4,
+					Introduction: "redis案例介绍",
+					Labels:       []string{"Redis"},
+					Status:       domain.PublishedStatus.ToUint8(),
+					Title:        "redis案例标题",
+					Content:      `123321`,
+					GithubRepo:   "redis github仓库",
+					GiteeRepo:    "redis gitee仓库",
+					Keywords:     "redis_keywords",
+					Shorthand:    "redis_shorthand",
+					Highlight:    "redis_highlight",
+					Guidance:     "redis_guidance",
+					Biz:          "ai",
+					BizId:        13,
+					Utime:        1739519892000,
+					Interactive: web.Interactive{
+						Liked:      false,
+						Collected:  true,
+						ViewCnt:    5,
+						LikeCnt:    6,
+						CollectCnt: 7,
+					},
+					ExamineResult: 0,
+					Permitted:     true,
+				},
+			},
+		},
+		{
+			name: "命中缓存",
+			before: func(req *http.Request) {
+				ca := domain.Case{
+					Id:           5,
+					Uid:          uid,
+					Introduction: "redis案例介绍",
+					Labels:       []string{"Redis"},
+					Status:       domain.PublishedStatus,
+					Title:        "redis案例标题",
+					Content:      `123321`,
+					GithubRepo:   "redis github仓库",
+					GiteeRepo:    "redis gitee仓库",
+					Keywords:     "redis_keywords",
+					Shorthand:    "redis_shorthand",
+					Highlight:    "redis_highlight",
+					Guidance:     "redis_guidance",
+					Biz:          "ai",
+					BizId:        13,
+					Utime:        time.UnixMilli(1739519892000),
+					Ctime:        time.UnixMilli(1739519892000),
+				}
+				caByte, _ := json.Marshal(ca)
+				err = s.rdb.Set(context.Background(), "cases:publish:5", string(caByte), 24*time.Hour)
+				require.NoError(s.T(), err)
+			},
+			req: web.CaseId{
+				Cid: 5,
+			},
+			wantCode: 200,
+			after: func() {
+				s.cacheAssertCase(domain.Case{
+					Id:           5,
+					Uid:          uid,
+					Introduction: "redis案例介绍",
+					Labels:       []string{"Redis"},
+					Status:       domain.PublishedStatus,
+					Title:        "redis案例标题",
+					Content:      `123321`,
+					GithubRepo:   "redis github仓库",
+					GiteeRepo:    "redis gitee仓库",
+					Keywords:     "redis_keywords",
+					Shorthand:    "redis_shorthand",
+					Highlight:    "redis_highlight",
+					Guidance:     "redis_guidance",
+					Biz:          "ai",
+					BizId:        13,
+				})
+			},
+			wantResp: test.Result[web.Case]{
+				Data: web.Case{
+					Id:           5,
+					Introduction: "redis案例介绍",
+					Labels:       []string{"Redis"},
+					Status:       domain.PublishedStatus.ToUint8(),
+					Title:        "redis案例标题",
+					Content:      `123321`,
+					GithubRepo:   "redis github仓库",
+					GiteeRepo:    "redis gitee仓库",
+					Keywords:     "redis_keywords",
+					Shorthand:    "redis_shorthand",
+					Highlight:    "redis_highlight",
+					Guidance:     "redis_guidance",
+					Biz:          "ai",
+					BizId:        13,
+					Utime:        1739519892000,
+					Interactive: web.Interactive{
+						Liked:      true,
+						Collected:  false,
+						ViewCnt:    6,
+						LikeCnt:    7,
+						CollectCnt: 8,
+					},
+					ExamineResult: 0,
+					Permitted:     true,
+				},
+			},
+		},
 	}
 	for _, tc := range testCases {
 		tc := tc
@@ -465,8 +637,24 @@ func (s *HandlerTestSuite) TestPubDetail() {
 			s.server.ServeHTTP(recorder, req)
 			require.Equal(t, tc.wantCode, recorder.Code)
 			assert.Equal(t, tc.wantResp, recorder.MustScan())
+			tc.after()
 		})
 	}
+}
+func (s *HandlerTestSuite) cacheAssertCase(ca domain.Case) {
+	t := s.T()
+	key := fmt.Sprintf("cases:publish:%d", ca.Id)
+	val := s.rdb.Get(context.Background(), key)
+	require.NoError(t, val.Err)
+	valStr, err := val.String()
+	require.NoError(t, err)
+	actualCa := domain.Case{}
+	json.Unmarshal([]byte(valStr), &actualCa)
+	require.True(t, actualCa.Ctime.Unix() > 0)
+	require.True(t, actualCa.Utime.Unix() > 0)
+	ca.Ctime = actualCa.Ctime
+	ca.Utime = actualCa.Utime
+	assert.Equal(t, ca, actualCa)
 }
 
 func (s *HandlerTestSuite) mockInteractive(biz string, id int64) interactive.Interactive {

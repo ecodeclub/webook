@@ -12,12 +12,13 @@ import (
 	"github.com/ecodeclub/webook/internal/cases"
 	"github.com/ecodeclub/webook/internal/cases/internal/event"
 	"github.com/ecodeclub/webook/internal/cases/internal/repository"
+	"github.com/ecodeclub/webook/internal/cases/internal/repository/cache"
 	"github.com/ecodeclub/webook/internal/cases/internal/repository/dao"
 	"github.com/ecodeclub/webook/internal/cases/internal/service"
 	"github.com/ecodeclub/webook/internal/cases/internal/web"
 	"github.com/ecodeclub/webook/internal/interactive"
 	"github.com/ecodeclub/webook/internal/member"
-	testioc "github.com/ecodeclub/webook/internal/test/ioc"
+	"github.com/ecodeclub/webook/internal/test/ioc"
 )
 
 // Injectors from wire.go:
@@ -25,7 +26,9 @@ import (
 func InitModule(syncProducer event.SyncEventProducer, knowledgeBaseProducer event.KnowledgeBaseEventProducer, aiModule *ai.Module, memberModule *member.Module, sp session.Provider, intrModule *interactive.Module) (*cases.Module, error) {
 	db := testioc.InitDB()
 	caseDAO := cases.InitCaseDAO(db)
-	caseRepo := repository.NewCaseRepo(caseDAO)
+	ecacheCache := testioc.InitCache()
+	caseCache := cache.NewCaseCache(ecacheCache)
+	caseRepo := repository.NewCaseRepo(caseDAO, caseCache)
 	mq := testioc.InitMQ()
 	interactiveEventProducer, err := event.NewInteractiveEventProducer(mq)
 	if err != nil {
@@ -61,7 +64,9 @@ func InitModule(syncProducer event.SyncEventProducer, knowledgeBaseProducer even
 func InitExamModule(syncProducer event.SyncEventProducer, knowledgeBaseProducer event.KnowledgeBaseEventProducer, intrModule *interactive.Module, memberModule *member.Module, sp session.Provider, aiModule *ai.Module) (*cases.Module, error) {
 	db := testioc.InitDB()
 	caseDAO := cases.InitCaseDAO(db)
-	caseRepo := repository.NewCaseRepo(caseDAO)
+	ecacheCache := testioc.InitCache()
+	caseCache := cache.NewCaseCache(ecacheCache)
+	caseRepo := repository.NewCaseRepo(caseDAO, caseCache)
 	mq := testioc.InitMQ()
 	interactiveEventProducer, err := event.NewInteractiveEventProducer(mq)
 	if err != nil {

@@ -2,6 +2,9 @@ package repository
 
 import (
 	"context"
+	"github.com/ecodeclub/webook/internal/cases/internal/repository/cache"
+	"github.com/gotomicro/ego/core/elog"
+	"github.com/pkg/errors"
 	"time"
 
 	"golang.org/x/sync/errgroup"
@@ -33,7 +36,9 @@ type CaseRepo interface {
 }
 
 type caseRepo struct {
-	caseDao dao.CaseDAO
+	caseDao   dao.CaseDAO
+	caseCache cache.CaseCache
+	logger    *elog.Component
 }
 
 func (c *caseRepo) PubCount(ctx context.Context) (int64, error) {
@@ -80,11 +85,27 @@ func (c *caseRepo) PubList(ctx context.Context, offset int, limit int) ([]domain
 }
 
 func (c *caseRepo) GetPubByID(ctx context.Context, caseId int64) (domain.Case, error) {
-	caseInfo, err := c.caseDao.GetPublishCase(ctx, caseId)
+	ca, eerr := c.caseCache.GetCase(ctx, caseId)
+	if eerr == nil {
+		// 命中缓存
+		return ca, nil
+	}
+	if !errors.Is(eerr, cache.ErrCaseNotFound) {
+		// 记录一下日志
+		c.logger.Error("案例获取缓存失败", elog.FieldErr(eerr), elog.Int64("cid", caseId))
+	}
+
+	daoCa, err := c.caseDao.GetPublishCase(ctx, caseId)
 	if err != nil {
 		return domain.Case{}, err
 	}
-	return c.toDomain(dao.Case(caseInfo)), nil
+	ca = c.toDomain(dao.Case(daoCa))
+	eerr = c.caseCache.SetCase(ctx, ca)
+	if eerr != nil {
+		// 记录一下日志
+		c.logger.Error("案例设置缓存失败", elog.FieldErr(eerr), elog.Int64("cid", caseId))
+	}
+	return ca, nil
 }
 
 func (c *caseRepo) GetPubByIDs(ctx context.Context, ids []int64) ([]domain.Case, error) {
@@ -96,7 +117,16 @@ func (c *caseRepo) GetPubByIDs(ctx context.Context, ids []int64) ([]domain.Case,
 
 func (c *caseRepo) Sync(ctx context.Context, ca domain.Case) (int64, error) {
 	caseModel := c.toEntity(ca)
-	return c.caseDao.Sync(ctx, caseModel)
+	daoCa, err := c.caseDao.Sync(ctx, caseModel)
+	if err != nil {
+		return 0, err
+	}
+	eerr := c.caseCache.SetCase(ctx, c.toDomain(daoCa))
+	if eerr != nil {
+		// 记录一下日志
+		c.logger.Error("案例设置缓存失败", elog.FieldErr(eerr), elog.Int64("cid", daoCa.Id))
+	}
+	return daoCa.Id, nil
 }
 
 func (c *caseRepo) List(ctx context.Context, offset int, limit int) ([]domain.Case, error) {
@@ -173,9 +203,11 @@ func (c *caseRepo) toDomain(caseDao dao.Case) domain.Case {
 	}
 }
 
-func NewCaseRepo(caseDao dao.CaseDAO) CaseRepo {
+func NewCaseRepo(caseDao dao.CaseDAO, caseCache cache.CaseCache) CaseRepo {
 	return &caseRepo{
 		caseDao: caseDao,
 		// 后续接入缓存
+		caseCache: caseCache,
+		logger:    elog.DefaultLogger,
 	}
 }

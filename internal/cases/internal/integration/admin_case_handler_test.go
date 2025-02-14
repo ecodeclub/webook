@@ -474,6 +474,25 @@ func (s *AdminCaseHandlerTestSuite) TestPublish() {
 				publishCase, err := s.dao.GetPublishCase(ctx, 1)
 				require.NoError(t, err)
 				s.assertCase(t, wantCase, dao.Case(publishCase))
+				s.cacheAssertCase(domain.Case{
+					Id:           1,
+					Uid:          uid,
+					Title:        "案例1",
+					Content:      "案例1内容",
+					Introduction: "案例1介绍",
+					Labels: []string{
+						"MySQL",
+					},
+					Status:     domain.PublishedStatus,
+					GithubRepo: "www.github.com",
+					GiteeRepo:  "www.gitee.com",
+					Keywords:   "mysql_keywords",
+					Shorthand:  "mysql_shorthand",
+					Highlight:  "mysql_highlight",
+					Guidance:   "mysql_guidance",
+					Biz:        "case",
+					BizId:      11,
+				})
 			},
 			req: web.SaveReq{
 				Case: web.Case{
@@ -560,6 +579,26 @@ func (s *AdminCaseHandlerTestSuite) TestPublish() {
 				require.NoError(t, err)
 				publishCase.Ctime = 123
 				s.assertCase(t, wantCase, dao.Case(publishCase))
+				s.cacheAssertCase(domain.Case{
+					Id:           2,
+					Uid:          uid,
+					Title:        "案例2",
+					Content:      "案例2内容",
+					Introduction: "案例2介绍",
+					Labels: []string{
+						"MySQL",
+					},
+					Status:     domain.PublishedStatus,
+					GithubRepo: "www.github.com",
+					GiteeRepo:  "www.gitee.com",
+					Keywords:   "mysql_keywords",
+					Shorthand:  "mysql_shorthand",
+					Highlight:  "mysql_highlight",
+					Guidance:   "mysql_guidance",
+					Biz:        "question",
+					BizId:      12,
+				})
+
 			},
 			req: web.SaveReq{
 				Case: web.Case{
@@ -621,6 +660,7 @@ func (s *AdminCaseHandlerTestSuite) TestPublish() {
 				pubCase := dao.PublishCase(oldCase)
 				err = s.db.WithContext(ctx).Create(pubCase).Error
 				require.NoError(t, err)
+
 			},
 			after: func(t *testing.T) {
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
@@ -651,6 +691,23 @@ func (s *AdminCaseHandlerTestSuite) TestPublish() {
 				require.NoError(t, err)
 				publishCase.Ctime = 123
 				s.assertCase(t, wantCase, dao.Case(publishCase))
+				s.cacheAssertCase(domain.Case{
+					Id:           3,
+					Uid:          uid,
+					Title:        "案例2",
+					Content:      "案例2内容",
+					Introduction: "案例2介绍",
+					Labels:       []string{"MySQL"},
+					Status:       domain.PublishedStatus,
+					GithubRepo:   "www.github.com",
+					GiteeRepo:    "www.gitee.com",
+					Keywords:     "mysql_keywords",
+					Shorthand:    "mysql_shorthand",
+					Highlight:    "mysql_highlight",
+					Guidance:     "mysql_guidance",
+					Biz:          "ai",
+					BizId:        13,
+				})
 			},
 			req: web.SaveReq{
 				Case: web.Case{
@@ -694,6 +751,24 @@ func (s *AdminCaseHandlerTestSuite) TestPublish() {
 			require.NoError(t, err)
 		})
 	}
+}
+
+func (s *AdminCaseHandlerTestSuite) cacheAssertCase(ca domain.Case) {
+	t := s.T()
+	key := fmt.Sprintf("cases:publish:%d", ca.Id)
+	val := s.rdb.Get(context.Background(), key)
+	require.NoError(t, val.Err)
+	valStr, err := val.String()
+	require.NoError(t, err)
+	actualCa := domain.Case{}
+	json.Unmarshal([]byte(valStr), &actualCa)
+	require.True(t, actualCa.Ctime.Unix() > 0)
+	require.True(t, actualCa.Utime.Unix() > 0)
+	ca.Ctime = actualCa.Ctime
+	ca.Utime = actualCa.Utime
+	assert.Equal(t, ca, actualCa)
+	_, err = s.rdb.Delete(context.Background(), key)
+	require.NoError(t, err)
 }
 
 func (s *AdminCaseHandlerTestSuite) TestEvent() {
