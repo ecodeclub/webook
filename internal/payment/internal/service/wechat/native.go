@@ -62,7 +62,7 @@ func (n *NativePaymentService) Desc() string {
 	return n.desc
 }
 
-func (n *NativePaymentService) Prepay(ctx context.Context, pmt domain.Payment) (string, error) {
+func (n *NativePaymentService) Prepay(ctx context.Context, pmt domain.Payment) (any, error) {
 
 	r, ok := slice.Find(pmt.Records, func(src domain.PaymentRecord) bool {
 		return src.Channel == domain.ChannelTypeWechat

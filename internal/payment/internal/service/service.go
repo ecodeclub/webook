@@ -63,8 +63,8 @@ type Service interface {
 type PaymentService interface {
 	Name() domain.ChannelType
 	Desc() string
-	// Prepay 预支付 Native支付方式返回CodeUrl，JSAPI支付方式返回PrepayId
-	Prepay(ctx context.Context, pmt domain.Payment) (string, error)
+	// Prepay 预支付 Native支付方式返回CodeUrl string，JSAPI支付方式返回PrepayId
+	Prepay(ctx context.Context, pmt domain.Payment) (any, error)
 	ConvertCallbackTransactionToDomain(txn *payments.Transaction) (domain.Payment, error)
 	// QueryOrderBySN 同步信息 定时任务调用此方法同步状态信息
 	QueryOrderBySN(ctx context.Context, orderSN string) (domain.Payment, error)
@@ -255,19 +255,14 @@ func (s *service) prepay(ctx context.Context, pmt *domain.Payment, channel domai
 		return src.Channel == thirdPartyPayment.Name()
 	})
 	if thirdPartyPayment.Name() == domain.ChannelTypeWechat {
-		pmt.Records[idx].WechatCodeURL = resp
+		pmt.Records[idx].WechatCodeURL = resp.(string)
 	} else if thirdPartyPayment.Name() == domain.ChannelTypeWechatJS {
-		pmt.Records[idx].WechatPrepayID = resp
+		pmt.Records[idx].WechatJsAPIResp = resp.(domain.WechatJsAPIPrepayResponse)
 	}
 
 	pmt.Status = domain.PaymentStatusProcessing
 	pmt.Records[idx].Status = domain.PaymentStatusProcessing
-	err = s.repo.UpdatePayment(ctx, *pmt)
-	if err != nil {
-		// 这里有一个小问题，就是如果超时了的话，你都不知道更新成功了没
-		return err
-	}
-	return nil
+	return s.repo.UpdatePayment(ctx, *pmt)
 }
 
 func (s *service) prepayByCreditAnd3rdPayment(ctx context.Context, pmt *domain.Payment, channel domain.ChannelType) error {
@@ -291,9 +286,9 @@ func (s *service) prepayByCreditAnd3rdPayment(ctx context.Context, pmt *domain.P
 
 	pmt.Status = domain.PaymentStatusProcessing
 	if thirdPartyPayment.Name() == domain.ChannelTypeWechat {
-		pmt.Records[channelIdx].WechatCodeURL = resp
+		pmt.Records[channelIdx].WechatCodeURL = resp.(string)
 	} else if thirdPartyPayment.Name() == domain.ChannelTypeWechatJS {
-		pmt.Records[channelIdx].WechatPrepayID = resp
+		pmt.Records[channelIdx].WechatJsAPIResp = resp.(domain.WechatJsAPIPrepayResponse)
 	}
 	pmt.Records[channelIdx].Status = domain.PaymentStatusProcessing
 	pmt.Records[creditIdx].PaymentNO3rd = strconv.FormatInt(tid, 10)

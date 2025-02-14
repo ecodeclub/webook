@@ -20,6 +20,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/ecodeclub/webook/internal/user"
+
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/ecodeclub/webook/internal/payment/internal/domain"
 	"github.com/gotomicro/ego/core/elog"
@@ -30,18 +32,22 @@ import (
 
 //go:generate mockgen -source=./jsapi.go -package=wechatmocks -destination=./mocks/jsapi.mock.go -typed JSAPIService
 type JSAPIService interface {
-	Prepay(ctx context.Context, req jsapi.PrepayRequest) (resp *jsapi.PrepayResponse, result *core.APIResult, err error)
+	PrepayWithRequestPayment(ctx context.Context, req jsapi.PrepayRequest) (resp *jsapi.PrepayWithRequestPaymentResponse, result *core.APIResult, err error)
 	QueryOrderByOutTradeNo(ctx context.Context, req jsapi.QueryOrderByOutTradeNoRequest) (resp *payments.Transaction, result *core.APIResult, err error)
 }
 
 type JSAPIPaymentService struct {
-	svc JSAPIService
+	svc     JSAPIService
+	userSvc user.UserService
 	basePaymentService
 }
 
-func NewJSAPIPaymentService(svc JSAPIService, appid, mchid, notifyURL string) *JSAPIPaymentService {
+func NewJSAPIPaymentService(svc JSAPIService,
+	userSvc user.UserService,
+	appid, mchid, notifyURL string) *JSAPIPaymentService {
 	return &JSAPIPaymentService{
-		svc: svc,
+		svc:     svc,
+		userSvc: userSvc,
 		basePaymentService: basePaymentService{
 			l:                           elog.DefaultLogger,
 			name:                        domain.ChannelTypeWechatJS,
@@ -62,8 +68,7 @@ func (n *JSAPIPaymentService) Desc() string {
 	return n.desc
 }
 
-func (n *JSAPIPaymentService) Prepay(ctx context.Context, pmt domain.Payment) (string, error) {
-
+func (n *JSAPIPaymentService) Prepay(ctx context.Context, pmt domain.Payment) (any, error) {
 	r, ok := slice.Find(pmt.Records, func(src domain.PaymentRecord) bool {
 		return src.Channel == domain.ChannelTypeWechatJS
 	})
@@ -71,7 +76,12 @@ func (n *JSAPIPaymentService) Prepay(ctx context.Context, pmt domain.Payment) (s
 		return "", fmt.Errorf("缺少微信支付金额信息")
 	}
 
-	resp, _, err := n.svc.Prepay(ctx,
+	profile, err := n.userSvc.Profile(ctx, pmt.PayerID)
+	if err != nil {
+		return "", fmt.Errorf("查找用户的小程序 open id 失败 %w", err)
+	}
+
+	resp, _, err := n.svc.PrepayWithRequestPayment(ctx,
 		jsapi.PrepayRequest{
 			Appid:       core.String(n.appID),
 			Mchid:       core.String(n.mchID),
@@ -83,7 +93,7 @@ func (n *JSAPIPaymentService) Prepay(ctx context.Context, pmt domain.Payment) (s
 				Currency: core.String("CNY"),
 				Total:    core.Int64(r.Amount),
 			},
-			Payer:  &jsapi.Payer{Openid: core.String(strconv.FormatInt(pmt.PayerID, 10))},
+			Payer:  &jsapi.Payer{Openid: core.String(profile.WechatInfo.MiniOpenId)},
 			Attach: core.String(strconv.FormatInt(int64(domain.ChannelTypeWechatJS), 10)),
 		},
 	)
@@ -91,7 +101,21 @@ func (n *JSAPIPaymentService) Prepay(ctx context.Context, pmt domain.Payment) (s
 		return "", fmt.Errorf("微信预支付失败: %w", err)
 	}
 
-	return *resp.PrepayId, nil
+	return domain.WechatJsAPIPrepayResponse{
+		PrepayId: *resp.PrepayId,
+		// 应用ID
+		Appid: *resp.Appid,
+		// 时间戳
+		TimeStamp: *resp.TimeStamp,
+		// 随机字符串
+		NonceStr: *resp.NonceStr,
+		// 订单详情扩展字符串
+		Package: *resp.Package,
+		// 签名方式
+		SignType: *resp.SignType,
+		// 签名
+		PaySign: *resp.PaySign,
+	}, nil
 }
 
 // QueryOrderBySN 同步信息 定时任务调用此方法同步状态信息

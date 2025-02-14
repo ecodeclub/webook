@@ -40,6 +40,7 @@ import (
 	"github.com/ecodeclub/webook/internal/roadmap"
 	"github.com/ecodeclub/webook/internal/search"
 	"github.com/ecodeclub/webook/internal/skill"
+	"github.com/ecodeclub/webook/internal/user"
 	"github.com/google/wire"
 )
 
@@ -55,7 +56,8 @@ func InitApp() (*App, error) {
 		wire.FieldsOf(new(*baguwen.Module),
 			"AdminHdl", "AdminSetHdl", "KnowledgeJobStarter",
 			"ExamineHdl", "Hdl", "QsHdl", "KnowledgeBaseHdl"),
-		InitUserHandler,
+		InitUserModule,
+		wire.FieldsOf(new(*user.Module), "Hdl"),
 		label.InitHandler,
 		cases.InitModule,
 		wire.FieldsOf(new(*cases.Module),

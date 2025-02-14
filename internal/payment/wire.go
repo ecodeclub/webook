@@ -19,10 +19,11 @@ package payment
 import (
 	"sync"
 
+	"github.com/ecodeclub/webook/internal/user"
+
 	"github.com/ecodeclub/ecache"
 	"github.com/ecodeclub/mq-api"
 	"github.com/ecodeclub/webook/internal/credit"
-	"github.com/ecodeclub/webook/internal/payment/internal/domain"
 	"github.com/ecodeclub/webook/internal/payment/internal/event"
 	"github.com/ecodeclub/webook/internal/payment/internal/job"
 	"github.com/ecodeclub/webook/internal/payment/internal/repository"
@@ -40,30 +41,10 @@ import (
 	"gorm.io/gorm"
 )
 
-type (
-	Handler            = web.Handler
-	Payment            = domain.Payment
-	Record             = domain.PaymentRecord
-	Channel            = domain.PaymentChannel
-	ChannelType        = domain.ChannelType
-	Service            = service.Service
-	SyncWechatOrderJob = job.SyncWechatOrderJob
-)
-
-const (
-	ChannelTypeCredit   = domain.ChannelTypeCredit
-	ChannelTypeWechat   = domain.ChannelTypeWechat
-	ChannelTypeWechatJS = domain.ChannelTypeWechatJS
-
-	StatusUnpaid      = domain.PaymentStatusUnpaid
-	StatusProcessing  = domain.PaymentStatusProcessing
-	StatusPaidSuccess = domain.PaymentStatusPaidSuccess
-	StatusPaidFailed  = domain.PaymentStatusPaidFailed
-)
-
 func InitModule(db *egorm.Component,
 	mq mq.MQ,
 	c ecache.Cache,
+	um *user.Module,
 	cm *credit.Module) (*Module, error) {
 	wire.Build(
 
@@ -81,6 +62,7 @@ func InitModule(db *egorm.Component,
 		ioc.InitWechatJSAPIPaymentService,
 		newPaymentServices,
 
+		wire.FieldsOf(new(*user.Module), "Svc"),
 		wire.FieldsOf(new(*credit.Module), "Svc"),
 		sequencenumber.NewGenerator,
 		initDAO,

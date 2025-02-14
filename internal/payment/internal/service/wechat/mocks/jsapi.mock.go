@@ -5,7 +5,6 @@
 //
 //	mockgen -source=./jsapi.go -package=wechatmocks -destination=./mocks/jsapi.mock.go -typed JSAPIService
 //
-
 // Package wechatmocks is a generated GoMock package.
 package wechatmocks
 
@@ -23,7 +22,6 @@ import (
 type MockJSAPIService struct {
 	ctrl     *gomock.Controller
 	recorder *MockJSAPIServiceMockRecorder
-	isgomock struct{}
 }
 
 // MockJSAPIServiceMockRecorder is the mock recorder for MockJSAPIService.
@@ -43,42 +41,42 @@ func (m *MockJSAPIService) EXPECT() *MockJSAPIServiceMockRecorder {
 	return m.recorder
 }
 
-// Prepay mocks base method.
-func (m *MockJSAPIService) Prepay(ctx context.Context, req jsapi.PrepayRequest) (*jsapi.PrepayResponse, *core.APIResult, error) {
+// PrepayWithRequestPayment mocks base method.
+func (m *MockJSAPIService) PrepayWithRequestPayment(ctx context.Context, req jsapi.PrepayRequest) (*jsapi.PrepayWithRequestPaymentResponse, *core.APIResult, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Prepay", ctx, req)
-	ret0, _ := ret[0].(*jsapi.PrepayResponse)
+	ret := m.ctrl.Call(m, "PrepayWithRequestPayment", ctx, req)
+	ret0, _ := ret[0].(*jsapi.PrepayWithRequestPaymentResponse)
 	ret1, _ := ret[1].(*core.APIResult)
 	ret2, _ := ret[2].(error)
 	return ret0, ret1, ret2
 }
 
-// Prepay indicates an expected call of Prepay.
-func (mr *MockJSAPIServiceMockRecorder) Prepay(ctx, req any) *MockJSAPIServicePrepayCall {
+// PrepayWithRequestPayment indicates an expected call of PrepayWithRequestPayment.
+func (mr *MockJSAPIServiceMockRecorder) PrepayWithRequestPayment(ctx, req any) *JSAPIServicePrepayWithRequestPaymentCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Prepay", reflect.TypeOf((*MockJSAPIService)(nil).Prepay), ctx, req)
-	return &MockJSAPIServicePrepayCall{Call: call}
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PrepayWithRequestPayment", reflect.TypeOf((*MockJSAPIService)(nil).PrepayWithRequestPayment), ctx, req)
+	return &JSAPIServicePrepayWithRequestPaymentCall{Call: call}
 }
 
-// MockJSAPIServicePrepayCall wrap *gomock.Call
-type MockJSAPIServicePrepayCall struct {
+// JSAPIServicePrepayWithRequestPaymentCall wrap *gomock.Call
+type JSAPIServicePrepayWithRequestPaymentCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockJSAPIServicePrepayCall) Return(resp *jsapi.PrepayResponse, result *core.APIResult, err error) *MockJSAPIServicePrepayCall {
+func (c *JSAPIServicePrepayWithRequestPaymentCall) Return(resp *jsapi.PrepayWithRequestPaymentResponse, result *core.APIResult, err error) *JSAPIServicePrepayWithRequestPaymentCall {
 	c.Call = c.Call.Return(resp, result, err)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockJSAPIServicePrepayCall) Do(f func(context.Context, jsapi.PrepayRequest) (*jsapi.PrepayResponse, *core.APIResult, error)) *MockJSAPIServicePrepayCall {
+func (c *JSAPIServicePrepayWithRequestPaymentCall) Do(f func(context.Context, jsapi.PrepayRequest) (*jsapi.PrepayWithRequestPaymentResponse, *core.APIResult, error)) *JSAPIServicePrepayWithRequestPaymentCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockJSAPIServicePrepayCall) DoAndReturn(f func(context.Context, jsapi.PrepayRequest) (*jsapi.PrepayResponse, *core.APIResult, error)) *MockJSAPIServicePrepayCall {
+func (c *JSAPIServicePrepayWithRequestPaymentCall) DoAndReturn(f func(context.Context, jsapi.PrepayRequest) (*jsapi.PrepayWithRequestPaymentResponse, *core.APIResult, error)) *JSAPIServicePrepayWithRequestPaymentCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -94,31 +92,31 @@ func (m *MockJSAPIService) QueryOrderByOutTradeNo(ctx context.Context, req jsapi
 }
 
 // QueryOrderByOutTradeNo indicates an expected call of QueryOrderByOutTradeNo.
-func (mr *MockJSAPIServiceMockRecorder) QueryOrderByOutTradeNo(ctx, req any) *MockJSAPIServiceQueryOrderByOutTradeNoCall {
+func (mr *MockJSAPIServiceMockRecorder) QueryOrderByOutTradeNo(ctx, req any) *JSAPIServiceQueryOrderByOutTradeNoCall {
 	mr.mock.ctrl.T.Helper()
 	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryOrderByOutTradeNo", reflect.TypeOf((*MockJSAPIService)(nil).QueryOrderByOutTradeNo), ctx, req)
-	return &MockJSAPIServiceQueryOrderByOutTradeNoCall{Call: call}
+	return &JSAPIServiceQueryOrderByOutTradeNoCall{Call: call}
 }
 
-// MockJSAPIServiceQueryOrderByOutTradeNoCall wrap *gomock.Call
-type MockJSAPIServiceQueryOrderByOutTradeNoCall struct {
+// JSAPIServiceQueryOrderByOutTradeNoCall wrap *gomock.Call
+type JSAPIServiceQueryOrderByOutTradeNoCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockJSAPIServiceQueryOrderByOutTradeNoCall) Return(resp *payments.Transaction, result *core.APIResult, err error) *MockJSAPIServiceQueryOrderByOutTradeNoCall {
+func (c *JSAPIServiceQueryOrderByOutTradeNoCall) Return(resp *payments.Transaction, result *core.APIResult, err error) *JSAPIServiceQueryOrderByOutTradeNoCall {
 	c.Call = c.Call.Return(resp, result, err)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockJSAPIServiceQueryOrderByOutTradeNoCall) Do(f func(context.Context, jsapi.QueryOrderByOutTradeNoRequest) (*payments.Transaction, *core.APIResult, error)) *MockJSAPIServiceQueryOrderByOutTradeNoCall {
+func (c *JSAPIServiceQueryOrderByOutTradeNoCall) Do(f func(context.Context, jsapi.QueryOrderByOutTradeNoRequest) (*payments.Transaction, *core.APIResult, error)) *JSAPIServiceQueryOrderByOutTradeNoCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockJSAPIServiceQueryOrderByOutTradeNoCall) DoAndReturn(f func(context.Context, jsapi.QueryOrderByOutTradeNoRequest) (*payments.Transaction, *core.APIResult, error)) *MockJSAPIServiceQueryOrderByOutTradeNoCall {
+func (c *JSAPIServiceQueryOrderByOutTradeNoCall) DoAndReturn(f func(context.Context, jsapi.QueryOrderByOutTradeNoRequest) (*payments.Transaction, *core.APIResult, error)) *JSAPIServiceQueryOrderByOutTradeNoCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
