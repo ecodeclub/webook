@@ -53,18 +53,32 @@ type CreateOrderReq struct {
 }
 
 type CreateOrderResp struct {
-	SN            string `json:"sn"`
-	WechatCodeURL string `json:"wechatCodeURL,omitempty"`
+	SN            string      `json:"sn"`
+	WechatCodeURL string      `json:"wechatCodeURL,omitempty"`
+	WechatJsAPI   WechatJsAPI `json:"wechatJsAPI,omitempty"`
+}
+
+// WechatJsAPI 代表微信小程序支付的东西
+type WechatJsAPI struct {
+	// 预支付交易会话标识
+	PrepayId string `json:"prepayId"`
+	// 应用ID
+	Appid string `json:"appid"`
+	// 时间戳
+	TimeStamp string `json:"timeStamp"`
+	// 随机字符串
+	NonceStr string `json:"nonceStr"`
+	// 订单详情扩展字符串
+	Package string `json:"package"`
+	// 签名方式
+	SignType string `json:"signType"`
+	// 签名
+	PaySign string `json:"paySign"`
 }
 
 // OrderSNReq 继续支付订单、获取订单状态、获取订单详情、取消订单
 type OrderSNReq struct {
 	SN string `json:"sn"`
-}
-
-// RepayOrderResp 继续支付
-type RepayOrderResp struct {
-	WechatCodeURL string `json:"wechatCodeURL,omitempty"`
 }
 
 // RetrieveOrderStatusResp 获取订单状态

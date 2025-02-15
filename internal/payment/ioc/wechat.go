@@ -17,6 +17,8 @@ package ioc
 import (
 	"context"
 
+	"github.com/ecodeclub/webook/internal/user"
+
 	"github.com/ecodeclub/webook/internal/payment/internal/service/wechat"
 	"github.com/gotomicro/ego/core/econf"
 	"github.com/wechatpay-apiv3/wechatpay-go/core"
@@ -24,6 +26,7 @@ import (
 	"github.com/wechatpay-apiv3/wechatpay-go/core/downloader"
 	"github.com/wechatpay-apiv3/wechatpay-go/core/notify"
 	"github.com/wechatpay-apiv3/wechatpay-go/core/option"
+	"github.com/wechatpay-apiv3/wechatpay-go/services/payments/jsapi"
 	"github.com/wechatpay-apiv3/wechatpay-go/services/payments/native"
 	"github.com/wechatpay-apiv3/wechatpay-go/utils"
 )
@@ -52,14 +55,26 @@ func InitWechatClient(cfg WechatConfig) *core.Client {
 	return client
 }
 
-func InitWechatNativeService(native wechat.NativeAPIService, cfg WechatConfig) *wechat.NativePaymentService {
-	return wechat.NewNativePaymentService(native, cfg.AppID, cfg.MchID, cfg.PaymentNotifyURL)
-}
-
 func InitNativeApiService(cli *core.Client) *native.NativeApiService {
 	return &native.NativeApiService{
 		Client: cli,
 	}
+}
+
+func InitWechatNativePaymentService(native wechat.NativeAPIService, cfg WechatConfig) *wechat.NativePaymentService {
+	return wechat.NewNativePaymentService(native, cfg.AppID, cfg.MchID, cfg.PaymentNotifyURL)
+}
+
+func InitJSApiService(cli *core.Client) *jsapi.JsapiApiService {
+	return &jsapi.JsapiApiService{
+		Client: cli,
+	}
+}
+
+func InitWechatJSAPIPaymentService(js wechat.JSAPIService,
+	usr user.UserService,
+	cfg WechatConfig) *wechat.JSAPIPaymentService {
+	return wechat.NewJSAPIPaymentService(js, usr, cfg.AppID, cfg.MchID, cfg.PaymentNotifyURL)
 }
 
 func InitWechatNotifyHandler(cfg WechatConfig) *notify.Handler {

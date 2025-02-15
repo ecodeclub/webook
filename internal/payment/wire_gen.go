@@ -12,7 +12,6 @@ import (
 	"github.com/ecodeclub/ecache"
 	"github.com/ecodeclub/mq-api"
 	"github.com/ecodeclub/webook/internal/credit"
-	"github.com/ecodeclub/webook/internal/payment/internal/domain"
 	"github.com/ecodeclub/webook/internal/payment/internal/event"
 	"github.com/ecodeclub/webook/internal/payment/internal/job"
 	"github.com/ecodeclub/webook/internal/payment/internal/repository"
@@ -22,21 +21,22 @@ import (
 	"github.com/ecodeclub/webook/internal/payment/internal/web"
 	"github.com/ecodeclub/webook/internal/payment/ioc"
 	"github.com/ecodeclub/webook/internal/pkg/sequencenumber"
-	"github.com/wechatpay-apiv3/wechatpay-go/core/notify"
-	"github.com/wechatpay-apiv3/wechatpay-go/services/payments/native"
+	"github.com/ecodeclub/webook/internal/user"
 	"gorm.io/gorm"
 )
 
 // Injectors from wire.go:
 
-func InitModule(db *gorm.DB, mq2 mq.MQ, c ecache.Cache, cm *credit.Module) (*Module, error) {
+func InitModule(db *gorm.DB, mq2 mq.MQ, c ecache.Cache, um *user.Module, cm *credit.Module) (*Module, error) {
 	wechatConfig := ioc.InitWechatConfig()
 	handler := ioc.InitWechatNotifyHandler(wechatConfig)
-	notifyHandler := convertToNotifyHandler(handler)
 	client := ioc.InitWechatClient(wechatConfig)
 	nativeApiService := ioc.InitNativeApiService(client)
-	nativeAPIService := convertToNativeAPIService(nativeApiService)
-	nativePaymentService := ioc.InitWechatNativeService(nativeAPIService, wechatConfig)
+	nativePaymentService := ioc.InitWechatNativePaymentService(nativeApiService, wechatConfig)
+	jsapiApiService := ioc.InitJSApiService(client)
+	userService := um.Svc
+	jsapiPaymentService := ioc.InitWechatJSAPIPaymentService(jsapiApiService, userService, wechatConfig)
+	v := newPaymentServices(nativePaymentService, jsapiPaymentService)
 	serviceService := cm.Svc
 	generator := sequencenumber.NewGenerator()
 	daoPaymentDAO := initDAO(db)
@@ -45,8 +45,8 @@ func InitModule(db *gorm.DB, mq2 mq.MQ, c ecache.Cache, cm *credit.Module) (*Mod
 	if err != nil {
 		return nil, err
 	}
-	service2 := service.NewService(nativePaymentService, serviceService, generator, paymentRepository, paymentEventProducer)
-	webHandler := web.NewHandler(notifyHandler, service2)
+	service2 := service.NewService(v, serviceService, generator, paymentRepository, paymentEventProducer)
+	webHandler := web.NewHandler(handler, service2)
 	syncWechatOrderJob := initSyncWechatOrderJob(service2)
 	module := &Module{
 		Hdl:                webHandler,
@@ -58,32 +58,11 @@ func InitModule(db *gorm.DB, mq2 mq.MQ, c ecache.Cache, cm *credit.Module) (*Mod
 
 // wire.go:
 
-type (
-	Handler            = web.Handler
-	Payment            = domain.Payment
-	Record             = domain.PaymentRecord
-	Channel            = domain.PaymentChannel
-	ChannelType        = domain.ChannelType
-	Service            = service.Service
-	SyncWechatOrderJob = job.SyncWechatOrderJob
-)
-
-const (
-	ChannelTypeCredit = domain.ChannelTypeCredit
-	ChannelTypeWechat = domain.ChannelTypeWechat
-
-	StatusUnpaid      = domain.PaymentStatusUnpaid
-	StatusProcessing  = domain.PaymentStatusProcessing
-	StatusPaidSuccess = domain.PaymentStatusPaidSuccess
-	StatusPaidFailed  = domain.PaymentStatusPaidFailed
-)
-
-func convertToNotifyHandler(h *notify.Handler) wechat.NotifyHandler {
-	return h
-}
-
-func convertToNativeAPIService(n *native.NativeApiService) wechat.NativeAPIService {
-	return n
+func newPaymentServices(n *wechat.NativePaymentService, j *wechat.JSAPIPaymentService) map[ChannelType]service.PaymentService {
+	return map[ChannelType]service.PaymentService{
+		ChannelTypeWechat:   n,
+		ChannelTypeWechatJS: j,
+	}
 }
 
 var (

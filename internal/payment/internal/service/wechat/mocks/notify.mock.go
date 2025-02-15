@@ -5,6 +5,7 @@
 //
 //	mockgen -source=./notify.go -package=wechatmocks -destination=./mocks/notify.mock.go -typed NotifyHandler
 //
+
 // Package wechatmocks is a generated GoMock package.
 package wechatmocks
 
@@ -21,6 +22,7 @@ import (
 type MockNotifyHandler struct {
 	ctrl     *gomock.Controller
 	recorder *MockNotifyHandlerMockRecorder
+	isgomock struct{}
 }
 
 // MockNotifyHandlerMockRecorder is the mock recorder for MockNotifyHandler.
@@ -50,31 +52,31 @@ func (m *MockNotifyHandler) ParseNotifyRequest(ctx context.Context, request *htt
 }
 
 // ParseNotifyRequest indicates an expected call of ParseNotifyRequest.
-func (mr *MockNotifyHandlerMockRecorder) ParseNotifyRequest(ctx, request, content any) *NotifyHandlerParseNotifyRequestCall {
+func (mr *MockNotifyHandlerMockRecorder) ParseNotifyRequest(ctx, request, content any) *MockNotifyHandlerParseNotifyRequestCall {
 	mr.mock.ctrl.T.Helper()
 	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ParseNotifyRequest", reflect.TypeOf((*MockNotifyHandler)(nil).ParseNotifyRequest), ctx, request, content)
-	return &NotifyHandlerParseNotifyRequestCall{Call: call}
+	return &MockNotifyHandlerParseNotifyRequestCall{Call: call}
 }
 
-// NotifyHandlerParseNotifyRequestCall wrap *gomock.Call
-type NotifyHandlerParseNotifyRequestCall struct {
+// MockNotifyHandlerParseNotifyRequestCall wrap *gomock.Call
+type MockNotifyHandlerParseNotifyRequestCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *NotifyHandlerParseNotifyRequestCall) Return(arg0 *notify.Request, arg1 error) *NotifyHandlerParseNotifyRequestCall {
+func (c *MockNotifyHandlerParseNotifyRequestCall) Return(arg0 *notify.Request, arg1 error) *MockNotifyHandlerParseNotifyRequestCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *NotifyHandlerParseNotifyRequestCall) Do(f func(context.Context, *http.Request, any) (*notify.Request, error)) *NotifyHandlerParseNotifyRequestCall {
+func (c *MockNotifyHandlerParseNotifyRequestCall) Do(f func(context.Context, *http.Request, any) (*notify.Request, error)) *MockNotifyHandlerParseNotifyRequestCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *NotifyHandlerParseNotifyRequestCall) DoAndReturn(f func(context.Context, *http.Request, any) (*notify.Request, error)) *NotifyHandlerParseNotifyRequestCall {
+func (c *MockNotifyHandlerParseNotifyRequestCall) DoAndReturn(f func(context.Context, *http.Request, any) (*notify.Request, error)) *MockNotifyHandlerParseNotifyRequestCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
