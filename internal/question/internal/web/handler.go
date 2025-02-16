@@ -218,5 +218,4 @@ func (h *Handler) checkPermission(gctx *ginx.Context, que domain.Question) (bool
 		}
 		return true, uid
 	}
-
 }

@@ -25,7 +25,7 @@ type ReviewDAO interface {
 	Count(ctx context.Context) (int64, error)
 
 	// Sync 同步到线上库
-	Sync(ctx context.Context, c Review) (int64, error)
+	Sync(ctx context.Context, c Review) (Review, error)
 	PublishReviewList(ctx context.Context, offset, limit int) ([]PublishReview, error)
 	GetPublishReview(ctx context.Context, reviewId int64) (PublishReview, error)
 }
@@ -83,23 +83,24 @@ func (r *reviewDao) save(db *gorm.DB, review Review) (int64, error) {
 	return review.ID, err
 }
 
-func (r *reviewDao) Sync(ctx context.Context, c Review) (int64, error) {
-	var id = c.ID
+func (r *reviewDao) Sync(ctx context.Context, re Review) (Review, error) {
+	var id = re.ID
 	now := time.Now().UnixMilli()
-	c.Ctime = now
-	c.Utime = now
+	re.Ctime = now
+	re.Utime = now
 	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var err error
-		id, err = r.save(tx, c)
+		id, err = r.save(tx, re)
 		if err != nil {
 			return err
 		}
-		pubReview := PublishReview(c)
+		re.ID = id
+		pubReview := PublishReview(re)
 		return tx.Clauses(clause.OnConflict{
 			DoUpdates: clause.AssignmentColumns(r.getUpdateCols()),
 		}).Create(&pubReview).Error
 	})
-	return id, err
+	return re, err
 }
 
 func (r *reviewDao) PublishReviewList(ctx context.Context, offset, limit int) ([]PublishReview, error) {

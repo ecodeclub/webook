@@ -2,7 +2,9 @@ package integration
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"github.com/ecodeclub/ecache"
 	"net/http"
 	"strconv"
 	"testing"
@@ -37,6 +39,7 @@ type TestSuite struct {
 	db        *egorm.Component
 	server    *egin.Component
 	reviewDao dao.ReviewDAO
+	rdb       ecache.Cache
 }
 
 func mockInteractive(biz string, id int64) interactive.Interactive {
@@ -56,6 +59,7 @@ func mockInteractive(biz string, id int64) interactive.Interactive {
 func (s *TestSuite) SetupSuite() {
 	db := testioc.InitDB()
 	testmq := testioc.InitMQ()
+	rdb := testioc.InitCache()
 	ctrl := gomock.NewController(s.T())
 	svc := intrmocks.NewMockService(ctrl)
 	svc.EXPECT().GetByIds(gomock.Any(), "review", gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, biz string, uid int64, ids []int64) (map[int64]interactive.Interactive, error) {
@@ -72,7 +76,7 @@ func (s *TestSuite) SetupSuite() {
 	}).AnyTimes()
 	mou := startup.InitModule(db, &interactive.Module{
 		Svc: svc,
-	}, testmq, session.DefaultProvider())
+	}, testmq, rdb, session.DefaultProvider())
 	econf.Set("server", map[string]any{"contextTimeout": "1s"})
 	server := egin.Load("server").Build()
 	server.Use(func(ctx *gin.Context) {
@@ -89,6 +93,7 @@ func (s *TestSuite) SetupSuite() {
 	s.db = db
 	s.server = server
 	s.reviewDao = reviewDao
+	s.rdb = rdb
 }
 
 func (s *TestSuite) TearDownTest() {
@@ -271,6 +276,7 @@ func (s *TestSuite) TestPubDetail() {
 	testCases := []struct {
 		name     string
 		before   func(t *testing.T)
+		after    func(t *testing.T)
 		req      web.DetailReq
 		wantCode int
 		wantResp test.Result[web.Review]
@@ -304,6 +310,86 @@ func (s *TestSuite) TestPubDetail() {
 				// 同步到发布表
 				_, err = s.reviewDao.Sync(ctx, review)
 				require.NoError(t, err)
+			},
+			after: func(t *testing.T) {
+				s.assertCachedReview(t, domain.Review{
+					ID:               1,
+					Uid:              uid,
+					Title:            "已发布的标题",
+					Desc:             "已发布的描述",
+					Labels:           []string{"已发布的标签"},
+					JD:               "已发布的JD",
+					JDAnalysis:       "已发布的JD分析",
+					Questions:        "已发布的面试问题",
+					QuestionAnalysis: "已发布的问题分析",
+					Resume:           "已发布的简历",
+					Status:           domain.PublishedStatus,
+				})
+			},
+			req: web.DetailReq{
+				ID: 1,
+			},
+			wantCode: 200,
+			wantResp: test.Result[web.Review]{
+				Data: web.Review{
+					ID:               1,
+					Title:            "已发布的标题",
+					Desc:             "已发布的描述",
+					Labels:           []string{"已发布的标签"},
+					JD:               "已发布的JD",
+					JDAnalysis:       "已发布的JD分析",
+					Questions:        "已发布的面试问题",
+					QuestionAnalysis: "已发布的问题分析",
+					Resume:           "已发布的简历",
+					Status:           domain.PublishedStatus.ToUint8(),
+					Interactive: web.Interactive{
+						CollectCnt: 4,
+						LikeCnt:    3,
+						ViewCnt:    2,
+						Liked:      true,
+						Collected:  false,
+					},
+				},
+			},
+		},
+		{
+			name: "直接命中缓存",
+			before: func(t *testing.T) {
+				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+				defer cancel()
+				re := domain.Review{
+					ID:               1,
+					Uid:              uid,
+					Title:            "已发布的标题",
+					Desc:             "已发布的描述",
+					Labels:           []string{"已发布的标签"},
+					JD:               "已发布的JD",
+					JDAnalysis:       "已发布的JD分析",
+					Questions:        "已发布的面试问题",
+					QuestionAnalysis: "已发布的问题分析",
+					Resume:           "已发布的简历",
+					Status:           domain.PublishedStatus,
+					Utime:            1111111,
+				}
+				reByte, err := json.Marshal(re)
+				require.NoError(t, err)
+				err = s.rdb.Set(ctx, "review:publish:1", string(reByte), 24*time.Hour)
+				require.NoError(t, err)
+			},
+			after: func(t *testing.T) {
+				s.assertCachedReview(t, domain.Review{
+					ID:               1,
+					Uid:              uid,
+					Title:            "已发布的标题",
+					Desc:             "已发布的描述",
+					Labels:           []string{"已发布的标签"},
+					JD:               "已发布的JD",
+					JDAnalysis:       "已发布的JD分析",
+					Questions:        "已发布的面试问题",
+					QuestionAnalysis: "已发布的问题分析",
+					Resume:           "已发布的简历",
+					Status:           domain.PublishedStatus,
+				})
 			},
 			req: web.DetailReq{
 				ID: 1,
@@ -354,7 +440,7 @@ func (s *TestSuite) TestPubDetail() {
 			assert.True(t, resp.Data.Utime != 0)
 			resp.Data.Utime = 0
 			assert.Equal(t, tc.wantResp, resp)
-
+			tc.after(t)
 			// 清理数据
 			err = s.db.Exec("TRUNCATE table `reviews`").Error
 			require.NoError(t, err)
@@ -376,4 +462,24 @@ func assertReview(t *testing.T, expect dao.Review, actual dao.Review) {
 
 func TestReviewHandler(t *testing.T) {
 	suite.Run(t, new(TestSuite))
+}
+
+func (s *TestSuite) assertCachedReview(t *testing.T, want domain.Review) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	key := fmt.Sprintf("review:publish:%d", want.ID)
+	// 获取缓存值
+	cachedVal := s.rdb.Get(ctx, key)
+	require.NoError(t, cachedVal.Err)
+
+	// 反序列化
+	var cachedReview domain.Review
+	err := json.Unmarshal([]byte(cachedVal.Val.(string)), &cachedReview)
+	require.NoError(t, err)
+	require.True(t, cachedReview.Utime > 0)
+	cachedReview.Utime = 0
+	// 断言内容
+	assert.Equal(t, want, cachedReview)
+	_, err = s.rdb.Delete(context.Background(), key)
+	require.NoError(t, err)
 }
