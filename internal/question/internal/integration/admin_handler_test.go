@@ -353,6 +353,23 @@ func (s *AdminHandlerTestSuite) TestSync() {
 					Content: "面试题内容",
 				}, dao.Question(q))
 				assert.Equal(t, 4, len(eles))
+				s.cacheAssertQuestion(domain.Question{
+					Id:      1,
+					Uid:     uid,
+					Title:   "面试题1",
+					Biz:     "project",
+					BizId:   1,
+					Status:  domain.PublishedStatus,
+					Labels:  []string{"MySQL"},
+					Content: "面试题内容",
+					Answer: domain.Answer{
+						Analysis:     s.buildDomainAnswerEle(0, 1),
+						Basic:        s.buildDomainAnswerEle(1, 2),
+						Intermediate: s.buildDomainAnswerEle(2, 3),
+						Advanced:     s.buildDomainAnswerEle(3, 4),
+					},
+				})
+
 			},
 			req: web.SaveReq{
 				Question: web.Question{
@@ -463,6 +480,30 @@ func (s *AdminHandlerTestSuite) TestSync() {
 					Highlight: "新的亮点",
 					Guidance:  "新的引导点",
 				}, dao.AnswerElement(pAnalysis))
+
+				s.cacheAssertQuestion(domain.Question{
+					Id:      2,
+					Uid:     uid,
+					Status:  domain.PublishedStatus,
+					Biz:     "roadmap",
+					BizId:   2,
+					Labels:  []string{"sqlite"},
+					Title:   "面试题1",
+					Content: "新的内容",
+					Answer: domain.Answer{
+						Analysis: domain.AnswerElement{
+							Id:        1,
+							Content:   "新的分析",
+							Keywords:  "新的 keyword",
+							Shorthand: "新的速记",
+							Highlight: "新的亮点",
+							Guidance:  "新的引导点",
+						},
+						Basic:        s.buildDomainAnswerEle(1, 2),
+						Intermediate: s.buildDomainAnswerEle(2, 3),
+						Advanced:     s.buildDomainAnswerEle(3, 4),
+					},
+				})
 			},
 			req: func() web.SaveReq {
 				analysis := web.AnswerElement{
@@ -771,4 +812,32 @@ func (s *AdminHandlerTestSuite) getAnswerElement(idx int64) domain.AnswerElement
 		Highlight: fmt.Sprintf("亮点 %d", idx),
 		Guidance:  fmt.Sprintf("引导点 %d", idx),
 	}
+}
+
+// 校验缓存中的数据
+func (s *AdminHandlerTestSuite) cacheAssertQuestion(q domain.Question) {
+	t := s.T()
+	key := fmt.Sprintf("question:publish:%d", q.Id)
+	val := s.rdb.Get(context.Background(), key)
+	require.NoError(t, val.Err)
+
+	var actual domain.Question
+	err := json.Unmarshal([]byte(val.Val.(string)), &actual)
+	require.NoError(t, err)
+
+	// 处理时间字段
+	require.True(t, actual.Utime.Unix() > 0)
+	q.Utime = actual.Utime
+	assert.Equal(t, q, actual)
+	// 清理缓存
+	require.True(t, actual.Answer.Basic.Id > 0)
+	require.True(t, actual.Answer.Advanced.Id > 0)
+	require.True(t, actual.Answer.Intermediate.Id > 0)
+	require.True(t, actual.Answer.Analysis.Id > 0)
+	actual.Answer.Basic.Id = 0
+	actual.Answer.Advanced.Id = 0
+	actual.Answer.Intermediate.Id = 0
+	actual.Answer.Analysis.Id = 0
+	_, err = s.rdb.Delete(context.Background(), key)
+	require.NoError(t, err)
 }

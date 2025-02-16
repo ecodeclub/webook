@@ -14,9 +14,14 @@
 
 package cache
 
-import "context"
+import (
+	"context"
+	"github.com/ecodeclub/webook/internal/question/internal/domain"
+)
 
 type QuestionCache interface {
 	GetTotal(ctx context.Context) (int64, error)
 	SetTotal(ctx context.Context, total int64) error
+	SetQuestion(ctx context.Context,question domain.Question)error
+	GetQuestion(ctx context.Context,id int64)(domain.Question,error)
 }

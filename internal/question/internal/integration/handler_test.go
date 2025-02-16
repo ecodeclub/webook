@@ -18,7 +18,9 @@ package integration
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"github.com/ecodeclub/ekit/sqlx"
 	"net/http"
 	"strconv"
 	"testing"
@@ -303,6 +305,7 @@ func (s *HandlerTestSuite) TestPubDetail() {
 		name     string
 		req      web.Qid
 		before   func(req *http.Request)
+		after    func()
 		wantData web.Question
 	}{
 		{
@@ -312,6 +315,9 @@ func (s *HandlerTestSuite) TestPubDetail() {
 			},
 			before: func(req *http.Request) {
 				req.Header.Set("not_member", "1")
+			},
+			after: func() {
+
 			},
 			wantData: web.Question{
 				Id:      1041,
@@ -357,6 +363,9 @@ func (s *HandlerTestSuite) TestPubDetail() {
 			name: "会员返回全部数据",
 			req: web.Qid{
 				Qid: 1041,
+			},
+			after: func() {
+
 			},
 			before: func(req *http.Request) {},
 			wantData: web.Question{
@@ -404,6 +413,9 @@ func (s *HandlerTestSuite) TestPubDetail() {
 			name: "token中会员过期，但是是会员,返回全部数据",
 			req: web.Qid{
 				Qid: 1041,
+			},
+			after: func() {
+
 			},
 			before: func(req *http.Request) {
 				req.Header.Set("uid", "4")
@@ -453,6 +465,9 @@ func (s *HandlerTestSuite) TestPubDetail() {
 			name: "没有登录返回部分数据",
 			req: web.Qid{
 				Qid: 1041,
+			},
+			after: func() {
+
 			},
 			before: func(req *http.Request) {
 				req.Header.Set("not_login", "1")
@@ -550,6 +565,9 @@ func (s *HandlerTestSuite) TestPubDetail() {
 			req: web.Qid{
 				Qid: 1042,
 			},
+			after: func() {
+
+			},
 			before: func(req *http.Request) {
 			},
 			wantData: web.Question{
@@ -593,6 +611,229 @@ func (s *HandlerTestSuite) TestPubDetail() {
 				Permitted:     true,
 			},
 		},
+		{
+			name: "未命中缓存，刷新缓存",
+			req: web.Qid{
+				Qid: 22,
+			},
+			before: func(req *http.Request) {
+				err := s.db.Create(&dao.PublishQuestion{
+					Id:  22,
+					Uid: uid,
+					Labels: sqlx.JsonColumn[[]string]{
+						Valid: true,
+						Val:   []string{"MySQL"},
+					},
+					BizId:   32,
+					Biz:     "baguwen",
+					Status:  domain.PublishedStatus.ToUint8(),
+					Title:   "缓存测试问题标题",
+					Content: "缓存测试问题内容",
+					Utime:   1739678267424,
+					Ctime:   1739678267424,
+				}).Error
+				require.NoError(s.T(), err)
+				analysis := s.buildDAOAnswerEle(22, 1, dao.AnswerElementTypeAnalysis)
+				analysis.Id = 101
+				basic := s.buildDAOAnswerEle(22, 2, dao.AnswerElementTypeBasic)
+				basic.Id = 102
+				intermedia := s.buildDAOAnswerEle(22, 3, dao.AnswerElementTypeIntermedia)
+				intermedia.Id = 103
+				advanced := s.buildDAOAnswerEle(22, 4, dao.AnswerElementTypeAdvanced)
+				advanced.Id = 104
+
+				eles := []dao.PublishAnswerElement{
+					dao.PublishAnswerElement(analysis),
+					dao.PublishAnswerElement(basic),
+					dao.PublishAnswerElement(advanced),
+					dao.PublishAnswerElement(intermedia),
+				}
+				err = s.db.WithContext(context.Background()).Create(&eles).Error
+				require.NoError(s.T(), err)
+
+			},
+			after: func() {
+				analysis := s.buildDomainAnswerEle(1, 101)
+				basic := s.buildDomainAnswerEle(2, 102)
+				intermedia := s.buildDomainAnswerEle(3, 103)
+				advanced := s.buildDomainAnswerEle(4, 104)
+
+				// 校验缓存中有没有写入数据
+				s.cacheAssertQuestion(domain.Question{
+					Id:      22,
+					Uid:     uid,
+					Labels:  []string{"MySQL"},
+					BizId:   32,
+					Biz:     "baguwen",
+					Status:  domain.PublishedStatus,
+					Title:   "缓存测试问题标题",
+					Content: "缓存测试问题内容",
+					Answer: domain.Answer{
+						Analysis:     analysis,
+						Basic:        basic,
+						Intermediate: intermedia,
+						Advanced:     advanced,
+					},
+				})
+			},
+			wantData: web.Question{
+				Id:      22,
+				Labels:  []string{"MySQL"},
+				BizId:   32,
+				Biz:     "baguwen",
+				Status:  domain.PublishedStatus.ToUint8(),
+				Title:   "缓存测试问题标题",
+				Content: "缓存测试问题内容",
+				Utime:   1739678267424,
+				Analysis: web.AnswerElement{
+					Id:        101,
+					Content:   fmt.Sprintf("这是解析 %d", 1),
+					Keywords:  fmt.Sprintf("关键字 %d", 1),
+					Shorthand: fmt.Sprintf("快速记忆法 %d", 1),
+					Highlight: fmt.Sprintf("亮点 %d", 1),
+					Guidance:  fmt.Sprintf("引导点 %d", 1),
+				},
+				Basic: web.AnswerElement{
+					Id:        102,
+					Content:   fmt.Sprintf("这是解析 %d", 2),
+					Keywords:  fmt.Sprintf("关键字 %d", 2),
+					Shorthand: fmt.Sprintf("快速记忆法 %d", 2),
+					Highlight: fmt.Sprintf("亮点 %d", 2),
+					Guidance:  fmt.Sprintf("引导点 %d", 2),
+				},
+				Intermediate: web.AnswerElement{
+					Id:        103,
+					Content:   fmt.Sprintf("这是解析 %d", 3),
+					Keywords:  fmt.Sprintf("关键字 %d", 3),
+					Shorthand: fmt.Sprintf("快速记忆法 %d", 3),
+					Highlight: fmt.Sprintf("亮点 %d", 3),
+					Guidance:  fmt.Sprintf("引导点 %d", 3),
+				},
+				Advanced: web.AnswerElement{
+					Id:        104,
+					Content:   fmt.Sprintf("这是解析 %d", 4),
+					Keywords:  fmt.Sprintf("关键字 %d", 4),
+					Shorthand: fmt.Sprintf("快速记忆法 %d", 4),
+					Highlight: fmt.Sprintf("亮点 %d", 4),
+					Guidance:  fmt.Sprintf("引导点 %d", 4),
+				},
+				Interactive: web.Interactive{
+					CollectCnt: 25,
+					LikeCnt:    24,
+					ViewCnt:    23,
+					Collected:  true,
+				},
+				ExamineResult: 0,
+				Permitted:     true,
+			},
+		},
+		{
+			name: "命中缓存,直接返回",
+			req: web.Qid{
+				Qid: 23,
+			},
+			before: func(req *http.Request) {
+				analysis := s.buildDomainAnswerEle(1, 105)
+				basic := s.buildDomainAnswerEle(2, 106)
+				intermedia := s.buildDomainAnswerEle(3, 107)
+				advanced := s.buildDomainAnswerEle(4, 108)
+				que := domain.Question{
+					Id:      23,
+					Uid:     uid,
+					Labels:  []string{"MySQL"},
+					BizId:   32,
+					Biz:     "baguwen",
+					Status:  domain.PublishedStatus,
+					Title:   "缓存测试问题标题",
+					Content: "缓存测试问题内容",
+					Utime:   time.UnixMilli(1739678267424),
+					Answer: domain.Answer{
+						Analysis:     analysis,
+						Basic:        basic,
+						Intermediate: intermedia,
+						Advanced:     advanced,
+					},
+				}
+				queByte, err := json.Marshal(que)
+				require.NoError(s.T(), err)
+				err = s.rdb.Set(context.Background(), "question:publish:23", string(queByte), 24*time.Hour)
+				require.NoError(s.T(), err)
+
+			},
+			after: func() {
+				analysis := s.buildDomainAnswerEle(1, 105)
+				basic := s.buildDomainAnswerEle(2, 106)
+				intermedia := s.buildDomainAnswerEle(3, 107)
+				advanced := s.buildDomainAnswerEle(4, 108)
+
+				// 校验缓存中有没有写入数据
+				s.cacheAssertQuestion(domain.Question{
+					Id:      23,
+					Uid:     uid,
+					Labels:  []string{"MySQL"},
+					BizId:   32,
+					Biz:     "baguwen",
+					Status:  domain.PublishedStatus,
+					Title:   "缓存测试问题标题",
+					Content: "缓存测试问题内容",
+					Answer: domain.Answer{
+						Analysis:     analysis,
+						Basic:        basic,
+						Intermediate: intermedia,
+						Advanced:     advanced,
+					},
+				})
+			},
+			wantData: web.Question{
+				Id:      23,
+				Labels:  []string{"MySQL"},
+				BizId:   32,
+				Biz:     "baguwen",
+				Status:  domain.PublishedStatus.ToUint8(),
+				Title:   "缓存测试问题标题",
+				Content: "缓存测试问题内容",
+				Utime:   1739678267424,
+				Analysis: web.AnswerElement{
+					Id:        105,
+					Content:   fmt.Sprintf("这是解析 %d", 1),
+					Keywords:  fmt.Sprintf("关键字 %d", 1),
+					Shorthand: fmt.Sprintf("快速记忆法 %d", 1),
+					Highlight: fmt.Sprintf("亮点 %d", 1),
+					Guidance:  fmt.Sprintf("引导点 %d", 1),
+				},
+				Basic: web.AnswerElement{
+					Id:        106,
+					Content:   fmt.Sprintf("这是解析 %d", 2),
+					Keywords:  fmt.Sprintf("关键字 %d", 2),
+					Shorthand: fmt.Sprintf("快速记忆法 %d", 2),
+					Highlight: fmt.Sprintf("亮点 %d", 2),
+					Guidance:  fmt.Sprintf("引导点 %d", 2),
+				},
+				Intermediate: web.AnswerElement{
+					Id:        107,
+					Content:   fmt.Sprintf("这是解析 %d", 3),
+					Keywords:  fmt.Sprintf("关键字 %d", 3),
+					Shorthand: fmt.Sprintf("快速记忆法 %d", 3),
+					Highlight: fmt.Sprintf("亮点 %d", 3),
+					Guidance:  fmt.Sprintf("引导点 %d", 3),
+				},
+				Advanced: web.AnswerElement{
+					Id:        108,
+					Content:   fmt.Sprintf("这是解析 %d", 4),
+					Keywords:  fmt.Sprintf("关键字 %d", 4),
+					Shorthand: fmt.Sprintf("快速记忆法 %d", 4),
+					Highlight: fmt.Sprintf("亮点 %d", 4),
+					Guidance:  fmt.Sprintf("引导点 %d", 4),
+				},
+				Interactive: web.Interactive{
+					CollectCnt: 26,
+					LikeCnt:    25,
+					ViewCnt:    24,
+					Liked:      true,
+				},
+				Permitted: true,
+			},
+		},
 	}
 	for _, tc := range testcases {
 		s.T().Run(tc.name, func(t *testing.T) {
@@ -606,6 +847,7 @@ func (s *HandlerTestSuite) TestPubDetail() {
 			require.Equal(t, 200, recorder.Code)
 			data := recorder.MustScan().Data
 			assert.Equal(t, tc.wantData, data)
+			tc.after()
 		})
 	}
 }
@@ -730,6 +972,26 @@ func (s *HandlerTestSuite) initData() {
 		proIntermediate,
 		proAdvanced,
 	}).Error
+	require.NoError(t, err)
+}
+
+// 校验缓存中的数据
+func (s *HandlerTestSuite) cacheAssertQuestion(q domain.Question) {
+	t := s.T()
+	key := fmt.Sprintf("question:publish:%d", q.Id)
+	val := s.rdb.Get(context.Background(), key)
+	require.NoError(t, val.Err)
+
+	var actual domain.Question
+	err := json.Unmarshal([]byte(val.Val.(string)), &actual)
+	require.NoError(t, err)
+
+	// 处理时间字段
+	require.True(t, actual.Utime.Unix() > 0)
+	q.Utime = actual.Utime
+	assert.Equal(t, q, actual)
+	// 清理缓存
+	_, err = s.rdb.Delete(context.Background(), key)
 	require.NoError(t, err)
 }
 

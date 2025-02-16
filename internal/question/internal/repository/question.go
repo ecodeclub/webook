@@ -77,6 +77,25 @@ func (c *CachedRepository) GetPubByIDs(ctx context.Context, qids []int64) ([]dom
 
 func (c *CachedRepository) GetPubByID(ctx context.Context, qid int64) (domain.Question, error) {
 	// 可以缓存
+	question, cacheErr := c.cache.GetQuestion(ctx, qid)
+	// 找到直接返回
+	if cacheErr == nil {
+		return question, nil
+	}
+
+	entityQuestion, err := c.getPubByIDFromDb(ctx, qid)
+	if err != nil {
+		return domain.Question{}, err
+	}
+	cacheErr = c.cache.SetQuestion(ctx, entityQuestion)
+	if cacheErr != nil {
+		// 记录一下日志
+		c.logger.Error("记录缓存失败", elog.FieldErr(cacheErr))
+	}
+	return entityQuestion, nil
+}
+
+func (c *CachedRepository) getPubByIDFromDb(ctx context.Context, qid int64) (domain.Question, error) {
 	data, pubEles, err := c.dao.GetPubByID(ctx, qid)
 	if err != nil {
 		return domain.Question{}, err
@@ -84,7 +103,8 @@ func (c *CachedRepository) GetPubByID(ctx context.Context, qid int64) (domain.Qu
 	eles := slice.Map(pubEles, func(idx int, src dao.PublishAnswerElement) dao.AnswerElement {
 		return dao.AnswerElement(src)
 	})
-	return c.toDomainWithAnswer(dao.Question(data), eles), nil
+	entityQuestion := c.toDomainWithAnswer(dao.Question(data), eles)
+	return entityQuestion, nil
 }
 
 func (c *CachedRepository) ExcludeQuestions(ctx context.Context, ids []int64, offset int, limit int) ([]domain.Question, int64, error) {
@@ -135,7 +155,22 @@ func (c *CachedRepository) Create(ctx context.Context, question *domain.Question
 func (c *CachedRepository) Sync(ctx context.Context, que *domain.Question) (int64, error) {
 	// 理论上来说要更新缓存，但是我懒得写了
 	q, eles := c.toEntity(que)
-	return c.dao.Sync(ctx, q, eles)
+	id, err := c.dao.Sync(ctx, q, eles)
+	if err != nil {
+		return id, err
+	}
+	// todo 以后重构，现直接从数据库中获取，写入缓存
+	questionEntity, cacheErr := c.getPubByIDFromDb(ctx, id)
+	if cacheErr != nil {
+		// 记录一下日志
+		c.logger.Error("设置题目缓存失败", elog.FieldErr(cacheErr),elog.Int64("qid", id))
+	}
+	cacheErr = c.cache.SetQuestion(ctx,questionEntity)
+	if cacheErr != nil {
+		// 记录一下日志
+		c.logger.Error("设置题目缓存失败", elog.FieldErr(cacheErr),elog.Int64("qid", id))
+	}
+	return id,nil
 }
 
 func (c *CachedRepository) List(ctx context.Context, offset int, limit int) ([]domain.Question, error) {
