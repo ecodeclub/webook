@@ -17,7 +17,6 @@ package wechat
 import (
 	"context"
 	"fmt"
-	"strconv"
 	"time"
 
 	"github.com/ecodeclub/webook/internal/user"
@@ -49,13 +48,12 @@ func NewJSAPIPaymentService(svc JSAPIService,
 		svc:     svc,
 		userSvc: userSvc,
 		basePaymentService: basePaymentService{
-			l:                           elog.DefaultLogger,
-			name:                        domain.ChannelTypeWechatJS,
-			desc:                        "微信小程序",
-			appID:                       appid,
-			mchID:                       mchid,
-			notifyURL:                   notifyURL,
-			callBackTypeToPaymentStatus: wechatCallBackType2PaymentStatus,
+			l:         elog.DefaultLogger,
+			name:      domain.ChannelTypeWechatJS,
+			desc:      "微信小程序",
+			appID:     appid,
+			mchID:     mchid,
+			notifyURL: notifyURL,
 		},
 	}
 }
@@ -93,8 +91,7 @@ func (n *JSAPIPaymentService) Prepay(ctx context.Context, pmt domain.Payment) (a
 				Currency: core.String("CNY"),
 				Total:    core.Int64(r.Amount),
 			},
-			Payer:  &jsapi.Payer{Openid: core.String(profile.WechatInfo.MiniOpenId)},
-			Attach: core.String(strconv.FormatInt(int64(domain.ChannelTypeWechatJS), 10)),
+			Payer: &jsapi.Payer{Openid: core.String(profile.WechatInfo.MiniOpenId)},
 		},
 	)
 	if err != nil {
@@ -128,7 +125,7 @@ func (n *JSAPIPaymentService) QueryOrderBySN(ctx context.Context, orderSN string
 		return domain.Payment{}, err
 	}
 
-	status, err := n.convertoPaymentStatus(*txn.TradeState)
+	status, err := GetPaymentStatus(*txn.TradeState)
 	if err != nil {
 		return domain.Payment{}, err
 	}

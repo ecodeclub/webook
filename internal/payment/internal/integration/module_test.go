@@ -20,7 +20,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strconv"
 	"testing"
 	"time"
 
@@ -1578,7 +1577,6 @@ func (s *PaymentModuleTestSuite) TestService_HandleWechatCallback() {
 				OutTradeNo:    core.String("order-callback-300001"),
 				TransactionId: core.String("wechat-transaction-id-300001"),
 				TradeState:    core.String(TradeStateSuccess),
-				Attach:        core.String(strconv.FormatInt(int64(domain.ChannelTypeWechat), 10)),
 			},
 			newSvcFunc: func(t *testing.T, ctrl *gomock.Controller) service.Service {
 				t.Helper()
@@ -1647,7 +1645,6 @@ func (s *PaymentModuleTestSuite) TestService_HandleWechatCallback() {
 				OutTradeNo:    core.String("order-callback-300002"),
 				TransactionId: core.String("wechat-transaction-id-300002"),
 				TradeState:    core.String(TradeStateClosed),
-				Attach:        core.String(strconv.FormatInt(int64(domain.ChannelTypeWechat), 10)),
 			},
 			newSvcFunc: func(t *testing.T, ctrl *gomock.Controller) service.Service {
 				t.Helper()
@@ -1717,7 +1714,6 @@ func (s *PaymentModuleTestSuite) TestService_HandleWechatCallback() {
 				OutTradeNo:    core.String("order-callback-300003"),
 				TransactionId: core.String("wechat-transaction-id-300003"),
 				TradeState:    core.String(TradeStateNotPay),
-				Attach:        core.String(strconv.FormatInt(int64(domain.ChannelTypeWechat), 10)),
 			},
 			newSvcFunc: func(t *testing.T, ctrl *gomock.Controller) service.Service {
 				t.Helper()
@@ -1777,7 +1773,6 @@ func (s *PaymentModuleTestSuite) TestService_HandleWechatCallback() {
 				OutTradeNo:    core.String("order-callback-300004"),
 				TransactionId: core.String("wechat-transaction-id-300004"),
 				TradeState:    core.String(TradeStateInvalid),
-				Attach:        core.String(strconv.FormatInt(int64(domain.ChannelTypeWechat), 10)),
 			},
 			newSvcFunc: func(t *testing.T, ctrl *gomock.Controller) service.Service {
 				t.Helper()
@@ -1837,7 +1832,6 @@ func (s *PaymentModuleTestSuite) TestService_HandleWechatCallback() {
 				OutTradeNo:    core.String("order-callback-300011"),
 				TransactionId: core.String("wechat-transaction-id-300011"),
 				TradeState:    core.String(TradeStateSuccess),
-				Attach:        core.String(strconv.FormatInt(int64(domain.ChannelTypeWechatJS), 10)),
 			},
 			newSvcFunc: func(t *testing.T, ctrl *gomock.Controller) service.Service {
 				t.Helper()
@@ -1920,7 +1914,6 @@ func (s *PaymentModuleTestSuite) TestService_HandleWechatCallback() {
 				OutTradeNo:    core.String("order-callback-300012"),
 				TransactionId: core.String("wechat-transaction-id-300012"),
 				TradeState:    core.String(TradeStateClosed),
-				Attach:        core.String(strconv.FormatInt(int64(domain.ChannelTypeWechatJS), 10)),
 			},
 			newSvcFunc: func(t *testing.T, ctrl *gomock.Controller) service.Service {
 				t.Helper()
@@ -2004,7 +1997,6 @@ func (s *PaymentModuleTestSuite) TestService_HandleWechatCallback() {
 				OutTradeNo:    core.String("order-callback-300013"),
 				TransactionId: core.String("wechat-transaction-id-300013"),
 				TradeState:    core.String(TradeStateNotPay),
-				Attach:        core.String(strconv.FormatInt(int64(domain.ChannelTypeWechatJS), 10)),
 			},
 			newSvcFunc: func(t *testing.T, ctrl *gomock.Controller) service.Service {
 				t.Helper()
@@ -2078,7 +2070,6 @@ func (s *PaymentModuleTestSuite) TestService_HandleWechatCallback() {
 				OutTradeNo:    core.String("order-callback-300014"),
 				TransactionId: core.String("wechat-transaction-id-300014"),
 				TradeState:    core.String(TradeStateInvalid),
-				Attach:        core.String(strconv.FormatInt(int64(domain.ChannelTypeWechatJS), 10)),
 			},
 			newSvcFunc: func(t *testing.T, ctrl *gomock.Controller) service.Service {
 				t.Helper()
@@ -2158,7 +2149,6 @@ func (s *PaymentModuleTestSuite) TestService_HandleWechatCallback() {
 				OutTradeNo:    core.String("order-callback-300021"),
 				TransactionId: core.String("wechat-transaction-id-300021"),
 				TradeState:    core.String(TradeStateSuccess),
-				Attach:        core.String(strconv.FormatInt(int64(domain.ChannelTypeWechat), 10)),
 			},
 			newSvcFunc: func(t *testing.T, ctrl *gomock.Controller) service.Service {
 				t.Helper()
@@ -2254,7 +2244,6 @@ func (s *PaymentModuleTestSuite) TestService_HandleWechatCallback() {
 				OutTradeNo:    core.String("order-callback-300023"),
 				TransactionId: core.String("wechat-transaction-id-300023"),
 				TradeState:    core.String(TradeStateSuccess),
-				Attach:        core.String(strconv.FormatInt(int64(domain.ChannelTypeWechat), 10)),
 			},
 			newSvcFunc: func(t *testing.T, ctrl *gomock.Controller) service.Service {
 				t.Helper()
@@ -2344,7 +2333,6 @@ func (s *PaymentModuleTestSuite) TestService_HandleWechatCallback() {
 				OutTradeNo:    core.String("order-callback-300022"),
 				TransactionId: core.String("wechat-transaction-id-300022"),
 				TradeState:    core.String(TradeStatePayError),
-				Attach:        core.String(strconv.FormatInt(int64(domain.ChannelTypeWechat), 10)),
 			},
 			newSvcFunc: func(t *testing.T, ctrl *gomock.Controller) service.Service {
 				t.Helper()
@@ -2433,7 +2421,6 @@ func (s *PaymentModuleTestSuite) TestService_HandleWechatCallback() {
 				OutTradeNo:    core.String("order-callback-300024"),
 				TransactionId: core.String("wechat-transaction-id-300024"),
 				TradeState:    core.String(TradeStateRevoked),
-				Attach:        core.String(strconv.FormatInt(int64(domain.ChannelTypeWechat), 10)),
 			},
 			newSvcFunc: func(t *testing.T, ctrl *gomock.Controller) service.Service {
 				t.Helper()
@@ -2523,7 +2510,6 @@ func (s *PaymentModuleTestSuite) TestService_HandleWechatCallback() {
 				OutTradeNo:    core.String("order-callback-300025"),
 				TransactionId: core.String("wechat-transaction-id-300025"),
 				TradeState:    core.String(TradeStateNotPay),
-				Attach:        core.String(strconv.FormatInt(int64(domain.ChannelTypeWechat), 10)),
 			},
 			newSvcFunc: func(t *testing.T, ctrl *gomock.Controller) service.Service {
 				t.Helper()
@@ -2601,7 +2587,6 @@ func (s *PaymentModuleTestSuite) TestService_HandleWechatCallback() {
 				OutTradeNo:    core.String("order-callback-invalid-300026"),
 				TransactionId: core.String("wechat-transaction-id-300026"),
 				TradeState:    core.String(TradeStateSuccess),
-				Attach:        core.String(strconv.FormatInt(int64(domain.ChannelTypeWechat), 10)),
 			},
 			newSvcFunc: func(t *testing.T, ctrl *gomock.Controller) service.Service {
 				t.Helper()

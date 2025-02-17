@@ -25,7 +25,8 @@ import (
 )
 
 var (
-	wechatCallBackType2PaymentStatus = map[string]domain.PaymentStatus{
+	// TradeState2PaymentStatus 在微信 native 和 jsapi 共用回调交易信息
+	TradeState2PaymentStatus = map[string]domain.PaymentStatus{
 		"SUCCESS":    domain.PaymentStatusPaidSuccess, // 支付成功
 		"PAYERROR":   domain.PaymentStatusPaidFailed,  // 支付失败(其他原因，如银行返回失败)
 		"CLOSED":     domain.PaymentStatusPaidFailed,  // 已关闭
@@ -34,53 +35,18 @@ var (
 		"USERPAYING": domain.PaymentStatusProcessing,  // 用户支付中（付款码支付）
 		"REFUND":     domain.PaymentStatusRefund,      // 转入退款
 	}
-
-	errUnknownTransactionState = errors.New("未知的微信事务状态")
-	errIgnoredPaymentStatus    = errors.New("忽略的支付状态")
+	errUnknownTransactionState = errors.New("未知的微信交易状态")
 )
 
 type basePaymentService struct {
-	l    *elog.Component
+	l *elog.Component
+
 	name domain.ChannelType
 	desc string
 
 	appID     string
 	mchID     string
 	notifyURL string
-	// 在微信 native 里面，分别是
-	// SUCCESS：支付成功
-	// REFUND：转入退款
-	// NOTPAY：未支付
-	// CLOSED：已关闭
-	// REVOKED：已撤销（付款码支付）
-	// USERPAYING：用户支付中（付款码支付）
-	// PAYERROR：支付失败(其他原因，如银行返回失败)
-	callBackTypeToPaymentStatus map[string]domain.PaymentStatus
-}
-
-func (b *basePaymentService) ConvertCallbackTransactionToDomain(txn *payments.Transaction) (domain.Payment, error) {
-	status, err := b.convertoPaymentStatus(*txn.TradeState)
-	if err != nil {
-		return domain.Payment{}, err
-	}
-
-	if status != domain.PaymentStatusPaidSuccess && status != domain.PaymentStatusPaidFailed {
-		b.l.Warn("忽略的微信支付通知状态",
-			elog.String("TradeState", *txn.TradeState),
-			elog.Any("PaymentStatus", status),
-		)
-		return domain.Payment{}, fmt.Errorf("%w, %d", errIgnoredPaymentStatus, status.ToUint8())
-	}
-
-	return b.convertToPaymentDomain(txn, status), nil
-}
-
-func (b *basePaymentService) convertoPaymentStatus(tradeState string) (domain.PaymentStatus, error) {
-	status, ok := b.callBackTypeToPaymentStatus[tradeState]
-	if !ok {
-		return 0, fmt.Errorf("%w, %s", errUnknownTransactionState, tradeState)
-	}
-	return status, nil
 }
 
 func (b *basePaymentService) convertToPaymentDomain(txn *payments.Transaction, status domain.PaymentStatus) domain.Payment {
@@ -102,4 +68,12 @@ func (b *basePaymentService) convertToPaymentDomain(txn *payments.Transaction, s
 			},
 		},
 	}
+}
+
+func GetPaymentStatus(tradeState string) (domain.PaymentStatus, error) {
+	status, ok := TradeState2PaymentStatus[tradeState]
+	if !ok {
+		return 0, fmt.Errorf("%w, %s", errUnknownTransactionState, tradeState)
+	}
+	return status, nil
 }
