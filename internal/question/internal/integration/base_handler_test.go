@@ -133,9 +133,9 @@ func (s *BaseTestSuite) buildDAOAnswerEle(
 	}
 }
 
-func (s *BaseTestSuite)buildDomainAnswerEle(idx int,id int64)domain.AnswerElement {
+func (s *BaseTestSuite) buildDomainAnswerEle(idx int, id int64) domain.AnswerElement {
 	return domain.AnswerElement{
-		Id: id,
+		Id:        id,
 		Content:   fmt.Sprintf("这是解析 %d", idx),
 		Keywords:  fmt.Sprintf("关键字 %d", idx),
 		Shorthand: fmt.Sprintf("快速记忆法 %d", idx),
@@ -153,4 +153,3 @@ func (s *BaseTestSuite) buildAnswerEle(idx int64) web.AnswerElement {
 		Guidance:  fmt.Sprintf("引导点 %d", idx),
 	}
 }
-

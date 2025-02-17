@@ -4,18 +4,21 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
+
 	"github.com/ecodeclub/ecache"
 	"github.com/ecodeclub/webook/internal/review/internal/domain"
 	"github.com/pkg/errors"
-	"time"
 )
 
 const (
 	reviewExpiration = 24 * time.Hour
 )
+
 var (
 	ErrReviewNotFound = errors.New("面经没找到")
 )
+
 type ReviewCache interface {
 	SetReview(ctx context.Context, re domain.Review) error
 	GetReview(ctx context.Context, id int64) (domain.Review, error)

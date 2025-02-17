@@ -30,7 +30,6 @@ type QuestionECache struct {
 	ec ecache.Cache
 }
 
-
 var (
 	ErrQuestionNotFound = errors.New("问题没找到")
 )
@@ -98,24 +97,23 @@ func (q *QuestionECache) GetQuestions(ctx context.Context, biz string) ([]domain
 	return questions, nil
 }
 
-func (q *QuestionECache) GetTotal(ctx context.Context,biz string) (int64, error) {
+func (q *QuestionECache) GetTotal(ctx context.Context, biz string) (int64, error) {
 	return q.ec.Get(ctx, q.totalKey(biz)).AsInt64()
 }
 
-func (q *QuestionECache) SetTotal(ctx context.Context, biz string,total int64) error {
+func (q *QuestionECache) SetTotal(ctx context.Context, biz string, total int64) error {
 	// 设置更久的过期时间都可以，毕竟很少更新题库
 	return q.ec.Set(ctx, q.totalKey(biz), total, time.Minute*30)
 }
 
 func (q *QuestionECache) DelQuestion(ctx context.Context, id int64) error {
-	_,err := q.ec.Delete(ctx,q.questionKey(id))
+	_, err := q.ec.Delete(ctx, q.questionKey(id))
 	return err
 }
 
-
 // 注意 Namespace 设置
 func (q *QuestionECache) totalKey(biz string) string {
-	return fmt.Sprintf("total:%s",biz)
+	return fmt.Sprintf("total:%s", biz)
 }
 
 func (q *QuestionECache) questionKey(id int64) string {

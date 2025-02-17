@@ -22,7 +22,7 @@ func InitModule(db *egorm.Component,
 	q mq.MQ,
 	sp session.Provider,
 	ec ecache.Cache,
-	) *Module {
+) *Module {
 	wire.Build(
 		initReviewDao,
 		initIntrProducer,

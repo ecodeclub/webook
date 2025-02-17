@@ -2,10 +2,11 @@ package repository
 
 import (
 	"context"
+	"time"
+
 	"github.com/ecodeclub/webook/internal/cases/internal/repository/cache"
 	"github.com/gotomicro/ego/core/elog"
 	"github.com/pkg/errors"
-	"time"
 
 	"golang.org/x/sync/errgroup"
 
@@ -46,7 +47,7 @@ func (c *caseRepo) PubCount(ctx context.Context) (int64, error) {
 	if cacheErr == nil {
 		return total, nil
 	}
-	total, err := c.caseDao.PublishCaseCount(ctx,domain.DefaultBiz)
+	total, err := c.caseDao.PublishCaseCount(ctx, domain.DefaultBiz)
 	if err != nil {
 		return 0, err
 	}

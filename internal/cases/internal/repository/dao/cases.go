@@ -24,7 +24,7 @@ type CaseDAO interface {
 	Ids(ctx context.Context) ([]int64, error)
 	// 线上库
 	PublishCaseList(ctx context.Context, offset, limit int) ([]PublishCase, error)
-	PublishCaseCount(ctx context.Context,biz string) (int64, error)
+	PublishCaseCount(ctx context.Context, biz string) (int64, error)
 	GetPublishCase(ctx context.Context, caseId int64) (PublishCase, error)
 	GetPubByIDs(ctx context.Context, ids []int64) ([]PublishCase, error)
 
@@ -102,7 +102,6 @@ func (ca *caseDAO) List(ctx context.Context, offset, limit int) ([]Case, error) 
 	return caseList, err
 }
 
-
 func (ca *caseDAO) Sync(ctx context.Context, c Case) (Case, error) {
 	err := ca.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var err error
@@ -130,10 +129,10 @@ func (ca *caseDAO) PublishCaseList(ctx context.Context, offset, limit int) ([]Pu
 	return publishCaseList, err
 }
 
-func (ca *caseDAO) PublishCaseCount(ctx context.Context,biz string) (int64, error) {
+func (ca *caseDAO) PublishCaseCount(ctx context.Context, biz string) (int64, error) {
 	var res int64
 	err := ca.db.WithContext(ctx).Model(&PublishCase{}).Select("COUNT(id)").
-		Where("biz = ?",biz).
+		Where("biz = ?", biz).
 		Count(&res).Error
 	return res, err
 }

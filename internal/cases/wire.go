@@ -3,9 +3,10 @@
 package cases
 
 import (
+	"sync"
+
 	"github.com/ecodeclub/ecache"
 	"github.com/ecodeclub/webook/internal/cases/internal/repository/cache"
-	"sync"
 
 	"github.com/ecodeclub/ginx/session"
 

@@ -7,6 +7,8 @@
 package cases
 
 import (
+	"sync"
+
 	"github.com/ecodeclub/ecache"
 	"github.com/ecodeclub/ginx/session"
 	"github.com/ecodeclub/mq-api"
@@ -21,7 +23,6 @@ import (
 	"github.com/ecodeclub/webook/internal/member"
 	"github.com/ego-component/egorm"
 	"gorm.io/gorm"
-	"sync"
 )
 
 // Injectors from wire.go:
