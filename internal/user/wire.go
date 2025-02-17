@@ -39,16 +39,17 @@ var ProviderSet = wire.NewSet(
 	service.NewUserService,
 	repository.NewCachedUserRepository)
 
-func InitHandler(db *egorm.Component,
+func InitModule(db *egorm.Component,
 	cache ecache.Cache,
 	q mq.MQ, creators []string,
 	memberSvc *member.Module,
 	sp session.Provider,
-	permissionSvc *permission.Module) *Handler {
+	permissionSvc *permission.Module) *Module {
 	wire.Build(
 		ProviderSet,
 		wire.FieldsOf(new(*member.Module), "Svc"),
 		wire.FieldsOf(new(*permission.Module), "Svc"),
+		wire.Struct(new(Module), "*"),
 	)
-	return new(Handler)
+	return new(Module)
 }

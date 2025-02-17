@@ -17,6 +17,8 @@ package ioc
 import (
 	"context"
 
+	"github.com/ecodeclub/webook/internal/user"
+
 	"github.com/ecodeclub/webook/internal/payment/internal/service/wechat"
 	"github.com/gotomicro/ego/core/econf"
 	"github.com/wechatpay-apiv3/wechatpay-go/core"
@@ -69,8 +71,10 @@ func InitJSApiService(cli *core.Client) *jsapi.JsapiApiService {
 	}
 }
 
-func InitWechatJSAPIPaymentService(js wechat.JSAPIService, cfg WechatConfig) *wechat.JSAPIPaymentService {
-	return wechat.NewJSAPIPaymentService(js, cfg.AppID, cfg.MchID, cfg.PaymentNotifyURL)
+func InitWechatJSAPIPaymentService(js wechat.JSAPIService,
+	usr user.UserService,
+	cfg WechatConfig) *wechat.JSAPIPaymentService {
+	return wechat.NewJSAPIPaymentService(js, usr, cfg.AppID, cfg.MchID, cfg.PaymentNotifyURL)
 }
 
 func InitWechatNotifyHandler(cfg WechatConfig) *notify.Handler {

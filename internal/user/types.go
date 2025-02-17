@@ -15,12 +15,15 @@
 package user
 
 import (
+	"github.com/ecodeclub/webook/internal/user/internal/domain"
 	"github.com/ecodeclub/webook/internal/user/internal/service"
 	"github.com/ecodeclub/webook/internal/user/internal/web"
 )
 
 // Handler 暴露出去给 ioc 使用
 type Handler = web.Handler
+type User = domain.User
+type WechatInfo = domain.WechatInfo
 
 // UserService 方便测试
 type UserService = service.UserService

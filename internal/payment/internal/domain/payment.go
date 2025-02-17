@@ -83,5 +83,22 @@ type PaymentRecord struct {
 	// Native 支付方式使用
 	WechatCodeURL string
 	// JSAPI 支付方式使用
-	WechatPrepayID string
+	WechatJsAPIResp WechatJsAPIPrepayResponse
+}
+
+type WechatJsAPIPrepayResponse struct {
+	// 预支付交易会话标识
+	PrepayId string
+	// 应用ID
+	Appid string
+	// 时间戳
+	TimeStamp string
+	// 随机字符串
+	NonceStr string
+	// 订单详情扩展字符串
+	Package string
+	// 签名方式
+	SignType string
+	// 签名
+	PaySign string
 }

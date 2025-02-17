@@ -17,7 +17,6 @@ package wechat
 import (
 	"context"
 	"fmt"
-	"strconv"
 	"time"
 
 	"github.com/ecodeclub/ekit/slice"
@@ -43,13 +42,12 @@ func NewNativePaymentService(svc NativeAPIService, appid, mchid, notifyURL strin
 	return &NativePaymentService{
 		svc: svc,
 		basePaymentService: basePaymentService{
-			l:                           elog.DefaultLogger,
-			name:                        domain.ChannelTypeWechat,
-			desc:                        "微信",
-			appID:                       appid,
-			mchID:                       mchid,
-			notifyURL:                   notifyURL,
-			callBackTypeToPaymentStatus: wechatCallBackType2PaymentStatus,
+			l:         elog.DefaultLogger,
+			name:      domain.ChannelTypeWechat,
+			desc:      "微信",
+			appID:     appid,
+			mchID:     mchid,
+			notifyURL: notifyURL,
 		},
 	}
 }
@@ -62,7 +60,7 @@ func (n *NativePaymentService) Desc() string {
 	return n.desc
 }
 
-func (n *NativePaymentService) Prepay(ctx context.Context, pmt domain.Payment) (string, error) {
+func (n *NativePaymentService) Prepay(ctx context.Context, pmt domain.Payment) (any, error) {
 
 	r, ok := slice.Find(pmt.Records, func(src domain.PaymentRecord) bool {
 		return src.Channel == domain.ChannelTypeWechat
@@ -83,7 +81,6 @@ func (n *NativePaymentService) Prepay(ctx context.Context, pmt domain.Payment) (
 				Currency: core.String("CNY"),
 				Total:    core.Int64(r.Amount),
 			},
-			Attach: core.String(strconv.FormatInt(int64(domain.ChannelTypeWechat), 10)),
 		},
 	)
 	if err != nil {
@@ -103,7 +100,7 @@ func (n *NativePaymentService) QueryOrderBySN(ctx context.Context, orderSN strin
 		return domain.Payment{}, err
 	}
 
-	status, err := n.convertoPaymentStatus(*txn.TradeState)
+	status, err := GetPaymentStatus(*txn.TradeState)
 	if err != nil {
 		return domain.Payment{}, err
 	}

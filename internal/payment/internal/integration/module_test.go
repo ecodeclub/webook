@@ -20,9 +20,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strconv"
 	"testing"
 	"time"
+
+	"github.com/ecodeclub/webook/internal/user"
+	usermocks "github.com/ecodeclub/webook/internal/user/mocks"
 
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/ecodeclub/webook/internal/credit"
@@ -103,7 +105,7 @@ func (s *PaymentModuleTestSuite) TestService_CreatePayment() {
 			},
 			newSvcFunc: func(t *testing.T, ctrl *gomock.Controller) service.Service {
 				t.Helper()
-				return s.newCreditPaymentService(nil, nil)
+				return s.newCreditPaymentService(nil, nil, nil)
 			},
 			errRequireFunc: require.NoError,
 			after: func(t *testing.T, svc service.Service, expected payment.Payment) {
@@ -130,7 +132,7 @@ func (s *PaymentModuleTestSuite) TestService_CreatePayment() {
 			},
 			newSvcFunc: func(t *testing.T, ctrl *gomock.Controller) service.Service {
 				t.Helper()
-				return s.newCreditPaymentService(nil, nil)
+				return s.newCreditPaymentService(nil, nil, nil)
 			},
 			errRequireFunc: require.NoError,
 			after: func(t *testing.T, svc service.Service, expected payment.Payment) {
@@ -157,7 +159,7 @@ func (s *PaymentModuleTestSuite) TestService_CreatePayment() {
 			},
 			newSvcFunc: func(t *testing.T, ctrl *gomock.Controller) service.Service {
 				t.Helper()
-				return s.newCreditPaymentService(nil, nil)
+				return s.newCreditPaymentService(nil, nil, nil)
 			},
 			errRequireFunc: require.NoError,
 			after: func(t *testing.T, svc service.Service, expected payment.Payment) {
@@ -184,7 +186,7 @@ func (s *PaymentModuleTestSuite) TestService_CreatePayment() {
 			},
 			newSvcFunc: func(t *testing.T, ctrl *gomock.Controller) service.Service {
 				t.Helper()
-				return s.newCreditPaymentService(nil, nil)
+				return s.newCreditPaymentService(nil, nil, nil)
 			},
 			errRequireFunc: require.NoError,
 			after: func(t *testing.T, svc service.Service, expected payment.Payment) {
@@ -211,7 +213,7 @@ func (s *PaymentModuleTestSuite) TestService_CreatePayment() {
 			},
 			newSvcFunc: func(t *testing.T, ctrl *gomock.Controller) service.Service {
 				t.Helper()
-				return s.newCreditPaymentService(nil, nil)
+				return s.newCreditPaymentService(nil, nil, nil)
 			},
 			errRequireFunc: require.NoError,
 			after: func(t *testing.T, svc service.Service, expected payment.Payment) {
@@ -238,7 +240,7 @@ func (s *PaymentModuleTestSuite) TestService_CreatePayment() {
 			},
 			newSvcFunc: func(t *testing.T, ctrl *gomock.Controller) service.Service {
 				t.Helper()
-				return s.newCreditPaymentService(nil, nil)
+				return s.newCreditPaymentService(nil, nil, nil)
 			},
 			errRequireFunc: require.NoError,
 			after: func(t *testing.T, svc service.Service, expected payment.Payment) {
@@ -270,7 +272,7 @@ func (s *PaymentModuleTestSuite) TestService_CreatePayment() {
 			},
 			newSvcFunc: func(t *testing.T, ctrl *gomock.Controller) service.Service {
 				t.Helper()
-				return s.newCreditPaymentService(nil, nil)
+				return s.newCreditPaymentService(nil, nil, nil)
 			},
 			errRequireFunc: require.NoError,
 			after: func(t *testing.T, svc service.Service, expected payment.Payment) {
@@ -302,7 +304,7 @@ func (s *PaymentModuleTestSuite) TestService_CreatePayment() {
 			},
 			newSvcFunc: func(t *testing.T, ctrl *gomock.Controller) service.Service {
 				t.Helper()
-				return s.newCreditPaymentService(nil, nil)
+				return s.newCreditPaymentService(nil, nil, nil)
 			},
 			errRequireFunc: require.NoError,
 			after: func(t *testing.T, svc service.Service, expected payment.Payment) {
@@ -334,7 +336,7 @@ func (s *PaymentModuleTestSuite) TestService_CreatePayment() {
 			},
 			newSvcFunc: func(t *testing.T, ctrl *gomock.Controller) service.Service {
 				t.Helper()
-				return s.newCreditPaymentService(nil, nil)
+				return s.newCreditPaymentService(nil, nil, nil)
 			},
 			errRequireFunc: require.NoError,
 			after: func(t *testing.T, svc service.Service, expected payment.Payment) {
@@ -366,7 +368,7 @@ func (s *PaymentModuleTestSuite) TestService_CreatePayment() {
 			},
 			newSvcFunc: func(t *testing.T, ctrl *gomock.Controller) service.Service {
 				t.Helper()
-				return s.newCreditPaymentService(nil, nil)
+				return s.newCreditPaymentService(nil, nil, nil)
 			},
 			errRequireFunc: require.NoError,
 			after: func(t *testing.T, svc service.Service, expected payment.Payment) {
@@ -420,7 +422,7 @@ func (s *PaymentModuleTestSuite) requirePayment(t *testing.T, expected, actual d
 
 func (s *PaymentModuleTestSuite) TestService_GetPaymentChannels() {
 	t := s.T()
-	svc := s.newCreditPaymentService(nil, nil)
+	svc := s.newCreditPaymentService(nil, nil, nil)
 	channels := svc.GetPaymentChannels(context.Background())
 	require.Equal(t, []domain.PaymentChannel{
 		{Type: domain.ChannelTypeCredit, Desc: "积分"},
@@ -429,8 +431,11 @@ func (s *PaymentModuleTestSuite) TestService_GetPaymentChannels() {
 	}, channels)
 }
 
-func (s *PaymentModuleTestSuite) newCreditPaymentService(p event.PaymentEventProducer, svc credit.Service) payment.Service {
-	return startup.InitService(p, &credit.Module{Svc: svc}, nil, nil)
+func (s *PaymentModuleTestSuite) newCreditPaymentService(
+	p event.PaymentEventProducer,
+	userSvc user.UserService,
+	svc credit.Service) payment.Service {
+	return startup.InitService(p, &credit.Module{Svc: svc}, &user.Module{Svc: userSvc}, nil, nil)
 }
 
 func (s *PaymentModuleTestSuite) TestService_PayByID() {
@@ -481,7 +486,13 @@ func (s *PaymentModuleTestSuite) TestService_PayByID() {
 				mockCreditSvc.EXPECT().TryDeductCredits(gomock.Any(), gomock.Any()).Return(int64(1), nil)
 				mockCreditSvc.EXPECT().ConfirmDeductCredits(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
 
-				return s.newCreditPaymentService(mockProducer, mockCreditSvc)
+				mockUserSvc := usermocks.NewMockUserService(ctrl)
+				mockUserSvc.EXPECT().Profile(gomock.Any(), gomock.Any()).Return(user.User{
+					WechatInfo: user.WechatInfo{
+						MiniOpenId: "mini_id",
+					},
+				}, nil).AnyTimes()
+				return s.newCreditPaymentService(mockProducer, mockUserSvc, mockCreditSvc)
 			},
 			errRequireFunc: require.NoError,
 			after: func(t *testing.T, svc service.Service, expected payment.Payment) {
@@ -539,7 +550,13 @@ func (s *PaymentModuleTestSuite) TestService_PayByID() {
 				mockCreditSvc.EXPECT().TryDeductCredits(gomock.Any(), gomock.Any()).Return(int64(4), nil)
 				mockCreditSvc.EXPECT().ConfirmDeductCredits(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
 
-				return s.newCreditPaymentService(mockProducer, mockCreditSvc)
+				mockUserSvc := usermocks.NewMockUserService(ctrl)
+				mockUserSvc.EXPECT().Profile(gomock.Any(), gomock.Any()).Return(user.User{
+					WechatInfo: user.WechatInfo{
+						MiniOpenId: "mini_id",
+					},
+				}, nil).AnyTimes()
+				return s.newCreditPaymentService(mockProducer, mockUserSvc, mockCreditSvc)
 			},
 			errRequireFunc: require.NoError,
 			after: func(t *testing.T, svc service.Service, expected payment.Payment) {
@@ -588,7 +605,7 @@ func (s *PaymentModuleTestSuite) TestService_PayByID() {
 				mockCreditSvc := creditmocks.NewMockService(ctrl)
 				mockCreditSvc.EXPECT().TryDeductCredits(gomock.Any(), gomock.Any()).Return(int64(0), errors.New("mock: 积分不足"))
 
-				return s.newCreditPaymentService(nil, mockCreditSvc)
+				return s.newCreditPaymentService(nil, nil, mockCreditSvc)
 			},
 			errRequireFunc: require.Error,
 			after:          func(t *testing.T, svc service.Service, expected payment.Payment) {},
@@ -623,7 +640,7 @@ func (s *PaymentModuleTestSuite) TestService_PayByID() {
 				mockCreditSvc.EXPECT().ConfirmDeductCredits(gomock.Any(), gomock.Any(), gomock.Any()).Return(errors.New("mock: 确认扣减积分失败"))
 				mockCreditSvc.EXPECT().CancelDeductCredits(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
 
-				return s.newCreditPaymentService(nil, mockCreditSvc)
+				return s.newCreditPaymentService(nil, nil, mockCreditSvc)
 			},
 			errRequireFunc: require.Error,
 			after:          func(t *testing.T, svc service.Service, expected payment.Payment) {},
@@ -651,7 +668,7 @@ func (s *PaymentModuleTestSuite) TestService_PayByID() {
 			},
 			newSvcFunc: func(t *testing.T, ctrl *gomock.Controller) service.Service {
 				t.Helper()
-				return s.newCreditPaymentService(nil, nil)
+				return s.newCreditPaymentService(nil, nil, nil)
 			},
 			errRequireFunc: require.Error,
 			after:          func(t *testing.T, svc service.Service, expected payment.Payment) {},
@@ -677,7 +694,7 @@ func (s *PaymentModuleTestSuite) TestService_PayByID() {
 			},
 			newSvcFunc: func(t *testing.T, ctrl *gomock.Controller) service.Service {
 				t.Helper()
-				return s.newCreditPaymentService(nil, nil)
+				return s.newCreditPaymentService(nil, nil, nil)
 			},
 			errRequireFunc: require.Error,
 			after:          func(t *testing.T, svc service.Service, expected payment.Payment) {},
@@ -713,7 +730,7 @@ func (s *PaymentModuleTestSuite) TestService_PayByID() {
 					CodeUrl: &codeURL,
 				}, &core.APIResult{}, nil)
 
-				return startup.InitService(nil, &credit.Module{}, mockNativeAPI, nil)
+				return startup.InitService(nil, &credit.Module{}, &user.Module{}, mockNativeAPI, nil)
 			},
 			errRequireFunc: require.NoError,
 			after: func(t *testing.T, svc service.Service, expected payment.Payment) {
@@ -766,7 +783,7 @@ func (s *PaymentModuleTestSuite) TestService_PayByID() {
 				mockNativeAPI := wechatmocks.NewMockNativeAPIService(ctrl)
 				mockNativeAPI.EXPECT().Prepay(gomock.Any(), gomock.Any()).Return(&native.PrepayResponse{}, &core.APIResult{}, errors.New("mock: 获取二维码失败"))
 
-				return startup.InitService(nil, &credit.Module{}, mockNativeAPI, nil)
+				return startup.InitService(nil, &credit.Module{}, &user.Module{}, mockNativeAPI, nil)
 			},
 			errRequireFunc: require.Error,
 			after:          func(t *testing.T, svc service.Service, expected payment.Payment) {},
@@ -794,7 +811,7 @@ func (s *PaymentModuleTestSuite) TestService_PayByID() {
 			},
 			newSvcFunc: func(t *testing.T, ctrl *gomock.Controller) service.Service {
 				t.Helper()
-				return s.newCreditPaymentService(nil, nil)
+				return s.newCreditPaymentService(nil, nil, nil)
 			},
 			errRequireFunc: require.Error,
 			after:          func(t *testing.T, svc service.Service, expected payment.Payment) {},
@@ -820,7 +837,7 @@ func (s *PaymentModuleTestSuite) TestService_PayByID() {
 			},
 			newSvcFunc: func(t *testing.T, ctrl *gomock.Controller) service.Service {
 				t.Helper()
-				return s.newCreditPaymentService(nil, nil)
+				return s.newCreditPaymentService(nil, nil, nil)
 			},
 			errRequireFunc: require.Error,
 			after:          func(t *testing.T, svc service.Service, expected payment.Payment) {},
@@ -852,11 +869,24 @@ func (s *PaymentModuleTestSuite) TestService_PayByID() {
 
 				mockJSAPI := wechatmocks.NewMockJSAPIService(ctrl)
 				prepayID := "prepay_id_wechat_js_only"
-				mockJSAPI.EXPECT().Prepay(gomock.Any(), gomock.Any()).Return(&jsapi.PrepayResponse{
-					PrepayId: &prepayID,
+				mockJSAPI.EXPECT().PrepayWithRequestPayment(gomock.Any(), gomock.Any()).Return(&jsapi.PrepayWithRequestPaymentResponse{
+					PrepayId:  &prepayID,
+					Appid:     core.String("appid"),
+					TimeStamp: core.String("timestamp"),
+					NonceStr:  core.String("nonce_str"),
+					Package:   core.String("package"),
+					SignType:  core.String("sign_type"),
+					PaySign:   core.String("pay_sign"),
 				}, &core.APIResult{}, nil)
 
-				return startup.InitService(nil, &credit.Module{}, nil, mockJSAPI)
+				mockUserSvc := usermocks.NewMockUserService(ctrl)
+				mockUserSvc.EXPECT().Profile(gomock.Any(), gomock.Any()).Return(user.User{
+					WechatInfo: user.WechatInfo{
+						MiniOpenId: "mini_id",
+					},
+				}, nil).AnyTimes()
+				return startup.InitService(nil, &credit.Module{},
+					&user.Module{Svc: mockUserSvc}, nil, mockJSAPI)
 			},
 			errRequireFunc: require.NoError,
 			after: func(t *testing.T, svc service.Service, expected payment.Payment) {
@@ -865,7 +895,15 @@ func (s *PaymentModuleTestSuite) TestService_PayByID() {
 				require.NoError(t, err)
 
 				expectedWechatPrepayID := "prepay_id_wechat_js_only"
-				actual.Records[0].WechatPrepayID = expectedWechatPrepayID
+				actual.Records[0].WechatJsAPIResp = domain.WechatJsAPIPrepayResponse{
+					PrepayId:  expectedWechatPrepayID,
+					Appid:     "appid",
+					TimeStamp: "timestamp",
+					NonceStr:  "nonce_str",
+					Package:   "package",
+					SignType:  "sign_type",
+					PaySign:   "pay_sign",
+				}
 
 				require.Equal(t, expected, actual)
 				require.Equal(t, domain.PaymentStatusProcessing, actual.Status)
@@ -876,7 +914,7 @@ func (s *PaymentModuleTestSuite) TestService_PayByID() {
 				})
 				require.True(t, ok)
 				require.Equal(t, domain.PaymentStatusProcessing, r.Status)
-				require.Equal(t, expectedWechatPrepayID, r.WechatPrepayID)
+				require.Equal(t, expectedWechatPrepayID, r.WechatJsAPIResp.PrepayId)
 				require.Zero(t, r.PaymentNO3rd)
 				require.Zero(t, r.PaidAt)
 			},
@@ -907,9 +945,19 @@ func (s *PaymentModuleTestSuite) TestService_PayByID() {
 				t.Helper()
 
 				mockJSAPI := wechatmocks.NewMockJSAPIService(ctrl)
-				mockJSAPI.EXPECT().Prepay(gomock.Any(), gomock.Any()).Return(&jsapi.PrepayResponse{}, &core.APIResult{}, errors.New("mock：获取PrepayID失败"))
+				mockJSAPI.EXPECT().PrepayWithRequestPayment(gomock.Any(), gomock.Any()).Return(&jsapi.PrepayWithRequestPaymentResponse{}, &core.APIResult{}, errors.New("mock：获取PrepayID失败"))
 
-				return startup.InitService(nil, &credit.Module{}, nil, mockJSAPI)
+				mockUserSvc := usermocks.NewMockUserService(ctrl)
+				mockUserSvc.EXPECT().Profile(gomock.Any(), gomock.Any()).Return(user.User{
+					WechatInfo: user.WechatInfo{
+						MiniOpenId: "mini_id",
+					},
+				}, nil).AnyTimes()
+
+				return startup.InitService(nil, &credit.Module{},
+					&user.Module{
+						Svc: mockUserSvc,
+					}, nil, mockJSAPI)
 			},
 			errRequireFunc: require.Error,
 			after:          func(t *testing.T, svc service.Service, expected payment.Payment) {},
@@ -937,7 +985,7 @@ func (s *PaymentModuleTestSuite) TestService_PayByID() {
 			},
 			newSvcFunc: func(t *testing.T, ctrl *gomock.Controller) service.Service {
 				t.Helper()
-				return s.newCreditPaymentService(nil, nil)
+				return s.newCreditPaymentService(nil, nil, nil)
 			},
 			errRequireFunc: require.Error,
 			after:          func(t *testing.T, svc service.Service, expected payment.Payment) {},
@@ -963,7 +1011,7 @@ func (s *PaymentModuleTestSuite) TestService_PayByID() {
 			},
 			newSvcFunc: func(t *testing.T, ctrl *gomock.Controller) service.Service {
 				t.Helper()
-				return s.newCreditPaymentService(nil, nil)
+				return s.newCreditPaymentService(nil, nil, nil)
 			},
 			errRequireFunc: require.Error,
 			after:          func(t *testing.T, svc service.Service, expected payment.Payment) {},
@@ -1007,7 +1055,7 @@ func (s *PaymentModuleTestSuite) TestService_PayByID() {
 					CodeUrl: &codeURL,
 				}, &core.APIResult{}, nil)
 
-				return startup.InitService(nil, &credit.Module{Svc: mockCreditSvc}, mockNativeAPI, nil)
+				return startup.InitService(nil, &credit.Module{Svc: mockCreditSvc}, &user.Module{}, mockNativeAPI, nil)
 			},
 			errRequireFunc: require.NoError,
 			after: func(t *testing.T, svc service.Service, expected payment.Payment) {
@@ -1072,7 +1120,7 @@ func (s *PaymentModuleTestSuite) TestService_PayByID() {
 			},
 			newSvcFunc: func(t *testing.T, ctrl *gomock.Controller) service.Service {
 				t.Helper()
-				return s.newCreditPaymentService(nil, nil)
+				return s.newCreditPaymentService(nil, nil, nil)
 			},
 			errRequireFunc: require.Error,
 			after:          func(t *testing.T, svc service.Service, expected payment.Payment) {},
@@ -1109,7 +1157,7 @@ func (s *PaymentModuleTestSuite) TestService_PayByID() {
 				mockCreditSvc.EXPECT().TryDeductCredits(gomock.Any(), gomock.Any()).Return(int64(5), nil)
 				mockCreditSvc.EXPECT().CancelDeductCredits(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
 
-				return s.newCreditPaymentService(nil, mockCreditSvc)
+				return s.newCreditPaymentService(nil, nil, mockCreditSvc)
 			},
 			errRequireFunc: require.Error,
 			after:          func(t *testing.T, svc service.Service, expected payment.Payment) {},
@@ -1151,7 +1199,7 @@ func (s *PaymentModuleTestSuite) TestService_PayByID() {
 				mockNativeAPI := wechatmocks.NewMockNativeAPIService(ctrl)
 				mockNativeAPI.EXPECT().Prepay(gomock.Any(), gomock.Any()).Return(&native.PrepayResponse{}, &core.APIResult{}, errors.New("mock: 获取二维码失败"))
 
-				return startup.InitService(nil, &credit.Module{Svc: mockCreditSvc}, mockNativeAPI, nil)
+				return startup.InitService(nil, &credit.Module{Svc: mockCreditSvc}, &user.Module{}, mockNativeAPI, nil)
 			},
 			errRequireFunc: require.Error,
 			after:          func(t *testing.T, svc service.Service, expected payment.Payment) {},
@@ -1189,7 +1237,7 @@ func (s *PaymentModuleTestSuite) TestService_PayByID() {
 				mockCreditSvc := creditmocks.NewMockService(ctrl)
 				mockCreditSvc.EXPECT().TryDeductCredits(gomock.Any(), gomock.Any()).Return(int64(0), errors.New("mock: 预扣积分失败"))
 
-				return s.newCreditPaymentService(nil, mockCreditSvc)
+				return s.newCreditPaymentService(nil, nil, mockCreditSvc)
 			},
 			errRequireFunc: require.Error,
 			after:          func(t *testing.T, svc service.Service, expected payment.Payment) {},
@@ -1230,11 +1278,24 @@ func (s *PaymentModuleTestSuite) TestService_PayByID() {
 
 				mockJSAPI := wechatmocks.NewMockJSAPIService(ctrl)
 				prepayID := "prepay_id_wechat_js_and_credit"
-				mockJSAPI.EXPECT().Prepay(gomock.Any(), gomock.Any()).Return(&jsapi.PrepayResponse{
-					PrepayId: &prepayID,
+				mockJSAPI.EXPECT().PrepayWithRequestPayment(gomock.Any(), gomock.Any()).Return(&jsapi.PrepayWithRequestPaymentResponse{
+					PrepayId:  &prepayID,
+					Appid:     core.String("appid"),
+					TimeStamp: core.String("timestamp"),
+					NonceStr:  core.String("nonce_str"),
+					Package:   core.String("package"),
+					SignType:  core.String("sign_type"),
+					PaySign:   core.String("pay_sign"),
 				}, &core.APIResult{}, nil)
 
-				return startup.InitService(nil, &credit.Module{Svc: mockCreditSvc}, nil, mockJSAPI)
+				mockUserSvc := usermocks.NewMockUserService(ctrl)
+				mockUserSvc.EXPECT().Profile(gomock.Any(), gomock.Any()).Return(user.User{
+					WechatInfo: user.WechatInfo{
+						MiniOpenId: "mini_id",
+					},
+				}, nil).AnyTimes()
+
+				return startup.InitService(nil, &credit.Module{Svc: mockCreditSvc}, &user.Module{Svc: mockUserSvc}, nil, mockJSAPI)
 			},
 			errRequireFunc: require.NoError,
 			after: func(t *testing.T, svc service.Service, expected payment.Payment) {
@@ -1248,7 +1309,15 @@ func (s *PaymentModuleTestSuite) TestService_PayByID() {
 					return src.Channel == domain.ChannelTypeWechatJS
 				})
 				require.NotEqual(t, -1, idx)
-				actual.Records[idx].WechatPrepayID = expectedWechatPrepayID
+				actual.Records[idx].WechatJsAPIResp = domain.WechatJsAPIPrepayResponse{
+					PrepayId:  expectedWechatPrepayID,
+					Appid:     "appid",
+					TimeStamp: "timestamp",
+					NonceStr:  "nonce_str",
+					Package:   "package",
+					SignType:  "sign_type",
+					PaySign:   "pay_sign",
+				}
 				require.Equal(t, expected, actual)
 				require.Equal(t, domain.PaymentStatusProcessing, actual.Status)
 				require.Zero(t, actual.PaidAt)
@@ -1258,7 +1327,7 @@ func (s *PaymentModuleTestSuite) TestService_PayByID() {
 				})
 				require.True(t, ok)
 				require.Equal(t, domain.PaymentStatusProcessing, w.Status)
-				require.Equal(t, expectedWechatPrepayID, w.WechatPrepayID)
+				require.Equal(t, expectedWechatPrepayID, w.WechatJsAPIResp.PrepayId)
 				require.Zero(t, w.PaymentNO3rd)
 				require.Zero(t, w.PaidAt)
 
@@ -1299,7 +1368,7 @@ func (s *PaymentModuleTestSuite) TestService_PayByID() {
 			},
 			newSvcFunc: func(t *testing.T, ctrl *gomock.Controller) service.Service {
 				t.Helper()
-				return s.newCreditPaymentService(nil, nil)
+				return s.newCreditPaymentService(nil, nil, nil)
 			},
 			errRequireFunc: require.Error,
 			after:          func(t *testing.T, svc service.Service, expected payment.Payment) {},
@@ -1336,7 +1405,7 @@ func (s *PaymentModuleTestSuite) TestService_PayByID() {
 				mockCreditSvc.EXPECT().TryDeductCredits(gomock.Any(), gomock.Any()).Return(int64(5), nil)
 				mockCreditSvc.EXPECT().CancelDeductCredits(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
 
-				return s.newCreditPaymentService(nil, mockCreditSvc)
+				return s.newCreditPaymentService(nil, nil, mockCreditSvc)
 			},
 			errRequireFunc: require.Error,
 			after:          func(t *testing.T, svc service.Service, expected payment.Payment) {},
@@ -1376,9 +1445,16 @@ func (s *PaymentModuleTestSuite) TestService_PayByID() {
 				mockCreditSvc.EXPECT().CancelDeductCredits(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
 
 				mockJSAPI := wechatmocks.NewMockJSAPIService(ctrl)
-				mockJSAPI.EXPECT().Prepay(gomock.Any(), gomock.Any()).Return(&jsapi.PrepayResponse{}, &core.APIResult{}, errors.New("mock：获取PrepayID失败"))
+				mockJSAPI.EXPECT().PrepayWithRequestPayment(gomock.Any(), gomock.Any()).Return(&jsapi.PrepayWithRequestPaymentResponse{}, &core.APIResult{}, errors.New("mock：获取PrepayID失败"))
 
-				return startup.InitService(nil, &credit.Module{Svc: mockCreditSvc}, nil, mockJSAPI)
+				mockUserSvc := usermocks.NewMockUserService(ctrl)
+				mockUserSvc.EXPECT().Profile(gomock.Any(), gomock.Any()).Return(user.User{
+					WechatInfo: user.WechatInfo{
+						MiniOpenId: "mini_id",
+					},
+				}, nil).AnyTimes()
+
+				return startup.InitService(nil, &credit.Module{Svc: mockCreditSvc}, &user.Module{Svc: mockUserSvc}, nil, mockJSAPI)
 			},
 			errRequireFunc: require.Error,
 			after:          func(t *testing.T, svc service.Service, expected payment.Payment) {},
@@ -1416,7 +1492,14 @@ func (s *PaymentModuleTestSuite) TestService_PayByID() {
 				mockCreditSvc := creditmocks.NewMockService(ctrl)
 				mockCreditSvc.EXPECT().TryDeductCredits(gomock.Any(), gomock.Any()).Return(int64(0), errors.New("mock: 预扣积分失败"))
 
-				return s.newCreditPaymentService(nil, mockCreditSvc)
+				mockUserSvc := usermocks.NewMockUserService(ctrl)
+				mockUserSvc.EXPECT().Profile(gomock.Any(), gomock.Any()).Return(user.User{
+					WechatInfo: user.WechatInfo{
+						MiniOpenId: "mini_id",
+					},
+				}, nil).AnyTimes()
+
+				return s.newCreditPaymentService(nil, mockUserSvc, mockCreditSvc)
 			},
 			errRequireFunc: require.Error,
 			after:          func(t *testing.T, svc service.Service, expected payment.Payment) {},
@@ -1494,7 +1577,6 @@ func (s *PaymentModuleTestSuite) TestService_HandleWechatCallback() {
 				OutTradeNo:    core.String("order-callback-300001"),
 				TransactionId: core.String("wechat-transaction-id-300001"),
 				TradeState:    core.String(TradeStateSuccess),
-				Attach:        core.String(strconv.FormatInt(int64(domain.ChannelTypeWechat), 10)),
 			},
 			newSvcFunc: func(t *testing.T, ctrl *gomock.Controller) service.Service {
 				t.Helper()
@@ -1563,7 +1645,6 @@ func (s *PaymentModuleTestSuite) TestService_HandleWechatCallback() {
 				OutTradeNo:    core.String("order-callback-300002"),
 				TransactionId: core.String("wechat-transaction-id-300002"),
 				TradeState:    core.String(TradeStateClosed),
-				Attach:        core.String(strconv.FormatInt(int64(domain.ChannelTypeWechat), 10)),
 			},
 			newSvcFunc: func(t *testing.T, ctrl *gomock.Controller) service.Service {
 				t.Helper()
@@ -1633,7 +1714,6 @@ func (s *PaymentModuleTestSuite) TestService_HandleWechatCallback() {
 				OutTradeNo:    core.String("order-callback-300003"),
 				TransactionId: core.String("wechat-transaction-id-300003"),
 				TradeState:    core.String(TradeStateNotPay),
-				Attach:        core.String(strconv.FormatInt(int64(domain.ChannelTypeWechat), 10)),
 			},
 			newSvcFunc: func(t *testing.T, ctrl *gomock.Controller) service.Service {
 				t.Helper()
@@ -1641,7 +1721,7 @@ func (s *PaymentModuleTestSuite) TestService_HandleWechatCallback() {
 				resp := &native.PrepayResponse{CodeUrl: core.String("wechat_code_url_300003")}
 				result := &core.APIResult{}
 				mockNativeAPIService.EXPECT().Prepay(gomock.Any(), gomock.Any()).Return(resp, result, nil)
-				return startup.InitService(nil, &credit.Module{}, mockNativeAPIService, nil)
+				return startup.InitService(nil, &credit.Module{}, &user.Module{}, mockNativeAPIService, nil)
 			},
 			errRequireFunc: require.Error,
 			after: func(t *testing.T, svc service.Service, pmtID int64) {
@@ -1693,7 +1773,6 @@ func (s *PaymentModuleTestSuite) TestService_HandleWechatCallback() {
 				OutTradeNo:    core.String("order-callback-300004"),
 				TransactionId: core.String("wechat-transaction-id-300004"),
 				TradeState:    core.String(TradeStateInvalid),
-				Attach:        core.String(strconv.FormatInt(int64(domain.ChannelTypeWechat), 10)),
 			},
 			newSvcFunc: func(t *testing.T, ctrl *gomock.Controller) service.Service {
 				t.Helper()
@@ -1701,7 +1780,7 @@ func (s *PaymentModuleTestSuite) TestService_HandleWechatCallback() {
 				resp := &native.PrepayResponse{CodeUrl: core.String("wechat_code_url_300004")}
 				result := &core.APIResult{}
 				mockNativeAPIService.EXPECT().Prepay(gomock.Any(), gomock.Any()).Return(resp, result, nil)
-				return startup.InitService(nil, &credit.Module{}, mockNativeAPIService, nil)
+				return startup.InitService(nil, &credit.Module{}, &user.Module{}, mockNativeAPIService, nil)
 			},
 			errRequireFunc: require.Error,
 			after: func(t *testing.T, svc service.Service, pmtID int64) {
@@ -1753,7 +1832,6 @@ func (s *PaymentModuleTestSuite) TestService_HandleWechatCallback() {
 				OutTradeNo:    core.String("order-callback-300011"),
 				TransactionId: core.String("wechat-transaction-id-300011"),
 				TradeState:    core.String(TradeStateSuccess),
-				Attach:        core.String(strconv.FormatInt(int64(domain.ChannelTypeWechatJS), 10)),
 			},
 			newSvcFunc: func(t *testing.T, ctrl *gomock.Controller) service.Service {
 				t.Helper()
@@ -1766,10 +1844,24 @@ func (s *PaymentModuleTestSuite) TestService_HandleWechatCallback() {
 				mockProducer.EXPECT().Produce(gomock.Any(), evt).Return(nil)
 
 				mockJSAPIService := wechatmocks.NewMockJSAPIService(ctrl)
-				resp := &jsapi.PrepayResponse{PrepayId: core.String("wechat_prepay_id_300011")}
-				mockJSAPIService.EXPECT().Prepay(gomock.Any(), gomock.Any()).Return(resp, &core.APIResult{}, nil)
+				resp := &jsapi.PrepayWithRequestPaymentResponse{
+					PrepayId:  core.String("wechat_prepay_id_300011"),
+					Appid:     core.String("appid"),
+					TimeStamp: core.String("timestamp"),
+					NonceStr:  core.String("nonce_str"),
+					Package:   core.String("package"),
+					SignType:  core.String("sign_type"),
+					PaySign:   core.String("pay_sign"),
+				}
+				mockJSAPIService.EXPECT().PrepayWithRequestPayment(gomock.Any(), gomock.Any()).Return(resp, &core.APIResult{}, nil)
+				mockUserSvc := usermocks.NewMockUserService(ctrl)
+				mockUserSvc.EXPECT().Profile(gomock.Any(), gomock.Any()).Return(user.User{
+					WechatInfo: user.WechatInfo{
+						MiniOpenId: "mini_id",
+					},
+				}, nil).AnyTimes()
 
-				return s.newWechatJSAPIPayment(mockProducer, mockJSAPIService)
+				return s.newWechatJSAPIPayment(mockProducer, mockUserSvc, mockJSAPIService)
 			},
 			errRequireFunc: require.NoError,
 			after: func(t *testing.T, svc service.Service, pmtID int64) {
@@ -1789,7 +1881,7 @@ func (s *PaymentModuleTestSuite) TestService_HandleWechatCallback() {
 				require.Equal(t, domain.PaymentStatusPaidSuccess, w.Status)
 				require.Equal(t, "wechat-transaction-id-300011", w.PaymentNO3rd)
 				require.Zero(t, w.WechatCodeURL)
-				require.Zero(t, w.WechatPrepayID)
+				require.Zero(t, w.WechatJsAPIResp.PrepayId)
 				require.NotZero(t, w.PaidAt)
 			},
 		},
@@ -1822,7 +1914,6 @@ func (s *PaymentModuleTestSuite) TestService_HandleWechatCallback() {
 				OutTradeNo:    core.String("order-callback-300012"),
 				TransactionId: core.String("wechat-transaction-id-300012"),
 				TradeState:    core.String(TradeStateClosed),
-				Attach:        core.String(strconv.FormatInt(int64(domain.ChannelTypeWechatJS), 10)),
 			},
 			newSvcFunc: func(t *testing.T, ctrl *gomock.Controller) service.Service {
 				t.Helper()
@@ -1836,10 +1927,24 @@ func (s *PaymentModuleTestSuite) TestService_HandleWechatCallback() {
 				mockProducer.EXPECT().Produce(gomock.Any(), evt).Return(nil)
 
 				mockJSAPIService := wechatmocks.NewMockJSAPIService(ctrl)
-				resp := &jsapi.PrepayResponse{PrepayId: core.String("wechat_prepay_id_300012")}
-				mockJSAPIService.EXPECT().Prepay(gomock.Any(), gomock.Any()).Return(resp, &core.APIResult{}, nil)
+				resp := &jsapi.PrepayWithRequestPaymentResponse{
+					PrepayId:  core.String("wechat_prepay_id_300012"),
+					Appid:     core.String("appid"),
+					TimeStamp: core.String("timestamp"),
+					NonceStr:  core.String("nonce_str"),
+					Package:   core.String("package"),
+					SignType:  core.String("sign_type"),
+					PaySign:   core.String("pay_sign"),
+				}
+				mockJSAPIService.EXPECT().PrepayWithRequestPayment(gomock.Any(), gomock.Any()).Return(resp, &core.APIResult{}, nil)
+				mockUserSvc := usermocks.NewMockUserService(ctrl)
+				mockUserSvc.EXPECT().Profile(gomock.Any(), gomock.Any()).Return(user.User{
+					WechatInfo: user.WechatInfo{
+						MiniOpenId: "mini_id",
+					},
+				}, nil).AnyTimes()
 
-				return s.newWechatJSAPIPayment(mockProducer, mockJSAPIService)
+				return s.newWechatJSAPIPayment(mockProducer, mockUserSvc, mockJSAPIService)
 			},
 			errRequireFunc: require.NoError,
 			after: func(t *testing.T, svc service.Service, pmtID int64) {
@@ -1859,7 +1964,7 @@ func (s *PaymentModuleTestSuite) TestService_HandleWechatCallback() {
 				require.Equal(t, domain.PaymentStatusPaidFailed, w.Status)
 				require.Equal(t, "wechat-transaction-id-300012", w.PaymentNO3rd)
 				require.Zero(t, w.WechatCodeURL)
-				require.Zero(t, w.WechatPrepayID)
+				require.Zero(t, w.WechatJsAPIResp.PrepayId)
 				require.Zero(t, w.PaidAt)
 			},
 		},
@@ -1892,14 +1997,27 @@ func (s *PaymentModuleTestSuite) TestService_HandleWechatCallback() {
 				OutTradeNo:    core.String("order-callback-300013"),
 				TransactionId: core.String("wechat-transaction-id-300013"),
 				TradeState:    core.String(TradeStateNotPay),
-				Attach:        core.String(strconv.FormatInt(int64(domain.ChannelTypeWechatJS), 10)),
 			},
 			newSvcFunc: func(t *testing.T, ctrl *gomock.Controller) service.Service {
 				t.Helper()
 				mockJSAPIService := wechatmocks.NewMockJSAPIService(ctrl)
-				resp := &jsapi.PrepayResponse{PrepayId: core.String("wechat_prepay_id_300013")}
-				mockJSAPIService.EXPECT().Prepay(gomock.Any(), gomock.Any()).Return(resp, &core.APIResult{}, nil)
-				return s.newWechatJSAPIPayment(nil, mockJSAPIService)
+				resp := &jsapi.PrepayWithRequestPaymentResponse{
+					PrepayId:  core.String("wechat_prepay_id_300013"),
+					Appid:     core.String("appid"),
+					TimeStamp: core.String("timestamp"),
+					NonceStr:  core.String("nonce_str"),
+					Package:   core.String("package"),
+					SignType:  core.String("sign_type"),
+					PaySign:   core.String("pay_sign"),
+				}
+				mockJSAPIService.EXPECT().PrepayWithRequestPayment(gomock.Any(), gomock.Any()).Return(resp, &core.APIResult{}, nil)
+				mockUserSvc := usermocks.NewMockUserService(ctrl)
+				mockUserSvc.EXPECT().Profile(gomock.Any(), gomock.Any()).Return(user.User{
+					WechatInfo: user.WechatInfo{
+						MiniOpenId: "mini_id",
+					},
+				}, nil).AnyTimes()
+				return s.newWechatJSAPIPayment(nil, mockUserSvc, mockJSAPIService)
 			},
 			errRequireFunc: require.Error,
 			after: func(t *testing.T, svc service.Service, pmtID int64) {
@@ -1919,7 +2037,7 @@ func (s *PaymentModuleTestSuite) TestService_HandleWechatCallback() {
 				require.Equal(t, domain.PaymentStatusProcessing, w.Status)
 				require.Zero(t, w.PaymentNO3rd)
 				require.Zero(t, w.WechatCodeURL)
-				require.Zero(t, w.WechatPrepayID)
+				require.Zero(t, w.WechatJsAPIResp.PrepayId)
 				require.Zero(t, w.PaidAt)
 			},
 		},
@@ -1952,15 +2070,28 @@ func (s *PaymentModuleTestSuite) TestService_HandleWechatCallback() {
 				OutTradeNo:    core.String("order-callback-300014"),
 				TransactionId: core.String("wechat-transaction-id-300014"),
 				TradeState:    core.String(TradeStateInvalid),
-				Attach:        core.String(strconv.FormatInt(int64(domain.ChannelTypeWechatJS), 10)),
 			},
 			newSvcFunc: func(t *testing.T, ctrl *gomock.Controller) service.Service {
 				t.Helper()
 
 				mockJSAPIService := wechatmocks.NewMockJSAPIService(ctrl)
-				resp := &jsapi.PrepayResponse{PrepayId: core.String("wechat_prepay_id_300014")}
-				mockJSAPIService.EXPECT().Prepay(gomock.Any(), gomock.Any()).Return(resp, &core.APIResult{}, nil)
-				return s.newWechatJSAPIPayment(nil, mockJSAPIService)
+				resp := &jsapi.PrepayWithRequestPaymentResponse{
+					PrepayId:  core.String("wechat_prepay_id_300014"),
+					Appid:     core.String("appid"),
+					TimeStamp: core.String("timestamp"),
+					NonceStr:  core.String("nonce_str"),
+					Package:   core.String("package"),
+					SignType:  core.String("sign_type"),
+					PaySign:   core.String("pay_sign"),
+				}
+				mockJSAPIService.EXPECT().PrepayWithRequestPayment(gomock.Any(), gomock.Any()).Return(resp, &core.APIResult{}, nil)
+				mockUserSvc := usermocks.NewMockUserService(ctrl)
+				mockUserSvc.EXPECT().Profile(gomock.Any(), gomock.Any()).Return(user.User{
+					WechatInfo: user.WechatInfo{
+						MiniOpenId: "mini_id",
+					},
+				}, nil).AnyTimes()
+				return s.newWechatJSAPIPayment(nil, mockUserSvc, mockJSAPIService)
 			},
 			errRequireFunc: require.Error,
 			after: func(t *testing.T, svc service.Service, pmtID int64) {
@@ -1980,7 +2111,7 @@ func (s *PaymentModuleTestSuite) TestService_HandleWechatCallback() {
 				require.Equal(t, domain.PaymentStatusProcessing, w.Status)
 				require.Zero(t, w.PaymentNO3rd)
 				require.Zero(t, w.WechatCodeURL)
-				require.Zero(t, w.WechatPrepayID)
+				require.Zero(t, w.WechatJsAPIResp.PrepayId)
 				require.Zero(t, w.PaidAt)
 			},
 		},
@@ -2018,7 +2149,6 @@ func (s *PaymentModuleTestSuite) TestService_HandleWechatCallback() {
 				OutTradeNo:    core.String("order-callback-300021"),
 				TransactionId: core.String("wechat-transaction-id-300021"),
 				TradeState:    core.String(TradeStateSuccess),
-				Attach:        core.String(strconv.FormatInt(int64(domain.ChannelTypeWechat), 10)),
 			},
 			newSvcFunc: func(t *testing.T, ctrl *gomock.Controller) service.Service {
 				t.Helper()
@@ -2042,7 +2172,14 @@ func (s *PaymentModuleTestSuite) TestService_HandleWechatCallback() {
 				result := &core.APIResult{}
 				mockNativeAPIService.EXPECT().Prepay(gomock.Any(), gomock.Any()).Return(resp, result, nil)
 
-				return startup.InitService(mockProducer, &credit.Module{Svc: mockCreditSvc}, mockNativeAPIService, nil)
+				mockUserSvc := usermocks.NewMockUserService(ctrl)
+				mockUserSvc.EXPECT().Profile(gomock.Any(), gomock.Any()).Return(user.User{
+					WechatInfo: user.WechatInfo{
+						MiniOpenId: "mini_id",
+					},
+				}, nil).AnyTimes()
+
+				return startup.InitService(mockProducer, &credit.Module{Svc: mockCreditSvc}, &user.Module{Svc: mockUserSvc}, mockNativeAPIService, nil)
 			},
 			errRequireFunc: require.NoError,
 			after: func(t *testing.T, svc service.Service, pmtID int64) {
@@ -2107,7 +2244,6 @@ func (s *PaymentModuleTestSuite) TestService_HandleWechatCallback() {
 				OutTradeNo:    core.String("order-callback-300023"),
 				TransactionId: core.String("wechat-transaction-id-300023"),
 				TradeState:    core.String(TradeStateSuccess),
-				Attach:        core.String(strconv.FormatInt(int64(domain.ChannelTypeWechat), 10)),
 			},
 			newSvcFunc: func(t *testing.T, ctrl *gomock.Controller) service.Service {
 				t.Helper()
@@ -2132,7 +2268,7 @@ func (s *PaymentModuleTestSuite) TestService_HandleWechatCallback() {
 				result := &core.APIResult{}
 				mockNativeAPIService.EXPECT().Prepay(gomock.Any(), gomock.Any()).Return(resp, result, nil)
 
-				return startup.InitService(mockProducer, &credit.Module{Svc: mockCreditSvc}, mockNativeAPIService, nil)
+				return startup.InitService(mockProducer, &credit.Module{Svc: mockCreditSvc}, &user.Module{}, mockNativeAPIService, nil)
 			},
 			errRequireFunc: require.NoError,
 			after: func(t *testing.T, svc service.Service, pmtID int64) {
@@ -2197,7 +2333,6 @@ func (s *PaymentModuleTestSuite) TestService_HandleWechatCallback() {
 				OutTradeNo:    core.String("order-callback-300022"),
 				TransactionId: core.String("wechat-transaction-id-300022"),
 				TradeState:    core.String(TradeStatePayError),
-				Attach:        core.String(strconv.FormatInt(int64(domain.ChannelTypeWechat), 10)),
 			},
 			newSvcFunc: func(t *testing.T, ctrl *gomock.Controller) service.Service {
 				t.Helper()
@@ -2221,7 +2356,7 @@ func (s *PaymentModuleTestSuite) TestService_HandleWechatCallback() {
 				result := &core.APIResult{}
 				mockNativeAPIService.EXPECT().Prepay(gomock.Any(), gomock.Any()).Return(resp, result, nil)
 
-				return startup.InitService(mockProducer, &credit.Module{Svc: mockCreditSvc}, mockNativeAPIService, nil)
+				return startup.InitService(mockProducer, &credit.Module{Svc: mockCreditSvc}, &user.Module{}, mockNativeAPIService, nil)
 			},
 			errRequireFunc: require.NoError,
 			after: func(t *testing.T, svc service.Service, pmtID int64) {
@@ -2286,7 +2421,6 @@ func (s *PaymentModuleTestSuite) TestService_HandleWechatCallback() {
 				OutTradeNo:    core.String("order-callback-300024"),
 				TransactionId: core.String("wechat-transaction-id-300024"),
 				TradeState:    core.String(TradeStateRevoked),
-				Attach:        core.String(strconv.FormatInt(int64(domain.ChannelTypeWechat), 10)),
 			},
 			newSvcFunc: func(t *testing.T, ctrl *gomock.Controller) service.Service {
 				t.Helper()
@@ -2311,7 +2445,7 @@ func (s *PaymentModuleTestSuite) TestService_HandleWechatCallback() {
 				result := &core.APIResult{}
 				mockNativeAPIService.EXPECT().Prepay(gomock.Any(), gomock.Any()).Return(resp, result, nil)
 
-				return startup.InitService(mockProducer, &credit.Module{Svc: mockCreditSvc}, mockNativeAPIService, nil)
+				return startup.InitService(mockProducer, &credit.Module{Svc: mockCreditSvc}, &user.Module{}, mockNativeAPIService, nil)
 			},
 			errRequireFunc: require.NoError,
 			after: func(t *testing.T, svc service.Service, pmtID int64) {
@@ -2376,7 +2510,6 @@ func (s *PaymentModuleTestSuite) TestService_HandleWechatCallback() {
 				OutTradeNo:    core.String("order-callback-300025"),
 				TransactionId: core.String("wechat-transaction-id-300025"),
 				TradeState:    core.String(TradeStateNotPay),
-				Attach:        core.String(strconv.FormatInt(int64(domain.ChannelTypeWechat), 10)),
 			},
 			newSvcFunc: func(t *testing.T, ctrl *gomock.Controller) service.Service {
 				t.Helper()
@@ -2389,7 +2522,7 @@ func (s *PaymentModuleTestSuite) TestService_HandleWechatCallback() {
 				result := &core.APIResult{}
 				mockNativeAPIService.EXPECT().Prepay(gomock.Any(), gomock.Any()).Return(resp, result, nil)
 
-				return startup.InitService(nil, &credit.Module{Svc: mockCreditSvc}, mockNativeAPIService, nil)
+				return startup.InitService(nil, &credit.Module{Svc: mockCreditSvc}, &user.Module{}, mockNativeAPIService, nil)
 			},
 			errRequireFunc: require.Error,
 			after: func(t *testing.T, svc service.Service, pmtID int64) {
@@ -2454,7 +2587,6 @@ func (s *PaymentModuleTestSuite) TestService_HandleWechatCallback() {
 				OutTradeNo:    core.String("order-callback-invalid-300026"),
 				TransactionId: core.String("wechat-transaction-id-300026"),
 				TradeState:    core.String(TradeStateSuccess),
-				Attach:        core.String(strconv.FormatInt(int64(domain.ChannelTypeWechat), 10)),
 			},
 			newSvcFunc: func(t *testing.T, ctrl *gomock.Controller) service.Service {
 				t.Helper()
@@ -2467,7 +2599,7 @@ func (s *PaymentModuleTestSuite) TestService_HandleWechatCallback() {
 				result := &core.APIResult{}
 				mockNativeAPIService.EXPECT().Prepay(gomock.Any(), gomock.Any()).Return(resp, result, nil)
 
-				return startup.InitService(nil, &credit.Module{Svc: mockCreditSvc}, mockNativeAPIService, nil)
+				return startup.InitService(nil, &credit.Module{Svc: mockCreditSvc}, &user.Module{}, mockNativeAPIService, nil)
 			},
 			errRequireFunc: require.Error,
 			after: func(t *testing.T, svc service.Service, pmtID int64) {
@@ -2516,11 +2648,14 @@ func (s *PaymentModuleTestSuite) TestService_HandleWechatCallback() {
 }
 
 func (s *PaymentModuleTestSuite) newWechatNativePayment(mockProducer *evtmocks.MockPaymentEventProducer, mockNativeAPIService *wechatmocks.MockNativeAPIService) payment.Service {
-	return startup.InitService(mockProducer, &credit.Module{}, mockNativeAPIService, nil)
+	return startup.InitService(mockProducer, &credit.Module{}, &user.Module{}, mockNativeAPIService, nil)
 }
 
-func (s *PaymentModuleTestSuite) newWechatJSAPIPayment(mockProducer *evtmocks.MockPaymentEventProducer, mockJSAPIService *wechatmocks.MockJSAPIService) payment.Service {
-	return startup.InitService(mockProducer, &credit.Module{}, nil, mockJSAPIService)
+func (s *PaymentModuleTestSuite) newWechatJSAPIPayment(
+	mockProducer *evtmocks.MockPaymentEventProducer,
+	mockUsrSvc user.UserService,
+	mockJSAPIService *wechatmocks.MockJSAPIService) payment.Service {
+	return startup.InitService(mockProducer, &credit.Module{}, &user.Module{Svc: mockUsrSvc}, nil, mockJSAPIService)
 }
 
 func (s *PaymentModuleTestSuite) TestService_FindTimeoutPayments() {
@@ -2566,7 +2701,7 @@ func (s *PaymentModuleTestSuite) TestService_FindTimeoutPayments() {
 			},
 			newSvcFunc: func(t *testing.T, ctrl *gomock.Controller) service.Service {
 				t.Helper()
-				return s.newCreditPaymentService(nil, nil)
+				return s.newCreditPaymentService(nil, nil, nil)
 			},
 			offset:         0,
 			limit:          3,
@@ -2635,7 +2770,7 @@ func (s *PaymentModuleTestSuite) TestService_FindTimeoutPayments() {
 				result := &core.APIResult{}
 				mockNativeAPIService.EXPECT().Prepay(gomock.Any(), gomock.Any()).Return(resp, result, nil).Times(5)
 
-				return startup.InitService(nil, &credit.Module{Svc: mockCreditSvc}, mockNativeAPIService, nil)
+				return startup.InitService(nil, &credit.Module{Svc: mockCreditSvc}, &user.Module{}, mockNativeAPIService, nil)
 			},
 			offset:         0,
 			limit:          2,
@@ -2724,7 +2859,7 @@ func (s *PaymentModuleTestSuite) TestService_CloseTimeoutPayment() {
 			},
 			newSvcFunc: func(t *testing.T, ctrl *gomock.Controller) service.Service {
 				t.Helper()
-				return s.newCreditPaymentService(nil, nil)
+				return s.newCreditPaymentService(nil, nil, nil)
 			},
 			errRequireFunc: require.NoError,
 			after: func(t *testing.T, svc service.Service, pmtID int64) {
@@ -2800,7 +2935,7 @@ func (s *PaymentModuleTestSuite) TestService_CloseTimeoutPayment() {
 				result := &core.APIResult{}
 				mockNativeAPIService.EXPECT().Prepay(gomock.Any(), gomock.Any()).Return(resp, result, nil).Times(6)
 
-				return startup.InitService(nil, &credit.Module{Svc: mockCreditSvc}, mockNativeAPIService, nil)
+				return startup.InitService(nil, &credit.Module{Svc: mockCreditSvc}, &user.Module{}, mockNativeAPIService, nil)
 			},
 			errRequireFunc: require.NoError,
 			after: func(t *testing.T, svc service.Service, pmtID int64) {
@@ -3042,7 +3177,7 @@ func (s *PaymentModuleTestSuite) TestService_SyncWechatInfo() {
 				}
 				mockNativeAPIService.EXPECT().QueryOrderByOutTradeNo(gomock.Any(), req).Return(txn, result, nil)
 
-				return startup.InitService(nil, &credit.Module{}, mockNativeAPIService, nil)
+				return startup.InitService(nil, &credit.Module{}, &user.Module{}, mockNativeAPIService, nil)
 			},
 			errRequireFunc: require.NoError,
 			after: func(t *testing.T, svc service.Service, pmtID int64) {
@@ -3228,10 +3363,18 @@ func (s *PaymentModuleTestSuite) TestService_SyncWechatInfo() {
 				mockProducer.EXPECT().Produce(gomock.Any(), evt).Return(nil)
 
 				mockJSAPIService := wechatmocks.NewMockJSAPIService(ctrl)
-				resp := &jsapi.PrepayResponse{PrepayId: core.String("wechat_prepay_id_500014")}
+				resp := &jsapi.PrepayWithRequestPaymentResponse{
+					PrepayId:  core.String("wechat_prepay_id_500014"),
+					Appid:     core.String("appid"),
+					TimeStamp: core.String("timestamp"),
+					NonceStr:  core.String("nonce_str"),
+					Package:   core.String("package"),
+					SignType:  core.String("sign_type"),
+					PaySign:   core.String("pay_sign"),
+				}
 				result := &core.APIResult{}
 
-				mockJSAPIService.EXPECT().Prepay(gomock.Any(), gomock.Any()).Return(resp, result, nil)
+				mockJSAPIService.EXPECT().PrepayWithRequestPayment(gomock.Any(), gomock.Any()).Return(resp, result, nil)
 				req := jsapi.QueryOrderByOutTradeNoRequest{OutTradeNo: core.String(orderSN), Mchid: core.String("MockMchID")}
 				txn := &payments.Transaction{
 					OutTradeNo:    core.String(orderSN),
@@ -3239,8 +3382,14 @@ func (s *PaymentModuleTestSuite) TestService_SyncWechatInfo() {
 					TradeState:    core.String(TradeStateSuccess),
 				}
 				mockJSAPIService.EXPECT().QueryOrderByOutTradeNo(gomock.Any(), req).Return(txn, result, nil)
+				mockUserSvc := usermocks.NewMockUserService(ctrl)
+				mockUserSvc.EXPECT().Profile(gomock.Any(), gomock.Any()).Return(user.User{
+					WechatInfo: user.WechatInfo{
+						MiniOpenId: "mini_id",
+					},
+				}, nil).AnyTimes()
 
-				return s.newWechatJSAPIPayment(mockProducer, mockJSAPIService)
+				return s.newWechatJSAPIPayment(mockProducer, mockUserSvc, mockJSAPIService)
 			},
 			errRequireFunc: require.NoError,
 			after: func(t *testing.T, svc service.Service, pmtID int64) {
@@ -3260,7 +3409,7 @@ func (s *PaymentModuleTestSuite) TestService_SyncWechatInfo() {
 				require.Equal(t, domain.PaymentStatusPaidSuccess, w.Status)
 				require.Equal(t, "wechat-transaction-id-500014", w.PaymentNO3rd)
 				require.Zero(t, w.WechatCodeURL)
-				require.Zero(t, w.WechatPrepayID)
+				require.Zero(t, w.WechatJsAPIResp.PrepayId)
 				require.NotZero(t, w.PaidAt)
 			},
 		},
@@ -3301,10 +3450,18 @@ func (s *PaymentModuleTestSuite) TestService_SyncWechatInfo() {
 				mockProducer.EXPECT().Produce(gomock.Any(), evt).Return(nil)
 
 				mockJSAPIService := wechatmocks.NewMockJSAPIService(ctrl)
-				resp := &jsapi.PrepayResponse{PrepayId: core.String("wechat_prepay_id_500015")}
+				resp := &jsapi.PrepayWithRequestPaymentResponse{
+					PrepayId:  core.String("wechat_prepay_id_500015"),
+					Appid:     core.String("appid"),
+					TimeStamp: core.String("timestamp"),
+					NonceStr:  core.String("nonce_str"),
+					Package:   core.String("package"),
+					SignType:  core.String("sign_type"),
+					PaySign:   core.String("pay_sign"),
+				}
 				result := &core.APIResult{}
 
-				mockJSAPIService.EXPECT().Prepay(gomock.Any(), gomock.Any()).Return(resp, result, nil)
+				mockJSAPIService.EXPECT().PrepayWithRequestPayment(gomock.Any(), gomock.Any()).Return(resp, result, nil)
 				req := jsapi.QueryOrderByOutTradeNoRequest{OutTradeNo: core.String(orderSN), Mchid: core.String("MockMchID")}
 				txn := &payments.Transaction{
 					OutTradeNo:    core.String(orderSN),
@@ -3313,7 +3470,14 @@ func (s *PaymentModuleTestSuite) TestService_SyncWechatInfo() {
 				}
 				mockJSAPIService.EXPECT().QueryOrderByOutTradeNo(gomock.Any(), req).Return(txn, result, nil)
 
-				return s.newWechatJSAPIPayment(mockProducer, mockJSAPIService)
+				mockUserSvc := usermocks.NewMockUserService(ctrl)
+				mockUserSvc.EXPECT().Profile(gomock.Any(), gomock.Any()).Return(user.User{
+					WechatInfo: user.WechatInfo{
+						MiniOpenId: "mini_id",
+					},
+				}, nil).AnyTimes()
+
+				return s.newWechatJSAPIPayment(mockProducer, mockUserSvc, mockJSAPIService)
 			},
 			errRequireFunc: require.NoError,
 			after: func(t *testing.T, svc service.Service, pmtID int64) {
@@ -3333,7 +3497,7 @@ func (s *PaymentModuleTestSuite) TestService_SyncWechatInfo() {
 				require.Equal(t, domain.PaymentStatusPaidFailed, w.Status)
 				require.Equal(t, "wechat-transaction-id-500015", w.PaymentNO3rd)
 				require.Zero(t, w.WechatCodeURL)
-				require.Zero(t, w.WechatPrepayID)
+				require.Zero(t, w.WechatJsAPIResp.PrepayId)
 				require.Zero(t, w.PaidAt)
 			},
 		},
@@ -3365,10 +3529,18 @@ func (s *PaymentModuleTestSuite) TestService_SyncWechatInfo() {
 			newSvcFunc: func(t *testing.T, ctrl *gomock.Controller) service.Service {
 				t.Helper()
 				mockJSAPIService := wechatmocks.NewMockJSAPIService(ctrl)
-				resp := &jsapi.PrepayResponse{PrepayId: core.String("wechat_prepay_id_500016")}
+				resp := &jsapi.PrepayWithRequestPaymentResponse{
+					PrepayId:  core.String("wechat_prepay_id_500016"),
+					Appid:     core.String("appid"),
+					TimeStamp: core.String("timestamp"),
+					NonceStr:  core.String("nonce_str"),
+					Package:   core.String("package"),
+					SignType:  core.String("sign_type"),
+					PaySign:   core.String("pay_sign"),
+				}
 				result := &core.APIResult{}
 
-				mockJSAPIService.EXPECT().Prepay(gomock.Any(), gomock.Any()).Return(resp, result, nil)
+				mockJSAPIService.EXPECT().PrepayWithRequestPayment(gomock.Any(), gomock.Any()).Return(resp, result, nil)
 				orderSN := "order-sync-500016"
 				req := jsapi.QueryOrderByOutTradeNoRequest{OutTradeNo: core.String(orderSN), Mchid: core.String("MockMchID")}
 				txn := &payments.Transaction{
@@ -3377,8 +3549,14 @@ func (s *PaymentModuleTestSuite) TestService_SyncWechatInfo() {
 					TradeState:    core.String(TradeStateUserPaying),
 				}
 				mockJSAPIService.EXPECT().QueryOrderByOutTradeNo(gomock.Any(), req).Return(txn, result, nil)
+				mockUserSvc := usermocks.NewMockUserService(ctrl)
+				mockUserSvc.EXPECT().Profile(gomock.Any(), gomock.Any()).Return(user.User{
+					WechatInfo: user.WechatInfo{
+						MiniOpenId: "mini_id",
+					},
+				}, nil).AnyTimes()
 
-				return s.newWechatJSAPIPayment(nil, mockJSAPIService)
+				return s.newWechatJSAPIPayment(nil, mockUserSvc, mockJSAPIService)
 			},
 			errRequireFunc: require.NoError,
 			after: func(t *testing.T, svc service.Service, pmtID int64) {
@@ -3398,7 +3576,7 @@ func (s *PaymentModuleTestSuite) TestService_SyncWechatInfo() {
 				require.Equal(t, domain.PaymentStatusTimeoutClosed, w.Status)
 				require.Equal(t, "wechat-transaction-id-500016", w.PaymentNO3rd)
 				require.Zero(t, w.WechatCodeURL)
-				require.Zero(t, w.WechatPrepayID)
+				require.Zero(t, w.WechatJsAPIResp.PrepayId)
 				require.Zero(t, w.PaidAt)
 			},
 		},
@@ -3430,17 +3608,31 @@ func (s *PaymentModuleTestSuite) TestService_SyncWechatInfo() {
 			newSvcFunc: func(t *testing.T, ctrl *gomock.Controller) service.Service {
 				t.Helper()
 				mockJSAPIService := wechatmocks.NewMockJSAPIService(ctrl)
-				resp := &jsapi.PrepayResponse{PrepayId: core.String("wechat_prepay_id_500017")}
+				resp := &jsapi.PrepayWithRequestPaymentResponse{
+					PrepayId:  core.String("wechat_prepay_id_500017"),
+					Appid:     core.String("appid"),
+					TimeStamp: core.String("timestamp"),
+					NonceStr:  core.String("nonce_str"),
+					Package:   core.String("package"),
+					SignType:  core.String("sign_type"),
+					PaySign:   core.String("pay_sign"),
+				}
 				result := &core.APIResult{}
 
-				mockJSAPIService.EXPECT().Prepay(gomock.Any(), gomock.Any()).Return(resp, result, nil)
+				mockJSAPIService.EXPECT().PrepayWithRequestPayment(gomock.Any(), gomock.Any()).Return(resp, result, nil)
 				orderSN := "order-sync-500017"
 				req := jsapi.QueryOrderByOutTradeNoRequest{OutTradeNo: core.String(orderSN), Mchid: core.String("MockMchID")}
 				txn := &payments.Transaction{}
 				mockErr := errors.New("mock: 通过订单序列号查询微信订单失败")
 				mockJSAPIService.EXPECT().QueryOrderByOutTradeNo(gomock.Any(), req).Return(txn, result, mockErr)
+				mockUserSvc := usermocks.NewMockUserService(ctrl)
+				mockUserSvc.EXPECT().Profile(gomock.Any(), gomock.Any()).Return(user.User{
+					WechatInfo: user.WechatInfo{
+						MiniOpenId: "mini_id",
+					},
+				}, nil).AnyTimes()
 
-				return s.newWechatJSAPIPayment(nil, mockJSAPIService)
+				return s.newWechatJSAPIPayment(nil, mockUserSvc, mockJSAPIService)
 			},
 			errRequireFunc: require.Error,
 			after: func(t *testing.T, svc service.Service, pmtID int64) {
@@ -3460,7 +3652,7 @@ func (s *PaymentModuleTestSuite) TestService_SyncWechatInfo() {
 				require.Equal(t, domain.PaymentStatusProcessing, w.Status)
 				require.Zero(t, w.PaymentNO3rd)
 				require.Zero(t, w.WechatCodeURL)
-				require.Zero(t, w.WechatPrepayID)
+				require.Zero(t, w.WechatJsAPIResp.PrepayId)
 				require.Zero(t, w.PaidAt)
 			},
 		},
@@ -3492,10 +3684,18 @@ func (s *PaymentModuleTestSuite) TestService_SyncWechatInfo() {
 			newSvcFunc: func(t *testing.T, ctrl *gomock.Controller) service.Service {
 				t.Helper()
 				mockJSAPIService := wechatmocks.NewMockJSAPIService(ctrl)
-				resp := &jsapi.PrepayResponse{PrepayId: core.String("wechat_prepay_id_500018")}
+				resp := &jsapi.PrepayWithRequestPaymentResponse{
+					PrepayId:  core.String("wechat_prepay_id_500018"),
+					Appid:     core.String("appid"),
+					TimeStamp: core.String("timestamp"),
+					NonceStr:  core.String("nonce_str"),
+					Package:   core.String("package"),
+					SignType:  core.String("sign_type"),
+					PaySign:   core.String("pay_sign"),
+				}
 				result := &core.APIResult{}
 
-				mockJSAPIService.EXPECT().Prepay(gomock.Any(), gomock.Any()).Return(resp, result, nil)
+				mockJSAPIService.EXPECT().PrepayWithRequestPayment(gomock.Any(), gomock.Any()).Return(resp, result, nil)
 				orderSN := "order-sync-500018"
 				req := jsapi.QueryOrderByOutTradeNoRequest{OutTradeNo: core.String(orderSN), Mchid: core.String("MockMchID")}
 				txn := &payments.Transaction{
@@ -3505,7 +3705,14 @@ func (s *PaymentModuleTestSuite) TestService_SyncWechatInfo() {
 				}
 				mockJSAPIService.EXPECT().QueryOrderByOutTradeNo(gomock.Any(), req).Return(txn, result, nil)
 
-				return s.newWechatJSAPIPayment(nil, mockJSAPIService)
+				mockUserSvc := usermocks.NewMockUserService(ctrl)
+				mockUserSvc.EXPECT().Profile(gomock.Any(), gomock.Any()).Return(user.User{
+					WechatInfo: user.WechatInfo{
+						MiniOpenId: "mini_id",
+					},
+				}, nil).AnyTimes()
+
+				return s.newWechatJSAPIPayment(nil, mockUserSvc, mockJSAPIService)
 			},
 			errRequireFunc: require.Error,
 			after: func(t *testing.T, svc service.Service, pmtID int64) {
@@ -3525,7 +3732,7 @@ func (s *PaymentModuleTestSuite) TestService_SyncWechatInfo() {
 				require.Equal(t, domain.PaymentStatusProcessing, w.Status)
 				require.Zero(t, w.PaymentNO3rd)
 				require.Zero(t, w.WechatCodeURL)
-				require.Zero(t, w.WechatPrepayID)
+				require.Zero(t, w.WechatJsAPIResp.PrepayId)
 				require.Zero(t, w.PaidAt)
 			},
 		},
@@ -3590,7 +3797,7 @@ func (s *PaymentModuleTestSuite) TestService_SyncWechatInfo() {
 				}
 				mockNativeAPIService.EXPECT().QueryOrderByOutTradeNo(gomock.Any(), req).Return(txn, result, nil)
 
-				return startup.InitService(mockProducer, &credit.Module{Svc: mockCreditService}, mockNativeAPIService, nil)
+				return startup.InitService(mockProducer, &credit.Module{Svc: mockCreditService}, &user.Module{}, mockNativeAPIService, nil)
 			},
 			errRequireFunc: require.NoError,
 			after: func(t *testing.T, svc service.Service, pmtID int64) {
@@ -3682,7 +3889,7 @@ func (s *PaymentModuleTestSuite) TestService_SyncWechatInfo() {
 				}
 				mockNativeAPIService.EXPECT().QueryOrderByOutTradeNo(gomock.Any(), req).Return(txn, result, nil)
 
-				return startup.InitService(mockProducer, &credit.Module{Svc: mockCreditService}, mockNativeAPIService, nil)
+				return startup.InitService(mockProducer, &credit.Module{Svc: mockCreditService}, &user.Module{}, mockNativeAPIService, nil)
 			},
 			errRequireFunc: require.NoError,
 			after: func(t *testing.T, svc service.Service, pmtID int64) {
@@ -3767,7 +3974,7 @@ func (s *PaymentModuleTestSuite) TestService_SyncWechatInfo() {
 				}
 				mockNativeAPIService.EXPECT().QueryOrderByOutTradeNo(gomock.Any(), req).Return(txn, result, nil)
 
-				return startup.InitService(nil, &credit.Module{Svc: mockCreditService}, mockNativeAPIService, nil)
+				return startup.InitService(nil, &credit.Module{Svc: mockCreditService}, &user.Module{}, mockNativeAPIService, nil)
 			},
 			errRequireFunc: require.NoError,
 			after: func(t *testing.T, svc service.Service, pmtID int64) {
@@ -4243,7 +4450,7 @@ func (s *PaymentModuleTestSuite) TestService_SetPaymentStatusPaidFailed() {
 			},
 			newSvcFunc: func(t *testing.T, ctrl *gomock.Controller) service.Service {
 				t.Helper()
-				return s.newCreditPaymentService(nil, nil)
+				return s.newCreditPaymentService(nil, nil, nil)
 			},
 			errRequireFunc: require.NoError,
 			after: func(t *testing.T, svc service.Service, pmtID int64) {
@@ -4319,7 +4526,7 @@ func (s *PaymentModuleTestSuite) TestService_SetPaymentStatusPaidFailed() {
 				result := &core.APIResult{}
 				mockNativeAPIService.EXPECT().Prepay(gomock.Any(), gomock.Any()).Return(resp, result, nil).Times(6)
 
-				return startup.InitService(nil, &credit.Module{Svc: mockCreditSvc}, mockNativeAPIService, nil)
+				return startup.InitService(nil, &credit.Module{Svc: mockCreditSvc}, &user.Module{}, mockNativeAPIService, nil)
 			},
 			errRequireFunc: require.NoError,
 			after: func(t *testing.T, svc service.Service, pmtID int64) {

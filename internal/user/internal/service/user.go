@@ -26,7 +26,7 @@ import (
 	"github.com/gotomicro/ego/core/elog"
 )
 
-//go:generate mockgen -source=./user.go -package=svcmocks -typed=true -destination=mocks/user.mock.go UserService
+//go:generate mockgen -source=./user.go -package=usermocks -typed=true -destination=../../mocks/user.mock.go UserService
 type UserService interface {
 	Profile(ctx context.Context, id int64) (domain.User, error)
 	// FindOrCreateByWechat 查找或者初始化

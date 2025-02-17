@@ -28,6 +28,7 @@ import (
 	"github.com/ecodeclub/webook/internal/payment/internal/domain"
 	"github.com/ecodeclub/webook/internal/payment/internal/event"
 	"github.com/ecodeclub/webook/internal/payment/internal/repository"
+	"github.com/ecodeclub/webook/internal/payment/internal/service/wechat"
 	"github.com/ecodeclub/webook/internal/pkg/sequencenumber"
 	"github.com/gotomicro/ego/core/elog"
 	"github.com/wechatpay-apiv3/wechatpay-go/services/payments"
@@ -35,7 +36,8 @@ import (
 )
 
 var (
-	invalidCombinationPayment = errors.New("非法组合支付")
+	errInvalidCombinationPayment = errors.New("非法组合支付")
+	errIgnoredPaymentStatus      = errors.New("忽略的支付状态")
 )
 
 //go:generate mockgen -source=service.go -package=paymentmocks -destination=../../mocks/payment.mock.go -typed Service
@@ -63,9 +65,8 @@ type Service interface {
 type PaymentService interface {
 	Name() domain.ChannelType
 	Desc() string
-	// Prepay 预支付 Native支付方式返回CodeUrl，JSAPI支付方式返回PrepayId
-	Prepay(ctx context.Context, pmt domain.Payment) (string, error)
-	ConvertCallbackTransactionToDomain(txn *payments.Transaction) (domain.Payment, error)
+	// Prepay 预支付 Native支付方式返回CodeUrl string，JSAPI支付方式返回PrepayId
+	Prepay(ctx context.Context, pmt domain.Payment) (any, error)
 	// QueryOrderBySN 同步信息 定时任务调用此方法同步状态信息
 	QueryOrderBySN(ctx context.Context, orderSN string) (domain.Payment, error)
 }
@@ -154,12 +155,12 @@ func (s *service) executePayment(ctx context.Context, pmt *domain.Payment) error
 		}
 	case 2:
 		if channels[0] != domain.ChannelTypeCredit || channels[1] == domain.ChannelTypeCredit {
-			return invalidCombinationPayment
+			return errInvalidCombinationPayment
 		}
 		// 混合预支付
 		return s.prepayByCreditAnd3rdPayment(ctx, pmt, channels[1])
 	}
-	return invalidCombinationPayment
+	return errInvalidCombinationPayment
 }
 
 func (s *service) getChannelTypes(pmt *domain.Payment) []domain.ChannelType {
@@ -255,19 +256,14 @@ func (s *service) prepay(ctx context.Context, pmt *domain.Payment, channel domai
 		return src.Channel == thirdPartyPayment.Name()
 	})
 	if thirdPartyPayment.Name() == domain.ChannelTypeWechat {
-		pmt.Records[idx].WechatCodeURL = resp
+		pmt.Records[idx].WechatCodeURL = resp.(string)
 	} else if thirdPartyPayment.Name() == domain.ChannelTypeWechatJS {
-		pmt.Records[idx].WechatPrepayID = resp
+		pmt.Records[idx].WechatJsAPIResp = resp.(domain.WechatJsAPIPrepayResponse)
 	}
 
 	pmt.Status = domain.PaymentStatusProcessing
 	pmt.Records[idx].Status = domain.PaymentStatusProcessing
-	err = s.repo.UpdatePayment(ctx, *pmt)
-	if err != nil {
-		// 这里有一个小问题，就是如果超时了的话，你都不知道更新成功了没
-		return err
-	}
-	return nil
+	return s.repo.UpdatePayment(ctx, *pmt)
 }
 
 func (s *service) prepayByCreditAnd3rdPayment(ctx context.Context, pmt *domain.Payment, channel domain.ChannelType) error {
@@ -291,9 +287,9 @@ func (s *service) prepayByCreditAnd3rdPayment(ctx context.Context, pmt *domain.P
 
 	pmt.Status = domain.PaymentStatusProcessing
 	if thirdPartyPayment.Name() == domain.ChannelTypeWechat {
-		pmt.Records[channelIdx].WechatCodeURL = resp
+		pmt.Records[channelIdx].WechatCodeURL = resp.(string)
 	} else if thirdPartyPayment.Name() == domain.ChannelTypeWechatJS {
-		pmt.Records[channelIdx].WechatPrepayID = resp
+		pmt.Records[channelIdx].WechatJsAPIResp = resp.(domain.WechatJsAPIPrepayResponse)
 	}
 	pmt.Records[channelIdx].Status = domain.PaymentStatusProcessing
 	pmt.Records[creditIdx].PaymentNO3rd = strconv.FormatInt(tid, 10)
@@ -309,29 +305,71 @@ func (s *service) prepayByCreditAnd3rdPayment(ctx context.Context, pmt *domain.P
 }
 
 func (s *service) HandleWechatCallback(ctx context.Context, txn *payments.Transaction) error {
-	channelType, err := strconv.ParseInt(*txn.Attach, 10, 64)
-	if err != nil {
-		return fmt.Errorf("解析附加数据失败：%w", err)
-	}
 
-	pmt, err := s.thirdPartyPayments[domain.ChannelType(channelType)].ConvertCallbackTransactionToDomain(txn)
+	status, err := s.getPaymentStatus(*txn.TradeState)
 	if err != nil {
 		return err
 	}
+
+	pmt, err1 := s.repo.FindPaymentByOrderSN(ctx, *txn.OutTradeNo)
+	if err1 != nil {
+		return fmt.Errorf("微信回调中携带的订单SN不存在：%w", err1)
+	}
+
+	pmt.PaidAt = s.getPaymentPaidAt(status)
+	pmt.Status = status
+	for i, r := range pmt.Records {
+		if r.Channel == domain.ChannelTypeWechat || r.Channel == domain.ChannelTypeWechatJS {
+			pmt.Records[i] = domain.PaymentRecord{
+				PaymentID:       r.PaymentID,
+				PaymentNO3rd:    *txn.TransactionId,
+				Description:     r.Description,
+				Channel:         r.Channel,
+				Amount:          r.Amount,
+				PaidAt:          pmt.PaidAt,
+				Status:          pmt.Status,
+				WechatCodeURL:   r.WechatCodeURL,
+				WechatJsAPIResp: r.WechatJsAPIResp,
+			}
+		}
+	}
+
 	err = s.repo.UpdatePayment(ctx, pmt)
 	if err != nil {
 		// 这里有一个小问题，就是如果超时了的话，你都不知道更新成功了没
 		return err
 	}
 
-	p, _ := s.repo.FindPaymentByOrderSN(context.Background(), pmt.OrderSN)
-
-	// 支付主记录和微信支付渠道支付成功/支付失败后,就发送消息
-	pmt.PayerID = p.PayerID
+	// 支付主记录和微信支付渠道记录更新后就直接发送消息
 	_ = s.sendPaymentEvent(ctx, &pmt)
 
-	pmt.Records = p.Records
 	return s.HandleCreditCallback(ctx, pmt)
+}
+
+func (s *service) getPaymentPaidAt(status domain.PaymentStatus) int64 {
+	var paidAt int64
+	if status == domain.PaymentStatusPaidSuccess {
+		paidAt = time.Now().UnixMilli()
+	}
+	return paidAt
+}
+
+func (s *service) getPaymentStatus(tradeState string) (domain.PaymentStatus, error) {
+	// 将微信的交易状态转换为webook内部对应的支付状态
+	status, err := wechat.GetPaymentStatus(tradeState)
+	if err != nil {
+		return 0, err
+	}
+
+	// 被动等待微信回调时，忽略除支付成功和支付失败之外的状态
+	if status != domain.PaymentStatusPaidSuccess && status != domain.PaymentStatusPaidFailed {
+		s.l.Warn("忽略的微信支付通知状态",
+			elog.String("TradeState", tradeState),
+			elog.Any("PaymentStatus", status),
+		)
+		return 0, fmt.Errorf("%w, %d", errIgnoredPaymentStatus, status.ToUint8())
+	}
+	return status, nil
 }
 
 func (s *service) HandleCreditCallback(ctx context.Context, pmt domain.Payment) error {

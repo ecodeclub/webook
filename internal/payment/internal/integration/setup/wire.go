@@ -19,6 +19,8 @@ package startup
 import (
 	"sync"
 
+	"github.com/ecodeclub/webook/internal/user"
+
 	"github.com/ecodeclub/webook/internal/credit"
 	"github.com/ecodeclub/webook/internal/payment"
 	"github.com/ecodeclub/webook/internal/payment/internal/event"
@@ -37,6 +39,7 @@ var serviceSet = wire.NewSet(
 	initWechatConfig,
 
 	wire.FieldsOf(new(*credit.Module), "Svc"),
+	wire.FieldsOf(new(*user.Module), "Svc"),
 
 	sequencenumber.NewGenerator,
 	testioc.BaseSet,
@@ -47,7 +50,9 @@ var serviceSet = wire.NewSet(
 
 func InitService(p event.PaymentEventProducer,
 	cm *credit.Module,
-	native wechat.NativeAPIService, js wechat.JSAPIService) payment.Service {
+	um *user.Module,
+	native wechat.NativeAPIService,
+	js wechat.JSAPIService) payment.Service {
 	wire.Build(
 		serviceSet,
 		ioc.InitWechatNativePaymentService,
