@@ -278,10 +278,7 @@ func (c *CachedRepository) PubList(ctx context.Context, offset int, limit int, b
 // 校验数据是否都存在于缓存中
 func (c *CachedRepository) checkTop50(offset, limit int) bool {
 	last := offset + limit
-	if last > cacheMax {
-		return false
-	}
-	return true
+	return last <= cacheMax
 }
 
 func (c *CachedRepository) getQuestionsFromCache(questions []domain.Question, offset, limit int) []domain.Question {
