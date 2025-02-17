@@ -30,6 +30,7 @@ type QuestionECache struct {
 	ec ecache.Cache
 }
 
+
 var (
 	ErrQuestionNotFound = errors.New("问题没找到")
 )
@@ -71,22 +72,56 @@ func (q *QuestionECache) GetQuestion(ctx context.Context, id int64) (domain.Ques
 	return question, nil
 }
 
-func (q *QuestionECache) GetTotal(ctx context.Context) (int64, error) {
-	return q.ec.Get(ctx, q.totalKey()).AsInt64()
+func (q *QuestionECache) SetQuestions(ctx context.Context, biz string, questions []domain.Question) error {
+	questionsByte, err := json.Marshal(questions)
+	if err != nil {
+		return errors.Wrap(err, "序列化问题失败")
+	}
+	return q.ec.Set(ctx, q.questionListKey(biz), string(questionsByte), expiration)
 }
 
-func (q *QuestionECache) SetTotal(ctx context.Context, total int64) error {
-	// 设置更久的过期时间都可以，毕竟很少更新题库
-	return q.ec.Set(ctx, q.totalKey(), total, time.Minute*30)
+func (q *QuestionECache) GetQuestions(ctx context.Context, biz string) ([]domain.Question, error) {
+	key := q.questionListKey(biz)
+	qVal := q.ec.Get(ctx, key)
+	if qVal.KeyNotFound() {
+		return nil, ErrQuestionNotFound
+	}
+	if qVal.Err != nil {
+		return nil, errors.Wrap(qVal.Err, "查询缓存出错")
+	}
+
+	var questions []domain.Question
+	err := json.Unmarshal([]byte(qVal.Val.(string)), &questions)
+	if err != nil {
+		return nil, errors.Wrap(err, "反序列化问题失败")
+	}
+	return questions, nil
 }
+
+func (q *QuestionECache) GetTotal(ctx context.Context,biz string) (int64, error) {
+	return q.ec.Get(ctx, q.totalKey(biz)).AsInt64()
+}
+
+func (q *QuestionECache) SetTotal(ctx context.Context, biz string,total int64) error {
+	// 设置更久的过期时间都可以，毕竟很少更新题库
+	return q.ec.Set(ctx, q.totalKey(biz), total, time.Minute*30)
+}
+
+func (q *QuestionECache) DelQuestion(ctx context.Context, id int64) error {
+	_,err := q.ec.Delete(ctx,q.questionKey(id))
+	return err
+}
+
 
 // 注意 Namespace 设置
-func (q *QuestionECache) totalKey() string {
-	return "total"
+func (q *QuestionECache) totalKey(biz string) string {
+	return fmt.Sprintf("total:%s",biz)
 }
 
 func (q *QuestionECache) questionKey(id int64) string {
 	return fmt.Sprintf("publish:%d", id)
 }
 
-
+func (q *QuestionECache) questionListKey(biz string) string {
+	return fmt.Sprintf("list:%s", biz)
+}

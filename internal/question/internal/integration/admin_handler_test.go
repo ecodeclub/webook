@@ -369,6 +369,18 @@ func (s *AdminHandlerTestSuite) TestSync() {
 						Advanced:     s.buildDomainAnswerEle(3, 4),
 					},
 				})
+				s.cacheAssertQuestionList("project", []domain.Question{
+					{
+						Id:      1,
+						Uid:     uid,
+						Title:   "面试题1",
+						Biz:     "project",
+						BizId:   1,
+						Status:  domain.PublishedStatus,
+						Labels:  []string{"MySQL"},
+						Content: "面试题内容",
+					},
+				})
 
 			},
 			req: web.SaveReq{
@@ -534,6 +546,69 @@ func (s *AdminHandlerTestSuite) TestSync() {
 				Data: 2,
 			},
 		},
+		{
+			name: "更新缓存",
+			before: func(t *testing.T) {
+				s.producer.EXPECT().Produce(gomock.Any(), gomock.Any()).Return(nil)
+				s.knowledgeBaseProducer.EXPECT().Produce(gomock.Any(), gomock.Any()).Return(nil)
+				ques := []domain.Question{
+					{
+						Id:      8,
+						Uid:     uid,
+						Title:   "面试题1",
+						Biz:     "case",
+						BizId:   1,
+						Status:  domain.PublishedStatus,
+						Labels:  []string{"MySQL"},
+						Content: "面试题内容",
+					},
+					{
+						Id:      9,
+						Uid:     uid,
+						Title:   "面试题1",
+						Biz:     "case",
+						BizId:   1,
+						Status:  domain.PublishedStatus,
+						Labels:  []string{"MySQL"},
+						Content: "面试题内容",
+					},
+				}
+				quesByte, _ := json.Marshal(ques)
+				err := s.rdb.Set(context.Background(), "question:list:case", string(quesByte), 24*time.Hour)
+				require.NoError(t, err)
+			},
+			after: func(t *testing.T) {
+				s.cacheAssertQuestionList("case", []domain.Question{
+					{
+						Id:      1,
+						Uid:     uid,
+						Title:   "面试题1",
+						Biz:     "case",
+						BizId:   1,
+						Status:  domain.PublishedStatus,
+						Labels:  []string{"MySQL"},
+						Content: "面试题内容",
+					},
+				})
+			},
+			req: web.SaveReq{
+				Question: web.Question{
+					Title:        "面试题1",
+					Content:      "面试题内容",
+					Biz:          "case",
+					BizId:        1,
+					Labels:       []string{"MySQL"},
+					Analysis:     s.buildAnswerEle(0),
+					Basic:        s.buildAnswerEle(1),
+					Intermediate: s.buildAnswerEle(2),
+					Advanced:     s.buildAnswerEle(3),
+				},
+			},
+			wantCode: 200,
+			wantResp: test.Result[int64]{
+				Data: 1,
+			},
+		},
 	}
 
 	for _, tc := range testCases {
@@ -573,15 +648,50 @@ func (s *AdminHandlerTestSuite) TestDelete() {
 			name: "删除成功",
 			qid:  123,
 			before: func(t *testing.T) {
+				originQs := []domain.Question{
+					{
+						Id:  234,
+						Biz: "xx",
+					},
+					{
+						Id:  123,
+						Biz: "xx",
+					},
+				}
+				qsByte, err := json.Marshal(originQs)
+				require.NoError(t, err)
+				s.rdb.Set(context.Background(), "question:list:xx", string(qsByte), 24*time.Hour)
+
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 				defer cancel()
 				var qid int64 = 123
 				// prepare data
-				_, err := s.dao.Sync(ctx, dao.Question{
-					Id: qid,
+				s.db.Model(&dao.Question{}).Create(&dao.Question{
+					Id:  qid,
+					Biz: "xx",
+				})
+				_, err = s.dao.Sync(ctx, dao.Question{
+					Id:  qid,
+					Biz: "xx",
 				}, []dao.AnswerElement{
 					{
 						Qid: qid,
+					},
+				})
+				require.NoError(t, err)
+
+				s.db.Model(&dao.Question{}).Create(&dao.Question{
+					Id:    234,
+					Biz:   "xx",
+					Utime: 1739779178000,
+				})
+				_, err = s.dao.Sync(ctx, dao.Question{
+					Id:    234,
+					Biz:   "xx",
+					Utime: 1739779178000,
+				}, []dao.AnswerElement{
+					{
+						Qid: 234,
 					},
 				})
 				require.NoError(t, err)
@@ -599,9 +709,15 @@ func (s *AdminHandlerTestSuite) TestDelete() {
 				_, _, err = s.dao.GetByID(ctx, qid)
 				assert.Equal(t, err, gorm.ErrRecordNotFound)
 				var res []dao.QuestionSetQuestion
-				err = s.db.Where("qid = ?").Find(&res).Error
+				err = s.db.Model(&dao.QuestionSetQuestion{}).Where("qid = ?", qid).Find(&res).Error
 				assert.NoError(t, err)
 				assert.Equal(t, 0, len(res))
+				s.cacheAssertQuestionList("xx", []domain.Question{
+					{
+						Id:  234,
+						Biz: "xx",
+					},
+				})
 			},
 			wantCode: 200,
 			wantResp: test.Result[any]{},
@@ -621,6 +737,7 @@ func (s *AdminHandlerTestSuite) TestDelete() {
 	for _, tc := range testCases {
 		tc := tc
 		s.T().Run(tc.name, func(t *testing.T) {
+			tc.before(t)
 			req, err := http.NewRequest(http.MethodPost,
 				"/question/delete", iox.NewJSONReader(web.Qid{Qid: tc.qid}))
 			req.Header.Set("content-type", "application/json")
@@ -629,6 +746,7 @@ func (s *AdminHandlerTestSuite) TestDelete() {
 			s.server.ServeHTTP(recorder, req)
 			require.Equal(t, tc.wantCode, recorder.Code)
 			assert.Equal(t, tc.wantResp, recorder.MustScan())
+			tc.after(t)
 		})
 	}
 
@@ -828,7 +946,7 @@ func (s *AdminHandlerTestSuite) cacheAssertQuestion(q domain.Question) {
 	// 处理时间字段
 	require.True(t, actual.Utime.Unix() > 0)
 	q.Utime = actual.Utime
-	assert.Equal(t, q, actual)
+
 	// 清理缓存
 	require.True(t, actual.Answer.Basic.Id > 0)
 	require.True(t, actual.Answer.Advanced.Id > 0)
@@ -838,6 +956,36 @@ func (s *AdminHandlerTestSuite) cacheAssertQuestion(q domain.Question) {
 	actual.Answer.Advanced.Id = 0
 	actual.Answer.Intermediate.Id = 0
 	actual.Answer.Analysis.Id = 0
+	q.Answer.Basic.Id = 0
+	q.Answer.Advanced.Id = 0
+	q.Answer.Intermediate.Id = 0
+	q.Answer.Analysis.Id = 0
 	_, err = s.rdb.Delete(context.Background(), key)
 	require.NoError(t, err)
+	assert.Equal(t, q, actual)
+}
+
+func (s *AdminHandlerTestSuite) cacheAssertQuestionList(biz string, questions []domain.Question) {
+	key := fmt.Sprintf("question:list:%s", biz)
+	val := s.rdb.Get(context.Background(), key)
+	require.NoError(s.T(), val.Err)
+
+	var qs []domain.Question
+	err := json.Unmarshal([]byte(val.Val.(string)), &qs)
+	require.NoError(s.T(), err)
+	require.Equal(s.T(), len(questions), len(qs))
+	for idx, q := range qs {
+		require.True(s.T(), q.Utime.UnixMilli() > 0)
+		require.True(s.T(), q.Id > 0)
+		//require.True(s.T(), q.Answer.Analysis.Id > 0)
+		//require.True(s.T(), q.Answer.Basic.Id > 0)
+		//require.True(s.T(), q.Answer.Advanced.Id > 0)
+		//require.True(s.T(), q.Answer.Intermediate.Id > 0)
+		qs[idx].Id = questions[idx].Id
+		qs[idx].Utime = questions[idx].Utime
+
+	}
+	assert.Equal(s.T(), questions, qs)
+	_, err = s.rdb.Delete(context.Background(), key)
+	require.NoError(s.T(), err)
 }

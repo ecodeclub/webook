@@ -24,7 +24,7 @@ type CaseDAO interface {
 	Ids(ctx context.Context) ([]int64, error)
 	// 线上库
 	PublishCaseList(ctx context.Context, offset, limit int) ([]PublishCase, error)
-	PublishCaseCount(ctx context.Context) (int64, error)
+	PublishCaseCount(ctx context.Context,biz string) (int64, error)
 	GetPublishCase(ctx context.Context, caseId int64) (PublishCase, error)
 	GetPubByIDs(ctx context.Context, ids []int64) ([]PublishCase, error)
 
@@ -130,9 +130,11 @@ func (ca *caseDAO) PublishCaseList(ctx context.Context, offset, limit int) ([]Pu
 	return publishCaseList, err
 }
 
-func (ca *caseDAO) PublishCaseCount(ctx context.Context) (int64, error) {
+func (ca *caseDAO) PublishCaseCount(ctx context.Context,biz string) (int64, error) {
 	var res int64
-	err := ca.db.WithContext(ctx).Model(&PublishCase{}).Select("COUNT(id)").Count(&res).Error
+	err := ca.db.WithContext(ctx).Model(&PublishCase{}).Select("COUNT(id)").
+		Where("biz = ?",biz).
+		Count(&res).Error
 	return res, err
 }
 

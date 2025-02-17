@@ -42,7 +42,20 @@ type caseRepo struct {
 }
 
 func (c *caseRepo) PubCount(ctx context.Context) (int64, error) {
-	return c.caseDao.PublishCaseCount(ctx)
+	total, cacheErr := c.caseCache.GetTotal(ctx, domain.DefaultBiz)
+	if cacheErr == nil {
+		return total, nil
+	}
+	total, err := c.caseDao.PublishCaseCount(ctx,domain.DefaultBiz)
+	if err != nil {
+		return 0, err
+	}
+	cacheErr = c.caseCache.SetTotal(ctx, domain.DefaultBiz, total)
+	if cacheErr != nil {
+		// 记录一下日志
+		c.logger.Error("记录缓存失败", elog.FieldErr(cacheErr))
+	}
+	return total, nil
 }
 
 func (c *caseRepo) Ids(ctx context.Context) ([]int64, error) {
@@ -73,15 +86,28 @@ func (c *caseRepo) Exclude(ctx context.Context, ids []int64, offset int, limit i
 }
 
 func (c *caseRepo) PubList(ctx context.Context, offset int, limit int) ([]domain.Case, error) {
+	// 检查是否在缓存范围内
+	if c.checkTop50(offset, limit) {
+		// 尝试从缓存获取
+		cases, err := c.caseCache.GetCases(ctx, domain.DefaultBiz)
+		if err == nil {
+			return c.getCasesFromCache(cases, offset, limit), nil
+		}
+		domainCases, err := c.cacheList(ctx, domain.DefaultBiz)
+		if err != nil {
+			return domainCases, err
+		}
+		return c.getCasesFromCache(domainCases, offset, limit), nil
+	}
+
+	// 超出缓存范围，直接查询数据库
 	caseList, err := c.caseDao.PublishCaseList(ctx, offset, limit)
 	if err != nil {
 		return nil, err
 	}
-	domainCases := make([]domain.Case, 0, len(caseList))
-	for _, ca := range caseList {
-		domainCases = append(domainCases, c.toDomain(dao.Case(ca)))
-	}
-	return domainCases, nil
+	return slice.Map(caseList, func(idx int, src dao.PublishCase) domain.Case {
+		return c.toDomain(dao.Case(src))
+	}), nil
 }
 
 func (c *caseRepo) GetPubByID(ctx context.Context, caseId int64) (domain.Case, error) {
@@ -121,11 +147,20 @@ func (c *caseRepo) Sync(ctx context.Context, ca domain.Case) (int64, error) {
 	if err != nil {
 		return 0, err
 	}
-	eerr := c.caseCache.SetCase(ctx, c.toDomain(daoCa))
+
+	// 获取最新数据并更新缓存
+	domainCase := c.toDomain(daoCa)
+	eerr := c.caseCache.SetCase(ctx, domainCase)
 	if eerr != nil {
-		// 记录一下日志
 		c.logger.Error("案例设置缓存失败", elog.FieldErr(eerr), elog.Int64("cid", daoCa.Id))
 	}
+
+	// 更新前50条列表缓存
+	_, cacheErr := c.cacheList(ctx, domainCase.Biz)
+	if cacheErr != nil {
+		c.logger.Error("更新案例列表缓存失败", elog.FieldErr(cacheErr), elog.String("biz", domainCase.Biz))
+	}
+
 	return daoCa.Id, nil
 }
 
@@ -210,4 +245,46 @@ func NewCaseRepo(caseDao dao.CaseDAO, caseCache cache.CaseCache) CaseRepo {
 		caseCache: caseCache,
 		logger:    elog.DefaultLogger,
 	}
+}
+
+// 新增缓存范围检查方法
+const (
+	cacheMax = 50
+	cacheMin = 0
+)
+
+func (c *caseRepo) checkTop50(offset, limit int) bool {
+	last := offset + limit
+	return last <= cacheMax
+}
+
+// 新增从缓存数据分页方法
+func (c *caseRepo) getCasesFromCache(cases []domain.Case, offset, limit int) []domain.Case {
+	if offset >= len(cases) {
+		return []domain.Case{}
+	}
+	remain := len(cases) - offset
+	if remain > limit {
+		remain = limit
+	}
+	res := make([]domain.Case, 0, remain)
+	for i := offset; i < offset+remain; i++ {
+		res = append(res, cases[i])
+	}
+	return res
+}
+
+func (c *caseRepo) cacheList(ctx context.Context, biz string) ([]domain.Case, error) {
+	caseList, err := c.caseDao.PublishCaseList(ctx, cacheMin, cacheMax)
+	if err != nil {
+		return nil, err
+	}
+	domainCases := slice.Map(caseList, func(idx int, src dao.PublishCase) domain.Case {
+		return c.toDomain(dao.Case(src))
+	})
+	cacheErr := c.caseCache.SetCases(ctx, biz, domainCases)
+	if cacheErr != nil {
+		c.logger.Error("案例列表设置缓存失败", elog.FieldErr(cacheErr), elog.String("biz", biz))
+	}
+	return domainCases, nil
 }

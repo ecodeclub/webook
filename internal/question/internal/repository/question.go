@@ -30,6 +30,11 @@ import (
 	"github.com/ecodeclub/webook/internal/question/internal/repository/dao"
 )
 
+const (
+	cacheMax = 50
+	cacheMin = 0
+)
+
 type Repository interface {
 	PubList(ctx context.Context, offset int, limit int, biz string) ([]domain.Question, error)
 	// Sync 保存到制作库，而后同步到线上库
@@ -61,7 +66,20 @@ type CachedRepository struct {
 }
 
 func (c *CachedRepository) PubCount(ctx context.Context, biz string) (int64, error) {
-	return c.dao.PubCount(ctx, biz)
+	total, cacheErr := c.cache.GetTotal(ctx, biz)
+	if cacheErr == nil {
+		return total, nil
+	}
+	total, err := c.dao.PubCount(ctx, biz)
+	if err != nil {
+		return 0, err
+	}
+	cacheErr = c.cache.SetTotal(ctx, biz, total)
+	if cacheErr != nil {
+		// 记录一下日志
+		c.logger.Error("记录缓存失败", elog.FieldErr(cacheErr))
+	}
+	return total, nil
 }
 
 func (c *CachedRepository) QuestionIds(ctx context.Context) ([]int64, error) {
@@ -139,7 +157,26 @@ func (c *CachedRepository) GetById(ctx context.Context, qid int64) (domain.Quest
 }
 
 func (c *CachedRepository) Delete(ctx context.Context, qid int64) error {
-	return c.dao.Delete(ctx, qid)
+	que, _, err := c.dao.GetByID(ctx, qid)
+	if err != nil {
+		return nil
+	}
+	err = c.dao.Delete(ctx, qid)
+	if err != nil {
+		return err
+	}
+	//
+	cacheErr := c.cache.DelQuestion(ctx, qid)
+	if cacheErr != nil {
+		// 记录一下日志
+		c.logger.Error("删除题目缓存失败", elog.FieldErr(cacheErr), elog.Int64("qid", qid))
+	}
+	cacheErr = c.cacheList(ctx, que.Biz)
+	if cacheErr != nil {
+		// 记录一下日志
+		c.logger.Error("设置题目列表缓存失败", elog.FieldErr(cacheErr), elog.String("biz", que.Biz))
+	}
+	return nil
 }
 
 func (c *CachedRepository) Update(ctx context.Context, question *domain.Question) error {
@@ -163,14 +200,38 @@ func (c *CachedRepository) Sync(ctx context.Context, que *domain.Question) (int6
 	questionEntity, cacheErr := c.getPubByIDFromDb(ctx, id)
 	if cacheErr != nil {
 		// 记录一下日志
-		c.logger.Error("设置题目缓存失败", elog.FieldErr(cacheErr),elog.Int64("qid", id))
+		c.logger.Error("设置题目缓存失败", elog.FieldErr(cacheErr), elog.Int64("qid", id))
 	}
-	cacheErr = c.cache.SetQuestion(ctx,questionEntity)
+	cacheErr = c.cache.SetQuestion(ctx, questionEntity)
 	if cacheErr != nil {
 		// 记录一下日志
-		c.logger.Error("设置题目缓存失败", elog.FieldErr(cacheErr),elog.Int64("qid", id))
+		c.logger.Error("设置题目缓存失败", elog.FieldErr(cacheErr), elog.Int64("qid", id))
 	}
-	return id,nil
+
+	// 更新前50条的缓存
+	cacheErr = c.cacheList(ctx, que.Biz)
+	if cacheErr != nil {
+		// 记录一下日志
+		c.logger.Error("设置题目列表缓存失败", elog.FieldErr(cacheErr), elog.String("biz", que.Biz))
+	}
+	// 更新总数
+	cacheErr = c.cacheTotal(ctx, que.Biz)
+	if cacheErr != nil {
+		// 记录一下日志
+		c.logger.Error("设置题目总数缓存失败", elog.FieldErr(cacheErr), elog.String("biz", que.Biz))
+	}
+	return id, nil
+}
+
+func (c *CachedRepository) cacheList(ctx context.Context, biz string) error {
+	list, err := c.dao.PubList(ctx, cacheMin, cacheMax, biz)
+	if err != nil {
+		return err
+	}
+	qs := slice.Map(list, func(idx int, src dao.PublishQuestion) domain.Question {
+		return c.toDomain(dao.Question(src))
+	})
+	return c.cache.SetQuestions(ctx, biz, qs)
 }
 
 func (c *CachedRepository) List(ctx context.Context, offset int, limit int) ([]domain.Question, error) {
@@ -186,10 +247,64 @@ func (c *CachedRepository) Total(ctx context.Context) (int64, error) {
 
 func (c *CachedRepository) PubList(ctx context.Context, offset int, limit int, biz string) ([]domain.Question, error) {
 	// TODO 缓存第一页
+	if c.checkTop50(offset, limit) {
+		// 可以从缓存获取
+		qs, err := c.cache.GetQuestions(ctx, biz)
+		if err == nil {
+			return c.getQuestionsFromCache(qs, offset, limit), nil
+		}
+		// 未命中缓存
+		daoqs, err := c.dao.PubList(ctx, cacheMin, cacheMax, biz)
+		if err != nil {
+			return nil, err
+		}
+		qs = slice.Map(daoqs, func(idx int, src dao.PublishQuestion) domain.Question {
+			return c.toDomain(dao.Question(src))
+		})
+
+		cacheErr := c.cache.SetQuestions(ctx, biz, qs)
+		if cacheErr != nil {
+			c.logger.Error("设置题目列表缓存失败", elog.FieldErr(cacheErr), elog.String("biz", biz))
+		}
+		return c.getQuestionsFromCache(qs, offset, limit), nil
+	}
+
 	qs, err := c.dao.PubList(ctx, offset, limit, biz)
 	return slice.Map(qs, func(idx int, src dao.PublishQuestion) domain.Question {
 		return c.toDomain(dao.Question(src))
 	}), err
+}
+
+// 校验数据是否都存在于缓存中
+func (c *CachedRepository) checkTop50(offset, limit int) bool {
+	last := offset + limit
+	if last > cacheMax {
+		return false
+	}
+	return true
+}
+
+func (c *CachedRepository) getQuestionsFromCache(questions []domain.Question, offset, limit int) []domain.Question {
+	if offset >= len(questions) {
+		return []domain.Question{}
+	}
+	remain := len(questions) - offset
+	if remain > limit {
+		remain = limit
+	}
+	res := make([]domain.Question, 0, remain)
+	for i := offset; i < offset+remain; i++ {
+		res = append(res, questions[i])
+	}
+	return res
+}
+
+func (c *CachedRepository) cacheTotal(ctx context.Context, biz string) error {
+	count, err := c.dao.PubCount(ctx, biz)
+	if err != nil {
+		return err
+	}
+	return c.cache.SetTotal(ctx, biz, count)
 }
 
 func (c *CachedRepository) toDomainWithAnswer(que dao.Question, eles []dao.AnswerElement) domain.Question {

@@ -159,29 +159,47 @@ func (s *HandlerTestSuite) SetupSuite() {
 }
 
 func (s *HandlerTestSuite) TestPubList() {
-	data := make([]dao.PublishCase, 0, 100)
-	for idx := 0; idx < 100; idx++ {
-		data = append(data, dao.PublishCase{
-			Id:           int64(idx + 1),
-			Uid:          uid,
-			Title:        fmt.Sprintf("这是发布的案例标题 %d", idx),
-			Introduction: fmt.Sprintf("这是发布的案例介绍 %d", idx),
-			Utime:        123,
-		})
-	}
-	err := s.db.Create(&data).Error
-	require.NoError(s.T(), err)
 	testCases := []struct {
 		name     string
 		req      web.Page
+		before   func(t *testing.T)
+		after    func(t *testing.T)
 		wantCode int
 		wantResp test.Result[web.CasesList]
 	}{
 		{
-			name: "获取成功",
+			name: "首次获取前50条，设置缓存",
 			req: web.Page{
 				Limit:  2,
 				Offset: 0,
+			},
+			before: func(t *testing.T) {
+				data := make([]dao.PublishCase, 0, 100)
+				for idx := 0; idx < 100; idx++ {
+					data = append(data, dao.PublishCase{
+						Id:           int64(idx + 1),
+						Uid:          uid,
+						Title:        fmt.Sprintf("这是发布的案例标题 %d", idx),
+						Introduction: fmt.Sprintf("这是发布的案例介绍 %d", idx),
+						Utime:        1739779178000,
+					})
+				}
+				err := s.db.Create(&data).Error
+				require.NoError(s.T(), err)
+			},
+			after: func(t *testing.T) {
+				// 校验缓存数据
+				wantDomainCases := make([]domain.Case, 0, 50)
+				index := 99
+				for idx := 0; idx < 50; idx++ {
+					wantDomainCases = append(wantDomainCases, domain.Case{
+						Id:           int64(index - idx + 1),
+						Title:        fmt.Sprintf("这是发布的案例标题 %d", index-idx),
+						Introduction: fmt.Sprintf("这是发布的案例介绍 %d", index-idx),
+						Utime:        time.UnixMilli(1739779178000),
+					})
+				}
+				s.cacheAssertCaseList(domain.DefaultBiz, wantDomainCases)
 			},
 			wantCode: 200,
 			wantResp: test.Result[web.CasesList]{
@@ -191,8 +209,8 @@ func (s *HandlerTestSuite) TestPubList() {
 						{
 							Id:           100,
 							Title:        "这是发布的案例标题 99",
-							Introduction: fmt.Sprintf("这是发布的案例介绍 %d", 99),
-							Utime:        123,
+							Introduction: "这是发布的案例介绍 99",
+							Utime:        1739779178000,
 							Interactive: web.Interactive{
 								Liked:      false,
 								Collected:  true,
@@ -204,8 +222,70 @@ func (s *HandlerTestSuite) TestPubList() {
 						{
 							Id:           99,
 							Title:        "这是发布的案例标题 98",
-							Introduction: fmt.Sprintf("这是发布的案例介绍 %d", 98),
-							Utime:        123,
+							Introduction: "这是发布的案例介绍 98",
+							Utime:        1739779178000,
+							Interactive: web.Interactive{
+								Liked:      true,
+								Collected:  false,
+								ViewCnt:    100,
+								LikeCnt:    101,
+								CollectCnt: 102,
+							},
+						},
+					},
+				},
+			},
+		},
+		{name: "命中缓存直接返回",
+			req: web.Page{
+				Limit:  2,
+				Offset: 0,
+			},
+			before: func(t *testing.T) {
+				// 直接设置缓存
+				wantDomainCases := make([]domain.Case, 0, 50)
+				index := 99
+				for idx := 0; idx < 50; idx++ {
+					wantDomainCases = append(wantDomainCases, domain.Case{
+						Id:           int64(index - idx + 1),
+						Title:        fmt.Sprintf("这是发布的案例标题 %d", index-idx),
+						Introduction: fmt.Sprintf("这是发布的案例介绍 %d", index-idx),
+						Utime:        time.UnixMilli(1739779178000),
+					})
+				}
+				caseByte, err := json.Marshal(wantDomainCases)
+				require.NoError(t, err)
+				err = s.rdb.Set(context.Background(), "cases:list:baguwen", string(caseByte), 24*time.Hour)
+				require.NoError(t, err)
+				err = s.rdb.Set(context.Background(), "cases:total:baguwen", 100, 24*time.Hour)
+				require.NoError(t, err)
+
+			},
+			after: func(t *testing.T) {
+			},
+			wantCode: 200,
+			wantResp: test.Result[web.CasesList]{
+				Data: web.CasesList{
+					Total: 100,
+					Cases: []web.Case{
+						{
+							Id:           100,
+							Title:        "这是发布的案例标题 99",
+							Introduction: "这是发布的案例介绍 99",
+							Utime:        1739779178000,
+							Interactive: web.Interactive{
+								Liked:      false,
+								Collected:  true,
+								ViewCnt:    101,
+								LikeCnt:    102,
+								CollectCnt: 103,
+							},
+						},
+						{
+							Id:           99,
+							Title:        "这是发布的案例标题 98",
+							Introduction: "这是发布的案例介绍 98",
+							Utime:        1739779178000,
 							Interactive: web.Interactive{
 								Liked:      true,
 								Collected:  false,
@@ -219,10 +299,25 @@ func (s *HandlerTestSuite) TestPubList() {
 			},
 		},
 		{
-			name: "获取部分",
+			name: "超出缓存范围走数据库",
 			req: web.Page{
 				Limit:  2,
 				Offset: 99,
+			},
+			before: func(t *testing.T) {
+				data := make([]dao.PublishCase, 0, 100)
+				for idx := 0; idx < 100; idx++ {
+					data = append(data, dao.PublishCase{
+						Id:           int64(idx + 1),
+						Title:        fmt.Sprintf("这是发布的案例标题 %d", idx),
+						Introduction: fmt.Sprintf("这是发布的案例介绍 %d", idx),
+						Utime:        1739779178000,
+					})
+				}
+				err := s.db.Create(&data).Error
+				require.NoError(s.T(), err)
+			},
+			after: func(t *testing.T) {
 			},
 			wantCode: 200,
 			wantResp: test.Result[web.CasesList]{
@@ -233,13 +328,13 @@ func (s *HandlerTestSuite) TestPubList() {
 							Id:           1,
 							Title:        "这是发布的案例标题 0",
 							Introduction: "这是发布的案例介绍 0",
-							Utime:        123,
+							Utime:        1739779178000,
 							Interactive: web.Interactive{
-								Liked:      true,
-								Collected:  false,
 								ViewCnt:    2,
 								LikeCnt:    3,
 								CollectCnt: 4,
+								Liked:      true,
+								Collected:  false,
 							},
 						},
 					},
@@ -251,6 +346,7 @@ func (s *HandlerTestSuite) TestPubList() {
 	for _, tc := range testCases {
 		tc := tc
 		s.T().Run(tc.name, func(t *testing.T) {
+			tc.before(t)
 			req, err := http.NewRequest(http.MethodPost,
 				"/case/list", iox.NewJSONReader(tc.req))
 			req.Header.Set("content-type", "application/json")
@@ -259,6 +355,11 @@ func (s *HandlerTestSuite) TestPubList() {
 			s.server.ServeHTTP(recorder, req)
 			require.Equal(t, tc.wantCode, recorder.Code)
 			assert.Equal(t, tc.wantResp, recorder.MustScan())
+			tc.after(t)
+			err = s.db.Exec("TRUNCATE TABLE `cases`").Error
+			require.NoError(s.T(), err)
+			err = s.db.Exec("TRUNCATE TABLE `publish_cases`").Error
+			require.NoError(s.T(), err)
 		})
 	}
 }
@@ -641,6 +742,7 @@ func (s *HandlerTestSuite) TestPubDetail() {
 		})
 	}
 }
+
 func (s *HandlerTestSuite) cacheAssertCase(ca domain.Case) {
 	t := s.T()
 	key := fmt.Sprintf("cases:publish:%d", ca.Id)
@@ -673,4 +775,26 @@ func (s *HandlerTestSuite) mockInteractive(biz string, id int64) interactive.Int
 
 func TestHandler(t *testing.T) {
 	suite.Run(t, new(HandlerTestSuite))
+}
+
+func (s *HandlerTestSuite) cacheAssertCaseList(biz string, cases []domain.Case) {
+	key := fmt.Sprintf("cases:list:%s", biz)
+	val := s.rdb.Get(context.Background(), key)
+	require.NoError(s.T(), val.Err)
+
+	var cs []domain.Case
+	err := json.Unmarshal([]byte(val.Val.(string)), &cs)
+	require.NoError(s.T(), err)
+	require.Equal(s.T(), len(cases), len(cs))
+	for idx, q := range cs {
+		require.True(s.T(), q.Utime.UnixMilli() > 0)
+		require.True(s.T(), q.Id > 0)
+		cs[idx].Id = cases[idx].Id
+		cs[idx].Utime = cases[idx].Utime
+		cs[idx].Ctime = cases[idx].Ctime
+
+	}
+	assert.Equal(s.T(), cases, cs)
+	_, err = s.rdb.Delete(context.Background(), key)
+	require.NoError(s.T(), err)
 }

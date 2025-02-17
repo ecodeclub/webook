@@ -493,6 +493,18 @@ func (s *AdminCaseHandlerTestSuite) TestPublish() {
 					Biz:        "case",
 					BizId:      11,
 				})
+				s.cacheAssertCaseList("case", []domain.Case{
+					{
+						Id:           1,
+						Title:        "案例1",
+						Introduction: "案例1介绍",
+						Labels: []string{
+							"MySQL",
+						},
+						Status: domain.PublishedStatus,
+					},
+				})
+
 			},
 			req: web.SaveReq{
 				Case: web.Case{
@@ -543,11 +555,25 @@ func (s *AdminCaseHandlerTestSuite) TestPublish() {
 					Shorthand:  "old_mysql_shorthand",
 					Highlight:  "old_mysql_highlight",
 					Guidance:   "old_mysql_guidance",
-					Biz:        "case",
+					Biz:        "question",
 					BizId:      11,
 					Ctime:      123,
 					Utime:      234,
 				}).Error
+				require.NoError(t, err)
+				cs := []domain.Case{
+					{
+						Id:           2,
+						Title:        "老的案例标题",
+						Content:      "老的案例内容",
+						Introduction: "老的案例介绍",
+						Labels:       []string{"old-MySQL"},
+						Status:       domain.PublishedStatus,
+					},
+				}
+				csByte, err := json.Marshal(cs)
+				require.NoError(t, err)
+				err = s.rdb.Set(ctx, "cases:list:question", string(csByte), 24*time.Hour)
 				require.NoError(t, err)
 			},
 			after: func(t *testing.T) {
@@ -598,7 +624,17 @@ func (s *AdminCaseHandlerTestSuite) TestPublish() {
 					Biz:        "question",
 					BizId:      12,
 				})
-
+				s.cacheAssertCaseList("question", []domain.Case{
+					{
+						Id:           2,
+						Title:        "案例2",
+						Introduction: "案例2介绍",
+						Labels: []string{
+							"MySQL",
+						},
+						Status: domain.PublishedStatus,
+					},
+				})
 			},
 			req: web.SaveReq{
 				Case: web.Case{
@@ -808,7 +844,7 @@ func (s *AdminCaseHandlerTestSuite) TestEvent() {
 			Highlight:  "mysql_highlight",
 			Guidance:   "mysql_guidance",
 			Status:     2,
-			Biz:        domain.DefaultBiz,
+			Biz:        "bbb",
 			Ctime:      time.UnixMilli(123),
 			Utime:      time.UnixMilli(123),
 		}, ca)
@@ -826,6 +862,7 @@ func (s *AdminCaseHandlerTestSuite) TestEvent() {
 			Shorthand:  "mysql_shorthand",
 			Highlight:  "mysql_highlight",
 			Guidance:   "mysql_guidance",
+			Biz:        "bbb",
 		},
 	}
 	req2, err := http.NewRequest(http.MethodPost,
@@ -871,4 +908,26 @@ func (s *AdminCaseHandlerTestSuite) assertCase(t *testing.T, expect dao.Case, ca
 
 func TestAdminCaseHandler(t *testing.T) {
 	suite.Run(t, new(AdminCaseHandlerTestSuite))
+}
+
+func (s *AdminCaseHandlerTestSuite) cacheAssertCaseList(biz string, cases []domain.Case) {
+	key := fmt.Sprintf("cases:list:%s", biz)
+	val := s.rdb.Get(context.Background(), key)
+	require.NoError(s.T(), val.Err)
+
+	var cs []domain.Case
+	err := json.Unmarshal([]byte(val.Val.(string)), &cs)
+	require.NoError(s.T(), err)
+	require.Equal(s.T(), len(cases), len(cs))
+	for idx, q := range cs {
+		require.True(s.T(), q.Utime.UnixMilli() > 0)
+		require.True(s.T(), q.Id > 0)
+		cs[idx].Id = cases[idx].Id
+		cs[idx].Utime = cases[idx].Utime
+		cs[idx].Ctime = cases[idx].Ctime
+
+	}
+	assert.Equal(s.T(), cases, cs)
+	_, err = s.rdb.Delete(context.Background(), key)
+	require.NoError(s.T(), err)
 }
