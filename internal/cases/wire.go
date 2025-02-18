@@ -5,6 +5,9 @@ package cases
 import (
 	"sync"
 
+	"github.com/ecodeclub/ecache"
+	"github.com/ecodeclub/webook/internal/cases/internal/repository/cache"
+
 	"github.com/ecodeclub/ginx/session"
 
 	"github.com/ecodeclub/webook/internal/member"
@@ -30,10 +33,12 @@ func InitModule(db *egorm.Component,
 	aiModule *ai.Module,
 	memberModule *member.Module,
 	sp session.Provider,
+	redisCache ecache.Cache,
 	q mq.MQ) (*Module, error) {
 	wire.Build(InitCaseDAO,
 		dao.NewCaseSetDAO,
 		dao.NewGORMExamineDAO,
+		cache.NewCaseCache,
 		repository.NewCaseRepo,
 		repository.NewCaseSetRepo,
 		repository.NewCachedExamineRepository,

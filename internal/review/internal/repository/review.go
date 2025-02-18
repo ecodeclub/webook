@@ -4,6 +4,8 @@ import (
 	"context"
 
 	"github.com/ecodeclub/ekit/sqlx"
+	"github.com/ecodeclub/webook/internal/review/internal/repository/cache"
+	"github.com/gotomicro/ego/core/elog"
 
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/ecodeclub/webook/internal/review/internal/domain"
@@ -21,12 +23,16 @@ type ReviewRepo interface {
 	PubInfo(ctx context.Context, id int64) (domain.Review, error)
 }
 type reviewRepo struct {
-	reviewDao dao.ReviewDAO
+	reviewDao   dao.ReviewDAO
+	reviewCache cache.ReviewCache
+	logger      *elog.Component
 }
 
-func NewReviewRepo(reviewDao dao.ReviewDAO) ReviewRepo {
+func NewReviewRepo(reviewDao dao.ReviewDAO, reviewCache cache.ReviewCache) ReviewRepo {
 	return &reviewRepo{
-		reviewDao: reviewDao,
+		reviewDao:   reviewDao,
+		reviewCache: reviewCache,
+		logger:      elog.DefaultLogger,
 	}
 }
 
@@ -59,7 +65,15 @@ func (r *reviewRepo) Info(ctx context.Context, id int64) (domain.Review, error) 
 }
 
 func (r *reviewRepo) Publish(ctx context.Context, re domain.Review) (int64, error) {
-	return r.reviewDao.Sync(ctx, toDaoReview(re))
+	reDao, err := r.reviewDao.Sync(ctx, toDaoReview(re))
+	if err != nil {
+		return 0, err
+	}
+	cacheErr := r.reviewCache.SetReview(ctx, toDomainReview(reDao))
+	if cacheErr != nil {
+		r.logger.Error("设置面经缓存失败", elog.FieldErr(cacheErr), elog.Int64("review_id", reDao.ID))
+	}
+	return reDao.ID, nil
 }
 
 func (r *reviewRepo) PubList(ctx context.Context, offset, limit int) ([]domain.Review, error) {
@@ -74,11 +88,21 @@ func (r *reviewRepo) PubList(ctx context.Context, offset, limit int) ([]domain.R
 }
 
 func (r *reviewRepo) PubInfo(ctx context.Context, id int64) (domain.Review, error) {
+	// 先尝试从缓存获取
+	re, err := r.reviewCache.GetReview(ctx, id)
+	if err == nil {
+		return re, nil
+	}
+	// 缓存未命中时回源查询
 	pubReview, err := r.reviewDao.GetPublishReview(ctx, id)
 	if err != nil {
 		return domain.Review{}, err
 	}
-	return toDomainReview(dao.Review(pubReview)), nil
+	domainRe := toDomainReview(dao.Review(pubReview))
+	if cacheErr := r.reviewCache.SetReview(ctx, domainRe); cacheErr != nil {
+		r.logger.Error("设置发布面经缓存失败", elog.FieldErr(cacheErr), elog.Int64("review_id", id))
+	}
+	return domainRe, nil
 }
 
 // 将 domain.Review 转换为 dao.Review
@@ -102,6 +126,7 @@ func toDaoReview(review domain.Review) dao.Review {
 func toDomainReview(review dao.Review) domain.Review {
 	return domain.Review{
 		ID:               review.ID,
+		Uid:              review.Uid,
 		JD:               review.JD,
 		Title:            review.Title,
 		Desc:             review.Desc,

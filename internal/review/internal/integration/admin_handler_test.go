@@ -16,11 +16,14 @@ package integration
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
 	"testing"
 	"time"
+
+	"github.com/ecodeclub/ecache"
 
 	"github.com/ecodeclub/ekit/iox"
 	"github.com/ecodeclub/ekit/sqlx"
@@ -48,6 +51,7 @@ type AdminHandlerTestSuite struct {
 	db        *egorm.Component
 	server    *egin.Component
 	reviewDao dao.ReviewDAO
+	rdb       ecache.Cache
 }
 
 func (s *AdminHandlerTestSuite) TearDownTest() {
@@ -60,6 +64,7 @@ func (s *AdminHandlerTestSuite) TearDownTest() {
 func (s *AdminHandlerTestSuite) SetupSuite() {
 	db := testioc.InitDB()
 	testmq := testioc.InitMQ()
+	rdb := testioc.InitCache()
 	ctrl := gomock.NewController(s.T())
 	svc := intrmocks.NewMockService(ctrl)
 	svc.EXPECT().GetByIds(gomock.Any(), "review", gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, biz string, uid int64, ids []int64) (map[int64]interactive.Interactive, error) {
@@ -72,7 +77,7 @@ func (s *AdminHandlerTestSuite) SetupSuite() {
 	}).AnyTimes()
 	mou := startup.InitModule(db, &interactive.Module{
 		Svc: svc,
-	}, testmq, session.DefaultProvider())
+	}, testmq, rdb, session.DefaultProvider())
 	econf.Set("server", map[string]any{"contextTimeout": "1s"})
 	server := egin.Load("server").Build()
 	server.Use(func(ctx *gin.Context) {
@@ -89,6 +94,7 @@ func (s *AdminHandlerTestSuite) SetupSuite() {
 	s.db = db
 	s.server = server
 	s.reviewDao = reviewDao
+	s.rdb = rdb
 }
 
 func (s *AdminHandlerTestSuite) TestSave() {
@@ -264,6 +270,19 @@ func (s *AdminHandlerTestSuite) TestPublish() {
 				pubReview, err := s.reviewDao.GetPublishReview(ctx, 1)
 				require.NoError(t, err)
 				assertReview(t, wantReview, dao.Review(pubReview))
+				s.assertCachedReview(t, domain.Review{
+					ID:               1,
+					Title:            "标题",
+					Desc:             "简介",
+					Labels:           []string{"MySQL"},
+					Uid:              uid,
+					JD:               "测试JD",
+					JDAnalysis:       "JD分析",
+					Questions:        "面试问题",
+					QuestionAnalysis: "问题分析",
+					Resume:           "简历内容",
+					Status:           domain.PublishedStatus,
+				})
 			},
 			req: web.ReviewSaveReq{
 				Review: web.Review{
@@ -338,6 +357,19 @@ func (s *AdminHandlerTestSuite) TestPublish() {
 				pubReview, err := s.reviewDao.GetPublishReview(ctx, 2)
 				require.NoError(t, err)
 				assertReview(t, dao.Review(wantReview), dao.Review(pubReview))
+				s.assertCachedReview(t, domain.Review{
+					ID:               2,
+					Uid:              uid,
+					Title:            "新的标题",
+					Desc:             "新的简介",
+					Labels:           []string{"新MySQL"},
+					JD:               "新的JD",
+					JDAnalysis:       "新的分析",
+					Questions:        "新的问题",
+					QuestionAnalysis: "新的分析",
+					Resume:           "新的简历",
+					Status:           2, // 已发布状态
+				})
 			},
 			req: web.ReviewSaveReq{
 				Review: web.Review{
@@ -416,6 +448,20 @@ func (s *AdminHandlerTestSuite) TestPublish() {
 				pubReview, err := s.reviewDao.GetPublishReview(ctx, 3)
 				require.NoError(t, err)
 				assertReview(t, dao.Review(wantReview), dao.Review(pubReview))
+
+				s.assertCachedReview(t, domain.Review{
+					ID:               3,
+					Uid:              uid,
+					Title:            "最新标题",
+					Desc:             "最新简介",
+					Labels:           []string{"最新MySQL"},
+					JD:               "最新JD",
+					JDAnalysis:       "最新分析",
+					Questions:        "最新问题",
+					QuestionAnalysis: "最新分析",
+					Resume:           "最新简历",
+					Status:           domain.PublishedStatus,
+				})
 			},
 			req: web.ReviewSaveReq{
 				Review: web.Review{
@@ -686,6 +732,26 @@ func (s *AdminHandlerTestSuite) TestList() {
 			assert.Equal(t, tc.wantResp, recorder.MustScan())
 		})
 	}
+}
+
+func (s *AdminHandlerTestSuite) assertCachedReview(t *testing.T, want domain.Review) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	key := fmt.Sprintf("review:publish:%d", want.ID)
+	// 获取缓存值
+	cachedVal := s.rdb.Get(ctx, key)
+	require.NoError(t, cachedVal.Err)
+
+	// 反序列化
+	var cachedReview domain.Review
+	err := json.Unmarshal([]byte(cachedVal.Val.(string)), &cachedReview)
+	require.NoError(t, err)
+	require.True(t, cachedReview.Utime > 0)
+	cachedReview.Utime = 0
+	// 断言内容
+	assert.Equal(t, want, cachedReview)
+	_, err = s.rdb.Delete(context.Background(), key)
+	require.NoError(t, err)
 }
 
 func TestReviewAdminHandler(t *testing.T) {

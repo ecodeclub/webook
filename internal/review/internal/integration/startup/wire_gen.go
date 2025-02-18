@@ -7,12 +7,14 @@
 package startup
 
 import (
+	"github.com/ecodeclub/ecache"
 	"github.com/ecodeclub/ginx/session"
 	"github.com/ecodeclub/mq-api"
 	"github.com/ecodeclub/webook/internal/interactive"
 	"github.com/ecodeclub/webook/internal/review"
 	"github.com/ecodeclub/webook/internal/review/internal/event"
 	"github.com/ecodeclub/webook/internal/review/internal/repository"
+	"github.com/ecodeclub/webook/internal/review/internal/repository/cache"
 	"github.com/ecodeclub/webook/internal/review/internal/repository/dao"
 	"github.com/ecodeclub/webook/internal/review/internal/service"
 	"github.com/ecodeclub/webook/internal/review/internal/web"
@@ -22,9 +24,10 @@ import (
 
 // Injectors from wire.go:
 
-func InitModule(db *gorm.DB, interSvc *interactive.Module, q mq.MQ, sp session.Provider) *review.Module {
+func InitModule(db *gorm.DB, interSvc *interactive.Module, q mq.MQ, ec ecache.Cache, sp session.Provider) *review.Module {
 	reviewDAO := initReviewDao(db)
-	reviewRepo := repository.NewReviewRepo(reviewDAO)
+	reviewCache := cache.NewReviewCache(ec)
+	reviewRepo := repository.NewReviewRepo(reviewDAO, reviewCache)
 	interactiveEventProducer := initIntrProducer(q)
 	reviewSvc := service.NewReviewSvc(reviewRepo, interactiveEventProducer)
 	serviceService := interSvc.Svc
