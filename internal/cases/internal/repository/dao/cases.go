@@ -19,12 +19,12 @@ type CaseDAO interface {
 	List(ctx context.Context, offset, limit int) ([]Case, error)
 	Count(ctx context.Context) (int64, error)
 
-	Sync(ctx context.Context, c Case) (int64, error)
+	Sync(ctx context.Context, c Case) (Case, error)
 	// 提供给同步到知识库用
 	Ids(ctx context.Context) ([]int64, error)
 	// 线上库
 	PublishCaseList(ctx context.Context, offset, limit int) ([]PublishCase, error)
-	PublishCaseCount(ctx context.Context) (int64, error)
+	PublishCaseCount(ctx context.Context, biz string) (int64, error)
 	GetPublishCase(ctx context.Context, caseId int64) (PublishCase, error)
 	GetPubByIDs(ctx context.Context, ids []int64) ([]PublishCase, error)
 
@@ -102,20 +102,20 @@ func (ca *caseDAO) List(ctx context.Context, offset, limit int) ([]Case, error) 
 	return caseList, err
 }
 
-func (ca *caseDAO) Sync(ctx context.Context, c Case) (int64, error) {
-	var id = c.Id
+func (ca *caseDAO) Sync(ctx context.Context, c Case) (Case, error) {
 	err := ca.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var err error
-		id, err = ca.save(tx, &c)
+		id, err := ca.save(tx, &c)
 		if err != nil {
 			return err
 		}
+		c.Id = id
 		pubC := PublishCase(c)
 		return tx.Clauses(clause.OnConflict{
 			DoUpdates: clause.AssignmentColumns(ca.updateColumns),
 		}).Create(&pubC).Error
 	})
-	return id, err
+	return c, err
 }
 
 func (ca *caseDAO) PublishCaseList(ctx context.Context, offset, limit int) ([]PublishCase, error) {
@@ -129,9 +129,11 @@ func (ca *caseDAO) PublishCaseList(ctx context.Context, offset, limit int) ([]Pu
 	return publishCaseList, err
 }
 
-func (ca *caseDAO) PublishCaseCount(ctx context.Context) (int64, error) {
+func (ca *caseDAO) PublishCaseCount(ctx context.Context, biz string) (int64, error) {
 	var res int64
-	err := ca.db.WithContext(ctx).Model(&PublishCase{}).Select("COUNT(id)").Count(&res).Error
+	err := ca.db.WithContext(ctx).Model(&PublishCase{}).Select("COUNT(id)").
+		Where("biz = ?", biz).
+		Count(&res).Error
 	return res, err
 }
 

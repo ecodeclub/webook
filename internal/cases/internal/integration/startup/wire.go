@@ -22,6 +22,7 @@ import (
 	"github.com/ecodeclub/webook/internal/cases"
 	"github.com/ecodeclub/webook/internal/cases/internal/event"
 	"github.com/ecodeclub/webook/internal/cases/internal/repository"
+	"github.com/ecodeclub/webook/internal/cases/internal/repository/cache"
 	"github.com/ecodeclub/webook/internal/cases/internal/repository/dao"
 	"github.com/ecodeclub/webook/internal/cases/internal/service"
 	"github.com/ecodeclub/webook/internal/cases/internal/web"
@@ -42,6 +43,7 @@ func InitModule(
 		testioc.BaseSet,
 		dao.NewCaseSetDAO,
 		dao.NewGORMExamineDAO,
+		cache.NewCaseCache,
 		repository.NewCaseRepo,
 		repository.NewCaseSetRepo,
 		repository.NewCachedExamineRepository,
@@ -74,6 +76,7 @@ func InitExamModule(
 		cases.InitCaseDAO,
 		dao.NewCaseSetDAO,
 		dao.NewGORMExamineDAO,
+		cache.NewCaseCache,
 		repository.NewCaseRepo,
 		repository.NewCaseSetRepo,
 		repository.NewCachedExamineRepository,

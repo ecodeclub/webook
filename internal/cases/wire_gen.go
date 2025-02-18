@@ -9,11 +9,13 @@ package cases
 import (
 	"sync"
 
+	"github.com/ecodeclub/ecache"
 	"github.com/ecodeclub/ginx/session"
 	"github.com/ecodeclub/mq-api"
 	"github.com/ecodeclub/webook/internal/ai"
 	"github.com/ecodeclub/webook/internal/cases/internal/event"
 	"github.com/ecodeclub/webook/internal/cases/internal/repository"
+	"github.com/ecodeclub/webook/internal/cases/internal/repository/cache"
 	"github.com/ecodeclub/webook/internal/cases/internal/repository/dao"
 	"github.com/ecodeclub/webook/internal/cases/internal/service"
 	"github.com/ecodeclub/webook/internal/cases/internal/web"
@@ -25,9 +27,10 @@ import (
 
 // Injectors from wire.go:
 
-func InitModule(db *gorm.DB, intrModule *interactive.Module, aiModule *ai.Module, memberModule *member.Module, sp session.Provider, q mq.MQ) (*Module, error) {
+func InitModule(db *gorm.DB, intrModule *interactive.Module, aiModule *ai.Module, memberModule *member.Module, sp session.Provider, redisCache ecache.Cache, q mq.MQ) (*Module, error) {
 	caseDAO := InitCaseDAO(db)
-	caseRepo := repository.NewCaseRepo(caseDAO)
+	caseCache := cache.NewCaseCache(redisCache)
+	caseRepo := repository.NewCaseRepo(caseDAO, caseCache)
 	interactiveEventProducer, err := event.NewInteractiveEventProducer(q)
 	if err != nil {
 		return nil, err

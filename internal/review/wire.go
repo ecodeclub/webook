@@ -3,11 +3,13 @@
 package review
 
 import (
+	"github.com/ecodeclub/ecache"
 	"github.com/ecodeclub/ginx/session"
 	"github.com/ecodeclub/mq-api"
 	"github.com/ecodeclub/webook/internal/interactive"
 	"github.com/ecodeclub/webook/internal/review/internal/event"
 	"github.com/ecodeclub/webook/internal/review/internal/repository"
+	"github.com/ecodeclub/webook/internal/review/internal/repository/cache"
 	"github.com/ecodeclub/webook/internal/review/internal/repository/dao"
 	"github.com/ecodeclub/webook/internal/review/internal/service"
 	"github.com/ecodeclub/webook/internal/review/internal/web"
@@ -15,12 +17,18 @@ import (
 	"github.com/google/wire"
 )
 
-func InitModule(db *egorm.Component, interSvc *interactive.Module, q mq.MQ, sp session.Provider) *Module {
+func InitModule(db *egorm.Component,
+	interSvc *interactive.Module,
+	q mq.MQ,
+	sp session.Provider,
+	ec ecache.Cache,
+) *Module {
 	wire.Build(
 		initReviewDao,
 		initIntrProducer,
 		repository.NewReviewRepo,
 		service.NewReviewSvc,
+		cache.NewReviewCache,
 		web.NewHandler,
 		web.NewAdminHandler,
 		wire.FieldsOf(new(*interactive.Module), "Svc"),
