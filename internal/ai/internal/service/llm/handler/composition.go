@@ -23,7 +23,8 @@ import (
 // CompositionHandler 通过组合 Handler 来完成某个业务
 // 后续该部分应该是动态计算的，通过结合配置来实现动态计算
 type CompositionHandler struct {
-	root Handler
+	root   Handler
+	stream StreamHandler
 }
 
 func (c *CompositionHandler) Handle(ctx context.Context, req domain.LLMRequest) (domain.LLMResponse, error) {

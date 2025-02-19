@@ -15,10 +15,12 @@
 package ai
 
 import (
+	"github.com/ecodeclub/webook/internal/ai/internal/repository"
 	"github.com/ecodeclub/webook/internal/ai/internal/service/llm/handler"
 	"github.com/ecodeclub/webook/internal/ai/internal/service/llm/handler/config"
 	"github.com/ecodeclub/webook/internal/ai/internal/service/llm/handler/credit"
 	"github.com/ecodeclub/webook/internal/ai/internal/service/llm/handler/log"
+	"github.com/ecodeclub/webook/internal/ai/internal/service/llm/handler/platform/ali_deepseek"
 	"github.com/ecodeclub/webook/internal/ai/internal/service/llm/handler/platform/zhipu"
 	"github.com/ecodeclub/webook/internal/ai/internal/service/llm/handler/record"
 	"github.com/gotomicro/ego/core/econf"
@@ -50,4 +52,16 @@ func InitCommonHandlers(log *log.HandlerBuilder,
 	credit *credit.HandlerBuilder,
 	record *record.HandlerBuilder) []handler.Builder {
 	return []handler.Builder{log, cfg, credit, record}
+}
+
+func InitAliDeepSeekHandler(configRepo repository.ConfigRepository, logRepo repository.LLMLogRepo) handler.StreamHandler {
+	type Config struct {
+		APIKey string `yaml:"apikey"`
+	}
+	var cfg Config
+	err := econf.UnmarshalKey("ali", &cfg)
+	if err != nil {
+		panic(err)
+	}
+	return ali_deepseek.NewHandler(cfg.APIKey, logRepo, configRepo)
 }

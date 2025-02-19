@@ -17,6 +17,7 @@ require (
 	github.com/lithammer/shortuuid/v4 v4.0.0
 	github.com/lukasjarosch/go-docx v0.5.0
 	github.com/olivere/elastic/v7 v7.0.32
+	github.com/openai/openai-go v0.1.0-alpha.59
 	github.com/pkg/errors v0.9.1
 	github.com/redis/go-redis/v9 v9.4.0
 	github.com/stretchr/testify v1.9.0
@@ -24,6 +25,7 @@ require (
 	github.com/wechatpay-apiv3/wechatpay-go v0.2.18
 	github.com/yankeguo/zhipu v0.1.0
 	go.uber.org/mock v0.3.0
+	golang.org/x/net v0.27.0
 	golang.org/x/sync v0.7.0
 	gorm.io/gorm v1.25.1
 )
@@ -92,7 +94,6 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
-	github.com/openai/openai-go v0.1.0-alpha.59 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.0 // indirect
 	github.com/pierrec/lz4/v4 v4.1.21 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
@@ -131,7 +132,6 @@ require (
 	golang.org/x/arch v0.7.0 // indirect
 	golang.org/x/crypto v0.25.0 // indirect
 	golang.org/x/exp v0.0.0-20231006140011-7918f672742d // indirect
-	golang.org/x/net v0.27.0 // indirect
 	golang.org/x/sys v0.22.0 // indirect
 	golang.org/x/text v0.16.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20230711160842-782d3b101e98 // indirect

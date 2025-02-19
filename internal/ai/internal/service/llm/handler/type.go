@@ -21,6 +21,7 @@ type Builder interface {
 	Next(next Handler) Handler
 }
 
-type SteamHandler interface {
+//go:generate mockgen -source=./type.go -destination=./stream_mocks/stream_handler.mock.go -package=hdlmocks -typed=true StreamHandler
+type StreamHandler interface {
 	StreamHandle(ctx context.Context, req domain.LLMRequest) (chan domain.StreamEvent, error)
 }

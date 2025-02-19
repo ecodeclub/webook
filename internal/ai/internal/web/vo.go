@@ -1,5 +1,7 @@
 package web
 
+import "github.com/ecodeclub/webook/internal/ai/internal/domain"
+
 type LLMRequest struct {
 	Biz   string   `json:"biz"`
 	Input []string `json:"input"`
@@ -45,4 +47,23 @@ type ConfigRequest struct {
 }
 type ConfigInfoReq struct {
 	Id int64 `json:"id"`
+}
+
+type Event struct {
+	Type    string `json:"type"`    // 事件类型 msg end err
+	Content string `json:"content"` // 内容
+}
+
+const (
+	EndEvt = "end"
+	MsgEvt = "msg"
+)
+
+func newEvent(evt domain.StreamEvent) Event {
+	if evt.Done {
+		return Event{}
+	}
+	return Event{
+		Content: evt.Content,
+	}
 }

@@ -15,6 +15,7 @@ import (
 	"github.com/ecodeclub/webook/internal/ai/internal/web"
 
 	hdlmocks "github.com/ecodeclub/webook/internal/ai/internal/service/llm/handler/mocks"
+	streamhdlmocks "github.com/ecodeclub/webook/internal/ai/internal/service/llm/handler/stream_mocks"
 
 	"github.com/ecodeclub/webook/internal/ai"
 	"github.com/ecodeclub/webook/internal/ai/internal/service/llm"
@@ -34,6 +35,7 @@ import (
 
 func InitModule(db *egorm.Component,
 	hdl *hdlmocks.MockHandler,
+	streamHandler *streamhdlmocks.MockStreamHandler,
 	baseSvc knowledge_base.RepositoryBaseSvc,
 	creditSvc *credit.Module,
 	consumer *event.KnowledgeBaseConsumer,
@@ -55,6 +57,7 @@ func InitModule(db *egorm.Component,
 
 		ai.InitCommonHandlers,
 		InitRootHandler,
+		InitStreamHandler,
 		service.NewGeneralService,
 		service.NewJDService,
 		service.NewConfigService,
@@ -79,6 +82,9 @@ func InitKnowledgeBaseSvc(db *egorm.Component, apikey string) knowledge_base.Rep
 
 func InitRootHandler(common []handler.Builder, hdl *hdlmocks.MockHandler) handler.Handler {
 	return handler.NewCompositionHandler(common, hdl)
+}
+func InitStreamHandler(streamHdl *streamhdlmocks.MockStreamHandler) handler.StreamHandler {
+	return streamHdl
 }
 
 var daoOnce = sync.Once{}

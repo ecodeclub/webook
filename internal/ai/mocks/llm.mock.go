@@ -5,6 +5,7 @@
 //
 //	mockgen -source=./llm.go -destination=../../../mocks/llm.mock.go -package=aimocks -typed=true Service
 //
+
 // Package aimocks is a generated GoMock package.
 package aimocks
 
@@ -20,6 +21,7 @@ import (
 type MockService struct {
 	ctrl     *gomock.Controller
 	recorder *MockServiceMockRecorder
+	isgomock struct{}
 }
 
 // MockServiceMockRecorder is the mock recorder for MockService.
@@ -49,31 +51,70 @@ func (m *MockService) Invoke(ctx context.Context, req domain.LLMRequest) (domain
 }
 
 // Invoke indicates an expected call of Invoke.
-func (mr *MockServiceMockRecorder) Invoke(ctx, req any) *ServiceInvokeCall {
+func (mr *MockServiceMockRecorder) Invoke(ctx, req any) *MockServiceInvokeCall {
 	mr.mock.ctrl.T.Helper()
 	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Invoke", reflect.TypeOf((*MockService)(nil).Invoke), ctx, req)
-	return &ServiceInvokeCall{Call: call}
+	return &MockServiceInvokeCall{Call: call}
 }
 
-// ServiceInvokeCall wrap *gomock.Call
-type ServiceInvokeCall struct {
+// MockServiceInvokeCall wrap *gomock.Call
+type MockServiceInvokeCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *ServiceInvokeCall) Return(arg0 domain.LLMResponse, arg1 error) *ServiceInvokeCall {
+func (c *MockServiceInvokeCall) Return(arg0 domain.LLMResponse, arg1 error) *MockServiceInvokeCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *ServiceInvokeCall) Do(f func(context.Context, domain.LLMRequest) (domain.LLMResponse, error)) *ServiceInvokeCall {
+func (c *MockServiceInvokeCall) Do(f func(context.Context, domain.LLMRequest) (domain.LLMResponse, error)) *MockServiceInvokeCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *ServiceInvokeCall) DoAndReturn(f func(context.Context, domain.LLMRequest) (domain.LLMResponse, error)) *ServiceInvokeCall {
+func (c *MockServiceInvokeCall) DoAndReturn(f func(context.Context, domain.LLMRequest) (domain.LLMResponse, error)) *MockServiceInvokeCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// Stream mocks base method.
+func (m *MockService) Stream(ctx context.Context, req domain.LLMRequest) (chan domain.StreamEvent, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Stream", ctx, req)
+	ret0, _ := ret[0].(chan domain.StreamEvent)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Stream indicates an expected call of Stream.
+func (mr *MockServiceMockRecorder) Stream(ctx, req any) *MockServiceStreamCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Stream", reflect.TypeOf((*MockService)(nil).Stream), ctx, req)
+	return &MockServiceStreamCall{Call: call}
+}
+
+// MockServiceStreamCall wrap *gomock.Call
+type MockServiceStreamCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockServiceStreamCall) Return(arg0 chan domain.StreamEvent, arg1 error) *MockServiceStreamCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockServiceStreamCall) Do(f func(context.Context, domain.LLMRequest) (chan domain.StreamEvent, error)) *MockServiceStreamCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockServiceStreamCall) DoAndReturn(f func(context.Context, domain.LLMRequest) (chan domain.StreamEvent, error)) *MockServiceStreamCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

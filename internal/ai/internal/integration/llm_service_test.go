@@ -3,11 +3,17 @@
 package integration
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
+	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
+
+	streamhdlmocks "github.com/ecodeclub/webook/internal/ai/internal/service/llm/handler/stream_mocks"
 
 	"github.com/ecodeclub/ekit/iox"
 	"github.com/ecodeclub/ginx/session"
@@ -500,7 +506,7 @@ func (s *LLMServiceSuite) TestService() {
 			ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 			defer cancel()
 			mockHdl, mockCredit := tc.before(t, ctrl)
-			mou, err := startup.InitModule(s.db, mockHdl, nil, &credit.Module{Svc: mockCredit}, nil)
+			mou, err := startup.InitModule(s.db, mockHdl, nil, nil, &credit.Module{Svc: mockCredit}, nil)
 			require.NoError(t, err)
 			resp, err := mou.Svc.Invoke(ctx, tc.req)
 			tc.assertFunc(t, err)
@@ -606,7 +612,7 @@ func (s *LLMServiceSuite) TestHandler_Ask() {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
 			mockHdl, mockCredit := tc.before(t, ctrl)
-			mou, err := startup.InitModule(s.db, mockHdl, nil, &credit.Module{Svc: mockCredit}, nil)
+			mou, err := startup.InitModule(s.db, mockHdl, nil, nil, &credit.Module{Svc: mockCredit}, nil)
 			require.NoError(t, err)
 			req, err := http.NewRequest(http.MethodPost,
 				"/ai/ask", iox.NewJSONReader(tc.req))
@@ -716,7 +722,7 @@ func (s *LLMServiceSuite) TestHandler_AnalysisJD() {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
 			mockHdl, mockCredit := tc.before(t, ctrl)
-			mou, err := startup.InitModule(s.db, mockHdl, nil, &credit.Module{Svc: mockCredit}, nil)
+			mou, err := startup.InitModule(s.db, mockHdl, nil, nil, &credit.Module{Svc: mockCredit}, nil)
 			require.NoError(t, err)
 			req, err := http.NewRequest(http.MethodPost,
 				"/ai/analysis_jd", iox.NewJSONReader(tc.req))
@@ -741,6 +747,109 @@ func (s *LLMServiceSuite) TestHandler_AnalysisJD() {
 			require.NoError(s.T(), err)
 		})
 	}
+}
+
+func (s *LLMServiceSuite) TestHandler_Stream() {
+	// 流式输出
+	testcases := []struct {
+		name     string
+		req      web.LLMRequest
+		before   func(t *testing.T, ctrl *gomock.Controller) *streamhdlmocks.MockStreamHandler
+		wantEvts []web.Event
+		wantCode int
+	}{
+		{
+			name: "流式接口",
+			req: web.LLMRequest{
+				Biz: domain.BizQuestionExamine,
+				Input: []string{
+					"请说一下什么是deepseek ?",
+				},
+			},
+			before: func(t *testing.T, ctrl *gomock.Controller) *streamhdlmocks.MockStreamHandler {
+				mockStreamHandler := streamhdlmocks.NewMockStreamHandler(ctrl)
+				mockStreamHandler.EXPECT().StreamHandle(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, req domain.LLMRequest) (chan domain.StreamEvent, error) {
+					require.True(t, req.Tid != "")
+					req.Tid = ""
+					assert.Equal(t, domain.LLMRequest{
+						Biz:   domain.BizQuestionExamine,
+						Uid:   123,
+						Input: []string{"请说一下什么是deepseek ?"},
+					}, req)
+
+					events := make(chan domain.StreamEvent, 5)
+					go func() {
+						defer close(events)
+						events <- domain.StreamEvent{Content: "msg1"}
+						time.Sleep(100 * time.Millisecond)
+						events <- domain.StreamEvent{Content: "msg2"}
+						time.Sleep(100 * time.Millisecond)
+						events <- domain.StreamEvent{Content: "msg3"}
+						events <- domain.StreamEvent{Content: "msg4"}
+						events <- domain.StreamEvent{Done: true}
+					}()
+					return events, nil
+				})
+				return mockStreamHandler
+			},
+			wantEvts: []web.Event{
+				{Type: "msg", Content: "msg1"},
+				{Type: "msg", Content: "msg2"},
+				{Type: "msg", Content: "msg3"},
+				{Type: "msg", Content: "msg4"},
+				{Type: "end"},
+			},
+			wantCode: 200,
+		},
+	}
+	for _, tc := range testcases {
+		tc := tc
+		s.T().Run(tc.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+			streamMockHdl := tc.before(t, ctrl)
+			mou, err := startup.InitModule(s.db, nil, streamMockHdl, nil, &credit.Module{Svc: nil}, nil)
+			require.NoError(t, err)
+			req, err := http.NewRequest(http.MethodPost,
+				"/ai/chat", iox.NewJSONReader(tc.req))
+			req.Header.Set("content-type", "application/json")
+			require.NoError(t, err)
+			econf.Set("server", map[string]any{"contextTimeout": "1s"})
+
+			server := egin.Load("server").Build()
+			server.Use(func(ctx *gin.Context) {
+				ctx.Set(session.CtxSessionKey,
+					session.NewMemorySession(session.Claims{
+						Uid: 123,
+					}))
+			})
+			mou.Hdl.MemberRoutes(server.Engine)
+			w := httptest.NewRecorder()
+			server.ServeHTTP(w, req)
+			// 6. 验证响应
+			assert.Equal(t, http.StatusOK, w.Code)
+			assert.Equal(t, "text/event-stream", w.Header().Get("Content-Type"))
+			evts := parseSSEResponse(t, w.Body)
+			assert.Equal(t, tc.wantEvts, evts)
+		})
+	}
+}
+
+func parseSSEResponse(t *testing.T, body *bytes.Buffer) []web.Event {
+	var events []web.Event
+	for _, line := range strings.Split(body.String(), "\n\n") {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		if strings.HasPrefix(line, "data: ") {
+			var evt web.Event
+			err := json.Unmarshal([]byte(line[6:]), &evt)
+			require.NoError(t, err)
+			events = append(events, evt)
+		}
+	}
+	return events
 }
 
 func (s *LLMServiceSuite) assertLog(wantLog dao.LLMRecord, actual dao.LLMRecord) {
