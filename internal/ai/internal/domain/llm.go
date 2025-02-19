@@ -21,6 +21,7 @@ type LLMRequest struct {
 
 	// prompt 将 input 和 PromptTemplate 结合之后生成的正儿八经的 Prompt
 	prompt string
+	msgCh chan string
 }
 
 func (req LLMRequest) Prompt() string {
@@ -119,3 +120,10 @@ const (
 	RecordStatusSuccess    RecordStatus = 1
 	RecordStatusFailed     RecordStatus = 2
 )
+
+
+type StreamEvent struct {
+	Content string
+	Error   error
+	Done    bool
+}
