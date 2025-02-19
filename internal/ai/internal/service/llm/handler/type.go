@@ -20,3 +20,7 @@ type Handler interface {
 type Builder interface {
 	Next(next Handler) Handler
 }
+
+type SteamHandler interface {
+	StreamHandle(ctx context.Context, req domain.LLMRequest) (chan domain.StreamEvent, error)
+}

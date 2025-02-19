@@ -27,3 +27,4 @@ func NewLLMService(root handler.Handler) Service {
 func (g *llmService) Invoke(ctx context.Context, req domain.LLMRequest) (domain.LLMResponse, error) {
 	return g.handler.Handle(ctx, req)
 }
+
