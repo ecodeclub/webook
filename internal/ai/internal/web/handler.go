@@ -107,12 +107,16 @@ func (h *Handler) Chat(ctx *gin.Context) {
 	timeCtx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	ch, err := h.generalSvc.Stream(timeCtx, uid, req.Biz, req.Input)
 	cancel()
+	if err != nil {
+		h.chatErr(ctx, err)
+		return
+	}
 	h.stream(ctx, ch)
 }
 
 func (h *Handler) chatErr(ctx *gin.Context, err error) {
 	evt := Event{
-		Type:    "error",
+		Type:    ErrEvt,
 		Content: err.Error(),
 	}
 	evtStr, _ := json.Marshal(evt)
@@ -121,7 +125,7 @@ func (h *Handler) chatErr(ctx *gin.Context, err error) {
 
 func (h *Handler) chatMsg(ctx *gin.Context, domainEvt domain.StreamEvent) {
 	evt := Event{
-		Type:    "msg",
+		Type:    MsgEvt,
 		Content: domainEvt.Content,
 	}
 	evtStr, _ := json.Marshal(evt)
@@ -130,7 +134,7 @@ func (h *Handler) chatMsg(ctx *gin.Context, domainEvt domain.StreamEvent) {
 
 func (h *Handler) chatEnd(ctx *gin.Context) {
 	evt := Event{
-		Type: "end",
+		Type: EndEvt,
 	}
 	evtStr, _ := json.Marshal(evt)
 	sendEvent(ctx, string(evtStr))
@@ -161,7 +165,7 @@ func (h *Handler) stream(ctx *gin.Context, ch chan domain.StreamEvent) {
 func sendEvent(ctx *gin.Context, data string) {
 	buf := bytes.Buffer{}
 	buf.WriteString(fmt.Sprintf("data: %s\n\n", data))
-	ctx.Writer.Write(buf.Bytes())
+	_, _ = ctx.Writer.Write(buf.Bytes())
 	ctx.Writer.Flush()
 }
 

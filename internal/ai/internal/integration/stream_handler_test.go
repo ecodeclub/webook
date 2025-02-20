@@ -2,8 +2,9 @@ package integration
 
 import (
 	"context"
-	"fmt"
+	"log"
 	"testing"
+	"time"
 
 	"github.com/ecodeclub/webook/internal/ai/internal/service/llm/handler/platform/ali_deepseek"
 
@@ -24,19 +25,24 @@ func TestHandler_StreamHandle(t *testing.T) {
 		Input: []string{"上海"},
 	})
 	require.NoError(t, err)
+	// 修改后：
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Second)
+	defer cancel()
 	for {
 		select {
 		case event, ok := <-msgChan:
 			if !ok {
 				// 通道关闭时退出
-				fmt.Println("通道关闭")
+				log.Println("通道关闭")
 				return
 			}
 			if event.Done {
-				fmt.Println("对话停止")
+				log.Println("对话停止")
 			}
-			fmt.Println(event.Content)
-
+			log.Println(event.Content)
+		case <-ctx.Done():
+			log.Println("超时关闭")
+			return
 		}
 	}
 }

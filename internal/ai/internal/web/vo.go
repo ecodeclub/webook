@@ -1,7 +1,5 @@
 package web
 
-import "github.com/ecodeclub/webook/internal/ai/internal/domain"
-
 type LLMRequest struct {
 	Biz   string   `json:"biz"`
 	Input []string `json:"input"`
@@ -57,13 +55,5 @@ type Event struct {
 const (
 	EndEvt = "end"
 	MsgEvt = "msg"
+	ErrEvt = "error"
 )
-
-func newEvent(evt domain.StreamEvent) Event {
-	if evt.Done {
-		return Event{}
-	}
-	return Event{
-		Content: evt.Content,
-	}
-}
