@@ -6,7 +6,7 @@ require (
 	github.com/bwmarrin/snowflake v0.3.0
 	github.com/ecodeclub/ecache v0.0.0-20240111145855-75679834beca
 	github.com/ecodeclub/ekit v0.0.9-0.20240331142359-871f65136a9b
-	github.com/ecodeclub/ginx v0.0.0-20250123094857-7acefcc057ee
+	github.com/ecodeclub/ginx v0.0.1
 	github.com/ecodeclub/mq-api v0.0.0-20240508035004-fd7de3346cfe
 	github.com/ego-component/egorm v1.1.1
 	github.com/gin-contrib/cors v1.5.0
