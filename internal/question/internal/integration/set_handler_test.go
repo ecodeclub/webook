@@ -19,10 +19,11 @@ package integration
 import (
 	"context"
 	"fmt"
-	"github.com/ecodeclub/ekit/sqlx"
 	"net/http"
 	"testing"
 	"time"
+
+	"github.com/ecodeclub/ekit/sqlx"
 
 	"github.com/ecodeclub/webook/internal/member"
 
