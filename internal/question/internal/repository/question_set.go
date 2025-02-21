@@ -165,6 +165,7 @@ func (q *questionSetRepository) toDomainQuestion(que dao.Question) domain.Questi
 		Id:      que.Id,
 		Uid:     que.Uid,
 		Title:   que.Title,
+		Labels:  que.Labels.Val,
 		Content: que.Content,
 		Biz:     que.Biz,
 		BizId:   que.BizId,
