@@ -11,16 +11,23 @@ import (
 //go:generate mockgen -source=./llm.go -destination=../../../mocks/llm.mock.go -package=aimocks -typed=true Service
 type Service interface {
 	Invoke(ctx context.Context, req domain.LLMRequest) (domain.LLMResponse, error)
+	Stream(ctx context.Context, req domain.LLMRequest) (chan domain.StreamEvent, error)
 }
 
 type llmService struct {
 	// 这边显示依赖 FacadeHandler
-	handler handler.Handler
+	handler       handler.Handler
+	streamHandler handler.StreamHandler
 }
 
-func NewLLMService(root handler.Handler) Service {
+func (g *llmService) Stream(ctx context.Context, req domain.LLMRequest) (chan domain.StreamEvent, error) {
+	return g.streamHandler.StreamHandle(ctx, req)
+}
+
+func NewLLMService(root handler.Handler, streamHandler handler.StreamHandler) Service {
 	return &llmService{
-		handler: root,
+		handler:       root,
+		streamHandler: streamHandler,
 	}
 }
 

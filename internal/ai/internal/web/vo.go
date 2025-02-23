@@ -46,3 +46,14 @@ type ConfigRequest struct {
 type ConfigInfoReq struct {
 	Id int64 `json:"id"`
 }
+
+type Event struct {
+	Type    string `json:"type"`    // 事件类型 msg end err
+	Content string `json:"content"` // 内容
+}
+
+const (
+	EndEvt = "end"
+	MsgEvt = "msg"
+	ErrEvt = "error"
+)

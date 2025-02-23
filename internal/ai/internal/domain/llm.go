@@ -119,3 +119,12 @@ const (
 	RecordStatusSuccess    RecordStatus = 1
 	RecordStatusFailed     RecordStatus = 2
 )
+
+type StreamEvent struct {
+	// 内容
+	Content string
+	// 错误
+	Error error
+	// 是否结束
+	Done bool
+}
