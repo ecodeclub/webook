@@ -23,6 +23,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ecodeclub/ekit/sqlx"
+
 	"github.com/ecodeclub/webook/internal/member"
 
 	"github.com/ecodeclub/webook/internal/ai"
@@ -199,30 +201,42 @@ func (s *SetHandlerTestSuite) TestQuestionSetDetailByBiz() {
 				// 添加问题
 				questions := []dao.Question{
 					{
-						Id:      614,
-						Uid:     uid + 1,
-						Biz:     "project",
-						BizId:   1,
+						Id:    614,
+						Uid:   uid + 1,
+						Biz:   "project",
+						BizId: 1,
+						Labels: sqlx.JsonColumn[[]string]{
+							Valid: true,
+							Val:   []string{"MySQL"},
+						},
 						Title:   "Go问题1",
 						Content: "Go问题1",
 						Ctime:   now,
 						Utime:   now,
 					},
 					{
-						Id:      615,
-						Uid:     uid + 2,
-						Biz:     "project",
-						BizId:   1,
+						Id:    615,
+						Uid:   uid + 2,
+						Biz:   "project",
+						BizId: 1,
+						Labels: sqlx.JsonColumn[[]string]{
+							Valid: true,
+							Val:   []string{"Redis"},
+						},
 						Title:   "Go问题2",
 						Content: "Go问题2",
 						Ctime:   now,
 						Utime:   now,
 					},
 					{
-						Id:      616,
-						Uid:     uid + 3,
-						Biz:     "project",
-						BizId:   1,
+						Id:    616,
+						Uid:   uid + 3,
+						Biz:   "project",
+						BizId: 1,
+						Labels: sqlx.JsonColumn[[]string]{
+							Valid: true,
+							Val:   []string{"mongo"},
+						},
 						Title:   "Go问题3",
 						Content: "Go问题3",
 						Ctime:   now,
@@ -272,9 +286,12 @@ func (s *SetHandlerTestSuite) TestQuestionSetDetailByBiz() {
 					},
 					Questions: []web.Question{
 						{
-							Id:            614,
-							Biz:           "project",
-							BizId:         1,
+							Id:    614,
+							Biz:   "project",
+							BizId: 1,
+							Labels: []string{
+								"MySQL",
+							},
 							Title:         "Go问题1",
 							Content:       "Go问题1",
 							ExamineResult: domain.ResultAdvanced.ToUint8(),
@@ -288,9 +305,12 @@ func (s *SetHandlerTestSuite) TestQuestionSetDetailByBiz() {
 							},
 						},
 						{
-							Id:      615,
-							Biz:     "project",
-							BizId:   1,
+							Id:    615,
+							Biz:   "project",
+							BizId: 1,
+							Labels: []string{
+								"Redis",
+							},
 							Title:   "Go问题2",
 							Content: "Go问题2",
 							Utime:   now,
@@ -307,6 +327,7 @@ func (s *SetHandlerTestSuite) TestQuestionSetDetailByBiz() {
 							Biz:     "project",
 							BizId:   1,
 							Title:   "Go问题3",
+							Labels:  []string{"mongo"},
 							Content: "Go问题3",
 							Utime:   now,
 							Interactive: web.Interactive{
@@ -424,30 +445,42 @@ func (s *SetHandlerTestSuite) TestQuestionSet_Detail() {
 				// 添加问题
 				questions := []dao.PublishQuestion{
 					{
-						Id:      614,
-						Uid:     uid + 1,
-						Biz:     "project",
-						BizId:   1,
+						Id:    614,
+						Uid:   uid + 1,
+						Biz:   "project",
+						BizId: 1,
+						Labels: sqlx.JsonColumn[[]string]{
+							Valid: true,
+							Val:   []string{"MySQL"},
+						},
 						Title:   "Go问题1",
 						Content: "Go问题1",
 						Ctime:   now,
 						Utime:   now,
 					},
 					{
-						Id:      615,
-						Uid:     uid + 2,
-						Biz:     "project",
-						BizId:   1,
+						Id:    615,
+						Uid:   uid + 2,
+						Biz:   "project",
+						BizId: 1,
+						Labels: sqlx.JsonColumn[[]string]{
+							Valid: true,
+							Val:   []string{"MySQL"},
+						},
 						Title:   "Go问题2",
 						Content: "Go问题2",
 						Ctime:   now,
 						Utime:   now,
 					},
 					{
-						Id:      616,
-						Uid:     uid + 3,
-						Biz:     "project",
-						BizId:   1,
+						Id:    616,
+						Uid:   uid + 3,
+						Biz:   "project",
+						BizId: 1,
+						Labels: sqlx.JsonColumn[[]string]{
+							Valid: true,
+							Val:   []string{"MySQL"},
+						},
 						Title:   "Go问题3",
 						Content: "Go问题3",
 						Ctime:   now,
@@ -499,6 +532,7 @@ func (s *SetHandlerTestSuite) TestQuestionSet_Detail() {
 							Id:      614,
 							Biz:     "project",
 							BizId:   1,
+							Labels:  []string{"MySQL"},
 							Title:   "Go问题1",
 							Content: "Go问题1",
 							Interactive: web.Interactive{
@@ -515,6 +549,7 @@ func (s *SetHandlerTestSuite) TestQuestionSet_Detail() {
 							Id:      615,
 							Biz:     "project",
 							BizId:   1,
+							Labels:  []string{"MySQL"},
 							Title:   "Go问题2",
 							Content: "Go问题2",
 							Interactive: web.Interactive{
@@ -532,6 +567,7 @@ func (s *SetHandlerTestSuite) TestQuestionSet_Detail() {
 							BizId:   1,
 							Title:   "Go问题3",
 							Content: "Go问题3",
+							Labels:  []string{"MySQL"},
 							Interactive: web.Interactive{
 								ViewCnt:    617,
 								LikeCnt:    618,
@@ -570,30 +606,42 @@ func (s *SetHandlerTestSuite) TestQuestionSet_Detail() {
 				// 添加问题
 				questions := []dao.PublishQuestion{
 					{
-						Id:      714,
-						Uid:     uid + 1,
-						Biz:     "project",
-						BizId:   1,
+						Id:    714,
+						Uid:   uid + 1,
+						Biz:   "project",
+						BizId: 1,
+						Labels: sqlx.JsonColumn[[]string]{
+							Valid: true,
+							Val:   []string{"MySQL"},
+						},
 						Title:   "Go问题1",
 						Content: "Go问题1",
 						Ctime:   now,
 						Utime:   now,
 					},
 					{
-						Id:      715,
-						Uid:     uid + 2,
-						Biz:     "project",
-						BizId:   1,
+						Id:    715,
+						Uid:   uid + 2,
+						Biz:   "project",
+						BizId: 1,
+						Labels: sqlx.JsonColumn[[]string]{
+							Valid: true,
+							Val:   []string{"MySQL"},
+						},
 						Title:   "Go问题2",
 						Content: "Go问题2",
 						Ctime:   now,
 						Utime:   now,
 					},
 					{
-						Id:      716,
-						Uid:     uid + 3,
-						Biz:     "project",
-						BizId:   1,
+						Id:    716,
+						Uid:   uid + 3,
+						Biz:   "project",
+						BizId: 1,
+						Labels: sqlx.JsonColumn[[]string]{
+							Valid: true,
+							Val:   []string{"MySQL"},
+						},
 						Title:   "Go问题3",
 						Content: "Go问题3",
 						Ctime:   now,
@@ -645,6 +693,7 @@ func (s *SetHandlerTestSuite) TestQuestionSet_Detail() {
 							Id:      714,
 							Biz:     "project",
 							BizId:   1,
+							Labels:  []string{"MySQL"},
 							Title:   "Go问题1",
 							Content: "Go问题1",
 							Interactive: web.Interactive{
@@ -661,6 +710,7 @@ func (s *SetHandlerTestSuite) TestQuestionSet_Detail() {
 							Id:      715,
 							Biz:     "project",
 							BizId:   1,
+							Labels:  []string{"MySQL"},
 							Title:   "Go问题2",
 							Content: "Go问题2",
 							Interactive: web.Interactive{
@@ -676,6 +726,7 @@ func (s *SetHandlerTestSuite) TestQuestionSet_Detail() {
 							Id:      716,
 							Biz:     "project",
 							BizId:   1,
+							Labels:  []string{"MySQL"},
 							Title:   "Go问题3",
 							Content: "Go问题3",
 							Interactive: web.Interactive{
@@ -716,30 +767,42 @@ func (s *SetHandlerTestSuite) TestQuestionSet_Detail() {
 				// 添加问题
 				questions := []dao.PublishQuestion{
 					{
-						Id:      814,
-						Uid:     uid + 1,
-						Biz:     "project",
-						BizId:   1,
+						Id:    814,
+						Uid:   uid + 1,
+						Biz:   "project",
+						BizId: 1,
+						Labels: sqlx.JsonColumn[[]string]{
+							Valid: true,
+							Val:   []string{"MySQL"},
+						},
 						Title:   "Go问题1",
 						Content: "Go问题1",
 						Ctime:   now,
 						Utime:   now,
 					},
 					{
-						Id:      815,
-						Uid:     uid + 2,
-						Biz:     "project",
-						BizId:   1,
+						Id:    815,
+						Uid:   uid + 2,
+						Biz:   "project",
+						BizId: 1,
+						Labels: sqlx.JsonColumn[[]string]{
+							Valid: true,
+							Val:   []string{"MySQL"},
+						},
 						Title:   "Go问题2",
 						Content: "Go问题2",
 						Ctime:   now,
 						Utime:   now,
 					},
 					{
-						Id:      816,
-						Uid:     uid + 3,
-						Biz:     "project",
-						BizId:   1,
+						Id:    816,
+						Uid:   uid + 3,
+						Biz:   "project",
+						BizId: 1,
+						Labels: sqlx.JsonColumn[[]string]{
+							Valid: true,
+							Val:   []string{"MySQL"},
+						},
 						Title:   "Go问题3",
 						Content: "Go问题3",
 						Ctime:   now,
@@ -805,6 +868,7 @@ func (s *SetHandlerTestSuite) TestQuestionSet_Detail() {
 							Id:      814,
 							Biz:     "project",
 							BizId:   1,
+							Labels:  []string{"MySQL"},
 							Title:   "Go问题1",
 							Content: "Go问题1",
 							Interactive: web.Interactive{
@@ -821,6 +885,7 @@ func (s *SetHandlerTestSuite) TestQuestionSet_Detail() {
 							Id:      815,
 							Biz:     "project",
 							BizId:   1,
+							Labels:  []string{"MySQL"},
 							Title:   "Go问题2",
 							Content: "Go问题2",
 							Interactive: web.Interactive{
@@ -836,6 +901,7 @@ func (s *SetHandlerTestSuite) TestQuestionSet_Detail() {
 							Id:      816,
 							Biz:     "project",
 							BizId:   1,
+							Labels:  []string{"MySQL"},
 							Title:   "Go问题3",
 							Content: "Go问题3",
 							Interactive: web.Interactive{
