@@ -19,8 +19,8 @@ const (
 )
 
 type Delta struct {
-	Content          string `json:"content,nullable"`
-	ReasoningContent string `json:"reasoning_content,nullable"`
+	Content          string `json:"content"`
+	ReasoningContent string `json:"reasoning_content"`
 }
 
 type Handler struct {

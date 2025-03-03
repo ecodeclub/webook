@@ -16,7 +16,7 @@ import (
 )
 
 func TestHandler_StreamHandle(t *testing.T) {
-	t.Skip()
+	//t.Skip()
 	handler := initHandler(t)
 	msgChan, err := handler.StreamHandle(context.Background(), domain.LLMRequest{
 		Biz:   "case",
@@ -63,5 +63,5 @@ func initHandler(t *testing.T) *ali_deepseek.Handler {
 		Model:          "deepseek-r1",
 	})
 	require.NoError(t, err)
-	return ali_deepseek.NewHandler("your_key", logRepo, configRepo)
+	return ali_deepseek.NewHandler("sk-1ff9e16afa654f50a0a9c759bd59274d", logRepo, configRepo)
 }
