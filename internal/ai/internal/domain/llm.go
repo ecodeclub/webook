@@ -122,7 +122,7 @@ const (
 
 type StreamEvent struct {
 	// 内容
-	Content string
+	Content          string
 	ReasoningContent string
 	// 错误
 	Error error
