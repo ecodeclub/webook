@@ -16,7 +16,7 @@ import (
 )
 
 func TestHandler_StreamHandle(t *testing.T) {
-	t.Skip()
+	//t.Skip()
 	handler := initHandler(t)
 	msgChan, err := handler.StreamHandle(context.Background(), domain.LLMRequest{
 		Biz:   "case",
@@ -26,7 +26,7 @@ func TestHandler_StreamHandle(t *testing.T) {
 	})
 	require.NoError(t, err)
 	// 修改后：
-	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 1000*time.Second)
 	defer cancel()
 	for {
 		select {
@@ -39,7 +39,7 @@ func TestHandler_StreamHandle(t *testing.T) {
 			if event.Done {
 				log.Println("对话停止")
 			}
-			log.Println(event.Content)
+			log.Printf("\ncontent: %s\n reasoning_content: %s", event.Content, event.ReasoningContent)
 		case <-ctx.Done():
 			log.Println("超时关闭")
 			return
@@ -60,7 +60,8 @@ func initHandler(t *testing.T) *ali_deepseek.Handler {
 		Biz:            "case",
 		Price:          1,
 		PromptTemplate: `请说一下%s天气`,
+		Model:          "deepseek-r1",
 	})
 	require.NoError(t, err)
-	return ali_deepseek.NewHandler("you_key", logRepo, configRepo)
+	return ali_deepseek.NewHandler("sk-1ff9e16afa654f50a0a9c759bd59274d", logRepo, configRepo)
 }

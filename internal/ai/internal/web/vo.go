@@ -48,8 +48,13 @@ type ConfigInfoReq struct {
 }
 
 type Event struct {
-	Type    string `json:"type"`    // 事件类型 msg end err
-	Content string `json:"content"` // 内容
+	Type string `json:"type"` // 事件类型 msg end err
+	Err  string `json:"error"`
+	Data EvtMsg `json:"data"`
+}
+type EvtMsg struct {
+	Content          string `json:"content"`
+	ReasoningContent string `json:"reasoningContent"`
 }
 
 const (
