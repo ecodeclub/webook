@@ -3,7 +3,6 @@ package web
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"log/slog"
 	"net/http"
 	"time"
@@ -34,7 +33,7 @@ func NewHandler(generalSvc service.GeneralService, jdSvc service.JDService) *Han
 func (h *Handler) MemberRoutes(server *gin.Engine) {
 	server.POST("/ai/ask", ginx.BS(h.LLMAsk))
 	server.POST("/ai/analysis_jd", ginx.BS(h.AnalysisJd))
-	server.POST("/ai/chat", h.Chat)
+	server.POST("/ai/stream", h.Stream)
 
 }
 
@@ -84,7 +83,7 @@ func (h *Handler) AnalysisJd(ctx *ginx.Context, req JDRequest, sess session.Sess
 
 }
 
-func (h *Handler) Chat(ctx *gin.Context) {
+func (h *Handler) Stream(ctx *gin.Context) {
 	// 设置 SSE 响应头
 	ctx.Writer.Header().Set("Content-Type", "text/event-stream")
 	ctx.Writer.Header().Set("Cache-Control", "no-cache")
@@ -164,7 +163,8 @@ func (h *Handler) stream(ctx *gin.Context, ch chan domain.StreamEvent) {
 
 func sendEvent(ctx *gin.Context, data string) {
 	buf := bytes.Buffer{}
-	buf.WriteString(fmt.Sprintf("data: %s\n\n", data))
+	buf.WriteString(data)
+	buf.WriteByte('\n')
 	_, _ = ctx.Writer.Write(buf.Bytes())
 	ctx.Writer.Flush()
 }

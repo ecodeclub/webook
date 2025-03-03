@@ -811,7 +811,7 @@ func (s *LLMServiceSuite) TestHandler_Stream() {
 			mou, err := startup.InitModule(s.db, nil, streamMockHdl, nil, &credit.Module{Svc: nil}, nil)
 			require.NoError(t, err)
 			req, err := http.NewRequest(http.MethodPost,
-				"/ai/chat", iox.NewJSONReader(tc.req))
+				"/ai/stream", iox.NewJSONReader(tc.req))
 			req.Header.Set("content-type", "application/json")
 			require.NoError(t, err)
 			econf.Set("server", map[string]any{"contextTimeout": "1s"})
