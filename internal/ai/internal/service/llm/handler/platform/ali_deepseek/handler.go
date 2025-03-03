@@ -38,26 +38,29 @@ func NewHandler(apikey string, repo repository.LLMLogRepo, configRepo repository
 }
 
 func (h *Handler) StreamHandle(ctx context.Context, req domain.LLMRequest) (chan domain.StreamEvent, error) {
-
 	config, err := h.findConfig(ctx, req)
 	if err != nil {
 		return nil, err
 	}
 	req.Config = config
 	eventCh := make(chan domain.StreamEvent, 10)
-	model := openai.ChatModel("deepseek-r1")
 	params := openai.ChatCompletionNewParams{
 		Messages: openai.F([]openai.ChatCompletionMessageParamUnion{
 			openai.UserMessage(req.Prompt()),
 		}),
-		Model: openai.F(model),
+		Model: openai.F(req.Config.Model),
 		StreamOptions: openai.F(openai.ChatCompletionStreamOptionsParam{
 			IncludeUsage: openai.F(true),
 		}),
 	}
 
-	stream := h.client.Chat.Completions.NewStreaming(ctx, params)
-	go h.recv(req, eventCh, stream)
+	go func() {
+		newCtx, cancel := context.WithTimeout(context.Background(), time.Minute*10)
+		defer cancel()
+		stream := h.client.Chat.Completions.NewStreaming(newCtx, params)
+		h.recv(req, eventCh, stream)
+	}()
+
 	return eventCh, nil
 }
 
