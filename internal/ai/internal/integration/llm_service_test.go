@@ -780,9 +780,9 @@ func (s *LLMServiceSuite) TestHandler_Stream() {
 					events := make(chan domain.StreamEvent, 5)
 					go func() {
 						defer close(events)
-						events <- domain.StreamEvent{Content: "msg1"}
+						events <- domain.StreamEvent{ReasoningContent: "reasoning1"}
 						time.Sleep(100 * time.Millisecond)
-						events <- domain.StreamEvent{Content: "msg2"}
+						events <- domain.StreamEvent{ReasoningContent: "reasoning2"}
 						time.Sleep(100 * time.Millisecond)
 						events <- domain.StreamEvent{Content: "msg3"}
 						events <- domain.StreamEvent{Content: "msg4"}
@@ -793,10 +793,18 @@ func (s *LLMServiceSuite) TestHandler_Stream() {
 				return mockStreamHandler
 			},
 			wantEvts: []web.Event{
-				{Type: "msg", Content: "msg1"},
-				{Type: "msg", Content: "msg2"},
-				{Type: "msg", Content: "msg3"},
-				{Type: "msg", Content: "msg4"},
+				{Type: "msg", Data: web.EvtMsg{
+					ReasoningContent: "reasoning1",
+				}},
+				{Type: "msg", Data: web.EvtMsg{
+					ReasoningContent: "reasoning2",
+				}},
+				{Type: "msg", Data: web.EvtMsg{
+					Content: "msg3",
+				}},
+				{Type: "msg", Data: web.EvtMsg{
+					Content: "msg4",
+				}},
 				{Type: "end"},
 			},
 			wantCode: 200,
@@ -837,17 +845,15 @@ func (s *LLMServiceSuite) TestHandler_Stream() {
 
 func parseSSEResponse(t *testing.T, body *bytes.Buffer) []web.Event {
 	var events []web.Event
-	for _, line := range strings.Split(body.String(), "\n\n") {
+	for _, line := range strings.Split(body.String(), "\n") {
 		line = strings.TrimSpace(line)
 		if line == "" {
 			continue
 		}
-		if strings.HasPrefix(line, "data: ") {
-			var evt web.Event
-			err := json.Unmarshal([]byte(line[6:]), &evt)
-			require.NoError(t, err)
-			events = append(events, evt)
-		}
+		var evt web.Event
+		err := json.Unmarshal([]byte(line), &evt)
+		require.NoError(t, err)
+		events = append(events, evt)
 	}
 	return events
 }

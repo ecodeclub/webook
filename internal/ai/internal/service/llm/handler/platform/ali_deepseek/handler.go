@@ -2,6 +2,7 @@ package ali_deepseek
 
 import (
 	"context"
+	"encoding/json"
 	"math"
 	"time"
 
@@ -16,6 +17,11 @@ import (
 const (
 	baseUrl = "https://dashscope.aliyuncs.com/compatible-mode/v1/"
 )
+
+type Delta struct {
+	Content          string `json:"content,nullable"`
+	ReasoningContent string `json:"reasoning_content,nullable"`
+}
 
 type Handler struct {
 	client     *openai.Client
@@ -48,6 +54,7 @@ func (h *Handler) StreamHandle(ctx context.Context, req domain.LLMRequest) (chan
 		Messages: openai.F([]openai.ChatCompletionMessageParamUnion{
 			openai.UserMessage(req.Prompt()),
 		}),
+
 		Model: openai.F(req.Config.Model),
 		StreamOptions: openai.F(openai.ChatCompletionStreamOptionsParam{
 			IncludeUsage: openai.F(true),
@@ -72,6 +79,7 @@ func (h *Handler) recv(req domain.LLMRequest, eventCh chan domain.StreamEvent,
 	stream *ssestream.Stream[openai.ChatCompletionChunk]) {
 	defer close(eventCh)
 	acc := openai.ChatCompletionAccumulator{}
+
 	for stream.Next() {
 		chunk := stream.Current()
 		acc.AddChunk(chunk)
@@ -79,8 +87,20 @@ func (h *Handler) recv(req domain.LLMRequest, eventCh chan domain.StreamEvent,
 		if len(chunk.Choices) > 0 {
 			// 说明没结束
 			if chunk.Choices[0].FinishReason == "" {
+				var delta Delta
+				err := json.Unmarshal([]byte(chunk.Choices[0].Delta.JSON.RawJSON()), &delta)
+				if err != nil {
+					eventCh <- domain.StreamEvent{
+						Error: err,
+					}
+					ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+					h.saveRecord(ctx, req, domain.RecordStatusFailed, domain.LLMResponse{})
+					cancel()
+					return
+				}
 				eventCh <- domain.StreamEvent{
-					Content: chunk.Choices[0].Delta.Content,
+					Content:          delta.Content,
+					ReasoningContent: delta.ReasoningContent,
 				}
 			}
 		}

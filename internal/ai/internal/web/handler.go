@@ -115,8 +115,8 @@ func (h *Handler) Stream(ctx *gin.Context) {
 
 func (h *Handler) chatErr(ctx *gin.Context, err error) {
 	evt := Event{
-		Type:    ErrEvt,
-		Content: err.Error(),
+		Type: ErrEvt,
+		Err:  err.Error(),
 	}
 	evtStr, _ := json.Marshal(evt)
 	sendEvent(ctx, string(evtStr))
@@ -124,8 +124,11 @@ func (h *Handler) chatErr(ctx *gin.Context, err error) {
 
 func (h *Handler) chatMsg(ctx *gin.Context, domainEvt domain.StreamEvent) {
 	evt := Event{
-		Type:    MsgEvt,
-		Content: domainEvt.Content,
+		Type: MsgEvt,
+		Data: EvtMsg{
+			Content:          domainEvt.Content,
+			ReasoningContent: domainEvt.ReasoningContent,
+		},
 	}
 	evtStr, _ := json.Marshal(evt)
 	sendEvent(ctx, string(evtStr))
