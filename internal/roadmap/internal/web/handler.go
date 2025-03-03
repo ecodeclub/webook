@@ -17,12 +17,13 @@ package web
 import (
 	"github.com/ecodeclub/ginx"
 	"github.com/ecodeclub/webook/internal/roadmap/internal/service"
+	"github.com/ecodeclub/webook/internal/roadmap/internal/service/biz"
 	"github.com/gin-gonic/gin"
 )
 
 type Handler struct {
 	svc    service.Service
-	bizSvc service.BizService
+	bizSvc biz.Service
 }
 
 func (h *Handler) PrivateRoutes(server *gin.Engine) {
@@ -52,7 +53,7 @@ func (h *Handler) Detail(ctx *ginx.Context, req Biz) (ginx.Result, error) {
 	}
 }
 
-func NewHandler(svc service.Service, bizSvc service.BizService) *Handler {
+func NewHandler(svc service.Service, bizSvc biz.Service) *Handler {
 	return &Handler{
 		svc:    svc,
 		bizSvc: bizSvc,
