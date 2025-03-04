@@ -23,7 +23,7 @@ type LLMRequest struct {
 	prompt string
 }
 
-func (req LLMRequest) Prompt() string {
+func (req *LLMRequest) Prompt() string {
 	if req.prompt == "" {
 		args := slice.Map(req.Input, func(idx int, src string) any {
 			return src
