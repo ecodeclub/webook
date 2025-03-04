@@ -29,6 +29,7 @@ import (
 
 func InitModule(db *egorm.Component, creditSvc *credit.Module, q mq.MQ) (*Module, error) {
 	wire.Build(
+		InitAliDeepSeekHandler,
 		llm.NewLLMService,
 		repository.NewLLMLogRepo,
 		repository.NewLLMCreditLogRepo,
@@ -50,6 +51,7 @@ func InitModule(db *egorm.Component, creditSvc *credit.Module, q mq.MQ) (*Module
 		InitCompositionHandlerUsingZhipu,
 		InitCommonHandlers,
 		InitZhipu,
+
 		service.NewGeneralService,
 		service.NewJDService,
 		service.NewConfigService,

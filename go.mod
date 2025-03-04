@@ -17,6 +17,7 @@ require (
 	github.com/lithammer/shortuuid/v4 v4.0.0
 	github.com/lukasjarosch/go-docx v0.5.0
 	github.com/olivere/elastic/v7 v7.0.32
+	github.com/openai/openai-go v0.1.0-alpha.61
 	github.com/pkg/errors v0.9.1
 	github.com/redis/go-redis/v9 v9.4.0
 	github.com/stretchr/testify v1.9.0
@@ -24,6 +25,7 @@ require (
 	github.com/wechatpay-apiv3/wechatpay-go v0.2.18
 	github.com/yankeguo/zhipu v0.1.0
 	go.uber.org/mock v0.3.0
+	golang.org/x/net v0.27.0
 	golang.org/x/sync v0.7.0
 	gorm.io/gorm v1.25.1
 )
@@ -105,6 +107,10 @@ require (
 	github.com/shirou/gopsutil/v3 v3.21.6 // indirect
 	github.com/spf13/cast v1.4.1 // indirect
 	github.com/stoewer/go-strcase v1.2.0 // indirect
+	github.com/tidwall/gjson v1.14.4 // indirect
+	github.com/tidwall/match v1.1.1 // indirect
+	github.com/tidwall/pretty v1.2.1 // indirect
+	github.com/tidwall/sjson v1.2.5 // indirect
 	github.com/tklauser/go-sysconf v0.3.6 // indirect
 	github.com/tklauser/numcpus v0.2.2 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
@@ -126,7 +132,6 @@ require (
 	golang.org/x/arch v0.7.0 // indirect
 	golang.org/x/crypto v0.25.0 // indirect
 	golang.org/x/exp v0.0.0-20231006140011-7918f672742d // indirect
-	golang.org/x/net v0.27.0 // indirect
 	golang.org/x/sys v0.22.0 // indirect
 	golang.org/x/text v0.16.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20230711160842-782d3b101e98 // indirect
