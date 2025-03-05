@@ -37,6 +37,7 @@ func NewExamineHandler(svc service.ExamineService) *ExamineHandler {
 
 func (h *ExamineHandler) MemberRoutes(server *gin.Engine) {
 	g := server.Group("/question/examine")
+	// 暂时保留一年，因为后期 AI 的变化难以预测
 	g.POST("", ginx.BS(h.Examine))
 	// 觉得 AI 的评价不准确，那么可以调用这个接口来修正，这是直接暴露给用户使用的
 	g.POST("/correct", ginx.BS[CorrectReq](h.Correct))

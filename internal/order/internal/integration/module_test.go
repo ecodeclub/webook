@@ -524,7 +524,7 @@ func (s *OrderModuleTestSuite) TestHandler_CreateOrder() {
 			},
 			after: func(t *testing.T) {
 				t.Helper()
-				orders, _, err := s.svc.FindUserVisibleOrdersByUID(context.Background(), testUID, 0, 1)
+				orders, _, err := s.svc.FindUserVisibleOrdersByUID(context.Background(), testUID, 0, 0, 1)
 				require.NoError(t, err)
 				require.Equal(t, domain.StatusProcessing, orders[0].Status)
 			},
@@ -622,7 +622,7 @@ func (s *OrderModuleTestSuite) TestHandler_CreateOrder() {
 			},
 			after: func(t *testing.T) {
 				t.Helper()
-				orders, _, err := s.svc.FindUserVisibleOrdersByUID(context.Background(), testUID, 1, 1)
+				orders, _, err := s.svc.FindUserVisibleOrdersByUID(context.Background(), testUID, 0, 1, 1)
 				require.NoError(t, err)
 				require.Equal(t, domain.StatusProcessing, orders[0].Status)
 			},
@@ -720,7 +720,7 @@ func (s *OrderModuleTestSuite) TestHandler_CreateOrder() {
 			},
 			after: func(t *testing.T) {
 				t.Helper()
-				orders, _, err := s.svc.FindUserVisibleOrdersByUID(context.Background(), testUID, 1, 1)
+				orders, _, err := s.svc.FindUserVisibleOrdersByUID(context.Background(), testUID, 0, 1, 1)
 				require.NoError(t, err)
 				require.Equal(t, domain.StatusProcessing, orders[0].Status)
 			},
@@ -1719,6 +1719,69 @@ func (s *OrderModuleTestSuite) TestHandler_ListOrders() {
 										Image:         fmt.Sprintf("SKUImage-%d", 197),
 										Name:          fmt.Sprintf("SKUName-%d", 197),
 										Desc:          fmt.Sprintf("SKUDescription-%d", 197),
+										OriginalPrice: 9900,
+										RealPrice:     9900,
+										Quantity:      1,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name:           "获取成功-加上状态筛选",
+			newHandlerFunc: s.emptyHandler,
+			req: web.ListOrdersReq{
+				Limit:  2,
+				Offset: 0,
+				Status: 3,
+			},
+			wantCode: 200,
+			wantResp: test.Result[web.ListOrdersResp]{
+				Data: web.ListOrdersResp{
+					Total: 16, // 100个订单中status=3的订单总数（id%6=2的情况）
+					Orders: []web.Order{
+						{
+							SN: "OrderSN-list-194",
+							Payment: web.Payment{
+								SN: "PaymentSN-list-194",
+							},
+							OriginalTotalAmt: 100,
+							RealTotalAmt:     100,
+							Status:           3, // 对应domain中定义的状态值
+							Items: []web.OrderItem{
+								{
+									SPU: web.SPU{Category0: "code", Category1: "member"},
+									SKU: web.SKU{
+										SN:            "SKUSN-194",
+										Image:         "SKUImage-194",
+										Name:          "SKUName-194",
+										Desc:          "SKUDescription-194",
+										OriginalPrice: 9900,
+										RealPrice:     9900,
+										Quantity:      1,
+									},
+								},
+							},
+						},
+						{
+							SN: "OrderSN-list-188",
+							Payment: web.Payment{
+								SN: "PaymentSN-list-188",
+							},
+							OriginalTotalAmt: 100,
+							RealTotalAmt:     100,
+							Status:           3,
+							Items: []web.OrderItem{
+								{
+									SPU: web.SPU{Category0: "code", Category1: "member"},
+									SKU: web.SKU{
+										SN:            "SKUSN-188",
+										Image:         "SKUImage-188",
+										Name:          "SKUName-188",
+										Desc:          "SKUDescription-188",
 										OriginalPrice: 9900,
 										RealPrice:     9900,
 										Quantity:      1,
