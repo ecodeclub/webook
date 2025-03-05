@@ -143,11 +143,11 @@ func (g *GORMInteractiveDAO) CollectionList(ctx context.Context, uid int64, offs
 
 func (g *GORMInteractiveDAO) CollectionInfoWithPage(ctx context.Context, uid, collectionId int64, biz string, offset, limit int) ([]UserCollectionBiz, error) {
 	records := make([]UserCollectionBiz, 0, 32)
-	builder :=  g.db.WithContext(ctx).
+	builder := g.db.WithContext(ctx).
 		Model(&UserCollectionBiz{}).
 		Where("cid = ? AND uid = ?  ", collectionId, uid)
 	if biz != "" {
-		builder = builder.Where("biz = ?",biz)
+		builder = builder.Where("biz = ?", biz)
 	}
 	err := builder.
 		Order("id DESC").

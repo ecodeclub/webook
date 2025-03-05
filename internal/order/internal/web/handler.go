@@ -326,7 +326,7 @@ func (h *Handler) RepayOrder(ctx *ginx.Context, req OrderSNReq, sess session.Ses
 
 // ListOrders 分页查询用户订单
 func (h *Handler) ListOrders(ctx *ginx.Context, req ListOrdersReq, sess session.Session) (ginx.Result, error) {
-	orders, total, err := h.svc.FindUserVisibleOrdersByUID(ctx, sess.Claims().Uid,domain.OrderStatus(req.Status), req.Offset, req.Limit)
+	orders, total, err := h.svc.FindUserVisibleOrdersByUID(ctx, sess.Claims().Uid, domain.OrderStatus(req.Status), req.Offset, req.Limit)
 	if err != nil {
 		return systemErrorResult, err
 	}

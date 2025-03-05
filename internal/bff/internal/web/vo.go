@@ -56,7 +56,7 @@ func newCollectionRecord(record interactive.CollectionRecord,
 	caseExamMap map[int64]cases.ExamineResult,
 ) CollectionRecord {
 	res := CollectionRecord{
-		Id: record.Id,
+		Id:  record.Id,
 		Biz: record.Biz,
 	}
 	switch record.Biz {
