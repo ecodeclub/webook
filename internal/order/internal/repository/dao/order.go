@@ -93,8 +93,11 @@ func (g *gormOrderDAO) CountOrdersByUID(ctx context.Context, uid int64, status u
 	if uid > 0 {
 		query = query.Where("buyer_id = ?", uid)
 	}
-	if status > 0 {
-		query = query.Where("status >= ?", status)
+	if status == 0 {
+		// 默认查看
+		query = query.Where("status >= ?", 2)
+	} else {
+		query = query.Where("status = ?", status)
 	}
 	err := query.Count(&res).Error
 	return res, err
@@ -106,8 +109,11 @@ func (g *gormOrderDAO) FindOrdersByUID(ctx context.Context, offset, limit int, u
 	if uid > 0 {
 		query = query.Where("buyer_id = ?", uid)
 	}
-	if status > 0 {
-		query = query.Where("status >= ?", status)
+	if status == 0 {
+		// 默认查看
+		query = query.Where("status >= ?", 2)
+	} else {
+		query = query.Where("status = ?", status)
 	}
 	err := query.Find(&res).Error
 	return res, err
