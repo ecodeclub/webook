@@ -8,13 +8,15 @@ import (
 )
 
 type CollectionInfoReq struct {
-	ID     int64 `json:"id"`
-	Offset int   `json:"offset"`
-	Limit  int   `json:"limit"`
+	ID     int64  `json:"id"`
+	Biz    string `json:"biz"`
+	Offset int    `json:"offset"`
+	Limit  int    `json:"limit"`
 }
 
 type CollectionRecord struct {
 	Id          int64       `json:"id"`
+	Biz         string      `json:"biz"`
 	Case        Case        `json:"case,omitempty"`
 	Question    Question    `json:"question,omitempty"`
 	QuestionSet QuestionSet `json:"questionSet,omitempty"`
@@ -55,6 +57,7 @@ func newCollectionRecord(record interactive.CollectionRecord,
 ) CollectionRecord {
 	res := CollectionRecord{
 		Id: record.Id,
+		Biz: record.Biz,
 	}
 	switch record.Biz {
 	case CaseBiz:

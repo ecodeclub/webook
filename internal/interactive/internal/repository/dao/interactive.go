@@ -48,7 +48,7 @@ type InteractiveDAO interface {
 	// 收藏夹列表
 	CollectionList(ctx context.Context, uid int64, offset, limit int) ([]Collection, error)
 	// 收藏夹下的收藏内容带分页
-	CollectionInfoWithPage(ctx context.Context, uid, collectionId int64, offset, limit int) ([]UserCollectionBiz, error)
+	CollectionInfoWithPage(ctx context.Context, uid, collectionId int64, biz string, offset, limit int) ([]UserCollectionBiz, error)
 	// 收藏夹下的所有内容
 	CollectionInfo(ctx context.Context, collectionId int64) ([]UserCollectionBiz, error)
 	// 收藏转移
@@ -141,11 +141,15 @@ func (g *GORMInteractiveDAO) CollectionList(ctx context.Context, uid int64, offs
 	return collections, err
 }
 
-func (g *GORMInteractiveDAO) CollectionInfoWithPage(ctx context.Context, uid, collectionId int64, offset, limit int) ([]UserCollectionBiz, error) {
+func (g *GORMInteractiveDAO) CollectionInfoWithPage(ctx context.Context, uid, collectionId int64, biz string, offset, limit int) ([]UserCollectionBiz, error) {
 	records := make([]UserCollectionBiz, 0, 32)
-	err := g.db.WithContext(ctx).
+	builder :=  g.db.WithContext(ctx).
 		Model(&UserCollectionBiz{}).
-		Where("cid = ? AND uid = ? ", collectionId, uid).
+		Where("cid = ? AND uid = ?  ", collectionId, uid)
+	if biz != "" {
+		builder = builder.Where("biz = ?",biz)
+	}
+	err := builder.
 		Order("id DESC").
 		Offset(offset).
 		Limit(limit).

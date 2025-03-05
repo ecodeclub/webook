@@ -53,7 +53,7 @@ type InteractiveRepository interface {
 	// 收藏夹列表
 	CollectionList(ctx context.Context, uid int64, offset, limit int) ([]domain.Collection, error)
 	// CollectionInfo 收藏夹收藏记录
-	CollectionInfo(ctx context.Context, uid, collectionId int64, offset, limit int) ([]domain.CollectionRecord, error)
+	CollectionInfo(ctx context.Context, uid, collectionId int64,biz string, offset, limit int) ([]domain.CollectionRecord, error)
 	// MoveCollection 转移收藏夹
 	MoveCollection(ctx context.Context, biz string, bizid, uid, collectionId int64) error
 }
@@ -99,8 +99,8 @@ func (i *interactiveRepository) CollectionList(ctx context.Context, uid int64, o
 	return collections, nil
 }
 
-func (i *interactiveRepository) CollectionInfo(ctx context.Context, uid, collectionId int64, offset, limit int) ([]domain.CollectionRecord, error) {
-	userBizs, err := i.interactiveDao.CollectionInfoWithPage(ctx, uid, collectionId, offset, limit)
+func (i *interactiveRepository) CollectionInfo(ctx context.Context, uid, collectionId int64,biz string, offset, limit int) ([]domain.CollectionRecord, error) {
+	userBizs, err := i.interactiveDao.CollectionInfoWithPage(ctx, uid, collectionId,biz, offset, limit)
 	if err != nil {
 		return nil, err
 	}

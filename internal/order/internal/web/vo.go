@@ -88,6 +88,7 @@ type RetrieveOrderStatusResp struct {
 
 // ListOrdersReq 分页查询用户所有订单
 type ListOrdersReq struct {
+	Status uint8 `json:"status,omitempty"`
 	Offset int `json:"offset,omitempty"`
 	Limit  int `json:"limit,omitempty"`
 }

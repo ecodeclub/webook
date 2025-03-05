@@ -31,7 +31,7 @@ type Service interface {
 	// FindUserVisibleOrderByUIDAndSN 查找订单 web调用
 	FindUserVisibleOrderByUIDAndSN(ctx context.Context, uid int64, orderSN string) (domain.Order, error)
 	// FindUserVisibleOrdersByUID 分页查找用户订单 web调用
-	FindUserVisibleOrdersByUID(ctx context.Context, uid int64, offset, limit int) ([]domain.Order, int64, error)
+	FindUserVisibleOrdersByUID(ctx context.Context, uid int64, status domain.OrderStatus, offset, limit int) ([]domain.Order, int64, error)
 	// CancelOrder 取消订单 web 调用
 	CancelOrder(ctx context.Context, uid, oid int64) error
 	// SucceedOrder 订单支付失败 event调用
@@ -64,7 +64,7 @@ func (s *service) FindUserVisibleOrderByUIDAndSN(ctx context.Context, buyerID in
 	return s.repo.FindUserVisibleOrderByUIDAndSN(ctx, buyerID, orderSN)
 }
 
-func (s *service) FindUserVisibleOrdersByUID(ctx context.Context, uid int64, offset, limit int) ([]domain.Order, int64, error) {
+func (s *service) FindUserVisibleOrdersByUID(ctx context.Context, uid int64, status domain.OrderStatus, offset, limit int) ([]domain.Order, int64, error) {
 	var (
 		eg    errgroup.Group
 		os    []domain.Order
@@ -72,13 +72,13 @@ func (s *service) FindUserVisibleOrdersByUID(ctx context.Context, uid int64, off
 	)
 	eg.Go(func() error {
 		var err error
-		os, err = s.repo.FindUserVisibleOrdersByUID(ctx, uid, offset, limit)
+		os, err = s.repo.FindUserVisibleOrdersByUID(ctx, uid, status.ToUint8(), offset, limit)
 		return err
 	})
 
 	eg.Go(func() error {
 		var err error
-		total, err = s.repo.TotalUserVisibleOrders(ctx, uid)
+		total, err = s.repo.TotalUserVisibleOrders(ctx, uid, status.ToUint8())
 		return err
 	})
 	return os, total, eg.Wait()

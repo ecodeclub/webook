@@ -28,8 +28,8 @@ type OrderRepository interface {
 	CreateOrder(ctx context.Context, order domain.Order) (domain.Order, error)
 	UpdateUnpaidOrderPaymentInfo(ctx context.Context, uid, oid, pid int64, psn string) error
 	FindUserVisibleOrderByUIDAndSN(ctx context.Context, uid int64, sn string) (domain.Order, error)
-	TotalUserVisibleOrders(ctx context.Context, uid int64) (int64, error)
-	FindUserVisibleOrdersByUID(ctx context.Context, uid int64, offset, limit int) ([]domain.Order, error)
+	TotalUserVisibleOrders(ctx context.Context, uid int64, status uint8) (int64, error)
+	FindUserVisibleOrdersByUID(ctx context.Context, uid int64, status uint8, offset, limit int) ([]domain.Order, error)
 	CancelOrder(ctx context.Context, uid, oid int64) error
 	SucceedOrder(ctx context.Context, uid int64, orderSN string) error
 	FailOrder(ctx context.Context, uid int64, orderSN string) error
@@ -148,16 +148,16 @@ func (o *orderRepository) toOrderDomain(order dao.Order, orderItems []dao.OrderI
 	}
 }
 
-func (o *orderRepository) TotalUserVisibleOrders(ctx context.Context, uid int64) (int64, error) {
-	t, err := o.dao.CountOrdersByUID(ctx, uid, domain.StatusProcessing.ToUint8())
+func (o *orderRepository) TotalUserVisibleOrders(ctx context.Context, uid int64, status uint8) (int64, error) {
+	t, err := o.dao.CountOrdersByUID(ctx, uid, status)
 	if err != nil {
 		return 0, fmt.Errorf("统计用户订单数失败: %w, uid: %d", err, uid)
 	}
 	return t, nil
 }
 
-func (o *orderRepository) FindUserVisibleOrdersByUID(ctx context.Context, uid int64, offset, limit int) ([]domain.Order, error) {
-	os, err := o.dao.FindOrdersByUID(ctx, offset, limit, uid, domain.StatusProcessing.ToUint8())
+func (o *orderRepository) FindUserVisibleOrdersByUID(ctx context.Context, uid int64, status uint8, offset, limit int) ([]domain.Order, error) {
+	os, err := o.dao.FindOrdersByUID(ctx, offset, limit, uid, status)
 	if err != nil {
 		return nil, fmt.Errorf("通过用户ID查找订单失败: %w, uid:%d", err, uid)
 	}
