@@ -17,7 +17,6 @@ package dao
 import (
 	"context"
 	"encoding/json"
-
 	"github.com/ecodeclub/webook/internal/search/internal/domain"
 	"github.com/olivere/elastic/v7"
 )
@@ -43,7 +42,7 @@ type Case struct {
 }
 type CaseElasticDAO struct {
 	client *elastic.Client
-	metas  map[string]Col
+	metas  map[string]FieldConfig
 }
 
 const (
@@ -55,6 +54,7 @@ const (
 )
 
 func (c *CaseElasticDAO) SearchCase(ctx context.Context, offset, limit int, queryMetas []domain.QueryMeta) ([]Case, error) {
+
 	query := elastic.NewBoolQuery().Must(
 		elastic.NewBoolQuery().Should(buildCols(c.metas, queryMetas)...),
 		elastic.NewTermQuery("status", domain.PublishedStatus))
@@ -80,7 +80,7 @@ func (c *CaseElasticDAO) SearchCase(ctx context.Context, offset, limit int, quer
 func NewCaseElasticDAO(client *elastic.Client) *CaseElasticDAO {
 	return &CaseElasticDAO{
 		client: client,
-		metas: map[string]Col{
+		metas: map[string]FieldConfig{
 			"title": {
 				Name:  "title",
 				Boost: caseTitleBoost,

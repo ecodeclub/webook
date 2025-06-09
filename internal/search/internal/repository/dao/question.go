@@ -58,13 +58,13 @@ type AnswerElement struct {
 
 type questionElasticDAO struct {
 	client *elastic.Client
-	metas  map[string]Col
+	metas  map[string]FieldConfig
 }
 
 func NewQuestionDAO(client *elastic.Client) QuestionDAO {
 	return &questionElasticDAO{
 		client: client,
-		metas: map[string]Col{
+		metas: map[string]FieldConfig{
 			"title": {
 				Name:  "title",
 				Boost: questionTitleBoost,

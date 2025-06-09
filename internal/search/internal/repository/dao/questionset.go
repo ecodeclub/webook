@@ -43,13 +43,13 @@ type QuestionSet struct {
 }
 type questionSetElasticDAO struct {
 	client *elastic.Client
-	metas  map[string]Col
+	metas  map[string]FieldConfig
 }
 
 func NewQuestionSetDAO(client *elastic.Client) QuestionSetDAO {
 	return &questionSetElasticDAO{
 		client: client,
-		metas: map[string]Col{
+		metas: map[string]FieldConfig{
 			"title": {
 				Name:  "title",
 				Boost: questionSetTitleBoost,

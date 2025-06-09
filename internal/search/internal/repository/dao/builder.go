@@ -10,7 +10,7 @@ import (
 )
 
 // 用于构建查询
-type Col struct {
+type FieldConfig struct {
 	// 列名
 	Name string
 	// 权重
@@ -19,7 +19,11 @@ type Col struct {
 	IsTerm bool
 }
 
-func buildCols(cols map[string]Col, queryMetas []domain.QueryMeta) []elastic.Query {
+type HighLightConfig struct {
+
+}
+
+func buildCols(cols map[string]FieldConfig, queryMetas []domain.QueryMeta) []elastic.Query {
 	colMap := make(map[string][]string, len(cols))
 	for _, meta := range queryMetas {
 		if meta.IsAll {

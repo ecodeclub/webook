@@ -46,7 +46,10 @@ type Repository interface {
 	Create(ctx context.Context, question *domain.Question) (int64, error)
 	// QuestionIds 获取全量问题id列表，用于ai同步
 	QuestionIds(ctx context.Context) ([]int64, error)
-
+	// ListSync
+	ListSync(ctx context.Context, offset int, limit int) ([]domain.Question, error)
+	// PubListSync
+	PubListSync(ctx context.Context, offset int, limit int) ([]domain.Question, error)
 	// Delete 会直接删除制作库和线上库的数据
 	Delete(ctx context.Context, qid int64) error
 
@@ -63,6 +66,45 @@ type CachedRepository struct {
 	dao    dao.QuestionDAO
 	cache  cache.QuestionCache
 	logger *elog.Component
+}
+
+func (c *CachedRepository) ListSync(ctx context.Context, offset int, limit int) ([]domain.Question, error) {
+	list, err := c.dao.List(ctx, offset, limit)
+	if err != nil {
+		return nil, err
+	}
+	qids := slice.Map(list, func(idx int, src dao.Question) int64 {
+		return src.Id
+	})
+	qlMap, err := c.dao.QuestionElementList(ctx, qids)
+	if err != nil {
+		return nil, err
+	}
+	return slice.Map(list, func(idx int, src dao.Question) domain.Question {
+		eles := qlMap[src.Id]
+		return c.toDomainWithAnswer(src,eles)
+	}), nil
+}
+
+func (c *CachedRepository) PubListSync(ctx context.Context, offset int, limit int) ([]domain.Question, error) {
+	list, err := c.dao.PubListSync(ctx, offset, limit)
+	if err != nil {
+		return nil, err
+	}
+	qids := slice.Map(list, func(idx int, src dao.PublishQuestion) int64 {
+		return src.Id
+	})
+	qlMap, err := c.dao.PubQuestionElementList(ctx, qids)
+	if err != nil {
+		return nil, err
+	}
+	return slice.Map(list, func(idx int, src dao.PublishQuestion) domain.Question {
+		pubEles := qlMap[src.Id]
+		eles := slice.Map(pubEles, func(idx int, src dao.PublishAnswerElement) dao.AnswerElement {
+			return dao.AnswerElement(src)
+		})
+		return c.toDomainWithAnswer(dao.Question(src),eles)
+	}), nil
 }
 
 func (c *CachedRepository) PubCount(ctx context.Context, biz string) (int64, error) {
@@ -190,7 +232,6 @@ func (c *CachedRepository) Create(ctx context.Context, question *domain.Question
 }
 
 func (c *CachedRepository) Sync(ctx context.Context, que *domain.Question) (int64, error) {
-	// 理论上来说要更新缓存，但是我懒得写了
 	q, eles := c.toEntity(que)
 	id, err := c.dao.Sync(ctx, q, eles)
 	if err != nil {

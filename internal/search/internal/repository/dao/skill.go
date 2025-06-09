@@ -53,13 +53,13 @@ type Skill struct {
 
 type skillElasticDAO struct {
 	client *elastic.Client
-	metas  map[string]Col
+	metas  map[string]FieldConfig
 }
 
 func NewSkillElasticDAO(client *elastic.Client) SkillDAO {
 	return &skillElasticDAO{
 		client: client,
-		metas: map[string]Col{
+		metas: map[string]FieldConfig{
 			"name": {
 				Name:  "name",
 				Boost: skillNameBoost,

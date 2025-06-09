@@ -1,6 +1,8 @@
 module github.com/ecodeclub/webook
 
-go 1.22.5
+go 1.23.0
+
+toolchain go1.24.1
 
 require (
 	github.com/bwmarrin/snowflake v0.3.0
@@ -26,7 +28,7 @@ require (
 	github.com/yankeguo/zhipu v0.1.0
 	go.uber.org/mock v0.3.0
 	golang.org/x/net v0.27.0
-	golang.org/x/sync v0.7.0
+	golang.org/x/sync v0.14.0
 	gorm.io/gorm v1.25.1
 )
 
@@ -130,10 +132,10 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.26.0 // indirect
 	golang.org/x/arch v0.7.0 // indirect
-	golang.org/x/crypto v0.25.0 // indirect
+	golang.org/x/crypto v0.38.0 // indirect
 	golang.org/x/exp v0.0.0-20231006140011-7918f672742d // indirect
-	golang.org/x/sys v0.22.0 // indirect
-	golang.org/x/text v0.16.0 // indirect
+	golang.org/x/sys v0.33.0 // indirect
+	golang.org/x/text v0.25.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20230711160842-782d3b101e98 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20230711160842-782d3b101e98 // indirect
 	google.golang.org/grpc v1.58.1 // indirect
