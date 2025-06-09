@@ -41,7 +41,19 @@ func (s *service) GetPubByIDs(ctx context.Context, ids []int64) ([]domain.Case, 
 
 func (s *service) Save(ctx context.Context, ca domain.Case) (int64, error) {
 	ca.Status = domain.UnPublishedStatus
-	return s.repo.Save(ctx, ca)
+	id, err := s.repo.Save(ctx, ca)
+	if err == nil {
+		go func() {
+			cctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+			defer cancel()
+			newCase, cerr := s.getCase(cctx, id)
+			if cerr != nil {
+				return
+			}
+			s.syncCase(cctx, newCase, false)
+		}()
+	}
+	return id, nil
 }
 
 func (s *service) Publish(ctx context.Context, ca domain.Case) (int64, error) {
@@ -55,7 +67,7 @@ func (s *service) Publish(ctx context.Context, ca domain.Case) (int64, error) {
 			if cerr != nil {
 				return
 			}
-			s.syncCase(cctx, newCase)
+			s.syncCase(cctx, newCase, true)
 			s.uploadCase(cctx, newCase)
 		}()
 	}
@@ -142,8 +154,9 @@ func NewService(repo repository.CaseRepo,
 	}
 }
 
-func (s *service) syncCase(ctx context.Context, ca domain.Case) {
+func (s *service) syncCase(ctx context.Context, ca domain.Case, live bool) {
 	evt := event.NewCaseEvent(ca)
+	evt.Live = live
 	err := s.producer.Produce(ctx, evt)
 	if err != nil {
 		s.logger.Error("发送案例内容到搜索失败",

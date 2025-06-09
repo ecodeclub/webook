@@ -16,6 +16,7 @@ const (
 	defaultPageSize  = 10
 	questionIndex    = "question_index"
 	pubQuestionIndex = "pub_question_index"
+	defaultTimeout   = 10 * time.Minute // 默认十分钟
 )
 
 type SearchSyncService interface {
@@ -36,7 +37,7 @@ func NewSearchSyncService(repo repository.Repository, client *elastic.Client) Se
 }
 
 func (s *searchSyncService) SyncAll() {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(),defaultTimeout)
 	defer cancel()
 	var eg errgroup.Group
 	eg.Go(func() error {

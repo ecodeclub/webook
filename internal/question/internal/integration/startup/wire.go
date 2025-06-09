@@ -21,11 +21,9 @@ import (
 
 	"github.com/ecodeclub/ginx/session"
 
-	"github.com/ecodeclub/webook/internal/member"
-
 	"github.com/ecodeclub/webook/internal/ai"
-
 	"github.com/ecodeclub/webook/internal/interactive"
+	"github.com/ecodeclub/webook/internal/member"
 	"github.com/ecodeclub/webook/internal/permission"
 	baguwen "github.com/ecodeclub/webook/internal/question"
 	"github.com/ecodeclub/webook/internal/question/internal/event"
@@ -70,6 +68,7 @@ var moduleSet = wire.NewSet(baguwen.InitQuestionDAO,
 	baguwen.InitQuestionSetDAO,
 	repository.NewQuestionSetRepository,
 	service.NewQuestionSetService,
+	service.NewSearchSyncService,
 	web.NewQuestionSetHandler,
 	initKnowledgeBaseSvc,
 	web.NewKnowledgeBaseHandler,

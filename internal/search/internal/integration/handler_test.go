@@ -1045,7 +1045,7 @@ func (s *HandlerTestSuite) TestSync() {
 			},
 			msg: getCase(s.T()),
 			after: func(t *testing.T) {
-				res := s.getDataFromEs(t, dao.CaseIndexName, "1")
+				res := s.getDataFromEs(t, "pub_case_index", "1")
 				var ans dao.Case
 				err := json.Unmarshal(res.Source, &ans)
 				require.NoError(t, err)
@@ -1419,6 +1419,7 @@ func getCase(t *testing.T) event.SyncEvent {
 	evt := event.SyncEvent{
 		Biz:   "case",
 		BizID: 1,
+		Live:  true,
 	}
 	val := dao.Case{
 		Id:         1,
