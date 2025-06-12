@@ -42,4 +42,4 @@ func (m *MockSearchSyncService) SyncAll() {
 func (mr *MockSearchSyncServiceMockRecorder) SyncAll() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SyncAll", reflect.TypeOf((*MockSearchSyncService)(nil).SyncAll))
-} 
+}

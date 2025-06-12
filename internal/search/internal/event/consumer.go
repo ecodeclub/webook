@@ -56,7 +56,7 @@ func (s *SyncConsumer) Consume(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("解析消息失败: %w", err)
 	}
-	indexName := getIndexName(evt.Biz,evt.Live)
+	indexName := getIndexName(evt.Biz, evt.Live)
 	docId := strconv.Itoa(evt.BizID)
 	err = s.svc.Input(ctx, indexName, docId, evt.Data)
 	if err != nil {
@@ -79,7 +79,7 @@ func (s *SyncConsumer) Stop(_ context.Context) error {
 	return s.consumer.Close()
 }
 
-func getIndexName(biz string,live bool) string {
+func getIndexName(biz string, live bool) string {
 	if live {
 		return fmt.Sprintf("pub_%s_index", strings.ToLower(biz))
 	}

@@ -41,8 +41,15 @@ func InitES(client *elastic.Client) error {
 	defer cancel()
 	var eg errgroup.Group
 	eg.Go(func() error {
+		return tryCreateIndex(ctx, client, PubCaseIndexName, caseIndex)
+	})
+	eg.Go(func() error {
 		return tryCreateIndex(ctx, client, CaseIndexName, caseIndex)
 	})
+	eg.Go(func() error {
+		return tryCreateIndex(ctx, client, PubQuestionIndexName, caseIndex)
+	})
+
 	eg.Go(func() error {
 		return tryCreateIndex(ctx, client, QuestionIndexName, questionIndex)
 	})

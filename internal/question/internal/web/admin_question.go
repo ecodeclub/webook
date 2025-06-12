@@ -29,9 +29,9 @@ type AdminHandler struct {
 	searchSyncService service.SearchSyncService
 }
 
-func NewAdminHandler(svc service.Service,searchSvc service.SearchSyncService) *AdminHandler {
+func NewAdminHandler(svc service.Service, searchSvc service.SearchSyncService) *AdminHandler {
 	return &AdminHandler{
-		svc: svc,
+		svc:               svc,
 		searchSyncService: searchSvc,
 	}
 }

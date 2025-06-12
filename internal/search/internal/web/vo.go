@@ -27,13 +27,26 @@ type SearchReq struct {
 	Limit    int    `json:"limit"`
 	Keywords string `json:"keywords,omitempty"`
 }
+type EsVal struct {
+	Val        string   `json:"val"`
+	Highlights []string `json:"highlights"`
+}
+
+func newEsVal(esval domain.EsVal) EsVal {
+	return EsVal{
+		Val:        esval.Val,
+		Highlights: esval.HighLightVals,
+	}
+}
 
 type Case struct {
 	Id         int64    `json:"id,omitempty"`
 	Uid        int64    `json:"uid,omitempty"`
 	Labels     []string `json:"labels,omitempty"`
 	Title      string   `json:"title,omitempty"`
-	Content    string   `json:"content,omitempty"`
+	Biz        string   `json:"biz,omitempty"`
+	BizID      int64    `json:"bizID,omitempty"`
+	Content    EsVal    `json:"content,omitempty"`
 	GithubRepo string   `json:"githubRepo,omitempty"`
 	GiteeRepo  string   `json:"giteeRepo,omitempty"`
 	Keywords   string   `json:"keywords,omitempty"`
@@ -48,10 +61,12 @@ type Case struct {
 
 type Question struct {
 	ID      int64    `json:"id,omitempty"`
+	Biz     string   `json:"biz,omitempty"`
+	BizID   int64    `json:"bizID,omitempty"`
 	UID     int64    `json:"uid,omitempty"`
 	Title   string   `json:"title,omitempty"`
 	Labels  []string `json:"labels,omitempty"`
-	Content string   `json:"content,omitempty"`
+	Content EsVal    `json:"content,omitempty"`
 	Status  uint8    `json:"status,omitempty"`
 	Answer  Answer   `json:"answer,omitempty"`
 	Utime   string   `json:"utime,omitempty"`
@@ -66,7 +81,7 @@ type Answer struct {
 
 type AnswerElement struct {
 	ID        int64  `json:"id,omitempty"`
-	Content   string `json:"content,omitempty"`
+	Content   EsVal  `json:"content,omitempty"`
 	Keywords  string `json:"keywords,omitempty"`
 	Shorthand string `json:"shorthand,omitempty"`
 	Highlight string `json:"highlight,omitempty"`
@@ -75,7 +90,7 @@ type AnswerElement struct {
 
 type SkillLevel struct {
 	ID        int64   `json:"id,omitempty"`
-	Desc      string  `json:"desc,omitempty"`
+	Desc      EsVal   `json:"desc,omitempty"`
 	Ctime     string  `json:"ctime,omitempty"`
 	Utime     string  `json:"utime,omitempty"`
 	Questions []int64 `json:"questions,omitempty"`
@@ -86,7 +101,7 @@ type Skill struct {
 	ID           int64      `json:"id,omitempty"`
 	Labels       []string   `json:"labels,omitempty"`
 	Name         string     `json:"name,omitempty"`
-	Desc         string     `json:"desc,omitempty"`
+	Desc         EsVal      `json:"desc,omitempty"`
 	Basic        SkillLevel `json:"basic,omitempty"`
 	Intermediate SkillLevel `json:"intermediate,omitempty"`
 	Advanced     SkillLevel `json:"advanced,omitempty"`
@@ -98,7 +113,9 @@ type QuestionSet struct {
 	Id          int64   `json:"id,omitempty"`
 	Uid         int64   `json:"uid,omitempty"`
 	Title       string  `json:"title,omitempty"`
-	Description string  `json:"description,omitempty"`
+	Biz         string  `json:"biz,omitempty"`
+	BizID       int64   `json:"bizID,omitempty"`
+	Description EsVal   `json:"description,omitempty"`
 	Questions   []int64 `json:"questions,omitempty"`
 	Utime       string  `json:"utime,omitempty"`
 }
@@ -118,7 +135,9 @@ func NewSearchResult(res *domain.SearchResult, examMap map[int64]cases.ExamineRe
 			Uid:        oldCase.Uid,
 			Labels:     oldCase.Labels,
 			Title:      oldCase.Title,
-			Content:    oldCase.Content,
+			Content:    newEsVal(oldCase.Content),
+			Biz:        oldCase.Biz,
+			BizID:      oldCase.BizID,
 			GithubRepo: oldCase.GithubRepo,
 			GiteeRepo:  oldCase.GiteeRepo,
 			Keywords:   oldCase.Keywords,
@@ -141,9 +160,11 @@ func NewSearchResult(res *domain.SearchResult, examMap map[int64]cases.ExamineRe
 		newQuestion := Question{
 			ID:      question.ID,
 			UID:     question.UID,
+			Biz:     question.Biz,
+			BizID:   question.BizID,
 			Title:   question.Title,
 			Labels:  question.Labels,
-			Content: question.Content,
+			Content: newEsVal(question.Content),
 			Status:  question.Status,
 			Answer: Answer{
 				Analysis:     NewAnsElement(question.Answer.Analysis),
@@ -161,7 +182,7 @@ func NewSearchResult(res *domain.SearchResult, examMap map[int64]cases.ExamineRe
 			ID:           skill.ID,
 			Labels:       skill.Labels,
 			Name:         skill.Name,
-			Desc:         skill.Desc,
+			Desc:         newEsVal(skill.Desc),
 			Basic:        NewSkillLevel(skill.Basic),
 			Intermediate: NewSkillLevel(skill.Intermediate),
 			Advanced:     NewSkillLevel(skill.Advanced),
@@ -174,8 +195,10 @@ func NewSearchResult(res *domain.SearchResult, examMap map[int64]cases.ExamineRe
 		newQuestionSet := QuestionSet{
 			Id:          oldQuestionSet.Id,
 			Uid:         oldQuestionSet.Uid,
+			Biz:         oldQuestionSet.Biz,
+			BizID:       oldQuestionSet.BizID,
 			Title:       oldQuestionSet.Title,
-			Description: oldQuestionSet.Description,
+			Description: newEsVal(oldQuestionSet.Description),
 			Questions:   oldQuestionSet.Questions,
 			Utime:       oldQuestionSet.Utime.Format(time.DateTime),
 		}
@@ -188,7 +211,7 @@ func NewSearchResult(res *domain.SearchResult, examMap map[int64]cases.ExamineRe
 func NewAnsElement(ele domain.AnswerElement) AnswerElement {
 	return AnswerElement{
 		ID:        ele.ID,
-		Content:   ele.Content,
+		Content:   newEsVal(ele.Content),
 		Keywords:  ele.Keywords,
 		Shorthand: ele.Shorthand,
 		Highlight: ele.Highlight,
@@ -198,7 +221,7 @@ func NewAnsElement(ele domain.AnswerElement) AnswerElement {
 func NewSkillLevel(l domain.SkillLevel) SkillLevel {
 	return SkillLevel{
 		ID:        l.ID,
-		Desc:      l.Desc,
+		Desc:      newEsVal(l.Desc),
 		Ctime:     l.Ctime.Format(time.DateTime),
 		Utime:     l.Utime.Format(time.DateTime),
 		Questions: l.Questions,

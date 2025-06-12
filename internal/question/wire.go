@@ -17,8 +17,9 @@
 package baguwen
 
 import (
-	"github.com/olivere/elastic/v7"
 	"sync"
+
+	"github.com/olivere/elastic/v7"
 
 	"github.com/ecodeclub/ginx/session"
 

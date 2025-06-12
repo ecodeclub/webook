@@ -24,10 +24,7 @@ import (
 )
 
 const (
-	SkillIndexName  = "skill_index"
-	skillNameBoost  = 30
-	skillLabelBoost = 6
-	skillDescBoost  = 2
+	SkillIndexName = "skill_index"
 )
 
 type SkillLevel struct {
@@ -40,69 +37,55 @@ type SkillLevel struct {
 }
 
 type Skill struct {
-	ID           int64      `json:"id"`
-	Labels       []string   `json:"labels"`
-	Name         string     `json:"name"`
-	Desc         string     `json:"desc"`
-	Basic        SkillLevel `json:"basic"`
-	Intermediate SkillLevel `json:"intermediate"`
-	Advanced     SkillLevel `json:"advanced"`
-	Ctime        int64      `json:"ctime"`
-	Utime        int64      `json:"utime"`
+	ID           int64               `json:"id"`
+	Labels       []string            `json:"labels"`
+	Name         string              `json:"name"`
+	Desc         string              `json:"desc"`
+	Basic        SkillLevel          `json:"basic"`
+	Intermediate SkillLevel          `json:"intermediate"`
+	Advanced     SkillLevel          `json:"advanced"`
+	EsHighLights map[string][]string `json:"-"`
+	Ctime        int64               `json:"ctime"`
+	Utime        int64               `json:"utime"`
 }
 
 type skillElasticDAO struct {
-	client *elastic.Client
-	metas  map[string]FieldConfig
+	client  *elastic.Client
+	metas   map[string]FieldConfig
+	builder searchBuilder
 }
 
-func NewSkillElasticDAO(client *elastic.Client) SkillDAO {
+func NewSkillDAO(client *elastic.Client, metas map[string]FieldConfig) SkillDAO {
 	return &skillElasticDAO{
 		client: client,
-		metas: map[string]FieldConfig{
-			"name": {
-				Name:  "name",
-				Boost: skillNameBoost,
-			},
-			"labels": {
-				Name:   "labels",
-				Boost:  skillLabelBoost,
-				IsTerm: true,
-			},
-			"desc": {
-				Name:  "desc",
-				Boost: skillDescBoost,
-			},
-			"basic.desc": {
-				Name: "basic.desc",
-			},
-			"intermediate.desc": {
-				Name: "intermediate.desc",
-			},
-			"advanced.desc": {
-				Name: "advanced.desc",
-			},
-		},
+		metas:  metas,
 	}
-
 }
-
 func (s *skillElasticDAO) SearchSkill(ctx context.Context, offset, limit int, queryMetas []domain.QueryMeta) ([]Skill, error) {
-
-	query := elastic.NewBoolQuery().Should(buildCols(s.metas, queryMetas)...)
-	resp, err := s.client.Search(SkillIndexName).
+	cols, highlights := s.builder.build(s.metas, queryMetas)
+	query := elastic.NewBoolQuery().Must(
+		elastic.NewBoolQuery().Should(cols...))
+	builder := s.client.Search(SkillIndexName).
 		From(offset).
-		Size(limit).Query(query).Do(ctx)
+		Size(limit).
+		Query(query)
+	if len(highlights) > 0 {
+		builder = builder.Highlight(elastic.NewHighlight().Fields(highlights...))
+	}
+	resp, err := builder.Do(ctx)
 	if err != nil {
 		return nil, err
 	}
 	res := make([]Skill, 0, len(resp.Hits.Hits))
 	for _, hit := range resp.Hits.Hits {
-		var ele Skill
+		var (
+			ele Skill
+		)
 		err = json.Unmarshal(hit.Source, &ele)
 		if err != nil {
 			return nil, err
 		}
+		ele.EsHighLights = getEsHighLights(hit.Highlight)
 		res = append(res, ele)
 	}
 	return res, nil

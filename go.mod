@@ -14,6 +14,7 @@ require (
 	github.com/gin-contrib/cors v1.5.0
 	github.com/gin-gonic/gin v1.9.1
 	github.com/go-sql-driver/mysql v1.6.0
+	github.com/golang/mock v1.4.4
 	github.com/google/wire v0.6.0
 	github.com/gotomicro/ego v1.1.19
 	github.com/lithammer/shortuuid/v4 v4.0.0

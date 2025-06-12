@@ -82,7 +82,7 @@ func (c *CachedRepository) ListSync(ctx context.Context, offset int, limit int) 
 	}
 	return slice.Map(list, func(idx int, src dao.Question) domain.Question {
 		eles := qlMap[src.Id]
-		return c.toDomainWithAnswer(src,eles)
+		return c.toDomainWithAnswer(src, eles)
 	}), nil
 }
 
@@ -103,7 +103,7 @@ func (c *CachedRepository) PubListSync(ctx context.Context, offset int, limit in
 		eles := slice.Map(pubEles, func(idx int, src dao.PublishAnswerElement) dao.AnswerElement {
 			return dao.AnswerElement(src)
 		})
-		return c.toDomainWithAnswer(dao.Question(src),eles)
+		return c.toDomainWithAnswer(dao.Question(src), eles)
 	}), nil
 }
 

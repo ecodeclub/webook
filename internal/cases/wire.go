@@ -3,8 +3,9 @@
 package cases
 
 import (
-	"github.com/olivere/elastic/v7"
 	"sync"
+
+	"github.com/olivere/elastic/v7"
 
 	"github.com/ecodeclub/ecache"
 	"github.com/ecodeclub/webook/internal/cases/internal/repository/cache"

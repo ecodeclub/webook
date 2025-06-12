@@ -29,3 +29,9 @@ func InitHandler(caModule *cases.Module) (*web.Handler, error) {
 		wire.FieldsOf(new(*baguwen.Module), "Hdl"))
 	return new(web.Handler), nil
 }
+
+func InitAdminHandler(caModule *cases.Module) (*web.AdminHandler, error) {
+	wire.Build(testioc.BaseSet, baguwen.InitModule,
+		wire.FieldsOf(new(*baguwen.Module), "AdminHandler"))
+	return new(web.AdminHandler), nil
+}

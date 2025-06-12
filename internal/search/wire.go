@@ -20,6 +20,8 @@ import (
 	"context"
 	"sync"
 
+	"github.com/ecodeclub/webook/internal/search/ioc"
+
 	"github.com/ecodeclub/webook/internal/cases"
 
 	"github.com/ecodeclub/mq-api"
@@ -33,13 +35,47 @@ import (
 	"github.com/olivere/elastic/v7"
 )
 
+// 初始化adminHandler
+
+func initAdminHandler(es *elastic.Client) *AdminHandler {
+	caDAO := ioc.InitAdminCaseDAO(es)
+	questionDAO := ioc.InitAdminQuestionDAO(es)
+	questionSetDAO := ioc.InitAdminQuestionSetDAO(es)
+	skillDAO := ioc.InitAdminSkillDAO(es)
+	caRepo := repository.NewCaseRepo(caDAO)
+	questionRepo := repository.NewQuestionRepo(questionDAO)
+	questionSetRepo := repository.NewQuestionSetRepo(questionSetDAO)
+	skillRepo := repository.NewSKillRepo(skillDAO)
+	adminSvc := service.NewSearchSvc(questionRepo, questionSetRepo, skillRepo, caRepo)
+	return web.NewAdminHandler(adminSvc)
+}
+
+// 初始化c端handler
+var HandlerSet = wire.NewSet(
+	ioc.InitCaseDAO,
+	ioc.InitQuestionDAO,
+	ioc.InitQuestionSetDAO,
+	ioc.InitSkillDAO,
+	repository.NewCaseRepo,
+	repository.NewQuestionRepo,
+	repository.NewQuestionSetRepo,
+	repository.NewSKillRepo,
+	service.NewSearchSvc,
+	web.NewHandler)
+
+// 初始化syncSvc
+var SyncSvcSet = wire.NewSet(
+	InitAnyRepo,
+	InitSyncSvc,
+)
+
 func InitModule(es *elastic.Client, q mq.MQ, caModule *cases.Module) (*Module, error) {
 	wire.Build(
-		InitSearchSvc,
+		initAdminHandler,
+		wire.FieldsOf(new(*cases.Module), "ExamineSvc"),
+		HandlerSet,
 		InitSyncSvc,
 		initSyncConsumer,
-		wire.FieldsOf(new(*cases.Module), "ExamineSvc"),
-		web.NewHandler,
 		wire.Struct(new(Module), "*"),
 	)
 	return new(Module), nil
@@ -56,18 +92,6 @@ func InitIndexOnce(es *elastic.Client) {
 	})
 }
 
-func InitRepo(es *elastic.Client) (repository.CaseRepo, repository.QuestionRepo, repository.QuestionSetRepo, repository.SkillRepo) {
-	InitIndexOnce(es)
-	questionDao := dao.NewQuestionDAO(es)
-	caseDao := dao.NewCaseElasticDAO(es)
-	questionSetDao := dao.NewQuestionSetDAO(es)
-	skillDao := dao.NewSkillElasticDAO(es)
-	questionRepo := repository.NewQuestionRepo(questionDao)
-	caseRepo := repository.NewCaseRepo(caseDao)
-	questionSetRepo := repository.NewQuestionSetRepo(questionSetDao)
-	skillRepo := repository.NewSKillRepo(skillDao)
-	return caseRepo, questionRepo, questionSetRepo, skillRepo
-}
 func InitAnyRepo(es *elastic.Client) repository.AnyRepo {
 	InitIndexOnce(es)
 	anyDAO := dao.NewAnyEsDAO(es)
@@ -75,14 +99,11 @@ func InitAnyRepo(es *elastic.Client) repository.AnyRepo {
 	return anyRepo
 }
 
-func InitSearchSvc(es *elastic.Client) service.SearchService {
-	caseRepo, questionRepo, questionSetRepo, skillRepo := InitRepo(es)
-	return service.NewSearchSvc(questionRepo, questionSetRepo, skillRepo, caseRepo)
-}
 func InitSyncSvc(es *elastic.Client) service.SyncService {
 	anyRepo := InitAnyRepo(es)
 	return service.NewSyncSvc(anyRepo)
 }
+
 func initSyncConsumer(svc service.SyncService, q mq.MQ) *event.SyncConsumer {
 	c, err := event.NewSyncConsumer(svc, q)
 	if err != nil {
@@ -95,3 +116,4 @@ func initSyncConsumer(svc service.SyncService, q mq.MQ) *event.SyncConsumer {
 type SearchService = service.SearchService
 type SyncService = service.SyncService
 type Handler = web.Handler
+type AdminHandler = web.AdminHandler

@@ -24,13 +24,13 @@ import (
 )
 
 type AdminCaseHandler struct {
-	svc service.Service
+	svc       service.Service
 	searchSvc service.SearchSyncService
 }
 
-func NewAdminCaseHandler(svc service.Service,searchSvc service.SearchSyncService) *AdminCaseHandler {
+func NewAdminCaseHandler(svc service.Service, searchSvc service.SearchSyncService) *AdminCaseHandler {
 	return &AdminCaseHandler{
-		svc: svc,
+		svc:       svc,
 		searchSvc: searchSvc,
 	}
 }

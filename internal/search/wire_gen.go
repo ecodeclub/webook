@@ -17,27 +17,61 @@ import (
 	"github.com/ecodeclub/webook/internal/search/internal/repository/dao"
 	"github.com/ecodeclub/webook/internal/search/internal/service"
 	"github.com/ecodeclub/webook/internal/search/internal/web"
+	"github.com/ecodeclub/webook/internal/search/ioc"
+	"github.com/google/wire"
 	"github.com/olivere/elastic/v7"
 )
 
 // Injectors from wire.go:
 
 func InitModule(es *elastic.Client, q mq.MQ, caModule *cases.Module) (*Module, error) {
-	searchService := InitSearchSvc(es)
-	syncService := InitSyncSvc(es)
-	syncConsumer := initSyncConsumer(syncService, q)
-	examineService := caModule.ExamineSvc
-	handler := web.NewHandler(searchService, examineService)
+	questionDAO := ioc.InitQuestionDAO(es)
+	questionRepo := repository.NewQuestionRepo(questionDAO)
+	questionSetDAO := ioc.InitQuestionSetDAO(es)
+	questionSetRepo := repository.NewQuestionSetRepo(questionSetDAO)
+	skillDAO := ioc.InitSkillDAO(es)
+	skillRepo := repository.NewSKillRepo(skillDAO)
+	caseDAO := ioc.InitCaseDAO(es)
+	caseRepo := repository.NewCaseRepo(caseDAO)
+	v := service.NewSearchSvc(questionRepo, questionSetRepo, skillRepo, caseRepo)
+	v2 := InitSyncSvc(es)
+	syncConsumer := initSyncConsumer(v2, q)
+	v3 := caModule.ExamineSvc
+	v4 := web.NewHandler(v, v3)
+	v5 := initAdminHandler(es)
 	module := &Module{
-		SearchSvc: searchService,
-		SyncSvc:   syncService,
-		c:         syncConsumer,
-		Hdl:       handler,
+		SearchSvc:    v,
+		SyncSvc:      v2,
+		c:            syncConsumer,
+		Hdl:          v4,
+		AdminHandler: v5,
 	}
 	return module, nil
 }
 
 // wire.go:
+
+func initAdminHandler(es *elastic.Client) *AdminHandler {
+	caDAO := ioc.InitAdminCaseDAO(es)
+	questionDAO := ioc.InitAdminQuestionDAO(es)
+	questionSetDAO := ioc.InitAdminQuestionSetDAO(es)
+	skillDAO := ioc.InitAdminSkillDAO(es)
+	caRepo := repository.NewCaseRepo(caDAO)
+	questionRepo := repository.NewQuestionRepo(questionDAO)
+	questionSetRepo := repository.NewQuestionSetRepo(questionSetDAO)
+	skillRepo := repository.NewSKillRepo(skillDAO)
+	adminSvc := service.NewSearchSvc(questionRepo, questionSetRepo, skillRepo, caRepo)
+	return web.NewAdminHandler(adminSvc)
+}
+
+// 初始化c端handler
+var HandlerSet = wire.NewSet(ioc.InitCaseDAO, ioc.InitQuestionDAO, ioc.InitQuestionSetDAO, ioc.InitSkillDAO, repository.NewCaseRepo, repository.NewQuestionRepo, repository.NewQuestionSetRepo, repository.NewSKillRepo, service.NewSearchSvc, web.NewHandler)
+
+// 初始化syncSvc
+var SyncSvcSet = wire.NewSet(
+	InitAnyRepo,
+	InitSyncSvc,
+)
 
 var daoOnce = sync.Once{}
 
@@ -50,29 +84,11 @@ func InitIndexOnce(es *elastic.Client) {
 	})
 }
 
-func InitRepo(es *elastic.Client) (repository.CaseRepo, repository.QuestionRepo, repository.QuestionSetRepo, repository.SkillRepo) {
-	InitIndexOnce(es)
-	questionDao := dao.NewQuestionDAO(es)
-	caseDao := dao.NewCaseElasticDAO(es)
-	questionSetDao := dao.NewQuestionSetDAO(es)
-	skillDao := dao.NewSkillElasticDAO(es)
-	questionRepo := repository.NewQuestionRepo(questionDao)
-	caseRepo := repository.NewCaseRepo(caseDao)
-	questionSetRepo := repository.NewQuestionSetRepo(questionSetDao)
-	skillRepo := repository.NewSKillRepo(skillDao)
-	return caseRepo, questionRepo, questionSetRepo, skillRepo
-}
-
 func InitAnyRepo(es *elastic.Client) repository.AnyRepo {
 	InitIndexOnce(es)
 	anyDAO := dao.NewAnyEsDAO(es)
 	anyRepo := repository.NewAnyRepo(anyDAO)
 	return anyRepo
-}
-
-func InitSearchSvc(es *elastic.Client) service.SearchService {
-	caseRepo, questionRepo, questionSetRepo, skillRepo := InitRepo(es)
-	return service.NewSearchSvc(questionRepo, questionSetRepo, skillRepo, caseRepo)
 }
 
 func InitSyncSvc(es *elastic.Client) service.SyncService {
@@ -94,3 +110,5 @@ type SearchService = service.SearchService
 type SyncService = service.SyncService
 
 type Handler = web.Handler
+
+type AdminHandler = web.AdminHandler

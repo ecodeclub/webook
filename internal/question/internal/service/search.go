@@ -3,9 +3,10 @@ package service
 import (
 	"context"
 	"fmt"
+	"time"
+
 	"github.com/gotomicro/ego/core/elog"
 	"golang.org/x/sync/errgroup"
-	"time"
 
 	"github.com/ecodeclub/webook/internal/question/internal/event"
 	"github.com/ecodeclub/webook/internal/question/internal/repository"
@@ -37,7 +38,7 @@ func NewSearchSyncService(repo repository.Repository, client *elastic.Client) Se
 }
 
 func (s *searchSyncService) SyncAll() {
-	ctx, cancel := context.WithTimeout(context.Background(),defaultTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), defaultTimeout)
 	defer cancel()
 	var eg errgroup.Group
 	eg.Go(func() error {

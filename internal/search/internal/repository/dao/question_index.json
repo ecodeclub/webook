@@ -7,6 +7,8 @@
       "labels": { "type": "keyword" },
       "content": { "type": "text" },
       "status": { "type": "keyword" },
+      "biz": {"type": "keyword"},
+      "biz_id": {"type": "long"},
       "answer": {
         "properties": {
           "analysis": {

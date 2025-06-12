@@ -10,6 +10,8 @@
       "title": {
         "type": "text"
       },
+      "biz": {"type": "keyword"},
+      "biz_id": {"type": "long"},
       "description": {
         "type": "text"
       },

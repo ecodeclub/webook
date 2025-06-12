@@ -6,9 +6,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/ecodeclub/webook/internal/question/internal/repository/cache"
 	"testing"
 	"time"
+
+	"github.com/ecodeclub/webook/internal/question/internal/repository/cache"
 
 	"github.com/ecodeclub/webook/internal/question/internal/domain"
 	"github.com/ecodeclub/webook/internal/question/internal/event"
