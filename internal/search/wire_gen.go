@@ -8,8 +8,6 @@ package search
 
 import (
 	"context"
-	"sync"
-
 	"github.com/ecodeclub/mq-api"
 	"github.com/ecodeclub/webook/internal/cases"
 	"github.com/ecodeclub/webook/internal/search/internal/event"
@@ -20,6 +18,7 @@ import (
 	"github.com/ecodeclub/webook/internal/search/ioc"
 	"github.com/google/wire"
 	"github.com/olivere/elastic/v7"
+	"sync"
 )
 
 // Injectors from wire.go:
@@ -52,6 +51,7 @@ func InitModule(es *elastic.Client, q mq.MQ, caModule *cases.Module) (*Module, e
 // wire.go:
 
 func initAdminHandler(es *elastic.Client) *AdminHandler {
+	InitIndexOnce(es)
 	caDAO := ioc.InitAdminCaseDAO(es)
 	questionDAO := ioc.InitAdminQuestionDAO(es)
 	questionSetDAO := ioc.InitAdminQuestionSetDAO(es)

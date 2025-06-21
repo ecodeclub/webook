@@ -17,10 +17,14 @@
         "type": "long"
       },
       "title": {
-        "type": "text"
+        "type": "text",
+        "analyzer": "ik_max_word",
+        "search_analyzer": "ik_smart"
       },
       "content": {
-        "type": "text"
+        "type": "text",
+        "analyzer": "ik_max_word",
+        "search_analyzer": "ik_smart"
       },
       "github_repo": {
         "type": "keyword"
@@ -29,16 +33,24 @@
         "type": "keyword"
       },
       "keywords": {
-        "type": "text"
+        "type": "text",
+        "analyzer": "ik_max_word",
+        "search_analyzer": "ik_smart"
       },
       "shorthand": {
-        "type": "text"
+        "type": "text",
+        "analyzer": "ik_max_word",
+        "search_analyzer": "ik_smart"
       },
       "highlight": {
-        "type": "text"
+        "type": "text",
+        "analyzer": "ik_max_word",
+        "search_analyzer": "ik_smart"
       },
       "guidance": {
-        "type": "text"
+        "type": "text",
+        "analyzer": "ik_max_word",
+        "search_analyzer": "ik_smart"
       },
       "status": {
         "type": "integer"

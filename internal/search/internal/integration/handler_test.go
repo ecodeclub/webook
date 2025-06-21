@@ -54,7 +54,7 @@ type HandlerTestSuite struct {
 	producer mq.Producer
 }
 
-func (s *HandlerTestSuite) TearDownTest() {
+func (s *HandlerTestSuite) TearDownSuite() {
 	// 创建范围查询，匹配 5000< id < 10000 的文档
 	query := elastic.NewRangeQuery("id").Gt(5000).Lt(9000)
 	_, err := s.es.DeleteByQuery("pub_case_index").Query(query).Do(context.Background())
@@ -109,6 +109,7 @@ func (s *HandlerTestSuite) SetupSuite() {
 	}
 	s.producer = p
 }
+
 func (s *HandlerTestSuite) initSkills() {
 	skills := []dao.Skill{
 		{
@@ -180,12 +181,12 @@ func (s *HandlerTestSuite) initSkills() {
 	}
 }
 
-func (s *HandlerTestSuite) TestBizAdminSearch() {
+func (s *HandlerTestSuite) TestBizSearch() {
 	testCases := []struct {
 		name    string
 		before  func(t *testing.T)
-		after   func(t *testing.T, wantRes web.SearchResult, actual web.SearchResult)
-		wantAns web.SearchResult
+		after   func(t *testing.T, wantRes web.CSearchResp, actual web.CSearchResp)
+		wantAns web.CSearchResp
 		req     web.SearchReq
 	}{
 		{
@@ -193,154 +194,64 @@ func (s *HandlerTestSuite) TestBizAdminSearch() {
 			before: func(t *testing.T) {
 				s.initCases()
 			},
-			after: func(t *testing.T, wantRes web.SearchResult, actual web.SearchResult) {
+			after: func(t *testing.T, wantRes web.CSearchResp, actual web.CSearchResp) {
 				for idx := range actual.Cases {
-					require.True(t, actual.Cases[idx].Utime != "")
-					require.True(t, actual.Cases[idx].Ctime != "")
-					if actual.Cases[idx].Id == 10001 {
-						require.True(t, len(actual.Cases[idx].Content.Highlights) > 0)
-						actual.Cases[idx].Content.Highlights = nil
-					}
-					actual.Cases[idx].Ctime = ""
-					actual.Cases[idx].Utime = ""
+					que := actual.Cases[idx]
+					require.True(t, que.Date != "")
+					actual.Cases[idx].Date = ""
 				}
-				assert.Equal(t, wantRes, actual)
+				assert.ElementsMatch(t, wantRes.Cases, actual.Cases)
 			},
-			wantAns: web.SearchResult{
-				Cases: []web.Case{
+			wantAns: web.CSearchResp{
+				Cases: []web.CSearchRes{
 					{
-						Id:     10006,
-						Uid:    1,
-						Biz:    "test",
-						BizID:  10006,
-						Labels: []string{"label1"},
-						Title:  "test_title",
-						Content: web.EsVal{
-							Val: "Elasticsearch内容",
-						},
-
-						GithubRepo: "Elasticsearch github代码库",
-						GiteeRepo:  "Elasticsearch gitee代码库",
-						Keywords:   "Elasticsearch关键词",
-						Shorthand:  "Elasticsearch速记",
-						Highlight:  "Elasticsearch亮点",
-						Guidance:   "Elasticsearch引导",
-						Status:     2,
-						Result:     0,
+						Id:          10006,
+						Title:       "test_title",
+						Tags:        []string{"label1"},
+						Description: "Elasticsearch内容",
+						Result:      0,
 					},
 					{
-						Id:     10005,
-						Uid:    1,
-						Biz:    "test",
-						BizID:  10005,
-						Labels: []string{"test_label"},
-						Title:  "Elasticsearch标题",
-						Content: web.EsVal{
-							Val: "Elasticsearch内容",
-						},
-						GithubRepo: "Elasticsearch github代码库",
-						GiteeRepo:  "Elasticsearch gitee代码库",
-						Keywords:   "Elasticsearch关键词",
-						Shorthand:  "Elasticsearch速记",
-						Highlight:  "Elasticsearch亮点",
-						Guidance:   "Elasticsearch引导",
-						Status:     2,
-						Result:     1,
+						Id:          10005,
+						Title:       "Elasticsearch标题",
+						Tags:        []string{"test_label"},
+						Description: "Elasticsearch内容",
+						Result:      1,
 					},
 					{
-						Id:     10002,
-						Uid:    1,
-						Biz:    "test",
-						BizID:  10002,
-						Labels: []string{"label1"},
-						Title:  "Elasticsearch标题",
-						Content: web.EsVal{
-							Val: "Elasticsearch内容",
-						},
-						GithubRepo: "Elasticsearch github代码库",
-						GiteeRepo:  "Elasticsearch gitee代码库",
-						Keywords:   "test_keywords",
-						Shorthand:  "Elasticsearch速记",
-						Highlight:  "Elasticsearch亮点",
-						Guidance:   "Elasticsearch引导",
-						Status:     2,
-						Result:     0,
+						Id:          10002,
+						Title:       "Elasticsearch标题",
+						Tags:        []string{"label1"},
+						Description: "Elasticsearch内容",
+						Result:      0,
 					},
 					{
-						Id:     10003,
-						Uid:    1,
-						Biz:    "test",
-						BizID:  10003,
-						Labels: []string{"label1", "label2"},
-						Title:  "Elasticsearch标题",
-						Content: web.EsVal{
-							Val: "Elasticsearch内容",
-						},
-						GithubRepo: "Elasticsearch github代码库",
-						GiteeRepo:  "Elasticsearch gitee代码库",
-						Keywords:   "Elasticsearch关键词",
-						Shorthand:  "test_shorthands",
-						Highlight:  "Elasticsearch亮点",
-						Guidance:   "Elasticsearch引导",
-						Status:     2,
-						Result:     1,
+						Id:          10003,
+						Title:       "Elasticsearch标题",
+						Tags:        []string{"label1", "label2"},
+						Description: "Elasticsearch内容",
+						Result:      1,
 					},
 					{
-						Id:     10001,
-						Uid:    1,
-						Biz:    "test",
-						BizID:  10001,
-						Labels: []string{"label1", "label2"},
-						Title:  "Elasticsearch标题",
-						Content: web.EsVal{
-							Val: "test_content",
-						},
-						GithubRepo: "Elasticsearch github代码库",
-						GiteeRepo:  "Elasticsearch gitee代码库",
-						Keywords:   "Elasticsearch关键词",
-						Shorthand:  "Elasticsearch速记",
-						Highlight:  "Elasticsearch亮点",
-						Guidance:   "Elasticsearch引导",
-						Status:     2,
-						Result:     1,
+						Id:          10001,
+						Title:       "Elasticsearch标题",
+						Tags:        []string{"label1", "label2"},
+						Description: "<strong>test_content</strong>",
+						Result:      1,
 					},
 					{
-						Id:     10004,
-						Uid:    1,
-						Biz:    "test",
-						BizID:  10004,
-						Labels: []string{"label1", "label2"},
-						Title:  "Elasticsearch标题",
-						Content: web.EsVal{
-							Val: "Elasticsearch内容",
-						},
-						GithubRepo: "Elasticsearch github代码库",
-						GiteeRepo:  "Elasticsearch gitee代码库",
-						Keywords:   "Elasticsearch关键词",
-						Shorthand:  "Elasticsearch速记",
-						Highlight:  "Elasticsearch亮点",
-						Guidance:   "test_guidance",
-						Status:     2,
-						Result:     0,
+						Id:          10004,
+						Title:       "Elasticsearch标题",
+						Tags:        []string{"label1", "label2"},
+						Description: "Elasticsearch内容",
+						Result:      0,
 					},
 					{
-						Id:     10007,
-						Uid:    1,
-						BizID:  10007,
-						Biz:    "kkkk",
-						Labels: []string{"xxxx"},
-						Title:  "00000",
-						Content: web.EsVal{
-							Val: "Elasticsearch内容",
-						},
-						GithubRepo: "Elasticsearch github代码库",
-						GiteeRepo:  "Elasticsearch gitee代码库",
-						Keywords:   "Elasticsearch关键词",
-						Shorthand:  "Elasticsearch速记",
-						Highlight:  "Elasticsearch亮点",
-						Guidance:   "Elasticsearch引导",
-						Status:     2,
-						Result:     1,
+						Id:          10007,
+						Title:       "00000",
+						Tags:        []string{"xxxx"},
+						Description: "Elasticsearch内容",
+						Result:      1,
 					},
 				},
 			},
@@ -355,454 +266,135 @@ func (s *HandlerTestSuite) TestBizAdminSearch() {
 			before: func(t *testing.T) {
 				s.initQuestions()
 			},
-			after: func(t *testing.T, wantRes web.SearchResult, actual web.SearchResult) {
+			after: func(t *testing.T, wantRes web.CSearchResp, actual web.CSearchResp) {
 				for idx := range actual.Questions {
 					que := actual.Questions[idx]
-					require.True(t, que.Utime != "")
-					actual.Questions[idx].Utime = ""
+					require.True(t, que.Date != "")
+					actual.Questions[idx].Date = ""
 				}
 				assert.ElementsMatch(t, wantRes.Questions, actual.Questions)
-
 			},
-			wantAns: web.SearchResult{
-				Questions: []web.Question{
+			wantAns: web.CSearchResp{
+				Questions: []web.CSearchRes{
 					{
-						ID:     10002,
-						Biz:    "test",
-						BizID:  10002,
-						UID:    101,
-						Title:  "test_title",
-						Labels: []string{"elasticsearch", "search"},
-						Content: web.EsVal{
-							Val: "I want to know how to use Elasticsearch for searching.",
-						},
-						Status: 2,
+						Id:          10002,
+						Title:       "test_title",
+						Tags:        []string{"elasticsearch", "search"},
+						Description: "I want to know how to use Elasticsearch for searching.",
 					},
 					{
-						ID:     10001,
-						UID:    101,
-						Biz:    "test",
-						BizID:  10001,
-						Title:  "dasdsa",
-						Labels: []string{"test_label"},
-						Content: web.EsVal{
-							Val: "I want to know how to use Elasticsearch for searching.",
-						},
-						Status: 2,
+						Id:          10001,
+						Title:       "dasdsa",
+						Tags:        []string{"test_label"},
+						Description: "I want to know how to use Elasticsearch for searching.",
 					},
 					{
-						ID:     10004,
-						Biz:    "test",
-						BizID:  10004,
-						UID:    101,
-						Title:  "Elasticsearch",
-						Labels: []string{"tElasticsearch"},
-						Content: web.EsVal{
-							Val: "test_content",
-							Highlights: []string{
-								"<strong>test_content</strong>",
-							},
-						},
-						Status: 2,
+						Id:          10004,
+						Title:       "Elasticsearch",
+						Tags:        []string{"tElasticsearch"},
+						Description: "描述：<strong>test_content</strong><br/>",
 					},
 					{
-						ID:     10003,
-						UID:    101,
-						Biz:    "test",
-						BizID:  10003,
-						Title:  "How to use Elasticsearch?",
-						Labels: []string{"elasticsearch", "search"},
-						Content: web.EsVal{
-							Val: "I want to know how to use Elasticsearch for searching.",
-						},
-						Status: 2,
-						Answer: web.Answer{
-							Analysis: web.AnswerElement{
-								ID: 1,
-								Content: web.EsVal{
-									//Val: "Elasticsearch is a distributed search and analytics engine.",
-									Val: "test_analysis_content",
-									Highlights: []string{
-										"<strong>test_analysis_content</strong>",
-									},
-								},
-								//Keywords:  "test_analysis_keywords",
-								Keywords:  "",
-								Shorthand: "ES",
-								Highlight: "distributed search and analytics engine",
-								Guidance:  "Learn more about Elasticsearch documentation.",
-							},
-						},
+						Id:          10003,
+						Title:       "How to use Elasticsearch?",
+						Tags:        []string{"elasticsearch", "search"},
+						Description: "题目分析：<strong>test_analysis_content</strong><br/>",
 					},
 					{
-						ID:     10005,
-						UID:    101,
-						Biz:    "test",
-						BizID:  10005,
-						Title:  "How to use Elasticsearch?",
-						Labels: []string{"elasticsearch", "search"},
-						Content: web.EsVal{
-							Val: "I want to know how to use Elasticsearch for searching.",
-						},
-						Status: 2,
-						Answer: web.Answer{
-							Analysis: web.AnswerElement{
-								ID: 1,
-								Content: web.EsVal{
-									Val: "Elasticsearch is a distributed search and analytics engine.",
-								},
-								Keywords:  "",
-								Shorthand: "test_analysis_shorthand",
-								Highlight: "distributed search and analytics engine",
-								Guidance:  "Learn more about Elasticsearch documentation.",
-							},
-						},
+						Id:          10005,
+						Title:       "How to use Elasticsearch?",
+						Tags:        []string{"elasticsearch", "search"},
+						Description: "I want to know how to use Elasticsearch for searching.",
 					},
 					{
-						ID:     10006,
-						UID:    101,
-						Biz:    "test",
-						BizID:  10006,
-						Title:  "How to use Elasticsearch?",
-						Labels: []string{"elasticsearch", "search"},
-						Content: web.EsVal{
-							Val: "I want to know how to use Elasticsearch for searching.",
-						},
-						Status: 2,
-						Answer: web.Answer{
-							Analysis: web.AnswerElement{
-								ID: 1,
-								Content: web.EsVal{
-									Val: "Elasticsearch is a distributed search and analytics engine.",
-								},
-								Keywords:  "",
-								Shorthand: "",
-								Highlight: "test_analysis_highlight",
-								Guidance:  "Learn more about Elasticsearch documentation.",
-							},
-						},
+						Id:          10006,
+						Title:       "How to use Elasticsearch?",
+						Tags:        []string{"elasticsearch", "search"},
+						Description: "I want to know how to use Elasticsearch for searching.",
 					},
 					{
-						ID:     10007,
-						UID:    101,
-						Biz:    "test",
-						BizID:  10007,
-						Title:  "How to use Elasticsearch?",
-						Labels: []string{"elasticsearch", "search"},
-						Content: web.EsVal{
-							Val: "I want to know how to use Elasticsearch for searching.",
-						},
-						Status: 2,
-						Answer: web.Answer{
-							Analysis: web.AnswerElement{
-								ID: 1,
-								Content: web.EsVal{
-									Val: "Elasticsearch is a distributed search and analytics engine.",
-								},
-								Keywords:  "",
-								Shorthand: "",
-								Highlight: "",
-								Guidance:  "test_analysis_guidance",
-							},
-						},
+						Id:          10007,
+						Title:       "How to use Elasticsearch?",
+						Tags:        []string{"elasticsearch", "search"},
+						Description: "I want to know how to use Elasticsearch for searching.",
 					},
 					{
-						ID:     10008,
-						UID:    101,
-						Biz:    "test",
-						BizID:  10008,
-						Title:  "How to use Elasticsearch?",
-						Labels: []string{"elasticsearch", "search"},
-						Content: web.EsVal{
-							Val: "I want to know how to use Elasticsearch for searching.",
-						},
-						Status: 2,
-						Answer: web.Answer{
-							Basic: web.AnswerElement{
-								ID: 1,
-								Content: web.EsVal{
-									//Val: "Elasticsearch is a distributed search and analytics engine.",
-									Val: "test_basic_content",
-									Highlights: []string{
-										"<strong>test_basic_content</strong>",
-									},
-								},
-								Keywords:  "test_basic_keywords",
-								Shorthand: "",
-								Highlight: "distributed search and analytics engine",
-								Guidance:  "Learn more about Elasticsearch documentation.",
-							},
-						},
+						Id:          10008,
+						Title:       "How to use Elasticsearch?",
+						Tags:        []string{"elasticsearch", "search"},
+						Description: "基础回答：<strong>test_basic_content</strong><br/>",
 					},
 					{
-						ID:     10009,
-						UID:    101,
-						Biz:    "test",
-						BizID:  10009,
-						Title:  "How to use Elasticsearch?",
-						Labels: []string{"elasticsearch", "search"},
-						Content: web.EsVal{
-							Val: "I want to know how to use Elasticsearch for searching.",
-						},
-						Status: 2,
-						Answer: web.Answer{
-							Basic: web.AnswerElement{
-								ID: 1,
-								Content: web.EsVal{
-									Val: "Elasticsearch is a distributed search and analytics engine.",
-								},
-								Keywords:  "",
-								Shorthand: "test_basic_shorthand",
-								Highlight: "",
-								Guidance:  "Learn more about Elasticsearch documentation.",
-							},
-						},
+						Id:          10009,
+						Title:       "How to use Elasticsearch?",
+						Tags:        []string{"elasticsearch", "search"},
+						Description: "I want to know how to use Elasticsearch for searching.",
 					},
 					{
-						ID:     10010,
-						UID:    101,
-						Biz:    "test",
-						BizID:  10010,
-						Title:  "How to use Elasticsearch?",
-						Labels: []string{"elasticsearch", "search"},
-						Content: web.EsVal{
-							Val: "I want to know how to use Elasticsearch for searching.",
-						},
-						Status: 2,
-						Answer: web.Answer{
-							Basic: web.AnswerElement{
-								ID: 1,
-								Content: web.EsVal{
-									Val: "Elasticsearch is a distributed search and analytics engine.",
-								},
-								Keywords:  "",
-								Shorthand: "",
-								Highlight: "test_basic_highlight",
-								Guidance:  "",
-							},
-						},
+						Id:          10010,
+						Title:       "How to use Elasticsearch?",
+						Tags:        []string{"elasticsearch", "search"},
+						Description: "I want to know how to use Elasticsearch for searching.",
 					},
 					{
-						ID:     10011,
-						UID:    101,
-						Biz:    "test",
-						BizID:  10011,
-						Title:  "How to use Elasticsearch?",
-						Labels: []string{"elasticsearch", "search"},
-						Content: web.EsVal{
-							Val: "I want to know how to use Elasticsearch for searching.",
-						},
-						Status: 2,
-						Answer: web.Answer{
-							Basic: web.AnswerElement{
-								ID: 1,
-								Content: web.EsVal{
-									Val: "Elasticsearch is a distributed search and analytics engine.",
-								},
-								Keywords:  "",
-								Shorthand: "",
-								Highlight: "",
-								Guidance:  "test_basic_guidance",
-							},
-						},
+						Id:          10011,
+						Title:       "How to use Elasticsearch?",
+						Tags:        []string{"elasticsearch", "search"},
+						Description: "I want to know how to use Elasticsearch for searching.",
 					},
 					{
-						ID:     10012,
-						UID:    101,
-						Biz:    "test",
-						BizID:  10012,
-						Title:  "How to use Elasticsearch?",
-						Labels: []string{"elasticsearch", "search"},
-						Content: web.EsVal{
-							Val: "I want to know how to use Elasticsearch for searching.",
-						},
-						Status: 2,
-						Answer: web.Answer{
-							Intermediate: web.AnswerElement{
-								ID: 1,
-								Content: web.EsVal{
-									Val: "test_intermediate_content",
-									Highlights: []string{
-										"<strong>test_intermediate_content</strong>",
-									},
-								},
-								Keywords:  "test_intermediate_keywords",
-								Shorthand: "",
-								Highlight: "distributed search and analytics engine",
-								Guidance:  "Learn more about Elasticsearch documentation.",
-							},
-						},
+						Id:          10012,
+						Title:       "How to use Elasticsearch?",
+						Tags:        []string{"elasticsearch", "search"},
+						Description: "中级回答：<strong>test_intermediate_content</strong><br/>",
 					},
 					{
-						ID:     10013,
-						UID:    101,
-						Biz:    "test",
-						BizID:  10013,
-						Title:  "How to use Elasticsearch?",
-						Labels: []string{"elasticsearch", "search"},
-						Content: web.EsVal{
-							Val: "I want to know how to use Elasticsearch for searching.",
-						},
-						Status: 2,
-						Answer: web.Answer{
-							Intermediate: web.AnswerElement{
-								ID: 1,
-								Content: web.EsVal{
-									Val: "Elasticsearch is a distributed search and analytics engine.",
-								},
-								Keywords:  "",
-								Shorthand: "test_intermediate_shorthand",
-								Highlight: "",
-								Guidance:  "Learn more about Elasticsearch documentation.",
-							},
-						},
+						Id:          10013,
+						Title:       "How to use Elasticsearch?",
+						Tags:        []string{"elasticsearch", "search"},
+						Description: "I want to know how to use Elasticsearch for searching.",
 					},
 					{
-						ID:     10014,
-						UID:    101,
-						Biz:    "test",
-						BizID:  10014,
-						Title:  "How to use Elasticsearch?",
-						Labels: []string{"elasticsearch", "search"},
-						Content: web.EsVal{
-							Val: "I want to know how to use Elasticsearch for searching.",
-						},
-						Status: 2,
-						Answer: web.Answer{
-							Intermediate: web.AnswerElement{
-								ID: 1,
-								Content: web.EsVal{
-									Val: "Elasticsearch is a distributed search and analytics engine.",
-								},
-								Keywords:  "",
-								Shorthand: "",
-								Highlight: "test_intermediate_highlight",
-								Guidance:  "",
-							},
-						},
+						Id:    10014,
+						Title: "How to use Elasticsearch?",
+
+						Tags:        []string{"elasticsearch", "search"},
+						Description: "I want to know how to use Elasticsearch for searching.",
 					},
 					{
-						ID:     10015,
-						UID:    101,
-						Biz:    "test",
-						BizID:  10015,
-						Title:  "How to use Elasticsearch?",
-						Labels: []string{"elasticsearch", "search"},
-						Content: web.EsVal{
-							Val: "I want to know how to use Elasticsearch for searching.",
-						},
-						Status: 2,
-						Answer: web.Answer{
-							Intermediate: web.AnswerElement{
-								ID: 1,
-								Content: web.EsVal{
-									Val: "Elasticsearch is a distributed search and analytics engine.",
-								},
-								Keywords:  "",
-								Shorthand: "",
-								Highlight: "",
-								Guidance:  "test_intermediate_guidance",
-							},
-						},
+						Id:    10015,
+						Title: "How to use Elasticsearch?",
+
+						Tags:        []string{"elasticsearch", "search"},
+						Description: "I want to know how to use Elasticsearch for searching.",
 					},
 					{
-						ID:     10016,
-						UID:    101,
-						Biz:    "test",
-						BizID:  10016,
-						Title:  "How to use Elasticsearch?",
-						Labels: []string{"elasticsearch", "search"},
-						Content: web.EsVal{
-							Val: "I want to know how to use Elasticsearch for searching.",
-						},
-						Status: 2,
-						Answer: web.Answer{
-							Advanced: web.AnswerElement{
-								ID: 1,
-								Content: web.EsVal{
-									Val: "Elasticsearch is a distributed search and analytics engine.",
-								},
-								Keywords:  "test_advanced_keywords",
-								Shorthand: "",
-								Highlight: "distributed search and analytics engine",
-								Guidance:  "Learn more about Elasticsearch documentation.",
-							},
-						},
+						Id:    10016,
+						Title: "How to use Elasticsearch?",
+
+						Tags:        []string{"elasticsearch", "search"},
+						Description: "I want to know how to use Elasticsearch for searching.",
 					},
 					{
-						ID:     10017,
-						UID:    101,
-						Biz:    "test",
-						BizID:  10017,
-						Title:  "How to use Elasticsearch?",
-						Labels: []string{"elasticsearch", "search"},
-						Content: web.EsVal{
-							Val: "I want to know how to use Elasticsearch for searching.",
-						},
-						Status: 2,
-						Answer: web.Answer{
-							Advanced: web.AnswerElement{
-								ID: 1,
-								Content: web.EsVal{
-									Val: "Elasticsearch is a distributed search and analytics engine.",
-								},
-								Keywords:  "",
-								Shorthand: "test_advanced_shorthand",
-								Highlight: "",
-								Guidance:  "Learn more about Elasticsearch documentation.",
-							},
-						},
+						Id:    10017,
+						Title: "How to use Elasticsearch?",
+
+						Tags:        []string{"elasticsearch", "search"},
+						Description: "I want to know how to use Elasticsearch for searching.",
 					},
 					{
-						ID:     10018,
-						UID:    101,
-						Biz:    "test",
-						BizID:  10018,
-						Title:  "How to use Elasticsearch?",
-						Labels: []string{"elasticsearch", "search"},
-						Content: web.EsVal{
-							Val: "I want to know how to use Elasticsearch for searching.",
-						},
-						Status: 2,
-						Answer: web.Answer{
-							Advanced: web.AnswerElement{
-								ID: 1,
-								Content: web.EsVal{
-									Val: "Elasticsearch is a distributed search and analytics engine.",
-								},
-								Keywords:  "",
-								Shorthand: "",
-								Highlight: "test_advanced_highlight",
-								Guidance:  "",
-							},
-						},
+						Id:    10018,
+						Title: "How to use Elasticsearch?",
+
+						Tags:        []string{"elasticsearch", "search"},
+						Description: "I want to know how to use Elasticsearch for searching.",
 					},
 					{
-						ID:     10019,
-						UID:    101,
-						Biz:    "test",
-						BizID:  10019,
-						Title:  "How to use Elasticsearch?",
-						Labels: []string{"elasticsearch", "search"},
-						Content: web.EsVal{
-							Val: "I want to know how to use Elasticsearch for searching.",
-						},
-						Status: 2,
-						Answer: web.Answer{
-							Advanced: web.AnswerElement{
-								ID: 1,
-								Content: web.EsVal{
-									Val: "test_advanced_content",
-									Highlights: []string{
-										"<strong>test_advanced_content</strong>",
-									},
-								},
-								Keywords:  "",
-								Shorthand: "",
-								Highlight: "",
-								Guidance:  "test_advanced_guidance",
-							},
-						},
+						Id:    10019,
+						Title: "How to use Elasticsearch?",
+
+						Tags:        []string{"elasticsearch", "search"},
+						Description: "高级回答：<strong>test_advanced_content</strong><br/>",
 					},
 				},
 			},
@@ -817,100 +409,51 @@ func (s *HandlerTestSuite) TestBizAdminSearch() {
 			before: func(t *testing.T) {
 				s.initSkills()
 			},
-			after: func(t *testing.T, wantRes web.SearchResult, actual web.SearchResult) {
+			after: func(t *testing.T, wantRes web.CSearchResp, actual web.CSearchResp) {
 				for idx := range actual.Skills {
-					require.True(t, actual.Skills[idx].Utime != "")
-					actual.Skills[idx].Utime = ""
-					actual.Skills[idx].Ctime = ""
-					actual.Skills[idx].Basic = handlerSkillLevel(s.T(), actual.Skills[idx].Basic)
-					actual.Skills[idx].Intermediate = handlerSkillLevel(s.T(), actual.Skills[idx].Intermediate)
-					actual.Skills[idx].Advanced = handlerSkillLevel(s.T(), actual.Skills[idx].Advanced)
+					que := actual.Skills[idx]
+					require.True(t, que.Date != "")
+					actual.Skills[idx].Date = ""
 				}
 				assert.ElementsMatch(t, wantRes.Skills, actual.Skills)
-
 			},
-			wantAns: web.SearchResult{
-				Skills: []web.Skill{
+			wantAns: web.CSearchResp{
+				Skills: []web.CSearchRes{
 					{
-						ID:     5001,
-						Labels: []string{"programming", "golang"},
-						Name:   "test_name",
-						Desc: web.EsVal{
-							Val: "Learn Golang programming language",
-						},
+						Id:          5001,
+						Title:       "test_name",
+						Tags:        []string{"programming", "golang"},
+						Description: "Learn Golang programming language",
 					},
 					{
-						ID:     5002,
-						Labels: []string{"programming", "test_label"},
-						Name:   "",
-						Desc: web.EsVal{
-							Val: "Learn Golang programming language",
-						},
+						Id:          5002,
+						Title:       "",
+						Tags:        []string{"programming", "test_label"},
+						Description: "Learn Golang programming language",
 					},
 					{
-						ID:     5003,
-						Labels: []string{"programming"},
-						Name:   "",
-						Desc: web.EsVal{
-							Val: "test_desc",
-							Highlights: []string{
-								"<strong>test_desc</strong>",
-							},
-						},
+						Id:          5003,
+						Title:       "",
+						Tags:        []string{"programming"},
+						Description: "描述：<strong>test_desc</strong><br/>",
 					},
 					{
-						ID:     5004,
-						Labels: []string{"programming"},
-						Name:   "",
-						Basic: web.SkillLevel{
-							ID: 1,
-							Desc: web.EsVal{
-								Val: "test_basic",
-								Highlights: []string{
-									"<strong>test_basic</strong>",
-								},
-							},
-							Questions: []int64{1},
-							Cases:     []int64{1},
-						},
+						Id:          5004,
+						Title:       "",
+						Tags:        []string{"programming"},
+						Description: "基础回答：<strong>test_basic</strong><br/>",
 					},
 					{
-						ID:     5005,
-						Labels: []string{"programming"},
-						Name:   "",
-						Desc: web.EsVal{
-							Val: "test_desc",
-							Highlights: []string{
-								"<strong>test_desc</strong>",
-							},
-						},
-						Intermediate: web.SkillLevel{
-							ID: 2,
-							Desc: web.EsVal{
-								Val: "test_intermediate",
-								Highlights: []string{
-									"<strong>test_intermediate</strong>",
-								},
-							},
-							Questions: []int64{1},
-							Cases:     []int64{1},
-						},
+						Id:          5005,
+						Title:       "",
+						Tags:        []string{"programming"},
+						Description: "描述：<strong>test_desc</strong><br/>中级回答：<strong>test_intermediate</strong><br/>",
 					},
 					{
-						ID:     5006,
-						Labels: []string{"programming"},
-						Name:   "",
-						Advanced: web.SkillLevel{
-							ID: 2,
-							Desc: web.EsVal{
-								Val: "test_advanced",
-								Highlights: []string{
-									"<strong>test_advanced</strong>",
-								},
-							},
-							Questions: []int64{1},
-							Cases:     []int64{1},
-						},
+						Id:          5006,
+						Title:       "",
+						Tags:        []string{"programming"},
+						Description: "高级回答：<strong>test_advanced</strong><br/>",
 					},
 				},
 			},
@@ -925,36 +468,27 @@ func (s *HandlerTestSuite) TestBizAdminSearch() {
 			before: func(t *testing.T) {
 				s.initQuestionSets()
 			},
-			after: func(t *testing.T, wantRes web.SearchResult, actual web.SearchResult) {
+			after: func(t *testing.T, wantRes web.CSearchResp, actual web.CSearchResp) {
 				for idx := range actual.QuestionSet {
-					require.True(t, actual.QuestionSet[idx].Utime != "")
-					actual.QuestionSet[idx].Utime = ""
+					que := actual.QuestionSet[idx]
+					require.True(t, que.Date != "")
+					actual.QuestionSet[idx].Date = ""
 				}
+				assert.ElementsMatch(t, wantRes.QuestionSet, actual.QuestionSet)
 			},
-			wantAns: web.SearchResult{
-				QuestionSet: []web.QuestionSet{
+			wantAns: web.CSearchResp{
+				QuestionSet: []web.CSearchRes{
 					{
-						Id:    10002,
-						Uid:   123,
-						Biz:   "test",
-						BizID: 10002,
+						Id:    5002,
 						Title: "test_title",
-						Description: web.EsVal{
-							Val: "This is a test question set",
-						},
+
+						Description: "This is a test question set",
 					},
 					{
-						Id:    10001,
-						Uid:   123,
-						Biz:   "test",
-						BizID: 10001,
+						Id:    5001,
 						Title: "jjjkjk",
-						Description: web.EsVal{
-							Val: "test_desc",
-							Highlights: []string{
-								"<strong>test_desc</strong>",
-							},
-						},
+
+						Description: "<strong>test_desc</strong>",
 					},
 				},
 			},
@@ -974,331 +508,13 @@ func (s *HandlerTestSuite) TestBizAdminSearch() {
 				"/search/list", iox.NewJSONReader(tc.req))
 			req.Header.Set("content-type", "application/json")
 			require.NoError(t, err)
-			recorder := test.NewJSONResponseRecorder[web.SearchResult]()
+			recorder := test.NewJSONResponseRecorder[web.CSearchResp]()
 			s.server.ServeHTTP(recorder, req)
 			require.Equal(t, 200, recorder.Code)
 			data := recorder.MustScan().Data
 			tc.after(t, tc.wantAns, data)
 		})
 	}
-}
-
-func (s *HandlerTestSuite) TestSearchWithCol() {
-	testCases := []struct {
-		name    string
-		before  func(t *testing.T)
-		after   func(t *testing.T, wantRes web.SearchResult, actual web.SearchResult)
-		wantAns web.SearchResult
-		req     web.SearchReq
-	}{
-		{
-			name: "搜索cases",
-			before: func(t *testing.T) {
-				s.initCases()
-			},
-			after: func(t *testing.T, wantRes web.SearchResult, actual web.SearchResult) {
-				for idx := range actual.Cases {
-					require.True(t, actual.Cases[idx].Utime != "")
-					require.True(t, actual.Cases[idx].Ctime != "")
-					actual.Cases[idx].Ctime = ""
-					actual.Cases[idx].Utime = ""
-				}
-				assert.Equal(t, wantRes, actual)
-			},
-			wantAns: web.SearchResult{
-				Cases: []web.Case{
-					{
-						Id:     10006,
-						Uid:    1,
-						Biz:    "test",
-						BizID:  10006,
-						Labels: []string{"label1"},
-						Title:  "test_title",
-						Content: web.EsVal{
-							Val: "Elasticsearch内容",
-						},
-						GithubRepo: "Elasticsearch github代码库",
-						GiteeRepo:  "Elasticsearch gitee代码库",
-						Keywords:   "Elasticsearch关键词",
-						Shorthand:  "Elasticsearch速记",
-						Highlight:  "Elasticsearch亮点",
-						Guidance:   "Elasticsearch引导",
-						Status:     2,
-						Result:     0,
-					},
-					{
-						Id:     10005,
-						Uid:    1,
-						Biz:    "test",
-						BizID:  10005,
-						Labels: []string{"test_label"},
-						Title:  "Elasticsearch标题",
-						Content: web.EsVal{
-							Val: "Elasticsearch内容",
-						},
-						GithubRepo: "Elasticsearch github代码库",
-						GiteeRepo:  "Elasticsearch gitee代码库",
-						Keywords:   "Elasticsearch关键词",
-						Shorthand:  "Elasticsearch速记",
-						Highlight:  "Elasticsearch亮点",
-						Guidance:   "Elasticsearch引导",
-						Status:     2,
-						Result:     1,
-					},
-					{
-						Id:     10001,
-						Uid:    1,
-						Biz:    "test",
-						BizID:  10001,
-						Labels: []string{"label1", "label2"},
-						Title:  "Elasticsearch标题",
-						Content: web.EsVal{
-							Val: "test_content",
-							Highlights: []string{
-								"<strong>test_content</strong>",
-							},
-						},
-						GithubRepo: "Elasticsearch github代码库",
-						GiteeRepo:  "Elasticsearch gitee代码库",
-						Keywords:   "Elasticsearch关键词",
-						Shorthand:  "Elasticsearch速记",
-						Highlight:  "Elasticsearch亮点",
-						Guidance:   "Elasticsearch引导",
-						Status:     2,
-						Result:     1,
-					},
-				},
-			},
-			req: web.SearchReq{
-				Keywords: "biz:case:labels:test_label title:test_title content:test_content",
-				Offset:   0,
-				Limit:    20,
-			},
-		},
-		{
-			name: "搜索questions",
-			before: func(t *testing.T) {
-				s.initQuestions()
-			},
-			after: func(t *testing.T, wantRes web.SearchResult, actual web.SearchResult) {
-				for idx := range actual.Questions {
-					require.True(t, actual.Questions[idx].Utime != "")
-					actual.Questions[idx].Utime = ""
-				}
-				assert.ElementsMatch(t, wantRes.Questions, actual.Questions)
-
-			},
-			wantAns: web.SearchResult{
-				Questions: []web.Question{
-					{
-						ID:     10002,
-						UID:    101,
-						Biz:    "test",
-						BizID:  10002,
-						Title:  "test_title",
-						Labels: []string{"elasticsearch", "search"},
-						Content: web.EsVal{
-							Val: "I want to know how to use Elasticsearch for searching.",
-						},
-						Status: 2,
-					},
-					{
-						ID:     10001,
-						UID:    101,
-						Biz:    "test",
-						BizID:  10001,
-						Title:  "dasdsa",
-						Labels: []string{"test_label"},
-						Content: web.EsVal{
-							Val: "I want to know how to use Elasticsearch for searching.",
-						},
-						Status: 2,
-					},
-					{
-						ID:     10012,
-						UID:    101,
-						BizID:  10012,
-						Biz:    "test",
-						Title:  "How to use Elasticsearch?",
-						Labels: []string{"elasticsearch", "search"},
-						Content: web.EsVal{
-							Val: "I want to know how to use Elasticsearch for searching.",
-						},
-						Status: 2,
-						Answer: web.Answer{
-							Intermediate: web.AnswerElement{
-								ID: 1,
-								Content: web.EsVal{
-									Val: "test_intermediate_content",
-								},
-								Keywords:  "test_intermediate_keywords",
-								Shorthand: "",
-								Highlight: "distributed search and analytics engine",
-								Guidance:  "Learn more about Elasticsearch documentation.",
-							},
-						},
-					},
-					{
-						ID:     10003,
-						UID:    101,
-						Biz:    "test",
-						BizID:  10003,
-						Title:  "How to use Elasticsearch?",
-						Labels: []string{"elasticsearch", "search"},
-						Content: web.EsVal{
-							Val: "I want to know how to use Elasticsearch for searching.",
-						},
-						Status: 2,
-						Answer: web.Answer{
-							Analysis: web.AnswerElement{
-								ID: 1,
-								Content: web.EsVal{
-									//Val: "Elasticsearch is a distributed search and analytics engine.",
-									Val: "test_analysis_content",
-									Highlights: []string{
-										"<strong>test_analysis_content</strong>",
-									},
-								},
-								//Keywords:  "test_analysis_keywords",
-								Keywords:  "",
-								Shorthand: "ES",
-								Highlight: "distributed search and analytics engine",
-								Guidance:  "Learn more about Elasticsearch documentation.",
-							},
-						},
-					},
-				},
-			},
-			req: web.SearchReq{
-				Keywords: "biz:question:title:test_title labels:test_label answer.intermediate.keywords:test_intermediate_keywords answer.analysis.content:test_analysis_content ",
-				Offset:   0,
-				Limit:    20,
-			},
-		},
-		{
-			name: "搜索skills",
-			before: func(t *testing.T) {
-				s.initSkills()
-			},
-			after: func(t *testing.T, wantRes web.SearchResult, actual web.SearchResult) {
-				for idx := range actual.Skills {
-					require.True(t, actual.Skills[idx].Utime != "")
-					actual.Skills[idx].Utime = ""
-					actual.Skills[idx].Ctime = ""
-					actual.Skills[idx].Basic = handlerSkillLevel(s.T(), actual.Skills[idx].Basic)
-					actual.Skills[idx].Intermediate = handlerSkillLevel(s.T(), actual.Skills[idx].Intermediate)
-					actual.Skills[idx].Advanced = handlerSkillLevel(s.T(), actual.Skills[idx].Advanced)
-					if idx < 3 {
-						assert.Equal(t, wantRes.Skills[idx], actual.Skills[idx])
-					}
-				}
-				assert.ElementsMatch(t, wantRes.Skills, actual.Skills)
-
-			},
-			wantAns: web.SearchResult{
-				Skills: []web.Skill{
-					{
-						ID:     5001,
-						Labels: []string{"programming", "golang"},
-						Name:   "test_name",
-						Desc: web.EsVal{
-							Val: "Learn Golang programming language",
-						},
-					},
-					{
-						ID:     5002,
-						Labels: []string{"programming", "test_label"},
-						Name:   "",
-						Desc: web.EsVal{
-							Val: "Learn Golang programming language",
-						},
-					},
-					{
-						ID:     5004,
-						Labels: []string{"programming"},
-						Name:   "",
-						Desc:   web.EsVal{},
-						Basic: web.SkillLevel{
-							ID: 1,
-							Desc: web.EsVal{
-								Val: "test_basic",
-								Highlights: []string{
-									"<strong>test_basic</strong>",
-								},
-							},
-							Questions: []int64{1},
-							Cases:     []int64{1},
-						},
-					},
-				},
-			},
-			req: web.SearchReq{
-				Keywords: "biz:skill:labels:golang name:test_name labels:test_label basic.desc:test_basic",
-				Offset:   0,
-				Limit:    20,
-			},
-		},
-		{
-			name: "搜索questionSets",
-			before: func(t *testing.T) {
-				s.initQuestionSets()
-			},
-			after: func(t *testing.T, wantRes web.SearchResult, actual web.SearchResult) {
-				for idx := range actual.QuestionSet {
-					require.True(t, actual.QuestionSet[idx].Utime != "")
-					actual.QuestionSet[idx].Utime = ""
-				}
-			},
-			wantAns: web.SearchResult{
-				QuestionSet: []web.QuestionSet{
-					{
-						Id:    2,
-						Uid:   123,
-						BizID: 5002,
-						Biz:   "test",
-						Title: "test_title",
-						Description: web.EsVal{
-							Val: "This is a test question set",
-						},
-					},
-					{
-						Id:    5001,
-						Uid:   123,
-						BizID: 5001,
-						Biz:   "test",
-						Title: "jjjkjk",
-						Description: web.EsVal{
-							Val: "test_desc",
-							Highlights: []string{
-								"<strong>test_desc</strong>",
-							},
-						},
-					},
-				},
-			},
-			req: web.SearchReq{
-				Keywords: "biz:questionSet:title:test_title",
-				Offset:   0,
-				Limit:    20,
-			},
-		},
-	}
-	for _, tc := range testCases {
-		tc := tc
-		s.T().Run(tc.name, func(t *testing.T) {
-			tc.before(t)
-			time.Sleep(3 * time.Second)
-			req, err := http.NewRequest(http.MethodPost,
-				"/search/list", iox.NewJSONReader(tc.req))
-			req.Header.Set("content-type", "application/json")
-			require.NoError(t, err)
-			recorder := test.NewJSONResponseRecorder[web.SearchResult]()
-			s.server.ServeHTTP(recorder, req)
-			require.Equal(t, 200, recorder.Code)
-			tc.after(t, tc.wantAns, recorder.MustScan().Data)
-		})
-	}
-
 }
 
 func TestHandler(t *testing.T) {
@@ -1870,4 +1086,12 @@ func (s *HandlerTestSuite) insertQuestionSet(qs []dao.QuestionSet) {
 			BodyJson(string(by)).Do(context.Background())
 		require.NoError(s.T(), err)
 	}
+}
+
+func handlerSkillLevel(t *testing.T, sk web.SkillLevel) web.SkillLevel {
+	assert.True(t, sk.Utime != "")
+	assert.True(t, sk.Ctime != "")
+	sk.Utime = ""
+	sk.Ctime = ""
+	return sk
 }

@@ -83,7 +83,7 @@ func (s *AdminHandlerTestSuite) SetupSuite() {
 	s.producer = p
 }
 
-func (s *AdminHandlerTestSuite) TearDownTest() {
+func (s *AdminHandlerTestSuite) TearDownSuite() {
 	// 创建范围查询，匹配 id > 10000 的文档
 	query := elastic.NewRangeQuery("id").Gt(10000)
 	_, err := s.es.DeleteByQuery("case_index").Query(query).Do(context.Background())
@@ -2391,13 +2391,13 @@ func (s *AdminHandlerTestSuite) initSearchData() {
 	s.insertQuestionSet(qs)
 }
 
-func handlerSkillLevel(t *testing.T, sk web.SkillLevel) web.SkillLevel {
-	assert.True(t, sk.Utime != "")
-	assert.True(t, sk.Ctime != "")
-	sk.Utime = ""
-	sk.Ctime = ""
-	return sk
-}
+//func handlerSkillLevel(t *testing.T, sk web.SkillLevel) web.SkillLevel {
+//	assert.True(t, sk.Utime != "")
+//	assert.True(t, sk.Ctime != "")
+//	sk.Utime = ""
+//	sk.Ctime = ""
+//	return sk
+//}
 
 func TestAdminHandler(t *testing.T) {
 	suite.Run(t, new(AdminHandlerTestSuite))

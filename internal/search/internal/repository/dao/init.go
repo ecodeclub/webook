@@ -47,7 +47,7 @@ func InitES(client *elastic.Client) error {
 		return tryCreateIndex(ctx, client, CaseIndexName, caseIndex)
 	})
 	eg.Go(func() error {
-		return tryCreateIndex(ctx, client, PubQuestionIndexName, caseIndex)
+		return tryCreateIndex(ctx, client, PubQuestionIndexName, questionIndex)
 	})
 
 	eg.Go(func() error {

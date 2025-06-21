@@ -38,6 +38,7 @@ import (
 // 初始化adminHandler
 
 func initAdminHandler(es *elastic.Client) *AdminHandler {
+	InitIndexOnce(es)
 	caDAO := ioc.InitAdminCaseDAO(es)
 	questionDAO := ioc.InitAdminQuestionDAO(es)
 	questionSetDAO := ioc.InitAdminQuestionSetDAO(es)
@@ -74,7 +75,8 @@ func InitModule(es *elastic.Client, q mq.MQ, caModule *cases.Module) (*Module, e
 		initAdminHandler,
 		wire.FieldsOf(new(*cases.Module), "ExamineSvc"),
 		HandlerSet,
-		InitSyncSvc,
+		//InitSyncSvc,
+		SyncSvcSet,
 		initSyncConsumer,
 		wire.Struct(new(Module), "*"),
 	)
