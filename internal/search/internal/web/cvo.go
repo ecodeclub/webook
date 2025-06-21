@@ -2,9 +2,10 @@ package web
 
 import (
 	"fmt"
-	"github.com/ecodeclub/webook/internal/cases"
 	"strings"
 	"time"
+
+	"github.com/ecodeclub/webook/internal/cases"
 
 	"github.com/ecodeclub/webook/internal/search/internal/domain"
 )

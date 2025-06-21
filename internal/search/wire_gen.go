@@ -8,6 +8,8 @@ package search
 
 import (
 	"context"
+	"sync"
+
 	"github.com/ecodeclub/mq-api"
 	"github.com/ecodeclub/webook/internal/cases"
 	"github.com/ecodeclub/webook/internal/search/internal/event"
@@ -18,7 +20,6 @@ import (
 	"github.com/ecodeclub/webook/internal/search/ioc"
 	"github.com/google/wire"
 	"github.com/olivere/elastic/v7"
-	"sync"
 )
 
 // Injectors from wire.go:
