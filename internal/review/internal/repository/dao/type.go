@@ -9,6 +9,7 @@ type Review struct {
 	// 面试题目内容
 	Desc             string
 	Labels           sqlx.JsonColumn[[]string] `gorm:"type:varchar(512)"`
+	Company          string                    `gorm:"type:varchar(512)"` // 面试的公司
 	JD               string                    `gorm:"column:jd;type:text"`
 	JDAnalysis       string                    `gorm:"column:jd_analysis;type:text"`
 	Questions        string                    `gorm:"column:questions;type:text"`

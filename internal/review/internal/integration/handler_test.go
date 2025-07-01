@@ -290,10 +290,11 @@ func (s *TestSuite) TestPubDetail() {
 
 				// 创建原始记录
 				review := dao.Review{
-					ID:    1,
-					Uid:   uid,
-					Title: "已发布的标题",
-					Desc:  "已发布的描述",
+					ID:      1,
+					Uid:     uid,
+					Company: "阿里",
+					Title:   "已发布的标题",
+					Desc:    "已发布的描述",
 					Labels: sqlx.JsonColumn[[]string]{
 						Valid: true,
 						Val:   []string{"已发布的标签"},
@@ -318,6 +319,7 @@ func (s *TestSuite) TestPubDetail() {
 					Uid:              uid,
 					Title:            "已发布的标题",
 					Desc:             "已发布的描述",
+					Company:          "阿里",
 					Labels:           []string{"已发布的标签"},
 					JD:               "已发布的JD",
 					JDAnalysis:       "已发布的JD分析",
@@ -338,6 +340,7 @@ func (s *TestSuite) TestPubDetail() {
 					Desc:             "已发布的描述",
 					Labels:           []string{"已发布的标签"},
 					JD:               "已发布的JD",
+					Company:          "阿里",
 					JDAnalysis:       "已发布的JD分析",
 					Questions:        "已发布的面试问题",
 					QuestionAnalysis: "已发布的问题分析",
@@ -361,6 +364,7 @@ func (s *TestSuite) TestPubDetail() {
 				re := domain.Review{
 					ID:               1,
 					Uid:              uid,
+					Company:          "阿里",
 					Title:            "已发布的标题",
 					Desc:             "已发布的描述",
 					Labels:           []string{"已发布的标签"},
@@ -383,6 +387,7 @@ func (s *TestSuite) TestPubDetail() {
 					Uid:              uid,
 					Title:            "已发布的标题",
 					Desc:             "已发布的描述",
+					Company:          "阿里",
 					Labels:           []string{"已发布的标签"},
 					JD:               "已发布的JD",
 					JDAnalysis:       "已发布的JD分析",
@@ -403,6 +408,7 @@ func (s *TestSuite) TestPubDetail() {
 					Desc:             "已发布的描述",
 					Labels:           []string{"已发布的标签"},
 					JD:               "已发布的JD",
+					Company:          "阿里",
 					JDAnalysis:       "已发布的JD分析",
 					Questions:        "已发布的面试问题",
 					QuestionAnalysis: "已发布的问题分析",
