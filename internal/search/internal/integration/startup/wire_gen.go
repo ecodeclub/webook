@@ -25,3 +25,14 @@ func InitHandler(caModule *cases.Module) (*web.Handler, error) {
 	handler := module.Hdl
 	return handler, nil
 }
+
+func InitAdminHandler(caModule *cases.Module) (*web.AdminHandler, error) {
+	client := testioc.InitES()
+	mq := testioc.InitMQ()
+	module, err := search.InitModule(client, mq, caModule)
+	if err != nil {
+		return nil, err
+	}
+	adminHandler := module.AdminHandler
+	return adminHandler, nil
+}

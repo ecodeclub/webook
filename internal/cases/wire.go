@@ -5,6 +5,8 @@ package cases
 import (
 	"sync"
 
+	"github.com/olivere/elastic/v7"
+
 	"github.com/ecodeclub/ecache"
 	"github.com/ecodeclub/webook/internal/cases/internal/repository/cache"
 
@@ -31,6 +33,7 @@ import (
 func InitModule(db *egorm.Component,
 	intrModule *interactive.Module,
 	aiModule *ai.Module,
+	esClient *elastic.Client,
 	memberModule *member.Module,
 	sp session.Provider,
 	redisCache ecache.Cache,
@@ -47,6 +50,7 @@ func InitModule(db *egorm.Component,
 		service.NewCaseSetService,
 		service.NewService,
 		service.NewLLMExamineService,
+		service.NewCaseSearchSyncService,
 		InitKnowledgeBaseEvt,
 		InitKnowledgeBaseSvc,
 		web.NewHandler,

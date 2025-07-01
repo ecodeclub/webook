@@ -9,7 +9,7 @@ import (
 
 // export EGO_DEBUG=true
 // 记得修改为你的配置文件
-// go run main.go --config=config/config.yaml
+// go run main.go cc
 func main() {
 	// 先触发初始化
 	egoApp := ego.New()

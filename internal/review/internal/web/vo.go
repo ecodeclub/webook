@@ -21,6 +21,7 @@ type Review struct {
 	Resume           string      `json:"resume,omitempty"`
 	Status           uint8       `json:"status,omitempty"`
 	Utime            int64       `json:"utime,omitempty"`
+	Company          string      `json:"company,omitempty"`
 	Interactive      Interactive `json:"interactive,omitempty"`
 }
 type Interactive struct {
@@ -52,6 +53,7 @@ func newReview(re domain.Review) Review {
 		Questions:        re.Questions,
 		QuestionAnalysis: re.QuestionAnalysis,
 		Resume:           re.Resume,
+		Company:          re.Company,
 		Status:           re.Status.ToUint8(),
 		Utime:            re.Utime,
 	}
@@ -64,6 +66,7 @@ func (r Review) toDomain() domain.Review {
 		Desc:             r.Desc,
 		Labels:           r.Labels,
 		JD:               r.JD,
+		Company:          r.Company,
 		JDAnalysis:       r.JDAnalysis,
 		Questions:        r.Questions,
 		QuestionAnalysis: r.QuestionAnalysis,

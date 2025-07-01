@@ -140,5 +140,6 @@ func (r *reviewDao) getUpdateCols() []string {
 		"title",
 		"desc",
 		"labels",
+		"company",
 	}
 }

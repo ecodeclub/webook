@@ -119,6 +119,7 @@ func toDaoReview(review domain.Review) dao.Review {
 		QuestionAnalysis: review.QuestionAnalysis,
 		Status:           review.Status.ToUint8(),
 		Resume:           review.Resume,
+		Company:          review.Company,
 	}
 }
 
@@ -137,5 +138,6 @@ func toDomainReview(review dao.Review) domain.Review {
 		Resume:           review.Resume,
 		Status:           domain.ReviewStatus(review.Status),
 		Utime:            review.Utime,
+		Company:          review.Company,
 	}
 }

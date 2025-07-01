@@ -41,29 +41,52 @@ func (c *CollectionHandlerTestSuite) SetupSuite() {
 	queSetSvc := quemocks.NewMockQuestionSetService(ctrl)
 	examSvc := quemocks.NewMockExamineService(ctrl)
 	intrSvc := intrmocks.NewMockService(ctrl)
-	intrSvc.EXPECT().CollectionInfo(gomock.Any(), int64(uid), gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, uid int64, id int64, offset int, limit int) ([]interactive.CollectionRecord, error) {
-		return []interactive.CollectionRecord{
-			{
-				Biz:  web.CaseBiz,
-				Case: 1,
-			},
-			{
-				Biz:      web.QuestionBiz,
-				Question: 2,
-			},
-			{
-				Biz:         web.QuestionSetBiz,
-				QuestionSet: 3,
-			},
-			{
-				Biz:         web.QuestionSetBiz,
-				QuestionSet: 4,
-			},
-			{
-				Biz:     web.CaseSetBiz,
-				CaseSet: 5,
-			},
-		}, nil
+	intrSvc.EXPECT().CollectionInfo(gomock.Any(), int64(uid), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, uid int64, id int64, biz string, offset int, limit int) ([]interactive.CollectionRecord, error) {
+		if biz == "" {
+			return []interactive.CollectionRecord{
+				{
+					Biz:  web.CaseBiz,
+					Case: 1,
+				},
+				{
+					Biz:      web.QuestionBiz,
+					Question: 2,
+				},
+				{
+					Biz:         web.QuestionSetBiz,
+					QuestionSet: 3,
+				},
+				{
+					Biz:         web.QuestionSetBiz,
+					QuestionSet: 4,
+				},
+				{
+					Biz:     web.CaseSetBiz,
+					CaseSet: 5,
+				},
+			}, nil
+		}
+		if biz == "case" {
+			return []interactive.CollectionRecord{
+				{
+					Biz:  web.CaseBiz,
+					Case: 1,
+				},
+				{
+					Biz:  web.CaseBiz,
+					Case: 2,
+				},
+			}, nil
+		}
+		if biz == "question" {
+			return []interactive.CollectionRecord{
+				{
+					Biz:      web.QuestionBiz,
+					Question: 1,
+				},
+			}, nil
+		}
+		return []interactive.CollectionRecord{}, nil
 	}).AnyTimes()
 	queSvc.EXPECT().GetPubByIDs(gomock.Any(), gomock.Any()).
 		DoAndReturn(func(ctx context.Context, ids []int64) ([]baguwen.Question, error) {
@@ -180,12 +203,14 @@ func (c *CollectionHandlerTestSuite) Test_Handler() {
 	require.Equal(t, 200, recorder.Code)
 	assert.Equal(t, []web.CollectionRecord{
 		{
+			Biz: web.CaseBiz,
 			Case: web.Case{
 				ID:    1,
 				Title: "这是案例1",
 			},
 		},
 		{
+			Biz: web.QuestionBiz,
 			Question: web.Question{
 				ID:            2,
 				Title:         "这是题目2",
@@ -193,6 +218,7 @@ func (c *CollectionHandlerTestSuite) Test_Handler() {
 			},
 		},
 		{
+			Biz: web.QuestionSetBiz,
 			QuestionSet: web.QuestionSet{
 				ID:    3,
 				Title: "这是题集3",
@@ -211,6 +237,7 @@ func (c *CollectionHandlerTestSuite) Test_Handler() {
 			},
 		},
 		{
+			Biz: web.QuestionSetBiz,
 			QuestionSet: web.QuestionSet{
 				ID:    4,
 				Title: "这是题集4",
@@ -229,6 +256,7 @@ func (c *CollectionHandlerTestSuite) Test_Handler() {
 			},
 		},
 		{
+			Biz: web.CaseSetBiz,
 			CaseSet: web.CaseSet{
 				ID:    5,
 				Title: "这是案例集5",
@@ -241,6 +269,38 @@ func (c *CollectionHandlerTestSuite) Test_Handler() {
 						ID: 52,
 					},
 				},
+			},
+		},
+	}, recorder.MustScan().Data)
+}
+
+func (c *CollectionHandlerTestSuite) Test_HandlerWithBiz() {
+	t := c.T()
+	req, err := http.NewRequest(http.MethodPost,
+		"/interactive/collection/records", iox.NewJSONReader(web.CollectionInfoReq{
+			ID:     1,
+			Offset: 0,
+			Limit:  10,
+			Biz:    "case",
+		}))
+	req.Header.Set("content-type", "application/json")
+	require.NoError(t, err)
+	recorder := test.NewJSONResponseRecorder[[]web.CollectionRecord]()
+	c.server.ServeHTTP(recorder, req)
+	require.Equal(t, 200, recorder.Code)
+	assert.Equal(t, []web.CollectionRecord{
+		{
+			Biz: web.CaseBiz,
+			Case: web.Case{
+				ID:    1,
+				Title: "这是案例1",
+			},
+		},
+		{
+			Biz: web.CaseBiz,
+			Case: web.Case{
+				ID:    2,
+				Title: "这是案例2",
 			},
 		},
 	}, recorder.MustScan().Data)

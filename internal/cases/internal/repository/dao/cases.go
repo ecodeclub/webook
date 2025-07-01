@@ -17,8 +17,11 @@ type CaseDAO interface {
 	Save(ctx context.Context, c Case) (int64, error)
 	GetCaseByID(ctx context.Context, id int64) (Case, error)
 	List(ctx context.Context, offset, limit int) ([]Case, error)
-	Count(ctx context.Context) (int64, error)
+	// 同步到搜索用
+	ListSync(ctx context.Context, offset int, limit int) ([]Case, error)
+	PubListSync(ctx context.Context, offset int, limit int) ([]PublishCase, error)
 
+	Count(ctx context.Context) (int64, error)
 	Sync(ctx context.Context, c Case) (Case, error)
 	// 提供给同步到知识库用
 	Ids(ctx context.Context) ([]int64, error)
@@ -36,6 +39,26 @@ type caseDAO struct {
 	db            *egorm.Component
 	listColumns   []string
 	updateColumns []string
+}
+
+func (ca *caseDAO) ListSync(ctx context.Context, offset int, limit int) ([]Case, error) {
+	var caseList []Case
+	err := ca.db.WithContext(ctx).
+		Order("id desc").
+		Offset(offset).
+		Limit(limit).
+		Find(&caseList).Error
+	return caseList, err
+}
+
+func (ca *caseDAO) PubListSync(ctx context.Context, offset int, limit int) ([]PublishCase, error) {
+	publishCaseList := make([]PublishCase, 0, limit)
+	err := ca.db.WithContext(ctx).
+		Order("id desc").
+		Offset(offset).
+		Limit(limit).
+		Find(&publishCaseList).Error
+	return publishCaseList, err
 }
 
 func (ca *caseDAO) Ids(ctx context.Context) ([]int64, error) {

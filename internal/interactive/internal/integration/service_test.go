@@ -233,6 +233,7 @@ func (i *InteractiveTestSuite) TestCollection_Info() {
 		wantVal []domain.CollectionRecord
 		offset  int
 		limit   int
+		biz     string
 		wantErr error
 	}{
 		{
@@ -263,22 +264,18 @@ func (i *InteractiveTestSuite) TestCollection_Info() {
 			},
 			wantVal: []domain.CollectionRecord{
 				{
-					Id:          4,
 					Biz:         repository.QuestionSetBiz,
 					QuestionSet: 1,
 				},
 				{
-					Id:       3,
 					Biz:      repository.QuestionBiz,
 					Question: 1,
 				},
 				{
-					Id:   2,
 					Biz:  repository.CaseBiz,
 					Case: 2,
 				},
 				{
-					Id:   1,
 					Biz:  repository.CaseBiz,
 					Case: 1,
 				},
@@ -310,12 +307,10 @@ func (i *InteractiveTestSuite) TestCollection_Info() {
 			},
 			wantVal: []domain.CollectionRecord{
 				{
-					Id:       6,
 					Biz:      repository.QuestionBiz,
 					Question: 2,
 				},
 				{
-					Id:   5,
 					Biz:  repository.CaseBiz,
 					Case: 3,
 				},
@@ -323,17 +318,66 @@ func (i *InteractiveTestSuite) TestCollection_Info() {
 			offset: 1,
 			limit:  2,
 		},
+		{
+			name: "收藏记录biz为case",
+			before: func(t *testing.T) int64 {
+				id, err := i.svc.SaveCollection(context.Background(), domain.Collection{
+					Uid:  uid,
+					Name: "new收藏夹",
+				})
+				require.NoError(t, err)
+				err = i.svc.CollectToggle(context.Background(), "case", 10, uid)
+				require.NoError(t, err)
+				err = i.svc.CollectToggle(context.Background(), "case", 11, uid)
+				require.NoError(t, err)
+				err = i.svc.MoveToCollection(context.Background(), "case", 10, uid, id)
+				require.NoError(t, err)
+				err = i.svc.MoveToCollection(context.Background(), "case", 11, uid, id)
+				require.NoError(t, err)
+				err = i.svc.CollectToggle(context.Background(), repository.QuestionBiz, 10, uid)
+				require.NoError(t, err)
+				err = i.svc.MoveToCollection(context.Background(), repository.QuestionBiz, 10, uid, id)
+				require.NoError(t, err)
+				err = i.svc.CollectToggle(context.Background(), repository.QuestionSetBiz, 11, uid)
+				require.NoError(t, err)
+				err = i.svc.MoveToCollection(context.Background(), repository.QuestionSetBiz, 11, uid, id)
+				require.NoError(t, err)
+				return id
+			},
+			wantVal: []domain.CollectionRecord{
+				{
+					Biz:  repository.CaseBiz,
+					Case: 11,
+				},
+				{
+					Biz:  repository.CaseBiz,
+					Case: 10,
+				},
+			},
+			offset: 0,
+			limit:  10,
+			biz:    "case",
+		},
 	}
 	for _, tc := range testcases {
 		i.T().Run(tc.name, func(t *testing.T) {
 			id := tc.before(t)
-			res, err := i.svc.CollectionInfo(context.Background(), uid, id, tc.offset, tc.limit)
+			res, err := i.svc.CollectionInfo(context.Background(), uid, id, tc.biz, tc.offset, tc.limit)
 			assert.Equal(t, err, tc.wantErr)
 			if err != nil {
 				return
 			}
-			assert.Equal(t, tc.wantVal, res)
+			i.assertRecords(tc.wantVal, res)
 		})
 	}
 
+}
+
+func (i *InteractiveTestSuite) assertRecords(expectedRecords []domain.CollectionRecord, actualRecords []domain.CollectionRecord) {
+	for idx := range actualRecords {
+		require.True(i.T(), actualRecords[idx].Id > 0)
+		actualRecords[idx].Id = 0
+
+	}
+	assert.Equal(i.T(), expectedRecords, actualRecords)
 }

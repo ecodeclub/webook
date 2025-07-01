@@ -14,6 +14,7 @@ type Review struct {
 	QuestionAnalysis string
 	Resume           string
 	Status           ReviewStatus
+	Company          string
 	Utime            int64
 }
 type ReviewStatus uint8

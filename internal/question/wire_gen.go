@@ -26,12 +26,13 @@ import (
 	"github.com/ego-component/egorm"
 	"github.com/google/wire"
 	"github.com/gotomicro/ego/core/econf"
+	"github.com/olivere/elastic/v7"
 	"gorm.io/gorm"
 )
 
 // Injectors from wire.go:
 
-func InitModule(db *gorm.DB, intrModule *interactive.Module, ec ecache.Cache, perm *permission.Module, aiModule *ai.Module, memberModule *member.Module, sp session.Provider, q mq.MQ) (*Module, error) {
+func InitModule(db *egorm.Component, intrModule *interactive.Module, ec ecache.Cache, esClient *elastic.Client, perm *permission.Module, aiModule *ai.Module, memberModule *member.Module, sp session.Provider, q mq.MQ) (*Module, error) {
 	questionDAO := InitQuestionDAO(db)
 	questionCache := cache.NewQuestionECache(ec)
 	repositoryRepository := repository.NewCacheRepository(questionDAO, questionCache)
@@ -44,37 +45,38 @@ func InitModule(db *gorm.DB, intrModule *interactive.Module, ec ecache.Cache, pe
 		return nil, err
 	}
 	knowledgeBaseEventProducer := InitKnowledgeBaseUploadProducer(q)
-	serviceService := service.NewService(repositoryRepository, syncDataToSearchEventProducer, interactiveEventProducer, knowledgeBaseEventProducer)
+	v := service.NewService(repositoryRepository, syncDataToSearchEventProducer, interactiveEventProducer, knowledgeBaseEventProducer)
 	questionSetDAO := InitQuestionSetDAO(db)
 	questionSetRepository := repository.NewQuestionSetRepository(questionSetDAO)
-	questionSetService := service.NewQuestionSetService(questionSetRepository, repositoryRepository, interactiveEventProducer, syncDataToSearchEventProducer)
+	v2 := service.NewQuestionSetService(questionSetRepository, repositoryRepository, interactiveEventProducer, syncDataToSearchEventProducer)
 	examineDAO := dao.NewGORMExamineDAO(db)
 	examineRepository := repository.NewCachedExamineRepository(examineDAO)
-	llmService := aiModule.Svc
-	examineService := service.NewLLMExamineService(repositoryRepository, examineRepository, llmService)
-	adminHandler := web.NewAdminHandler(serviceService)
-	adminQuestionSetHandler := web.NewAdminQuestionSetHandler(questionSetService)
-	service2 := intrModule.Svc
-	service3 := perm.Svc
-	service4 := memberModule.Svc
-	handler := web.NewHandler(service2, examineService, service3, serviceService, sp, service4)
-	questionSetHandler := web.NewQuestionSetHandler(questionSetService, examineService, service2, sp)
-	examineHandler := web.NewExamineHandler(examineService)
-	knowledgeJobStarter := initKnowledgeStarter(serviceService)
-	repositoryBaseSvc := aiModule.KnowledgeBaseSvc
-	questionKnowledgeBase := InitKnowledgeBaseSvc(repositoryBaseSvc, repositoryRepository)
-	knowledgeBaseHandler := web.NewKnowledgeBaseHandler(questionKnowledgeBase)
+	v3 := aiModule.Svc
+	v4 := service.NewLLMExamineService(repositoryRepository, examineRepository, v3)
+	searchSyncService := service.NewSearchSyncService(repositoryRepository, esClient)
+	v5 := web.NewAdminHandler(v, searchSyncService)
+	v6 := web.NewAdminQuestionSetHandler(v2)
+	v7 := intrModule.Svc
+	v8 := perm.Svc
+	v9 := memberModule.Svc
+	v10 := web.NewHandler(v7, v4, v8, v, sp, v9)
+	v11 := web.NewQuestionSetHandler(v2, v4, v7, sp)
+	v12 := web.NewExamineHandler(v4)
+	v13 := initKnowledgeStarter(v)
+	v14 := aiModule.KnowledgeBaseSvc
+	questionKnowledgeBase := InitKnowledgeBaseSvc(v14, repositoryRepository)
+	v15 := web.NewKnowledgeBaseHandler(questionKnowledgeBase)
 	module := &Module{
-		Svc:                 serviceService,
-		SetSvc:              questionSetService,
-		ExamSvc:             examineService,
-		AdminHdl:            adminHandler,
-		AdminSetHdl:         adminQuestionSetHandler,
-		Hdl:                 handler,
-		QsHdl:               questionSetHandler,
-		ExamineHdl:          examineHandler,
-		KnowledgeJobStarter: knowledgeJobStarter,
-		KnowledgeBaseHdl:    knowledgeBaseHandler,
+		Svc:                 v,
+		SetSvc:              v2,
+		ExamSvc:             v4,
+		AdminHdl:            v5,
+		AdminSetHdl:         v6,
+		Hdl:                 v10,
+		QsHdl:               v11,
+		ExamineHdl:          v12,
+		KnowledgeJobStarter: v13,
+		KnowledgeBaseHdl:    v15,
 	}
 	return module, nil
 }
