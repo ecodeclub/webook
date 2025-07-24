@@ -1,6 +1,6 @@
 module github.com/ecodeclub/webook
 
-go 1.24.1
+go 1.24.5
 
 require (
 	github.com/bwmarrin/snowflake v0.3.0
