@@ -23,6 +23,7 @@ type UserDAO interface {
 	UpdateNonZeroFields(ctx context.Context, u User) error
 	FindByWechat(ctx context.Context, unionId string) (User, error)
 	FindById(ctx context.Context, id int64) (User, error)
+	FindByIds(ctx context.Context, ids []int64) ([]User, error)
 }
 
 type GORMUserDAO struct {
@@ -63,6 +64,12 @@ func (ud *GORMUserDAO) FindById(ctx context.Context, id int64) (User, error) {
 	var u User
 	err := ud.db.WithContext(ctx).First(&u, "id = ?", id).Error
 	return u, err
+}
+
+func (ud *GORMUserDAO) FindByIds(ctx context.Context, ids []int64) ([]User, error) {
+	var us []User
+	err := ud.db.WithContext(ctx).Find(&us, "id IN ?", ids).Error
+	return us, err
 }
 
 type User struct {
