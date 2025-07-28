@@ -20,6 +20,7 @@ import (
 	"github.com/ecodeclub/webook/internal/ai"
 	"github.com/ecodeclub/webook/internal/bff"
 	"github.com/ecodeclub/webook/internal/cases"
+	"github.com/ecodeclub/webook/internal/comment"
 	"github.com/ecodeclub/webook/internal/cos"
 	"github.com/ecodeclub/webook/internal/credit"
 	"github.com/ecodeclub/webook/internal/feedback"
@@ -98,6 +99,8 @@ func InitApp() (*App, error) {
 		wire.FieldsOf(new(*ai.Module), "Hdl", "AdminHandler"),
 		review.InitModule,
 		wire.FieldsOf(new(*review.Module), "Hdl", "AdminHdl"),
+		comment.InitModule,
+		wire.FieldsOf(new(*comment.Module), "Hdl"),
 
 		initLocalActiveLimiterBuilder,
 		initCronJobs,

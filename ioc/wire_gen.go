@@ -10,6 +10,7 @@ import (
 	"github.com/ecodeclub/webook/internal/ai"
 	"github.com/ecodeclub/webook/internal/bff"
 	"github.com/ecodeclub/webook/internal/cases"
+	"github.com/ecodeclub/webook/internal/comment"
 	"github.com/ecodeclub/webook/internal/cos"
 	"github.com/ecodeclub/webook/internal/credit"
 	"github.com/ecodeclub/webook/internal/feedback"
@@ -139,35 +140,40 @@ func InitApp() (*App, error) {
 	v27 := aiModule.Hdl
 	reviewModule := review.InitModule(v, interactiveModule, mq, provider, cache)
 	v28 := reviewModule.Hdl
-	component := initGinxServer(provider, checkMembershipMiddlewareBuilder, localActiveLimit, checkPermissionMiddlewareBuilder, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13, v14, v15, v16, v17, v18, v19, v20, v21, v22, v23, v24, v25, v26, v27, v28)
-	v29 := projectModule.AdminHdl
-	v30 := roadmapModule.AdminHdl
-	v31 := baguwenModule.AdminHdl
-	v32 := baguwenModule.AdminSetHdl
-	v33 := casesModule.AdminHandler
-	v34 := casesModule.AdminSetHandler
-	v35 := marketingModule.AdminHdl
-	v36 := aiModule.AdminHandler
-	v37 := reviewModule.AdminHdl
-	v38 := casesModule.KnowledgeBaseHandler
-	v39 := baguwenModule.KnowledgeBaseHdl
-	adminServer := InitAdminServer(v29, v30, v31, v32, v33, v34, v35, v36, v37, v38, v39)
-	v40 := orderModule.CloseTimeoutOrdersJob
-	v41 := creditModule.CloseTimeoutLockedCreditsJob
-	v42 := paymentModule.SyncWechatOrderJob
+	commentModule, err := comment.InitModule(v, userModule)
+	if err != nil {
+		return nil, err
+	}
+	v29 := commentModule.Hdl
+	component := initGinxServer(provider, checkMembershipMiddlewareBuilder, localActiveLimit, checkPermissionMiddlewareBuilder, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13, v14, v15, v16, v17, v18, v19, v20, v21, v22, v23, v24, v25, v26, v27, v28, v29)
+	v30 := projectModule.AdminHdl
+	v31 := roadmapModule.AdminHdl
+	v32 := baguwenModule.AdminHdl
+	v33 := baguwenModule.AdminSetHdl
+	v34 := casesModule.AdminHandler
+	v35 := casesModule.AdminSetHandler
+	v36 := marketingModule.AdminHdl
+	v37 := aiModule.AdminHandler
+	v38 := reviewModule.AdminHdl
+	v39 := casesModule.KnowledgeBaseHandler
+	v40 := baguwenModule.KnowledgeBaseHdl
+	adminServer := InitAdminServer(v30, v31, v32, v33, v34, v35, v36, v37, v38, v39, v40)
+	v41 := orderModule.CloseTimeoutOrdersJob
+	v42 := creditModule.CloseTimeoutLockedCreditsJob
+	v43 := paymentModule.SyncWechatOrderJob
 	reconModule, err := recon.InitModule(orderModule, paymentModule, creditModule)
 	if err != nil {
 		return nil, err
 	}
-	v43 := reconModule.SyncPaymentAndOrderJob
-	v44 := initCronJobs(v40, v41, v42, v43)
-	v45 := baguwenModule.KnowledgeJobStarter
-	v46 := initJobs(v45)
+	v44 := reconModule.SyncPaymentAndOrderJob
+	v45 := initCronJobs(v41, v42, v43, v44)
+	v46 := baguwenModule.KnowledgeJobStarter
+	v47 := initJobs(v46)
 	app := &App{
 		Web:   component,
 		Admin: adminServer,
-		Crons: v44,
-		Jobs:  v46,
+		Crons: v45,
+		Jobs:  v47,
 	}
 	return app, nil
 }
