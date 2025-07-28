@@ -39,141 +39,141 @@ import (
 func InitApp() (*App, error) {
 	cmdable := InitRedis()
 	provider := InitSession(cmdable)
-	db := InitDB()
+	v := InitDB()
 	mq := InitMQ()
-	module, err := member.InitModule(db, mq)
+	module, err := member.InitModule(v, mq)
 	if err != nil {
 		return nil, err
 	}
-	service := module.Svc
-	checkMembershipMiddlewareBuilder := middleware.NewCheckMembershipMiddlewareBuilder(service)
+	v2 := module.Svc
+	checkMembershipMiddlewareBuilder := middleware.NewCheckMembershipMiddlewareBuilder(v2)
 	localActiveLimit := initLocalActiveLimiterBuilder()
-	permissionModule, err := permission.InitModule(db, mq)
+	permissionModule, err := permission.InitModule(v, mq)
 	if err != nil {
 		return nil, err
 	}
-	serviceService := permissionModule.Svc
-	checkPermissionMiddlewareBuilder := middleware.NewCheckPermissionMiddlewareBuilder(serviceService)
-	interactiveModule, err := interactive.InitModule(db, mq)
+	v3 := permissionModule.Svc
+	checkPermissionMiddlewareBuilder := middleware.NewCheckPermissionMiddlewareBuilder(v3)
+	interactiveModule, err := interactive.InitModule(v, mq)
 	if err != nil {
 		return nil, err
 	}
 	cache := InitCache(cmdable)
-	creditModule, err := credit.InitModule(db, mq, cache)
+	creditModule, err := credit.InitModule(v, mq, cache)
 	if err != nil {
 		return nil, err
 	}
-	aiModule, err := ai.InitModule(db, creditModule, mq)
+	aiModule, err := ai.InitModule(v, creditModule, mq)
 	if err != nil {
 		return nil, err
 	}
-	baguwenModule, err := baguwen.InitModule(db, interactiveModule, cache, permissionModule, aiModule, module, provider, mq)
+	baguwenModule, err := baguwen.InitModule(v, interactiveModule, cache, permissionModule, aiModule, module, provider, mq)
 	if err != nil {
 		return nil, err
 	}
-	handler := baguwenModule.Hdl
-	examineHandler := baguwenModule.ExamineHdl
-	questionSetHandler := baguwenModule.QsHdl
-	webHandler := label.InitHandler(db)
-	userModule := InitUserModule(db, provider, cache, mq, module, permissionModule)
-	handler2 := userModule.Hdl
+	v4 := baguwenModule.Hdl
+	v5 := baguwenModule.ExamineHdl
+	v6 := baguwenModule.QsHdl
+	v7 := label.InitHandler(v)
+	userModule := InitUserModule(v, provider, cache, mq, module, permissionModule)
+	v8 := userModule.Hdl
 	config := InitCosConfig()
-	handler3 := cos.InitHandler(config)
-	casesModule, err := cases.InitModule(db, interactiveModule, aiModule, module, provider, cache, mq)
+	v9 := cos.InitHandler(config)
+	casesModule, err := cases.InitModule(v, interactiveModule, aiModule, module, provider, cache, mq)
 	if err != nil {
 		return nil, err
 	}
-	handler4 := casesModule.Hdl
-	handler5, err := skill.InitHandler(db, cache, baguwenModule, casesModule, mq)
+	v10 := casesModule.Hdl
+	v11, err := skill.InitHandler(v, cache, baguwenModule, casesModule, mq)
 	if err != nil {
 		return nil, err
 	}
-	handler6, err := feedback.InitHandler(db, mq)
+	v12, err := feedback.InitHandler(v, mq)
 	if err != nil {
 		return nil, err
 	}
-	productModule, err := product.InitModule(db, mq)
+	productModule, err := product.InitModule(v, mq)
 	if err != nil {
 		return nil, err
 	}
-	handler7 := productModule.Hdl
-	paymentModule, err := payment.InitModule(db, mq, cache, userModule, creditModule)
+	v13 := productModule.Hdl
+	paymentModule, err := payment.InitModule(v, mq, cache, userModule, creditModule)
 	if err != nil {
 		return nil, err
 	}
-	orderModule, err := order.InitModule(db, cache, mq, paymentModule, productModule, creditModule)
+	orderModule, err := order.InitModule(v, cache, mq, paymentModule, productModule, creditModule)
 	if err != nil {
 		return nil, err
 	}
-	handler8 := orderModule.Hdl
-	projectModule, err := project.InitModule(db, interactiveModule, permissionModule, mq, provider)
+	v14 := orderModule.Hdl
+	projectModule, err := project.InitModule(v, interactiveModule, permissionModule, mq, provider)
 	if err != nil {
 		return nil, err
 	}
-	handler9 := projectModule.Hdl
-	handler10 := creditModule.Hdl
-	handler11 := paymentModule.Hdl
-	marketingModule, err := marketing.InitModule(db, mq, cache, orderModule, productModule)
+	v15 := projectModule.Hdl
+	v16 := creditModule.Hdl
+	v17 := paymentModule.Hdl
+	marketingModule, err := marketing.InitModule(v, mq, cache, orderModule, productModule)
 	if err != nil {
 		return nil, err
 	}
-	handler12 := marketingModule.Hdl
-	handler13 := interactiveModule.Hdl
+	v18 := marketingModule.Hdl
+	v19 := interactiveModule.Hdl
 	client := InitES()
 	searchModule, err := search.InitModule(client, mq, casesModule)
 	if err != nil {
 		return nil, err
 	}
-	handler14 := searchModule.Hdl
-	roadmapModule := roadmap.InitModule(db, baguwenModule)
-	handler15 := roadmapModule.Hdl
+	v20 := searchModule.Hdl
+	roadmapModule := roadmap.InitModule(v, baguwenModule)
+	v21 := roadmapModule.Hdl
 	bffModule, err := bff.InitModule(interactiveModule, casesModule, baguwenModule)
 	if err != nil {
 		return nil, err
 	}
-	handler16 := bffModule.Hdl
-	caseSetHandler := casesModule.CsHdl
-	webExamineHandler := casesModule.ExamineHdl
-	resumeModule := resume.InitModule(db, casesModule, aiModule)
-	projectHandler := resumeModule.PrjHdl
-	analysisHandler := resumeModule.AnalysisHandler
-	handler17 := aiModule.Hdl
-	reviewModule := review.InitModule(db, interactiveModule, mq, provider, cache)
-	handler18 := reviewModule.Hdl
-	commentModule, err := comment.InitModule(db, userModule)
+	v22 := bffModule.Hdl
+	v23 := casesModule.CsHdl
+	v24 := casesModule.ExamineHdl
+	resumeModule := resume.InitModule(v, casesModule, aiModule)
+	v25 := resumeModule.PrjHdl
+	v26 := resumeModule.AnalysisHandler
+	v27 := aiModule.Hdl
+	reviewModule := review.InitModule(v, interactiveModule, mq, provider, cache)
+	v28 := reviewModule.Hdl
+	commentModule, err := comment.InitModule(v, userModule)
 	if err != nil {
 		return nil, err
 	}
-	handler19 := commentModule.Hdl
-	component := initGinxServer(provider, checkMembershipMiddlewareBuilder, localActiveLimit, checkPermissionMiddlewareBuilder, handler, examineHandler, questionSetHandler, webHandler, handler2, handler3, handler4, handler5, handler6, handler7, handler8, handler9, handler10, handler11, handler12, handler13, handler14, handler15, handler16, caseSetHandler, webExamineHandler, projectHandler, analysisHandler, handler17, handler18, handler19)
-	adminHandler := projectModule.AdminHdl
-	webAdminHandler := roadmapModule.AdminHdl
-	adminHandler2 := baguwenModule.AdminHdl
-	adminQuestionSetHandler := baguwenModule.AdminSetHdl
-	adminCaseHandler := casesModule.AdminHandler
-	adminCaseSetHandler := casesModule.AdminSetHandler
-	adminHandler3 := marketingModule.AdminHdl
-	adminHandler4 := aiModule.AdminHandler
-	adminHandler5 := reviewModule.AdminHdl
-	knowledgeBaseHandler := casesModule.KnowledgeBaseHandler
-	webKnowledgeBaseHandler := baguwenModule.KnowledgeBaseHdl
-	adminServer := InitAdminServer(adminHandler, webAdminHandler, adminHandler2, adminQuestionSetHandler, adminCaseHandler, adminCaseSetHandler, adminHandler3, adminHandler4, adminHandler5, knowledgeBaseHandler, webKnowledgeBaseHandler)
-	closeTimeoutOrdersJob := orderModule.CloseTimeoutOrdersJob
-	closeTimeoutLockedCreditsJob := creditModule.CloseTimeoutLockedCreditsJob
-	syncWechatOrderJob := paymentModule.SyncWechatOrderJob
+	v29 := commentModule.Hdl
+	component := initGinxServer(provider, checkMembershipMiddlewareBuilder, localActiveLimit, checkPermissionMiddlewareBuilder, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13, v14, v15, v16, v17, v18, v19, v20, v21, v22, v23, v24, v25, v26, v27, v28, v29)
+	v30 := projectModule.AdminHdl
+	v31 := roadmapModule.AdminHdl
+	v32 := baguwenModule.AdminHdl
+	v33 := baguwenModule.AdminSetHdl
+	v34 := casesModule.AdminHandler
+	v35 := casesModule.AdminSetHandler
+	v36 := marketingModule.AdminHdl
+	v37 := aiModule.AdminHandler
+	v38 := reviewModule.AdminHdl
+	v39 := casesModule.KnowledgeBaseHandler
+	v40 := baguwenModule.KnowledgeBaseHdl
+	adminServer := InitAdminServer(v30, v31, v32, v33, v34, v35, v36, v37, v38, v39, v40)
+	v41 := orderModule.CloseTimeoutOrdersJob
+	v42 := creditModule.CloseTimeoutLockedCreditsJob
+	v43 := paymentModule.SyncWechatOrderJob
 	reconModule, err := recon.InitModule(orderModule, paymentModule, creditModule)
 	if err != nil {
 		return nil, err
 	}
-	syncPaymentAndOrderJob := reconModule.SyncPaymentAndOrderJob
-	v := initCronJobs(closeTimeoutOrdersJob, closeTimeoutLockedCreditsJob, syncWechatOrderJob, syncPaymentAndOrderJob)
-	knowledgeJobStarter := baguwenModule.KnowledgeJobStarter
-	v2 := initJobs(knowledgeJobStarter)
+	v44 := reconModule.SyncPaymentAndOrderJob
+	v45 := initCronJobs(v41, v42, v43, v44)
+	v46 := baguwenModule.KnowledgeJobStarter
+	v47 := initJobs(v46)
 	app := &App{
 		Web:   component,
 		Admin: adminServer,
-		Crons: v,
-		Jobs:  v2,
+		Crons: v45,
+		Jobs:  v47,
 	}
 	return app, nil
 }
