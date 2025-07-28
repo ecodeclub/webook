@@ -29,6 +29,7 @@ import (
 //go:generate mockgen -source=./user.go -package=usermocks -typed=true -destination=../../mocks/user.mock.go UserService
 type UserService interface {
 	Profile(ctx context.Context, id int64) (domain.User, error)
+	BatchProfile(ctx context.Context, ids []int64) ([]domain.User, error)
 	// FindOrCreateByWechat 查找或者初始化
 	// 随着业务增长，这边可以考虑拆分出去作为一个新的 Service
 	FindOrCreateByWechat(ctx context.Context, info domain.WechatInfo) (domain.User, error)
@@ -100,9 +101,12 @@ func (svc *userService) FindOrCreateByWechat(ctx context.Context,
 	return u, nil
 }
 
-func (svc *userService) Profile(ctx context.Context,
-	id int64) (domain.User, error) {
+func (svc *userService) Profile(ctx context.Context, id int64) (domain.User, error) {
 	// 在系统内部，基本上都是用 ID 的。
 	// 有些人的系统比较复杂，有一个 GUID（global unique ID）
 	return svc.repo.FindById(ctx, id)
+}
+
+func (svc *userService) BatchProfile(ctx context.Context, ids []int64) ([]domain.User, error) {
+	return svc.repo.FindByIds(ctx, ids)
 }
