@@ -53,9 +53,9 @@ type Handler struct {
 }
 
 func NewHandler(
-// 微信
+	// 微信
 	weSvc service.OAuth2Service,
-// 微信小程序
+	// 微信小程序
 	weMiniSvc service.OAuth2Service,
 	userSvc service.UserService,
 	memberSvc member.Service,
