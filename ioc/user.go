@@ -41,5 +41,5 @@ func InitUserModule(db *egorm.Component,
 	if err != nil {
 		panic(err)
 	}
-	return user.InitModule(db, ec, q, cfg.Creators, memModule, sp, perm,smsClient)
+	return user.InitModule(db, ec, q, cfg.Creators, memModule, sp, perm, smsClient)
 }

@@ -41,11 +41,9 @@ var ProviderSet = wire.NewSet(
 	repository.NewCachedUserRepository)
 
 var verificationCodeRepoSet = wire.NewSet(
-		cache.NewVerificationCodeCache,
-		repository.NewVerificationCodeRepository,
-	)
-
-
+	cache.NewVerificationCodeCache,
+	repository.NewVerificationCodeRepository,
+)
 
 func InitModule(db *egorm.Component,
 	cache ecache.Cache,
@@ -54,7 +52,7 @@ func InitModule(db *egorm.Component,
 	sp session.Provider,
 	permissionSvc *permission.Module,
 	smsClient client.Client,
-	) *Module {
+) *Module {
 	wire.Build(
 		verificationCodeRepoSet,
 		initVerificationCodeSvc,

@@ -3,9 +3,11 @@ package cache
 import (
 	"context"
 	"errors"
-	"github.com/ecodeclub/ecache"
 	"time"
+
+	"github.com/ecodeclub/ecache"
 )
+
 var ErrKeyNotFound = errors.New("key not found")
 
 type VerificationCodeCache interface {
@@ -32,7 +34,7 @@ func NewVerificationCodeCache(c ecache.Cache) VerificationCodeCache {
 }
 
 func (s *verificationCodeCache) SetPhoneCode(ctx context.Context, phone string, code string) error {
-	return s.cache.Set(ctx, phone, code,s.expiration)
+	return s.cache.Set(ctx, phone, code, s.expiration)
 }
 
 func (s *verificationCodeCache) GetPhoneCode(ctx context.Context, phone string) (string, error) {
@@ -45,7 +47,3 @@ func (s *verificationCodeCache) GetPhoneCode(ctx context.Context, phone string) 
 	}
 	return val.Val.(string), nil
 }
-
-
-
-

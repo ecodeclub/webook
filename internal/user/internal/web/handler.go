@@ -18,9 +18,10 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"github.com/ecodeclub/webook/internal/user/internal/repository/dao"
 	"strconv"
 	"strings"
+
+	"github.com/ecodeclub/webook/internal/user/internal/repository/dao"
 
 	"github.com/ecodeclub/webook/internal/pkg/middleware"
 

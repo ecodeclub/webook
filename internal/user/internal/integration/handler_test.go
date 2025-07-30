@@ -20,10 +20,11 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"github.com/ecodeclub/webook/internal/user/internal/repository/cache"
 	"net/http"
 	"strings"
 	"testing"
+
+	"github.com/ecodeclub/webook/internal/user/internal/repository/cache"
 
 	"github.com/ecodeclub/webook/internal/pkg/middleware"
 

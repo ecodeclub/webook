@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"fmt"
+
 	"github.com/ecodeclub/webook/internal/sms/client"
 	"github.com/ecodeclub/webook/internal/user/internal/repository"
 	"github.com/pkg/errors"
@@ -23,11 +24,11 @@ type smsServiceImpl struct {
 
 func NewVerificationCodeSvc(client client.Client,
 	repo repository.VerificationCodeRepo,
-	templateID,signName string,
-	) VerificationCodeSvc {
+	templateID, signName string,
+) VerificationCodeSvc {
 	return &smsServiceImpl{
-		client: client,
-		repo:   repo,
+		client:     client,
+		repo:       repo,
 		templateID: templateID,
 		signName:   signName,
 	}

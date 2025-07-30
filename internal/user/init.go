@@ -38,7 +38,7 @@ func iniHandler(
 	sp session.Provider,
 	veriCodeSvc service.VerificationCodeSvc,
 	permissionSvc permission.Service, creators []string) *Handler {
-	return web.NewHandler(weSvc, weMiniSvc, userSvc, memberSvc, permissionSvc, sp, veriCodeSvc,creators)
+	return web.NewHandler(weSvc, weMiniSvc, userSvc, memberSvc, permissionSvc, sp, veriCodeSvc, creators)
 }
 
 func initWechatMiniOAuthService() wechatMiniOAuth2Service {

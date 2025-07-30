@@ -88,7 +88,7 @@ type User struct {
 	Id       int64 `gorm:"primaryKey,autoIncrement"`
 	Nickname string
 	Avatar   string
-	SN       string `gorm:"type:varchar(256);unique"`
+	SN       string         `gorm:"type:varchar(256);unique"`
 	Phone    sql.NullString `gorm:"type:varchar(50);unique"`
 	// TODO 后面要考虑拆分出去作为单表了
 	WechatOpenId     sql.NullString `gorm:"type:varchar(256);unique"`
