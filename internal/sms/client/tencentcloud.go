@@ -9,15 +9,6 @@ import (
 	sms "github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/sms/v20210111"
 )
 
-// auditStatusMapping 将腾讯侧请模板状态转换为内部状态。
-// 腾讯侧状态，其中0表示审核通过且已生效，1表示审核中，2表示审核通过待生效，-1表示审核未通过或审核失败。注：只有状态值为0时该模板才能使用。
-var auditStatusMapping = map[int64]AuditStatus{
-	0:  AuditStatusApproved,
-	1:  AuditStatusPending,
-	2:  AuditStatusPending,
-	-1: AuditStatusRejected,
-}
-
 // TencentCloudSMS 腾讯云短信实现
 type TencentCloudSMS struct {
 	client *sms.Client
