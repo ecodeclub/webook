@@ -17,6 +17,8 @@ package web
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"github.com/ecodeclub/webook/internal/user/internal/repository/dao"
 	"strconv"
 	"strings"
 
@@ -38,11 +40,12 @@ import (
 var _ ginx.Handler = &Handler{}
 
 type Handler struct {
-	weSvc         service.OAuth2Service
-	weMiniSvc     service.OAuth2Service
-	userSvc       service.UserService
-	memberSvc     member.Service
-	permissionSvc permission.Service
+	weSvc               service.OAuth2Service
+	weMiniSvc           service.OAuth2Service
+	userSvc             service.UserService
+	memberSvc           member.Service
+	permissionSvc       permission.Service
+	verificationCodeSvc service.VerificationCodeSvc
 	// 白名单
 	creators []string
 	logger   *elog.Component
@@ -50,24 +53,26 @@ type Handler struct {
 }
 
 func NewHandler(
-	// 微信
+// 微信
 	weSvc service.OAuth2Service,
-	// 微信小程序
+// 微信小程序
 	weMiniSvc service.OAuth2Service,
 	userSvc service.UserService,
 	memberSvc member.Service,
 	permissionSvc permission.Service,
 	sp session.Provider,
+	verificationCodeSvc service.VerificationCodeSvc,
 	creators []string) *Handler {
 	return &Handler{
-		weSvc:         weSvc,
-		weMiniSvc:     weMiniSvc,
-		userSvc:       userSvc,
-		memberSvc:     memberSvc,
-		permissionSvc: permissionSvc,
-		creators:      creators,
-		logger:        elog.DefaultLogger,
-		sp:            sp,
+		weSvc:               weSvc,
+		weMiniSvc:           weMiniSvc,
+		userSvc:             userSvc,
+		memberSvc:           memberSvc,
+		permissionSvc:       permissionSvc,
+		creators:            creators,
+		verificationCodeSvc: verificationCodeSvc,
+		logger:              elog.DefaultLogger,
+		sp:                  sp,
 	}
 }
 
@@ -76,6 +81,8 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	users.GET("/profile", ginx.S(h.Profile))
 	users.POST("/logout", ginx.W(h.Logout))
 	users.POST("/profile", ginx.BS[EditReq](h.Edit))
+	// 绑定手机号
+	users.POST("/bind/phone", ginx.BS[PhoneReq](h.BindPhone))
 }
 
 func (h *Handler) PublicRoutes(server *gin.Engine) {
@@ -89,6 +96,88 @@ func (h *Handler) PublicRoutes(server *gin.Engine) {
 	// 小程序登录回调
 	oauth2.Any("/wechat/mini/callback", appidFunc, ginx.B[WechatCallback](h.MiniCallback))
 	oauth2.Any("/wechat/token/refresh", appidFunc, ginx.W(h.RefreshAccessToken))
+
+	// 发送验证码
+	oauth2.POST("/send/code", appidFunc, ginx.B[SendCodeReq](h.SendCode))
+	// 手机号登录
+	oauth2.POST("/phone/login", appidFunc, ginx.B[PhoneReq](h.PhoneLogin))
+	// 注册
+	oauth2.POST("/phone/register", appidFunc, ginx.B[PhoneReq](h.PhoneRegister))
+}
+
+func (h *Handler) BindPhone(ctx *ginx.Context, req PhoneReq, sess session.Session) (ginx.Result, error) {
+	code, err := h.verificationCodeSvc.GetCode(ctx, req.Phone)
+	if err != nil {
+		err = errors.New("验证码错误")
+		return newVerificationErr(err), err
+	}
+	if code != req.Code {
+		err = errors.New("验证码错误")
+		return newVerificationErr(err), err
+	}
+	uid := sess.Claims().Uid
+	err = h.userSvc.UpdateNonSensitiveInfo(ctx, domain.User{
+		Phone: req.Phone,
+		Id:    uid,
+	})
+	if err != nil {
+		return systemErrorResult, err
+	}
+	return ginx.Result{}, nil
+}
+
+func (h *Handler) PhoneLogin(ctx *ginx.Context, req PhoneReq) (ginx.Result, error) {
+	code, err := h.verificationCodeSvc.GetCode(ctx, req.Phone)
+	if err != nil {
+		err = errors.New("验证码错误")
+		return newVerificationErr(err), err
+	}
+	if code != req.Code {
+		err = errors.New("验证码错误")
+		return newVerificationErr(err), err
+	}
+	user, err := h.userSvc.FindByPhone(ctx, req.Phone)
+	if errors.Is(err, dao.ErrPhoneNotFound) {
+		// 返回特定错误
+		return phoneNotFoundResult, err
+	}
+	res, err := h.setupSession(ctx, user)
+	if err != nil {
+		return systemErrorResult, err
+	}
+	return ginx.Result{
+		Data: res,
+	}, nil
+}
+
+func (h *Handler) SendCode(ctx *ginx.Context, req SendCodeReq) (ginx.Result, error) {
+	err := h.verificationCodeSvc.Send(ctx, req.Phone)
+	if err != nil {
+		return newVerificationErr(err), err
+	}
+	return ginx.Result{}, nil
+}
+
+func (h *Handler) PhoneRegister(ctx *ginx.Context, req PhoneReq) (ginx.Result, error) {
+	code, err := h.verificationCodeSvc.GetCode(ctx, req.Phone)
+	if err != nil {
+		return newVerificationErr(err), err
+	}
+	if code != req.Code {
+		err = errors.New("验证码错误")
+		return newVerificationErr(err), err
+	}
+	user, err := h.userSvc.CreateWithPhone(ctx, req.Phone)
+	if err != nil {
+		return systemErrorResult, err
+	}
+	res, err := h.setupSession(ctx, user)
+	if err != nil {
+		return systemErrorResult, err
+	}
+	return ginx.Result{
+		Data: res,
+	}, nil
 }
 
 func (h *Handler) Logout(ctx *ginx.Context) (ginx.Result, error) {

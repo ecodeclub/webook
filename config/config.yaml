@@ -55,6 +55,18 @@ kafka:
   addresses:
     - kafka:9092
 
+verificationCode:
+  tencentcloud:
+    templateID: ""
+    signName: ""
+sms:
+  tencentcloud:
+    regionID: ""
+    secretID: ""
+    secretKey: ""
+    appID: ""
+
+
 cron:
 # 超时关闭订单
   closeTimeoutOrder:

@@ -22,6 +22,8 @@ require (
 	github.com/prometheus/client_golang v1.22.0
 	github.com/redis/go-redis/v9 v9.11.0
 	github.com/stretchr/testify v1.10.0
+	github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common v1.1.1
+	github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/sms v1.1.0
 	github.com/tencentyun/qcloud-cos-sts-sdk v0.0.0-20231121073521-dd65d8941a16
 	github.com/wechatpay-apiv3/wechatpay-go v0.2.18
 	github.com/yankeguo/zhipu v0.1.0
@@ -70,6 +72,7 @@ require (
 	github.com/golang-sql/sqlexp v0.1.0 // indirect
 	github.com/google/cel-go v0.11.3 // indirect
 	github.com/google/pprof v0.0.0-20250630185457-6e76a2b096b5 // indirect
+	github.com/google/subcommands v1.2.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/gotomicro/logrotate v0.0.0-20211108034117-46d53eedc960 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.16.0 // indirect
@@ -138,8 +141,10 @@ require (
 	golang.org/x/arch v0.19.0 // indirect
 	golang.org/x/crypto v0.40.0 // indirect
 	golang.org/x/exp v0.0.0-20250718183923-645b1fa84792 // indirect
+	golang.org/x/mod v0.26.0 // indirect
 	golang.org/x/sys v0.34.0 // indirect
 	golang.org/x/text v0.27.0 // indirect
+	golang.org/x/tools v0.35.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20250528174236-200df99c418a // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250528174236-200df99c418a // indirect
 	google.golang.org/grpc v1.74.2 // indirect

@@ -22,6 +22,7 @@ import (
 	"github.com/ecodeclub/mq-api"
 	"github.com/ecodeclub/webook/internal/member"
 	"github.com/ecodeclub/webook/internal/permission"
+	"github.com/ecodeclub/webook/internal/sms/client"
 	"github.com/ecodeclub/webook/internal/user/internal/repository"
 	"github.com/ecodeclub/webook/internal/user/internal/repository/cache"
 	"github.com/ecodeclub/webook/internal/user/internal/service"
@@ -39,13 +40,24 @@ var ProviderSet = wire.NewSet(
 	service.NewUserService,
 	repository.NewCachedUserRepository)
 
+var verificationCodeRepoSet = wire.NewSet(
+		cache.NewVerificationCodeCache,
+		repository.NewVerificationCodeRepository,
+	)
+
+
+
 func InitModule(db *egorm.Component,
 	cache ecache.Cache,
 	q mq.MQ, creators []string,
 	memberSvc *member.Module,
 	sp session.Provider,
-	permissionSvc *permission.Module) *Module {
+	permissionSvc *permission.Module,
+	smsClient client.Client,
+	) *Module {
 	wire.Build(
+		verificationCodeRepoSet,
+		initVerificationCodeSvc,
 		ProviderSet,
 		wire.FieldsOf(new(*member.Module), "Svc"),
 		wire.FieldsOf(new(*permission.Module), "Svc"),

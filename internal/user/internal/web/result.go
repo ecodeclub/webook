@@ -10,4 +10,16 @@ var (
 		Code: errs.SystemError.Code,
 		Msg:  errs.SystemError.Msg,
 	}
+	phoneNotFoundResult = ginx.Result{
+		Code: errs.PhoneNotFound.Code,
+		Msg:  errs.PhoneNotFound.Msg,
+	}
 )
+
+func newVerificationErr(err error) ginx.Result {
+	errCode := errs.NewVerificationErr(err)
+	return ginx.Result{
+		Code: errCode.Code,
+		Msg:  errCode.Msg,
+	}
+}

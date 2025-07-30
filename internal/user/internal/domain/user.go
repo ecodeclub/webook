@@ -19,6 +19,7 @@ type User struct {
 	Avatar   string
 	Nickname string
 	SN       string
+	Phone    string
 	// 不要使用组合，因为你将来可能还有 DingDingInfo 之类的
 	WechatInfo WechatInfo
 }

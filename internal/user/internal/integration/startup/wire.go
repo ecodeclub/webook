@@ -32,14 +32,22 @@ import (
 	"github.com/google/wire"
 )
 
+var verificationCodeRepoSet = wire.NewSet(
+	cache.NewVerificationCodeCache,
+	repository.NewVerificationCodeRepository,
+)
+
 func InitHandler(weSvc wechatWebOAuth2Service,
 	weMiniSvc wechatMiniOAuth2Service,
 	mem *member.Module,
 	perm *permission.Module,
 	sp session.Provider,
 	creators []string) *user.Handler {
-	wire.Build(iniHandler,
+	wire.Build(
+		iniHandler,
 		testioc.BaseSet,
+		verificationCodeRepoSet,
+		initVerificationCodeSvc,
 		wire.FieldsOf(new(*member.Module), "Svc"),
 		wire.FieldsOf(new(*permission.Module), "Svc"),
 		initRegistrationEventProducer,
@@ -57,8 +65,9 @@ func iniHandler(
 	memberSvc member.Service,
 	permissionSvc permission.Service,
 	sp session.Provider,
+	verificationCodeSvc service.VerificationCodeSvc,
 	creators []string) *web.Handler {
-	return web.NewHandler(weSvc, weMiniSvc, userSvc, memberSvc, permissionSvc, sp, creators)
+	return web.NewHandler(weSvc, weMiniSvc, userSvc, memberSvc, permissionSvc, sp, verificationCodeSvc, creators)
 }
 func InitModule() *user.Module {
 	wire.Build(
@@ -79,4 +88,8 @@ func initRegistrationEventProducer(q mq.MQ) event.RegistrationEventProducer {
 		panic(err)
 	}
 	return p
+}
+
+func initVerificationCodeSvc(repo repository.VerificationCodeRepo) service.VerificationCodeSvc {
+	return service.NewVerificationCodeSvc(nil, repo, "123", "321")
 }

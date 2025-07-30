@@ -19,6 +19,7 @@ type UserRepository interface {
 	FindByWechat(ctx context.Context, unionId string) (domain.User, error)
 	FindById(ctx context.Context, id int64) (domain.User, error)
 	FindByIds(ctx context.Context, ids []int64) ([]domain.User, error)
+	FindByPhone(ctx context.Context, phone string) (domain.User, error)
 }
 
 // CachedUserRepository 使用了缓存的 repository 实现
@@ -51,6 +52,10 @@ func (ur *CachedUserRepository) Create(ctx context.Context, u domain.User) (int6
 func (ur *CachedUserRepository) FindByWechat(ctx context.Context,
 	unionId string) (domain.User, error) {
 	u, err := ur.dao.FindByWechat(ctx, unionId)
+	return ur.entityToDomain(u), err
+}
+func (ur *CachedUserRepository) FindByPhone(ctx context.Context, phone string) (domain.User, error) {
+	u, err := ur.dao.FindByPhone(ctx, phone)
 	return ur.entityToDomain(u), err
 }
 
@@ -117,6 +122,7 @@ func (ur *CachedUserRepository) domainToEntity(u domain.User) dao.User {
 		SN:               u.SN,
 		Nickname:         u.Nickname,
 		Avatar:           u.Avatar,
+		Phone:            sqlx.NewNullString(u.Phone),
 		WechatUnionId:    sqlx.NewNullString(u.WechatInfo.UnionId),
 		WechatOpenId:     sqlx.NewNullString(u.WechatInfo.OpenId),
 		WechatMiniOpenId: sqlx.NewNullString(u.WechatInfo.MiniOpenId),
@@ -129,6 +135,7 @@ func (ur *CachedUserRepository) entityToDomain(ue dao.User) domain.User {
 		Nickname: ue.Nickname,
 		SN:       ue.SN,
 		Avatar:   ue.Avatar,
+		Phone:    ue.Phone.String,
 		WechatInfo: domain.WechatInfo{
 			OpenId:     ue.WechatOpenId.String,
 			UnionId:    ue.WechatUnionId.String,
