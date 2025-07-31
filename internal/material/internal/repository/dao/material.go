@@ -40,6 +40,10 @@ type Material struct {
 	Utime     int64
 }
 
+func (Material) TableName() string {
+	return "materials"
+}
+
 // MaterialDAO 定义了素材模块的数据访问操作
 type MaterialDAO interface {
 	Create(ctx context.Context, m Material) (int64, error)

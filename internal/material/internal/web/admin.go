@@ -110,8 +110,16 @@ func (h *AdminHandler) Accept(ctx *ginx.Context, req AcceptMaterialReq, _ sessio
 }
 
 func (h *AdminHandler) Notify(ctx *ginx.Context, req NotifyUserReq, _ session.Session) (ginx.Result, error) {
+	m, err := h.svc.FindByID(ctx.Request.Context(), req.ID)
+	if err != nil {
+		return systemErrorResult, fmt.Errorf("素材未找到：%w", err)
+	}
+
+	if !m.Status.IsAccepted() {
+		return systemErrorResult, fmt.Errorf("素材未被接受到：%w", err)
+	}
 	// 根据素材中关联的uid查找手机号
-	u, err := h.userSvc.Profile(ctx.Request.Context(), req.Uid)
+	u, err := h.userSvc.Profile(ctx.Request.Context(), m.Uid)
 	if err != nil {
 		return systemErrorResult, fmt.Errorf("用户未找到：%w", err)
 	}
@@ -130,7 +138,8 @@ func (h *AdminHandler) Notify(ctx *ginx.Context, req NotifyUserReq, _ session.Se
 	if err != nil {
 		return systemErrorResult, errors.New("发送通知短信失败")
 	}
-	if r, ok := resp.PhoneNumbers[u.Phone]; ok && r.Code != sms.OK {
+	r, ok := resp.PhoneNumbers[u.Phone]
+	if !ok || r.Code != sms.OK {
 		return notifyFailedErrorResult, errors.New("用户无法收到通知")
 	}
 	return ginx.Result{Msg: "OK"}, nil

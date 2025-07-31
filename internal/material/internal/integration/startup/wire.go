@@ -12,26 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package web
+//go:build wireinject
 
-import (
-	"github.com/ecodeclub/ginx"
-	"github.com/ecodeclub/webook/internal/material/internal/errs"
-)
-
-var (
-	systemErrorResult = ginx.Result{
-		Code: errs.SystemError.Code,
-		Msg:  errs.SystemError.Msg,
-	}
-
-	phoneNotLinkedErrorResult = ginx.Result{
-		Code: errs.PhoneNotLinkedError.Code,
-		Msg:  errs.PhoneNotLinkedError.Msg,
-	}
-
-	notifyFailedErrorResult = ginx.Result{
-		Code: errs.ReceiveNotifyFailedError.Code,
-		Msg:  errs.ReceiveNotifyFailedError.Msg,
-	}
-)
+package startup

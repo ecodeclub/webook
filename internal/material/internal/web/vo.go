@@ -46,6 +46,6 @@ type AcceptMaterialReq struct {
 }
 
 type NotifyUserReq struct {
-	Uid  int64  `json:"uid"`
+	ID   int64  `json:"id"`
 	Date string `json:"date"`
 }

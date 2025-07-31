@@ -25,6 +25,10 @@ func (m MaterialStatus) String() string {
 	return string(m)
 }
 
+func (m MaterialStatus) IsAccepted() bool {
+	return m == MaterialStatusAccepted
+}
+
 type Material struct {
 	ID        int64
 	Uid       int64
