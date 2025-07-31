@@ -12,17 +12,6 @@ import (
 
 const signName = "广州妙影科技"
 
-var (
-	// platformTemplateType2Aliyun  平台内部模版状态到阿里云状态的映射
-	platformTemplateType2Aliyun = map[TemplateType]TemplateType{
-		TemplateTypeVerification:  TemplateTypeInternational,
-		TemplateTypeNotification:  TemplateTypeMarketing,
-		TemplateTypeMarketing:     TemplateTypeNotification,
-		TemplateTypeInternational: TemplateTypeVerification,
-	}
-	_ Client = (*AliyunSMS)(nil)
-)
-
 // AliyunSMS 阿里云短信实现
 type AliyunSMS struct {
 	client *dysmsapi.Client
