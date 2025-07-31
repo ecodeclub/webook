@@ -86,14 +86,5 @@ func initRegistrationEventProducer(q mq.MQ) event.RegistrationEventProducer {
 
 func initVerificationCodeSvc(smsClient client.Client,
 	repo repository.VerificationCodeRepo) service.VerificationCodeSvc {
-	type Config struct {
-		TemplateID string `yaml:"templateID"`
-		SignName   string `yaml:"signName"`
-	}
-	var cfg Config
-	err := econf.UnmarshalKey("verificationCode.tencentcloud", &cfg)
-	if err != nil {
-		panic(err)
-	}
-	return service.NewVerificationCodeSvc(smsClient, repo, cfg.TemplateID, cfg.SignName)
+	return service.NewVerificationCodeSvc(smsClient, repo)
 }

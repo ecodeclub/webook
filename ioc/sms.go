@@ -7,19 +7,17 @@ import (
 
 func initTencentCloudSMS() client.Client {
 	type Config struct {
-		RegionID  string `yaml:"regionID"`
 		SecretID  string `yaml:"secretID"`
 		SecretKey string `yaml:"secretKey"`
-		AppID     string `yaml:"appID"`
 	}
 	var cfg Config
-	err := econf.UnmarshalKey("sms.tencentcloud", &cfg)
+	err := econf.UnmarshalKey("sms.aliyun", &cfg)
 	if err != nil {
 		panic(err)
 	}
-	tencentClient, err := client.NewTencentCloudSMS(cfg.RegionID, cfg.SecretID, cfg.SecretKey, cfg.AppID)
+	aliClient, err := client.NewAliyunSMS(cfg.SecretID, cfg.SecretKey)
 	if err != nil {
 		panic(err)
 	}
-	return tencentClient
+	return aliClient
 }

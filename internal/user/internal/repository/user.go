@@ -75,43 +75,19 @@ func (ur *CachedUserRepository) FindById(ctx context.Context,
 	return u, nil
 }
 
+// FindByIds todo 从数据库中取
 func (ur *CachedUserRepository) FindByIds(ctx context.Context, ids []int64) ([]domain.User, error) {
 	if len(ids) == 0 {
 		return []domain.User{}, nil
 	}
-
-	userMap := make(map[int64]domain.User, len(ids))
-	notFoundIDs := make([]int64, 0, len(ids))
-	// 先从缓存获取
-	for _, id := range ids {
-		u, err := ur.cache.Get(ctx, id)
-		if err == nil {
-			userMap[id] = u
-		} else {
-			notFoundIDs = append(notFoundIDs, id)
-		}
+	us, err := ur.dao.FindByIds(ctx, ids)
+	if err != nil {
+		return nil, err
 	}
-	// 从数据库查询缺失的用户
-	if len(notFoundIDs) > 0 {
-		us, err := ur.dao.FindByIds(ctx, notFoundIDs)
-		if err != nil {
-			return nil, err
-		}
-		// 设置缓存并添加到map
-		for i := range us {
-			u := ur.entityToDomain(us[i])
-			userMap[u.Id] = u
-			// 忽略掉这里的错误
-			_ = ur.cache.Set(ctx, u)
-		}
-	}
-	// 按照原始ids的顺序返回结果
-	users := make([]domain.User, 0, len(ids))
-	for i := range ids {
-		if user, exists := userMap[ids[i]]; exists {
-			users = append(users, user)
-		}
-		// 如果某个ID不存在或者重复，保持顺序但可能数量少于输入
+	users := make([]domain.User, 0, len(us))
+	for i := range us {
+		u := ur.entityToDomain(us[i])
+		users = append(users, u)
 	}
 	return users, nil
 }

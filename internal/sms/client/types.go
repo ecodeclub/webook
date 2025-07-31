@@ -49,10 +49,10 @@ type Client interface {
 
 // SendReq 发送短信请求参数
 type SendReq struct {
-	PhoneNumbers  []string          // 手机号码, 阿里云、腾讯云共用
-	SignName      string            // 签名名称, 阿里云、腾讯云共用
+	PhoneNumbers []string // 手机号码, 阿里云、腾讯云共用
+	// SignName      string            // 签名名称, 阿里云、腾讯云共用
 	TemplateID    string            // 模板 ID, 阿里云、腾讯云共用
-	TemplateParam map[string]string // 模板参数, 阿里云、腾讯云共用, key-value 形式
+	TemplateParam map[string]string // 模板参数, 阿里云、腾讯云共用, key-value 形式 // date
 }
 
 // SendResp 发送短信响应参数

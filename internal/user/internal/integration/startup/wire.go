@@ -91,5 +91,5 @@ func initRegistrationEventProducer(q mq.MQ) event.RegistrationEventProducer {
 }
 
 func initVerificationCodeSvc(repo repository.VerificationCodeRepo) service.VerificationCodeSvc {
-	return service.NewVerificationCodeSvc(nil, repo, "123", "321")
+	return service.NewVerificationCodeSvc(nil, repo)
 }

@@ -107,12 +107,8 @@ func (h *Handler) PublicRoutes(server *gin.Engine) {
 }
 
 func (h *Handler) BindPhone(ctx *ginx.Context, req PhoneReq, sess session.Session) (ginx.Result, error) {
-	code, err := h.verificationCodeSvc.GetCode(ctx, req.Phone)
+	err := h.verificationCodeSvc.Verify(ctx, req.Phone, req.Code)
 	if err != nil {
-		err = errors.New("验证码错误")
-		return newVerificationErr(err), err
-	}
-	if code != req.Code {
 		err = errors.New("验证码错误")
 		return newVerificationErr(err), err
 	}
@@ -128,12 +124,8 @@ func (h *Handler) BindPhone(ctx *ginx.Context, req PhoneReq, sess session.Sessio
 }
 
 func (h *Handler) PhoneLogin(ctx *ginx.Context, req PhoneReq) (ginx.Result, error) {
-	code, err := h.verificationCodeSvc.GetCode(ctx, req.Phone)
+	err := h.verificationCodeSvc.Verify(ctx, req.Phone, req.Code)
 	if err != nil {
-		err = errors.New("验证码错误")
-		return newVerificationErr(err), err
-	}
-	if code != req.Code {
 		err = errors.New("验证码错误")
 		return newVerificationErr(err), err
 	}
@@ -160,11 +152,8 @@ func (h *Handler) SendCode(ctx *ginx.Context, req SendCodeReq) (ginx.Result, err
 }
 
 func (h *Handler) PhoneRegister(ctx *ginx.Context, req PhoneReq) (ginx.Result, error) {
-	code, err := h.verificationCodeSvc.GetCode(ctx, req.Phone)
+	err := h.verificationCodeSvc.Verify(ctx, req.Phone, req.Code)
 	if err != nil {
-		return newVerificationErr(err), err
-	}
-	if code != req.Code {
 		err = errors.New("验证码错误")
 		return newVerificationErr(err), err
 	}

@@ -60,11 +60,9 @@ verificationCode:
     templateID: ""
     signName: ""
 sms:
-  tencentcloud:
-    regionID: ""
+  aliyun:
     secretID: ""
     secretKey: ""
-    appID: ""
 
 
 cron:

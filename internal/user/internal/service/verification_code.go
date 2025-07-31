@@ -10,28 +10,40 @@ import (
 	"github.com/pkg/errors"
 )
 
+const templateID = "SMS_315530322"
+
+var (
+	ErrVerificationCode = errors.New("验证码错误")
+)
+
 type VerificationCodeSvc interface {
 	Send(ctx context.Context, phone string) error
-	GetCode(ctx context.Context, phone string) (string, error)
+	Verify(ctx context.Context, phone string, code string) error
 }
 
 type smsServiceImpl struct {
-	client     client.Client
-	repo       repository.VerificationCodeRepo
-	templateID string
-	signName   string
+	client client.Client
+	repo   repository.VerificationCodeRepo
 }
 
 func NewVerificationCodeSvc(client client.Client,
 	repo repository.VerificationCodeRepo,
-	templateID, signName string,
 ) VerificationCodeSvc {
 	return &smsServiceImpl{
-		client:     client,
-		repo:       repo,
-		templateID: templateID,
-		signName:   signName,
+		client: client,
+		repo:   repo,
 	}
+}
+
+func (s *smsServiceImpl) Verify(ctx context.Context, phone string, code string) error {
+	wantCode, err := s.repo.GetPhoneCode(ctx, phone)
+	if err != nil {
+		return err
+	}
+	if wantCode != code {
+		return ErrVerificationCode
+	}
+	return nil
 }
 
 func (s *smsServiceImpl) GetCode(ctx context.Context, phone string) (string, error) {
@@ -50,8 +62,7 @@ func (s *smsServiceImpl) Send(ctx context.Context, phone string) error {
 	}
 	respMap, err := s.client.Send(client.SendReq{
 		PhoneNumbers:  []string{phone},
-		SignName:      s.signName,
-		TemplateID:    s.templateID,
+		TemplateID:    templateID,
 		TemplateParam: params,
 	})
 	if err != nil {
