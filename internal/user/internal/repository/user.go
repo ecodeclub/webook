@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 
+	"github.com/ecodeclub/ekit/slice"
 	"github.com/ecodeclub/ekit/sqlx"
 
 	"github.com/ecodeclub/webook/internal/user/internal/domain"
@@ -84,12 +85,9 @@ func (ur *CachedUserRepository) FindByIds(ctx context.Context, ids []int64) ([]d
 	if err != nil {
 		return nil, err
 	}
-	users := make([]domain.User, 0, len(us))
-	for i := range us {
-		u := ur.entityToDomain(us[i])
-		users = append(users, u)
-	}
-	return users, nil
+	return slice.Map(us, func(idx int, src dao.User) domain.User {
+		return ur.entityToDomain(src)
+	}), nil
 }
 
 func (ur *CachedUserRepository) domainToEntity(u domain.User) dao.User {
