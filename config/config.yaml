@@ -55,10 +55,6 @@ kafka:
   addresses:
     - kafka:9092
 
-verificationCode:
-  tencentcloud:
-    templateID: ""
-    signName: ""
 sms:
   aliyun:
     secretID: ""
