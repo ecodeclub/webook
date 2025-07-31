@@ -75,7 +75,7 @@ func InitApp() (*App, error) {
 	v5 := baguwenModule.ExamineHdl
 	v6 := baguwenModule.QsHdl
 	v7 := label.InitHandler(v)
-	client := initTencentCloudSMS()
+	client := initAliSMSClient()
 	userModule := InitUserModule(v, provider, cache, mq, module, client, permissionModule)
 	v8 := userModule.Hdl
 	config := InitCosConfig()

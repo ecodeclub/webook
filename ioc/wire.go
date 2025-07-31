@@ -53,7 +53,7 @@ func InitApp() (*App, error) {
 		InitSession,
 		cos.InitHandler,
 		baguwen.InitModule,
-		initTencentCloudSMS,
+		initAliSMSClient,
 		initJobs,
 		wire.FieldsOf(new(*baguwen.Module),
 			"AdminHdl", "AdminSetHdl", "KnowledgeJobStarter",

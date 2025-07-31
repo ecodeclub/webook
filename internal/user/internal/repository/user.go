@@ -76,7 +76,6 @@ func (ur *CachedUserRepository) FindById(ctx context.Context,
 	return u, nil
 }
 
-// FindByIds todo 从数据库中取
 func (ur *CachedUserRepository) FindByIds(ctx context.Context, ids []int64) ([]domain.User, error) {
 	if len(ids) == 0 {
 		return []domain.User{}, nil

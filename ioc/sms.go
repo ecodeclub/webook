@@ -5,7 +5,7 @@ import (
 	"github.com/gotomicro/ego/core/econf"
 )
 
-func initTencentCloudSMS() client.Client {
+func initAliSMSClient() client.Client {
 	type Config struct {
 		SecretID  string `yaml:"secretID"`
 		SecretKey string `yaml:"secretKey"`
