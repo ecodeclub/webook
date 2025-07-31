@@ -43,3 +43,12 @@ type EditReq struct {
 	Avatar   string `json:"avatar"`
 	Nickname string `json:"nickname"`
 }
+
+type SendCodeReq struct {
+	Phone string `json:"phone"`
+}
+
+type PhoneReq struct {
+	Phone string `json:"phone"`
+	Code  string `json:"code"`
+}

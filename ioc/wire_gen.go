@@ -75,7 +75,8 @@ func InitApp() (*App, error) {
 	v5 := baguwenModule.ExamineHdl
 	v6 := baguwenModule.QsHdl
 	v7 := label.InitHandler(v)
-	userModule := InitUserModule(v, provider, cache, mq, module, permissionModule)
+	client := initAliSMSClient()
+	userModule := InitUserModule(v, provider, cache, mq, module, client, permissionModule)
 	v8 := userModule.Hdl
 	config := InitCosConfig()
 	v9 := cos.InitHandler(config)
@@ -119,8 +120,8 @@ func InitApp() (*App, error) {
 	}
 	v18 := marketingModule.Hdl
 	v19 := interactiveModule.Hdl
-	client := InitES()
-	searchModule, err := search.InitModule(client, mq, casesModule)
+	elasticClient := InitES()
+	searchModule, err := search.InitModule(elasticClient, mq, casesModule)
 	if err != nil {
 		return nil, err
 	}

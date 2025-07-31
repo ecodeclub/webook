@@ -20,6 +20,7 @@ import (
 	"github.com/ecodeclub/mq-api"
 	"github.com/ecodeclub/webook/internal/member"
 	"github.com/ecodeclub/webook/internal/permission"
+	"github.com/ecodeclub/webook/internal/sms/client"
 	"github.com/ecodeclub/webook/internal/user"
 	"github.com/ego-component/egorm"
 	"github.com/gotomicro/ego/core/econf"
@@ -30,6 +31,7 @@ func InitUserModule(db *egorm.Component,
 	ec ecache.Cache,
 	q mq.MQ,
 	memModule *member.Module,
+	smsClient client.Client,
 	perm *permission.Module) *user.Module {
 	type UserConfig struct {
 		Creators []string `json:"creators"`
@@ -39,5 +41,5 @@ func InitUserModule(db *egorm.Component,
 	if err != nil {
 		panic(err)
 	}
-	return user.InitModule(db, ec, q, cfg.Creators, memModule, sp, perm)
+	return user.InitModule(db, ec, q, cfg.Creators, memModule, sp, perm, smsClient)
 }

@@ -80,6 +80,84 @@ func (c *MockUserServiceBatchProfileCall) DoAndReturn(f func(context.Context, []
 	return c
 }
 
+// CreateWithPhone mocks base method.
+func (m *MockUserService) CreateWithPhone(ctx context.Context, phone string) (domain.User, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateWithPhone", ctx, phone)
+	ret0, _ := ret[0].(domain.User)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CreateWithPhone indicates an expected call of CreateWithPhone.
+func (mr *MockUserServiceMockRecorder) CreateWithPhone(ctx, phone any) *MockUserServiceCreateWithPhoneCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateWithPhone", reflect.TypeOf((*MockUserService)(nil).CreateWithPhone), ctx, phone)
+	return &MockUserServiceCreateWithPhoneCall{Call: call}
+}
+
+// MockUserServiceCreateWithPhoneCall wrap *gomock.Call
+type MockUserServiceCreateWithPhoneCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockUserServiceCreateWithPhoneCall) Return(arg0 domain.User, arg1 error) *MockUserServiceCreateWithPhoneCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockUserServiceCreateWithPhoneCall) Do(f func(context.Context, string) (domain.User, error)) *MockUserServiceCreateWithPhoneCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockUserServiceCreateWithPhoneCall) DoAndReturn(f func(context.Context, string) (domain.User, error)) *MockUserServiceCreateWithPhoneCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// FindByPhone mocks base method.
+func (m *MockUserService) FindByPhone(ctx context.Context, phone string) (domain.User, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FindByPhone", ctx, phone)
+	ret0, _ := ret[0].(domain.User)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// FindByPhone indicates an expected call of FindByPhone.
+func (mr *MockUserServiceMockRecorder) FindByPhone(ctx, phone any) *MockUserServiceFindByPhoneCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindByPhone", reflect.TypeOf((*MockUserService)(nil).FindByPhone), ctx, phone)
+	return &MockUserServiceFindByPhoneCall{Call: call}
+}
+
+// MockUserServiceFindByPhoneCall wrap *gomock.Call
+type MockUserServiceFindByPhoneCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockUserServiceFindByPhoneCall) Return(arg0 domain.User, arg1 error) *MockUserServiceFindByPhoneCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockUserServiceFindByPhoneCall) Do(f func(context.Context, string) (domain.User, error)) *MockUserServiceFindByPhoneCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockUserServiceFindByPhoneCall) DoAndReturn(f func(context.Context, string) (domain.User, error)) *MockUserServiceFindByPhoneCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // FindOrCreateByWechat mocks base method.
 func (m *MockUserService) FindOrCreateByWechat(ctx context.Context, info domain.WechatInfo) (domain.User, error) {
 	m.ctrl.T.Helper()
