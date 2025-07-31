@@ -5,7 +5,7 @@ import (
 )
 
 const (
-	OK = "Ok"
+	OK = "OK"
 )
 
 // 通用错误定义

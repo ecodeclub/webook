@@ -10,7 +10,7 @@ import (
 	"github.com/alibabacloud-go/tea/tea"
 )
 
-const signName = "妙影科技"
+const signName = "广州妙影科技"
 
 var (
 	// platformTemplateType2Aliyun  平台内部模版状态到阿里云状态的映射
