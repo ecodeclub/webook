@@ -33,4 +33,9 @@ var (
 		Code: errs.PhoneNotLinkedError.Code,
 		Msg:  errs.PhoneNotLinkedError.Msg,
 	}
+
+	notifyFailedErrorResult = ginx.Result{
+		Code: errs.ReceieveNotifyFailedError.Code,
+		Msg:  errs.ReceieveNotifyFailedError.Msg,
+	}
 )

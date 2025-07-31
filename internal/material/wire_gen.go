@@ -15,13 +15,14 @@ import (
 	"github.com/ecodeclub/webook/internal/material/internal/repository/dao"
 	"github.com/ecodeclub/webook/internal/material/internal/service"
 	"github.com/ecodeclub/webook/internal/material/internal/web"
+	"github.com/ecodeclub/webook/internal/sms/client"
 	"github.com/ecodeclub/webook/internal/user"
 	"gorm.io/gorm"
 )
 
 // Injectors from wire.go:
 
-func InitModule(db *gorm.DB, q mq.MQ, userModule *user.Module) (*Module, error) {
+func InitModule(db *gorm.DB, q mq.MQ, client2 client.Client, userModule *user.Module) (*Module, error) {
 	materialDAO := initDAO(db)
 	materialRepository := repository.NewMaterialRepository(materialDAO)
 	materialService := service.NewMaterialService(materialRepository)
@@ -30,7 +31,7 @@ func InitModule(db *gorm.DB, q mq.MQ, userModule *user.Module) (*Module, error) 
 	if err != nil {
 		return nil, err
 	}
-	adminHandler := web.NewAdminHandler(materialService, userService, memberEventProducer)
+	adminHandler := web.NewAdminHandler(materialService, userService, memberEventProducer, client2)
 	handler := web.NewHandler(materialService)
 	module := &Module{
 		AdminHdl: adminHandler,

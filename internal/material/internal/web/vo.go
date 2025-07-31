@@ -46,6 +46,6 @@ type AcceptMaterialReq struct {
 }
 
 type NotifyUserReq struct {
-	ID   int64 `json:"id"`   // 素材ID
-	Date int64 `json:"date"` // 直播时间
+	Uid  int64  `json:"uid"`
+	Date string `json:"date"`
 }

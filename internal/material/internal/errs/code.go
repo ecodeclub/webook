@@ -18,7 +18,8 @@ var (
 	UserNotFoundError   = ErrorCode{Code: 418001, Msg: "用户未找到"}
 	PhoneNotLinkedError = ErrorCode{Code: 418002, Msg: "用户未绑定手机号"}
 
-	SystemError = ErrorCode{Code: 518001, Msg: "系统错误"}
+	SystemError               = ErrorCode{Code: 518001, Msg: "系统错误"}
+	ReceieveNotifyFailedError = ErrorCode{Code: 518002, Msg: "用户接收通知失败"}
 )
 
 type ErrorCode struct {

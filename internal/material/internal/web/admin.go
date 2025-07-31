@@ -25,26 +25,30 @@ import (
 	"github.com/ecodeclub/webook/internal/material/internal/domain"
 	"github.com/ecodeclub/webook/internal/material/internal/event"
 	"github.com/ecodeclub/webook/internal/material/internal/service"
+	sms "github.com/ecodeclub/webook/internal/sms/client"
 	"github.com/ecodeclub/webook/internal/user"
 	"github.com/gin-gonic/gin"
 	"github.com/gotomicro/ego/core/elog"
 )
 
 type AdminHandler struct {
-	svc      service.MaterialService
-	userSvc  user.UserService
-	producer event.MemberEventProducer
-	logger   *elog.Component
+	svc       service.MaterialService
+	userSvc   user.UserService
+	producer  event.MemberEventProducer
+	smsClient sms.Client
+	logger    *elog.Component
 }
 
 func NewAdminHandler(svc service.MaterialService,
 	userSvc user.UserService,
-	producer event.MemberEventProducer) *AdminHandler {
+	producer event.MemberEventProducer,
+	smsClient sms.Client) *AdminHandler {
 	return &AdminHandler{
-		svc:      svc,
-		userSvc:  userSvc,
-		producer: producer,
-		logger:   elog.DefaultLogger.With(elog.FieldComponentName("material.AdminHandler")),
+		svc:       svc,
+		userSvc:   userSvc,
+		producer:  producer,
+		smsClient: smsClient,
+		logger:    elog.DefaultLogger.With(elog.FieldComponentName("material.AdminHandler")),
 	}
 }
 
@@ -106,21 +110,28 @@ func (h *AdminHandler) Accept(ctx *ginx.Context, req AcceptMaterialReq, _ sessio
 }
 
 func (h *AdminHandler) Notify(ctx *ginx.Context, req NotifyUserReq, _ session.Session) (ginx.Result, error) {
-	// 找到素材
-	m, err := h.svc.FindByID(ctx.Request.Context(), req.ID)
-	if err != nil {
-		return systemErrorResult, fmt.Errorf("素材未找到：%w", err)
-	}
 	// 根据素材中关联的uid查找手机号
-	u, err := h.userSvc.Profile(ctx.Request.Context(), m.Uid)
+	u, err := h.userSvc.Profile(ctx.Request.Context(), req.Uid)
 	if err != nil {
-		return userNotFoundResult, fmt.Errorf("用户未找到：%w", err)
+		return systemErrorResult, fmt.Errorf("用户未找到：%w", err)
 	}
-	if u.Nickname == "" {
+	if u.Phone == "" {
 		return phoneNotLinkedErrorResult, errors.New("用户未绑定手机号")
 	}
 	// 构建短信请求
 	const templateID = "SMS_491540609"
-
-	return ginx.Result{Msg: templateID + "OK"}, nil
+	resp, err := h.smsClient.Send(sms.SendReq{
+		PhoneNumbers: []string{u.Phone},
+		TemplateID:   templateID,
+		TemplateParam: map[string]string{
+			"date": req.Date,
+		},
+	})
+	if err != nil {
+		return systemErrorResult, errors.New("发送通知短信失败")
+	}
+	if r, ok := resp.PhoneNumbers[u.Phone]; ok && r.Code != sms.OK {
+		return notifyFailedErrorResult, errors.New("用户无法收到通知")
+	}
+	return ginx.Result{Msg: "OK"}, nil
 }

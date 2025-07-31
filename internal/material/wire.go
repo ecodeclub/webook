@@ -25,6 +25,7 @@ import (
 	"github.com/ecodeclub/webook/internal/material/internal/repository/dao"
 	"github.com/ecodeclub/webook/internal/material/internal/service"
 	"github.com/ecodeclub/webook/internal/material/internal/web"
+	"github.com/ecodeclub/webook/internal/sms/client"
 	"github.com/ecodeclub/webook/internal/user"
 	"github.com/ego-component/egorm"
 	"github.com/google/wire"
@@ -36,7 +37,7 @@ type (
 	AdminHandler = web.AdminHandler
 )
 
-func InitModule(db *egorm.Component, q mq.MQ, userModule *user.Module) (*Module, error) {
+func InitModule(db *egorm.Component, q mq.MQ, client client.Client, userModule *user.Module) (*Module, error) {
 	wire.Build(
 		initDAO,
 		repository.NewMaterialRepository,

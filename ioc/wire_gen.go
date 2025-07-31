@@ -25,7 +25,7 @@ import (
 	"github.com/ecodeclub/webook/internal/pkg/middleware"
 	"github.com/ecodeclub/webook/internal/product"
 	"github.com/ecodeclub/webook/internal/project"
-	"github.com/ecodeclub/webook/internal/question"
+	baguwen "github.com/ecodeclub/webook/internal/question"
 	"github.com/ecodeclub/webook/internal/recon"
 	"github.com/ecodeclub/webook/internal/resume"
 	"github.com/ecodeclub/webook/internal/review"
@@ -147,7 +147,7 @@ func InitApp() (*App, error) {
 		return nil, err
 	}
 	handler19 := commentModule.Hdl
-	materialModule, err := material.InitModule(db, mq, userModule)
+	materialModule, err := material.InitModule(db, mq, client, userModule)
 	if err != nil {
 		return nil, err
 	}
