@@ -74,7 +74,7 @@ func (s *service) UpdateStatus(ctx context.Context, feedback domain.Feedback) er
 			Key:    shortuuid.New(),
 			Uid:    info.UID,
 			Amount: 100,
-			Biz:    9,
+			Biz:    "feedback",
 			BizId:  info.ID,
 			Action: "采纳反馈",
 		}
