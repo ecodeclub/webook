@@ -14,6 +14,8 @@
 
 package web
 
+import "github.com/ecodeclub/ginx"
+
 // SubmitMaterialReq 提交素材请求
 type SubmitMaterialReq struct {
 	Material Material `json:"material"`
@@ -36,10 +38,7 @@ type ListMaterialsReq struct {
 	Limit  int `json:"limit,omitempty"`
 }
 
-type ListMaterialsResp struct {
-	Total     int64      `json:"total"`
-	Materials []Material `json:"materials"`
-}
+type ListMaterialsResp ginx.DataList[Material]
 
 type AcceptMaterialReq struct {
 	ID int64 `json:"id"`

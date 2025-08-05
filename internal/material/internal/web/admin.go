@@ -66,8 +66,8 @@ func (h *AdminHandler) List(ctx *ginx.Context, req ListMaterialsReq, _ session.S
 	}
 	return ginx.Result{
 		Data: ListMaterialsResp{
-			Total: total,
-			Materials: slice.Map(materials, func(idx int, src domain.Material) Material {
+			Total: int(total),
+			List: slice.Map(materials, func(idx int, src domain.Material) Material {
 				return Material{
 					ID:        src.ID,
 					Uid:       src.Uid,

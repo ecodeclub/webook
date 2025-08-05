@@ -193,8 +193,8 @@ func (s *MaterialModuleTestSuite) TestAdminHandler_List() {
 	server.ServeHTTP(recorder, req)
 	require.Equal(t, 200, recorder.Code)
 	result := recorder.MustScan()
-	require.Equal(t, int64(total), result.Data.Total)
-	require.Len(t, result.Data.Materials, listReq.Limit)
+	require.Equal(t, total, result.Data.Total)
+	require.Len(t, result.Data.List, listReq.Limit)
 }
 
 func (s *MaterialModuleTestSuite) TestAdminHandler_Accept() {
