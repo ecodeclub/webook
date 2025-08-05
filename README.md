@@ -59,6 +59,7 @@
 - ai - 16
 - comment - 17
 - material - 18
+- interview — 19
 
 ## 内部 APP ID
 因为整个后台会被用于所有的 APP（我们会有很多 AI 应用）

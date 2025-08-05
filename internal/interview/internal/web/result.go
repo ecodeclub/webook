@@ -12,12 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package dao
+package web
 
-import "github.com/ego-component/egorm"
+import (
+	"github.com/ecodeclub/ginx"
+	"github.com/ecodeclub/webook/internal/interview/internal/errs"
+)
 
-func InitTables(db *egorm.Component) error {
-	return db.AutoMigrate(
-		&InterviewJourney{},
-		&InterviewRound{})
-}
+var (
+	systemErrorResult = ginx.Result{
+		Code: errs.SystemError.Code,
+		Msg:  errs.SystemError.Msg,
+	}
+)

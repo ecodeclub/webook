@@ -12,12 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package dao
+package errs
 
-import "github.com/ego-component/egorm"
+var (
+	SystemError = ErrorCode{Code: 519001, Msg: "系统错误"}
+)
 
-func InitTables(db *egorm.Component) error {
-	return db.AutoMigrate(
-		&InterviewJourney{},
-		&InterviewRound{})
+type ErrorCode struct {
+	Code int
+	Msg  string
 }

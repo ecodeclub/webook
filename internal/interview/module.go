@@ -12,12 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package dao
+package interview
 
-import "github.com/ego-component/egorm"
-
-func InitTables(db *egorm.Component) error {
-	return db.AutoMigrate(
-		&InterviewJourney{},
-		&InterviewRound{})
+type Module struct {
+	JourneyHdl *JourneyHandler
+	RoundHdl   *RoundHandler
 }
