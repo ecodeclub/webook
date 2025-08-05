@@ -16,6 +16,7 @@ package dao
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"time"
@@ -40,9 +41,12 @@ type Comment struct {
 
 	Content string `gorm:"type:text;not null;comment:'评论的具体内容'"`
 
-	// 这两个字段都可以为 0。如果是 0 就代表它自身就是一个根评论
-	AncestorID int64 `gorm:"type:bigint;not null;default:0;index:idx_ancestor_id;comment:'始祖评论ID，0表示对业务资源的直接评论，因其引发的后续所有评论都是其后裔（非0）。'"`
-	ParentID   int64 `gorm:"type:bigint;not null;default:0;index:idx_parent_id;comment:'父评论ID，0表示对业务资源的直接评论，非0表示要回复的评论的ID'"`
+	// 这两个字段都可以为 NULL。如果是 NULL 就代表它自身就是一个根评论
+	AncestorID sql.Null[int64] `gorm:"type:bigint;index:idx_ancestor_id;comment:'始祖评论ID，0表示对业务资源的直接评论，因其引发的后续所有评论都是其后裔（非0）。'"`
+	ParentID   sql.Null[int64] `gorm:"type:bigint;index:idx_parent_id;comment:'父评论ID，0表示对业务资源的直接评论，非0表示要回复的评论的ID'"`
+
+	// 外键用于级联删除后裔评论（子评论、子孙评论）
+	ParentComment *Comment `gorm:"ForeignKey:ParentID;AssociationForeignKey:ID;constraint:OnDelete:CASCADE"`
 
 	Utime int64
 	Ctime int64
@@ -65,6 +69,10 @@ type CommentDAO interface {
 	FindDescendants(ctx context.Context, ancestorID, maxID int64, limit int) ([]Comment, error)
 	// CountDescendants 统计直接评论（始祖评论）所有后代即所有子评论，孙子评论的数量
 	CountDescendants(ctx context.Context, ancestorID int64) (int64, error)
+	// FindByID 根据评论ID查找评论
+	FindByID(ctx context.Context, id int64) (Comment, error)
+	// Delete 根据ID删除评论及其后裔评论
+	Delete(ctx context.Context, id int64) error
 }
 
 type commentDAO struct {
@@ -81,20 +89,20 @@ func (g *commentDAO) Create(ctx context.Context, c Comment) (int64, error) {
 	err := g.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var ancestorID int64
 		// 当前评论非根评论（始祖评论）
-		if c.ParentID != 0 {
+		if c.ParentID.Valid {
 			// 找到父评论
 			var parent Comment
-			if err := tx.First(&parent, "id = ?", c.ParentID).Error; err != nil {
+			if err := tx.First(&parent, "id = ?", c.ParentID.V).Error; err != nil {
 				return fmt.Errorf("%w: %w", ErrInvalidParentID, err)
 			}
 			// 如果父评论是根评论（始祖评论），那始祖评论ID就是父评论ID，否则与父评论的始祖评论ID相同
-			if parent.ParentID == 0 {
+			if !parent.ParentID.Valid {
 				ancestorID = parent.ID
 			} else {
-				ancestorID = parent.AncestorID
+				ancestorID = parent.AncestorID.V
 			}
 		}
-		c.AncestorID = ancestorID
+		c.AncestorID = sql.Null[int64]{V: ancestorID, Valid: ancestorID != 0}
 		if err := tx.Create(&c).Error; err != nil {
 			return err
 		}
@@ -108,7 +116,7 @@ func (g *commentDAO) FindAncestors(ctx context.Context, biz string, bizID, minID
 	err := g.db.WithContext(ctx).
 		Where("id < ? AND biz = ? AND biz_id = ?", minID, biz, bizID).
 		// 直接评论、根评论、始祖评论
-		Where("ancestor_id = 0 AND parent_id = 0").
+		Where("ancestor_id IS NULL AND parent_id IS NULL").
 		Order("id DESC").
 		Limit(limit).
 		Find(&res).Error
@@ -129,7 +137,7 @@ func (g *commentDAO) CountAncestors(ctx context.Context, biz string, bizID int64
 	var count int64
 	err := g.db.WithContext(ctx).Model(&Comment{}).
 		Where("biz = ? AND biz_id = ?", biz, bizID).
-		Where("ancestor_id = 0 AND parent_id = 0").
+		Where("ancestor_id IS NULL AND parent_id IS NULL").
 		Count(&count).Error
 	return count, err
 }
@@ -150,4 +158,14 @@ func (g *commentDAO) CountDescendants(ctx context.Context, ancestorID int64) (in
 		Where("ancestor_id = ?", ancestorID).
 		Count(&count).Error
 	return count, err
+}
+
+func (g *commentDAO) FindByID(ctx context.Context, id int64) (Comment, error) {
+	var c Comment
+	err := g.db.WithContext(ctx).First(&c, id).Error
+	return c, err
+}
+
+func (g *commentDAO) Delete(ctx context.Context, id int64) error {
+	return g.db.WithContext(ctx).Where("id = ?", id).Delete(&Comment{}).Error
 }

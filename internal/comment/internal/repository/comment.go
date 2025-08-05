@@ -16,6 +16,7 @@ package repository
 
 import (
 	"context"
+	"database/sql"
 
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/ecodeclub/webook/internal/comment/internal/domain"
@@ -34,6 +35,10 @@ type CommentRepository interface {
 	FindDescendants(ctx context.Context, ancestorID, maxID int64, limit int) ([]domain.Comment, error)
 	// CountDescendants 统计直接评论（始祖评论）所有后代即所有子评论，孙子评论的数量
 	CountDescendants(ctx context.Context, ancestorID int64) (int64, error)
+	// FindByID 根据评论ID查找评论
+	FindByID(ctx context.Context, id int64) (domain.Comment, error)
+	// Delete 根据ID删除评论及其后裔评论
+	Delete(ctx context.Context, id int64) error
 }
 
 type commentRepository struct {
@@ -54,12 +59,16 @@ func (r *commentRepository) toEntity(comment domain.Comment) dao.Comment {
 		Uid:      comment.User.ID,
 		Biz:      comment.Biz,
 		BizID:    comment.BizID,
-		ParentID: comment.ParentID,
+		ParentID: sql.Null[int64]{V: comment.ParentID, Valid: comment.ParentID != 0},
 		Content:  comment.Content,
 	}
 }
 
 func (r *commentRepository) toDomain(comment dao.Comment) domain.Comment {
+	var parentID int64
+	if comment.ParentID.Valid {
+		parentID = comment.ParentID.V
+	}
 	return domain.Comment{
 		ID: comment.ID,
 		User: domain.User{
@@ -67,7 +76,7 @@ func (r *commentRepository) toDomain(comment dao.Comment) domain.Comment {
 		},
 		Biz:      comment.Biz,
 		BizID:    comment.BizID,
-		ParentID: comment.ParentID,
+		ParentID: parentID,
 		Content:  comment.Content,
 		Utime:    comment.Utime,
 	}
@@ -115,4 +124,16 @@ func (r *commentRepository) FindDescendants(ctx context.Context, ancestorID, max
 
 func (r *commentRepository) CountDescendants(ctx context.Context, ancestorID int64) (int64, error) {
 	return r.dao.CountDescendants(ctx, ancestorID)
+}
+
+func (r *commentRepository) FindByID(ctx context.Context, id int64) (domain.Comment, error) {
+	found, err := r.dao.FindByID(ctx, id)
+	if err != nil {
+		return domain.Comment{}, err
+	}
+	return r.toDomain(found), nil
+}
+
+func (r *commentRepository) Delete(ctx context.Context, id int64) error {
+	return r.dao.Delete(ctx, id)
 }
