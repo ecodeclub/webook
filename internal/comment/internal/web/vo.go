@@ -16,7 +16,7 @@ package web
 
 import "github.com/ecodeclub/ginx"
 
-type CommentRequest struct {
+type CreateRequest struct {
 	Comment Comment `json:"comment"`
 }
 
@@ -51,7 +51,7 @@ type Comment struct {
 	Replies []Comment `json:"replies"`
 }
 
-type CommentListRequest struct {
+type ListRequest struct {
 	Biz   string `json:"biz"`
 	BizID int64  `json:"bizId"`
 
@@ -63,7 +63,7 @@ type CommentListRequest struct {
 	MaxSubCnt int `json:"maxSubCnt"`
 }
 
-type GetRepliesRequest struct {
+type RepliesRequest struct {
 	// 直接评论、根评论、始祖评论 ID
 	AncestorID int64 `json:"ancestorId"`
 	// 上一页最大的评论ID，如果是第一页就传0
@@ -72,3 +72,7 @@ type GetRepliesRequest struct {
 }
 
 type CommentList ginx.DataList[Comment]
+
+type DeleteRequest struct {
+	ID int64 `json:"id"`
+}

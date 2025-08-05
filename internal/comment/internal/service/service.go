@@ -31,6 +31,10 @@ type CommentService interface {
 	Comments(ctx context.Context, biz string, bizID, minID int64, limit, maxSubCnt int) ([]domain.Comment, int64, error)
 	// Replies 查找直接评论（始祖评论）所有后代即所有子评论，孙子评论，按照评论时间排序（即先评论的在前面）
 	Replies(ctx context.Context, ancestorID, maxID int64, limit int) ([]domain.Comment, int64, error)
+	// FindByID 根据评论ID查找评论
+	FindByID(ctx context.Context, id int64) (domain.Comment, error)
+	// Delete 根据ID删除评论及其后裔评论
+	Delete(ctx context.Context, id int64) error
 }
 
 type commentService struct {
@@ -142,4 +146,12 @@ func (s *commentService) Replies(ctx context.Context, ancestorID, maxID int64, l
 	})
 
 	return replies, total, eg.Wait()
+}
+
+func (s *commentService) FindByID(ctx context.Context, id int64) (domain.Comment, error) {
+	return s.repo.FindByID(ctx, id)
+}
+
+func (s *commentService) Delete(ctx context.Context, id int64) error {
+	return s.repo.Delete(ctx, id)
 }

@@ -18,6 +18,7 @@ package integration
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"math/rand"
 	"net/http"
@@ -142,8 +143,8 @@ func (s *HandlerTestSuite) createAncestorComment(biz string, bizID int64) int64 
 		Uid:        testUID,
 		Biz:        biz,
 		BizID:      bizID,
-		ParentID:   0,
-		AncestorID: 0,
+		ParentID:   sql.Null[int64]{V: 0, Valid: false},
+		AncestorID: sql.Null[int64]{V: 0, Valid: false},
 		Content:    fmt.Sprintf("始祖评论_%d", time.Now().UnixNano()),
 		Ctime:      time.Now().UnixMilli(),
 		Utime:      time.Now().UnixMilli(),
@@ -158,8 +159,8 @@ func (s *HandlerTestSuite) createAncestorComment(biz string, bizID int64) int64 
 func (s *HandlerTestSuite) createReplyComment(parentID, ancestorID int64, content string) int64 {
 	cmt := dao.Comment{
 		Uid:        testUID2,
-		ParentID:   parentID,
-		AncestorID: ancestorID,
+		ParentID:   sql.Null[int64]{V: parentID, Valid: true},
+		AncestorID: sql.Null[int64]{V: ancestorID, Valid: true},
 		Content:    content,
 		Ctime:      time.Now().UnixMilli(),
 		Utime:      time.Now().UnixMilli(),
@@ -171,7 +172,7 @@ func (s *HandlerTestSuite) createReplyComment(parentID, ancestorID int64, conten
 }
 
 // 辅助方法：查询评论列表
-func (s *HandlerTestSuite) queryCommentList(req web.CommentListRequest) map[string]any {
+func (s *HandlerTestSuite) queryCommentList(req web.ListRequest) map[string]any {
 	httpReq, err := http.NewRequest(http.MethodPost, "/comment/list", iox.NewJSONReader(req))
 	s.NoError(err)
 	httpReq.Header.Set("Content-Type", "application/json")
@@ -202,8 +203,8 @@ func (s *HandlerTestSuite) TestCreateComment() {
 				err := s.db.First(&cmt, commentID).Error
 				s.NoError(err)
 				s.Equal("这是一个测试评论", cmt.Content)
-				s.Equal(int64(0), cmt.ParentID)
-				s.Equal(int64(0), cmt.AncestorID)
+				s.Equal(int64(0), cmt.ParentID.V)
+				s.Equal(int64(0), cmt.AncestorID.V)
 			},
 		},
 		{
@@ -220,8 +221,8 @@ func (s *HandlerTestSuite) TestCreateComment() {
 				var cmt dao.Comment
 				err := s.db.First(&cmt, commentID).Error
 				s.NoError(err)
-				s.NotEqual(int64(0), cmt.ParentID)
-				s.NotEqual(int64(0), cmt.AncestorID)
+				s.NotEqual(int64(0), cmt.ParentID.V)
+				s.NotEqual(int64(0), cmt.AncestorID.V)
 			},
 		},
 		{
@@ -239,7 +240,7 @@ func (s *HandlerTestSuite) TestCreateComment() {
 				var cmt dao.Comment
 				err := s.db.First(&cmt, commentID).Error
 				s.NoError(err)
-				s.NotEqual(int64(0), cmt.AncestorID)
+				s.NotEqual(int64(0), cmt.AncestorID.V)
 			},
 		},
 		{
@@ -258,7 +259,7 @@ func (s *HandlerTestSuite) TestCreateComment() {
 				var cmt dao.Comment
 				err := s.db.First(&cmt, commentID).Error
 				s.NoError(err)
-				s.NotEqual(int64(0), cmt.AncestorID)
+				s.NotEqual(int64(0), cmt.AncestorID.V)
 			},
 		},
 		{
@@ -285,7 +286,7 @@ func (s *HandlerTestSuite) TestCreateComment() {
 		s.Run(tc.name, func() {
 			biz, bizID, parentID := tc.before()
 
-			req := web.CommentRequest{
+			req := web.CreateRequest{
 				Comment: web.Comment{
 					Biz:      biz,
 					BizID:    bizID,
@@ -316,7 +317,7 @@ func (s *HandlerTestSuite) TestCommentList() {
 	testCases := []struct {
 		name     string
 		before   func() (biz string, bizID int64, commentIDs []int64)
-		req      web.CommentListRequest
+		req      web.ListRequest
 		wantCode int
 		after    func(result map[string]any)
 	}{
@@ -333,7 +334,7 @@ func (s *HandlerTestSuite) TestCommentList() {
 				}
 				return biz, bizID, ids
 			},
-			req: web.CommentListRequest{
+			req: web.ListRequest{
 				Limit:     10,
 				MaxSubCnt: 0,
 			},
@@ -368,7 +369,7 @@ func (s *HandlerTestSuite) TestCommentList() {
 
 				return biz, bizID, []int64{ancestorID}
 			},
-			req: web.CommentListRequest{
+			req: web.ListRequest{
 				Limit:     10,
 				MaxSubCnt: 3,
 			},
@@ -400,7 +401,7 @@ func (s *HandlerTestSuite) TestCommentList() {
 				}
 				return biz, bizID, ids
 			},
-			req: web.CommentListRequest{
+			req: web.ListRequest{
 				Limit:     3,
 				MaxSubCnt: 0,
 			},
@@ -418,7 +419,7 @@ func (s *HandlerTestSuite) TestCommentList() {
 			before: func() (biz string, bizID int64, commentIDs []int64) {
 				return "article", s.getUniqueBizID(), nil
 			},
-			req: web.CommentListRequest{
+			req: web.ListRequest{
 				Limit:     10,
 				MaxSubCnt: 0,
 			},
@@ -461,7 +462,7 @@ func (s *HandlerTestSuite) TestGetReplies() {
 	testCases := []struct {
 		name     string
 		before   func() (ancestorID int64, replyIDs []int64)
-		req      web.GetRepliesRequest
+		req      web.RepliesRequest
 		wantCode int
 		after    func(result map[string]any)
 	}{
@@ -485,7 +486,7 @@ func (s *HandlerTestSuite) TestGetReplies() {
 
 				return ancestorID, replyIDs
 			},
-			req: web.GetRepliesRequest{
+			req: web.RepliesRequest{
 				MaxID: 0,
 				Limit: 10,
 			},
@@ -530,7 +531,7 @@ func (s *HandlerTestSuite) TestGetReplies() {
 
 				return ancestorID, replyIDs
 			},
-			req: web.GetRepliesRequest{
+			req: web.RepliesRequest{
 				MaxID: 0,
 				Limit: 3,
 			},
@@ -548,7 +549,7 @@ func (s *HandlerTestSuite) TestGetReplies() {
 			before: func() (int64, []int64) {
 				return 99999999, nil // 不存在的ID
 			},
-			req: web.GetRepliesRequest{
+			req: web.RepliesRequest{
 				MaxID: 0,
 				Limit: 10,
 			},
@@ -606,13 +607,13 @@ func (s *HandlerTestSuite) TestBusinessIsolation() {
 				return "article", articleBizID, "course", courseBizID
 			},
 			after: func(biz1 string, bizID1 int64, biz2 string, bizID2 int64) {
-				req1 := web.CommentListRequest{
+				req1 := web.ListRequest{
 					Biz:   biz1,
 					BizID: bizID1,
 					Limit: 10,
 				}
 
-				req2 := web.CommentListRequest{
+				req2 := web.ListRequest{
 					Biz:   biz2,
 					BizID: bizID2,
 					Limit: 10,
@@ -641,13 +642,13 @@ func (s *HandlerTestSuite) TestBusinessIsolation() {
 				return biz, bizID1, biz, bizID2
 			},
 			after: func(biz1 string, bizID1 int64, biz2 string, bizID2 int64) {
-				req1 := web.CommentListRequest{
+				req1 := web.ListRequest{
 					Biz:   biz1,
 					BizID: bizID1,
 					Limit: 10,
 				}
 
-				req2 := web.CommentListRequest{
+				req2 := web.ListRequest{
 					Biz:   biz2,
 					BizID: bizID2,
 					Limit: 10,
@@ -668,6 +669,128 @@ func (s *HandlerTestSuite) TestBusinessIsolation() {
 		s.Run(tc.name, func() {
 			biz1, bizID1, biz2, bizID2 := tc.before()
 			tc.after(biz1, bizID1, biz2, bizID2)
+		})
+	}
+}
+
+func (s *HandlerTestSuite) TestDelete() {
+	testCases := []struct {
+		name     string
+		before   func() (id int64)
+		req      web.DeleteRequest
+		wantCode int
+		wantResp test.Result[any]
+		after    func(id int64)
+	}{
+		{
+			name: "删除成功_始祖评论_无后代",
+			before: func() (ID int64) {
+				return s.createAncestorComment("audio", s.getUniqueBizID())
+			},
+			req: web.DeleteRequest{
+				ID: 0,
+			},
+			wantCode: 200,
+			wantResp: test.Result[any]{
+				Msg: "OK",
+			},
+			after: func(id int64) {
+				_, err := s.dao.FindByID(context.Background(), id)
+				s.Error(err)
+			},
+		},
+		{
+			name: "删除成功_始祖评论_有后代",
+			before: func() (ID int64) {
+				ancestorID := s.createAncestorComment("audio", s.getUniqueBizID())
+				reply1ID := s.createReplyComment(ancestorID, ancestorID, "一级回复1")
+				reply2ID := s.createReplyComment(ancestorID, ancestorID, "一级回复2")
+				_ = s.createReplyComment(ancestorID, ancestorID, "一级回复3")
+				_ = s.createReplyComment(reply1ID, ancestorID, "二级回复1")
+				_ = s.createReplyComment(reply1ID, ancestorID, "二级回复2")
+				_ = s.createReplyComment(reply1ID, ancestorID, "二级回复3")
+				_ = s.createReplyComment(reply2ID, ancestorID, "二级回复1")
+				return ancestorID
+			},
+			req: web.DeleteRequest{
+				ID: 0,
+			},
+			wantCode: 200,
+			wantResp: test.Result[any]{
+				Msg: "OK",
+			},
+			after: func(id int64) {
+				_, err := s.dao.FindByID(context.Background(), id)
+				s.Error(err)
+
+				descendants, err := s.dao.FindDescendants(context.Background(), id, 0, 100)
+				s.NoError(err)
+				s.Empty(descendants)
+			},
+		},
+		{
+			name: "删除失败_评论ID不存在",
+			before: func() (ID int64) {
+				return -1
+			},
+			req: web.DeleteRequest{
+				ID: 0,
+			},
+			wantCode: 500,
+			wantResp: test.Result[any]{
+				Code: 517001, Msg: "系统错误",
+			},
+			after: func(id int64) {},
+		},
+		{
+			name: "删除失败_操作者不是评论创建者",
+			before: func() (ID int64) {
+				cmt := dao.Comment{
+					Uid:        testUID3 + 101,
+					Biz:        "audio",
+					BizID:      s.getUniqueBizID(),
+					ParentID:   sql.Null[int64]{V: 0, Valid: false},
+					AncestorID: sql.Null[int64]{V: 0, Valid: false},
+					Content:    fmt.Sprintf("始祖评论_%d", time.Now().UnixNano()),
+					Ctime:      time.Now().UnixMilli(),
+					Utime:      time.Now().UnixMilli(),
+				}
+				err := s.db.Create(&cmt).Error
+				s.NoError(err)
+				return cmt.ID
+			},
+			req: web.DeleteRequest{
+				ID: 0,
+			},
+			wantCode: 500,
+			wantResp: test.Result[any]{
+				Code: 517001, Msg: "系统错误",
+			},
+			after: func(id int64) {
+				found, err := s.dao.FindByID(context.Background(), id)
+				s.NoError(err)
+				s.Equal(found.Uid, testUID3+101)
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		s.Run(tc.name, func() {
+			id := tc.before()
+
+			tc.req.ID = id
+
+			httpReq, err := http.NewRequest(http.MethodPost, "/comment/delete", iox.NewJSONReader(tc.req))
+			s.NoError(err)
+			httpReq.Header.Set("Content-Type", "application/json")
+			recorder := test.NewJSONResponseRecorder[any]()
+
+			s.server.ServeHTTP(recorder, httpReq)
+
+			s.Equal(tc.wantCode, recorder.Code)
+			s.Equal(tc.wantResp, recorder.MustScan())
+
+			tc.after(id)
 		})
 	}
 }
