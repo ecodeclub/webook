@@ -319,7 +319,7 @@ func (s *HandlerTestSuite) TestCommentList() {
 		before   func() (biz string, bizID int64, commentIDs []int64)
 		req      web.ListRequest
 		wantCode int
-		after    func(result map[string]any)
+		after    func(result web.CommentList)
 	}{
 		{
 			name: "始祖评论分页查询按时间倒序",
@@ -339,19 +339,13 @@ func (s *HandlerTestSuite) TestCommentList() {
 				MaxSubCnt: 0,
 			},
 			wantCode: 200,
-			after: func(result map[string]any) {
-				list := result["list"].([]any)
-				total := int(result["total"].(float64))
-
+			after: func(result web.CommentList) {
+				list := result.List
+				total := result.Total
 				s.Equal(3, len(list))
 				s.Equal(3, total)
-
 				if len(list) >= 2 {
-					first := list[0].(map[string]any)
-					second := list[1].(map[string]any)
-					firstTime := int64(first["utime"].(float64))
-					secondTime := int64(second["utime"].(float64))
-					s.True(firstTime >= secondTime) // 倒序
+					s.True(list[0].Utime >= list[1].Utime) // 倒序
 				}
 			},
 		},
@@ -362,30 +356,29 @@ func (s *HandlerTestSuite) TestCommentList() {
 				bizID = s.getUniqueBizID()
 
 				ancestorID := s.createAncestorComment(biz, bizID)
+				ancestorID2 := s.createAncestorComment(biz, bizID)
 
 				for i := 0; i < 5; i++ {
 					s.createReplyComment(ancestorID, ancestorID, fmt.Sprintf("子评论%d", i+1))
+					s.createReplyComment(ancestorID2, ancestorID2, fmt.Sprintf("子评论%d", i+1))
 				}
 
-				return biz, bizID, []int64{ancestorID}
+				return biz, bizID, []int64{ancestorID, ancestorID2}
 			},
 			req: web.ListRequest{
 				Limit:     10,
 				MaxSubCnt: 3,
 			},
 			wantCode: 200,
-			after: func(result map[string]any) {
-				list := result["list"].([]any)
-				s.Equal(1, len(list))
+			after: func(result web.CommentList) {
+				s.Equal(2, len(result.List))
+				for i := range result.List {
+					s.Equal(3, len(result.List[i].Replies)) // 只预加载了3个
+					// 验证评论用户信息填充
+					s.Equal("测试用户1", result.List[i].User.Nickname)
+					s.Equal("avatar1.jpg", result.List[i].User.Avatar)
+				}
 
-				c := list[0].(map[string]any)
-				replies := c["replies"].([]any)
-				s.Equal(3, len(replies)) // 只预加载了3个
-
-				// 验证评论用户信息填充
-				u := c["user"].(map[string]any)
-				s.Equal("测试用户1", u["nickname"])
-				s.Equal("avatar1.jpg", u["avatar"])
 			},
 		},
 		{
@@ -406,12 +399,9 @@ func (s *HandlerTestSuite) TestCommentList() {
 				MaxSubCnt: 0,
 			},
 			wantCode: 200,
-			after: func(result map[string]any) {
-				list := result["list"].([]any)
-				total := int(result["total"].(float64))
-
-				s.Equal(3, len(list)) // 分页限制
-				s.Equal(5, total)     // 总数
+			after: func(result web.CommentList) {
+				s.Equal(3, len(result.List)) // 分页限制
+				s.Equal(5, result.Total)     // 总数
 			},
 		},
 		{
@@ -424,12 +414,9 @@ func (s *HandlerTestSuite) TestCommentList() {
 				MaxSubCnt: 0,
 			},
 			wantCode: 200,
-			after: func(result map[string]any) {
-				list := result["list"].([]any)
-				total := int(result["total"].(float64))
-
-				s.Equal(0, len(list))
-				s.Equal(0, total)
+			after: func(result web.CommentList) {
+				s.Equal(0, len(result.List))
+				s.Equal(0, result.Total)
 			},
 		},
 	}
@@ -444,7 +431,7 @@ func (s *HandlerTestSuite) TestCommentList() {
 			httpReq, err := http.NewRequest(http.MethodPost, "/comment/list", iox.NewJSONReader(tc.req))
 			s.NoError(err)
 			httpReq.Header.Set("Content-Type", "application/json")
-			recorder := test.NewJSONResponseRecorder[map[string]any]()
+			recorder := test.NewJSONResponseRecorder[web.CommentList]()
 			s.server.ServeHTTP(recorder, httpReq)
 
 			s.Equal(tc.wantCode, recorder.Code)

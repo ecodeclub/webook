@@ -21,7 +21,6 @@ import (
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/ecodeclub/webook/internal/comment/internal/domain"
 	"github.com/ecodeclub/webook/internal/comment/internal/repository/dao"
-	"golang.org/x/sync/errgroup"
 )
 
 type CommentRepository interface {
@@ -85,24 +84,25 @@ func (r *commentRepository) FindAncestors(ctx context.Context, biz string, bizID
 	if err != nil {
 		return nil, err
 	}
+
+	parentIDs := make([]int64, 0, len(ancestors))
 	comments := slice.Map(ancestors, func(_ int, src dao.Comment) domain.Comment {
+		parentIDs = append(parentIDs, src.ID)
 		return r.toDomain(src)
 	})
-	// 并发获取回复
-	var eg errgroup.Group
+
+	children, err := r.dao.FindChildren(ctx, parentIDs, maxSubCnt)
+	if err != nil {
+		return nil, err
+	}
 	for i := range comments {
-		eg.Go(func() error {
-			children, err1 := r.dao.FindChildren(ctx, comments[i].ID, maxSubCnt)
-			if err1 != nil {
-				return err1
-			}
-			comments[i].Replies = slice.Map(children, func(_ int, src dao.Comment) domain.Comment {
+		if c, ok := children[comments[i].ID]; ok {
+			comments[i].Replies = slice.Map(c, func(_ int, src dao.Comment) domain.Comment {
 				return r.toDomain(src)
 			})
-			return nil
-		})
+		}
 	}
-	return comments, eg.Wait()
+	return comments, nil
 }
 
 func (r *commentRepository) CountAncestors(ctx context.Context, biz string, bizID int64) (int64, error) {
