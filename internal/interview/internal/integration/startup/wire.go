@@ -25,18 +25,14 @@ import (
 )
 
 type Module struct {
-	RoundSvc   service.InterviewRoundService
-	JourneySvc service.InterviewJourneyService
+	JourneySvc service.InterviewService
 }
 
 func InitModule(db *egorm.Component) *Module {
 	wire.Build(
-		dao.NewGORMInterviewRoundDAO,
-		dao.NewGORMInterviewJourneyDAO,
-		repository.NewInterviewJourneyRepository,
-		repository.NewInterviewRoundRepository,
-		service.NewInterviewJourneyService,
-		service.NewInterviewRoundService,
+		dao.NewGORMInterviewDAO,
+		repository.NewInterviewRepository,
+		service.NewInterviewService,
 		wire.Struct(new(Module), "*"),
 	)
 	return nil

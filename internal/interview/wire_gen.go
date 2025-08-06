@@ -19,17 +19,12 @@ import (
 // Injectors from wire.go:
 
 func InitModule(db *gorm.DB) (*Module, error) {
-	interviewJourneyDAO := initJourneyDAO(db)
-	interviewRoundDAO := initRoundDAO(db)
-	interviewRoundRepository := repository.NewInterviewRoundRepository(interviewRoundDAO)
-	interviewJourneyRepository := repository.NewInterviewJourneyRepository(interviewJourneyDAO, interviewRoundRepository)
-	interviewJourneyService := service.NewInterviewJourneyService(interviewJourneyRepository)
-	interviewJourneyHandler := web.NewInterviewJourneyHandler(interviewJourneyService)
-	interviewRoundService := service.NewInterviewRoundService(interviewJourneyRepository, interviewRoundRepository)
-	interviewRoundHandler := web.NewInterviewRoundHandler(interviewRoundService)
+	interviewDAO := initDAO(db)
+	interviewRepository := repository.NewInterviewRepository(interviewDAO)
+	interviewService := service.NewInterviewService(interviewRepository)
+	interviewJourneyHandler := web.NewInterviewJourneyHandler(interviewService)
 	module := &Module{
 		JourneyHdl: interviewJourneyHandler,
-		RoundHdl:   interviewRoundHandler,
 	}
 	return module, nil
 }
@@ -38,27 +33,16 @@ func InitModule(db *gorm.DB) (*Module, error) {
 
 type (
 	JourneyHandler = web.InterviewJourneyHandler
-	RoundHandler   = web.InterviewRoundHandler
 )
 
 var initOnce sync.Once
 
-func initJourneyDAO(db *gorm.DB) dao.InterviewJourneyDAO {
+func initDAO(db *gorm.DB) dao.InterviewDAO {
 	initOnce.Do(func() {
 		err := dao.InitTables(db)
 		if err != nil {
 			panic(err)
 		}
 	})
-	return dao.NewGORMInterviewJourneyDAO(db)
-}
-
-func initRoundDAO(db *gorm.DB) dao.InterviewRoundDAO {
-	initOnce.Do(func() {
-		err := dao.InitTables(db)
-		if err != nil {
-			panic(err)
-		}
-	})
-	return dao.NewGORMInterviewRoundDAO(db)
+	return dao.NewGORMInterviewDAO(db)
 }

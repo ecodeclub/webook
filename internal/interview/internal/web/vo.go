@@ -14,17 +14,8 @@
 
 package web
 
-type CreateJourneyReq struct {
+type SaveReq struct {
 	Journey Journey `json:"journey"`
-}
-
-// UpdateJourneyReq 代表更新面试历程的请求。
-type UpdateJourneyReq struct {
-	Journey Journey `json:"journey"`
-}
-
-type JourneyDetailReq struct {
-	ID int64 `json:"id"`
 }
 
 type Journey struct {
@@ -40,17 +31,8 @@ type Journey struct {
 	Rounds []Round `json:"rounds,omitzero"` // 仅在详情页中填充
 }
 
-type CreateRoundReq struct {
-	Round Round `json:"round"`
-}
-
-type UpdateRoundReq struct {
-	Round Round `json:"round"`
-}
-
 type Round struct {
 	ID            int64  `json:"id"`
-	Jid           int64  `json:"jid"`
 	RoundNumber   int    `json:"roundNumber"`
 	RoundType     string `json:"roundType"`
 	InterviewDate int64  `json:"interviewDate"`
@@ -61,6 +43,10 @@ type Round struct {
 	SelfSummary   string `json:"selfSummary"`
 	Result        string `json:"result"`
 	AllowSharing  bool   `json:"allowSharing"`
+}
+
+type DetailReq struct {
+	ID int64 `json:"id"`
 }
 
 type ListReq struct {

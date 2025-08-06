@@ -16,5 +16,4 @@ package interview
 
 type Module struct {
 	JourneyHdl *JourneyHandler
-	RoundHdl   *RoundHandler
 }

@@ -60,3 +60,49 @@ type InterviewJourney struct {
 	// 聚合关系：一个面试历程包含多个面试轮次
 	Rounds []InterviewRound
 }
+
+// RoundResult 定义了面试轮次的官方结果。
+type RoundResult string
+
+// 定义面试轮次结果的枚举常量
+const (
+	ResultPending  RoundResult = "PENDING"
+	ResultApproved RoundResult = "APPROVED"
+	ResultRejected RoundResult = "REJECTED"
+)
+
+// IsValid 检查给定的结果字符串是否为有效的 RoundResult 枚举值。
+func (r RoundResult) IsValid() bool {
+	switch r {
+	case ResultPending, ResultApproved, ResultRejected:
+		return true
+	default:
+		return false
+	}
+}
+
+func (r RoundResult) String() string {
+	return string(r)
+}
+
+// InterviewRound 是面试轮次的领域模型。
+// 它的业务一致性由其所属的 InterviewJourney 聚合根来维护。
+type InterviewRound struct {
+	ID            int64
+	Uid           int64
+	RoundNumber   int
+	RoundType     string
+	InterviewDate int64
+	JobInfo       string
+	ResumeURL     string
+	AudioURL      string
+	SelfResult    bool
+	SelfSummary   string
+	Result        RoundResult
+	AllowSharing  bool
+}
+
+// IsShared 检查本轮面试是否已授权公开。
+func (r *InterviewRound) IsShared() bool {
+	return r.AllowSharing
+}

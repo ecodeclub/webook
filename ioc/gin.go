@@ -97,7 +97,6 @@ func initGinxServer(sp session.Provider,
 	commentHdl *comment.Handler,
 	materialHdl *material.Handler,
 	journeyHdl *interview.JourneyHandler,
-	roundHdl *interview.RoundHandler,
 ) *egin.Component {
 	session.SetDefaultProvider(sp)
 	res := egin.Load("web").Build()
@@ -161,7 +160,6 @@ func initGinxServer(sp session.Provider,
 	csHdl.PrivateRoutes(res.Engine)
 	materialHdl.PrivateRoutes(res.Engine)
 	journeyHdl.PrivateRoutes(res.Engine)
-	roundHdl.PrivateRoutes(res.Engine)
 
 	// 权限校验
 

@@ -16,15 +16,11 @@ import (
 // Injectors from wire.go:
 
 func InitModule(db *gorm.DB) *Module {
-	interviewJourneyDAO := dao.NewGORMInterviewJourneyDAO(db)
-	interviewRoundDAO := dao.NewGORMInterviewRoundDAO(db)
-	interviewRoundRepository := repository.NewInterviewRoundRepository(interviewRoundDAO)
-	interviewJourneyRepository := repository.NewInterviewJourneyRepository(interviewJourneyDAO, interviewRoundRepository)
-	interviewRoundService := service.NewInterviewRoundService(interviewJourneyRepository, interviewRoundRepository)
-	interviewJourneyService := service.NewInterviewJourneyService(interviewJourneyRepository)
+	interviewDAO := dao.NewGORMInterviewDAO(db)
+	interviewRepository := repository.NewInterviewRepository(interviewDAO)
+	interviewService := service.NewInterviewService(interviewRepository)
 	module := &Module{
-		RoundSvc:   interviewRoundService,
-		JourneySvc: interviewJourneyService,
+		JourneySvc: interviewService,
 	}
 	return module
 }
@@ -32,6 +28,5 @@ func InitModule(db *gorm.DB) *Module {
 // wire.go:
 
 type Module struct {
-	RoundSvc   service.InterviewRoundService
-	JourneySvc service.InterviewJourneyService
+	JourneySvc service.InterviewService
 }

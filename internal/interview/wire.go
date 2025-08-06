@@ -30,19 +30,14 @@ import (
 
 type (
 	JourneyHandler = web.InterviewJourneyHandler
-	RoundHandler   = web.InterviewRoundHandler
 )
 
 func InitModule(db *egorm.Component) (*Module, error) {
 	wire.Build(
-		initJourneyDAO,
-		initRoundDAO,
-		repository.NewInterviewRoundRepository,
-		repository.NewInterviewJourneyRepository,
-		service.NewInterviewJourneyService,
-		service.NewInterviewRoundService,
+		initDAO,
+		repository.NewInterviewRepository,
+		service.NewInterviewService,
 		web.NewInterviewJourneyHandler,
-		web.NewInterviewRoundHandler,
 		wire.Struct(new(Module), "*"),
 	)
 	return nil, nil
@@ -50,22 +45,12 @@ func InitModule(db *egorm.Component) (*Module, error) {
 
 var initOnce sync.Once
 
-func initJourneyDAO(db *gorm.DB) dao.InterviewJourneyDAO {
+func initDAO(db *gorm.DB) dao.InterviewDAO {
 	initOnce.Do(func() {
 		err := dao.InitTables(db)
 		if err != nil {
 			panic(err)
 		}
 	})
-	return dao.NewGORMInterviewJourneyDAO(db)
-}
-
-func initRoundDAO(db *gorm.DB) dao.InterviewRoundDAO {
-	initOnce.Do(func() {
-		err := dao.InitTables(db)
-		if err != nil {
-			panic(err)
-		}
-	})
-	return dao.NewGORMInterviewRoundDAO(db)
+	return dao.NewGORMInterviewDAO(db)
 }

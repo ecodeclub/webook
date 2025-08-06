@@ -27,27 +27,26 @@ var _ ginx.Handler = &InterviewJourneyHandler{}
 
 // InterviewJourneyHandler 负责处理面试历程相关的HTTP请求
 type InterviewJourneyHandler struct {
-	svc service.InterviewJourneyService
+	svc service.InterviewService
 }
 
-func NewInterviewJourneyHandler(svc service.InterviewJourneyService) *InterviewJourneyHandler {
+func NewInterviewJourneyHandler(svc service.InterviewService) *InterviewJourneyHandler {
 	return &InterviewJourneyHandler{svc: svc}
 }
 
 // PrivateRoutes 注册需要登录才能访问的路由
 func (h *InterviewJourneyHandler) PrivateRoutes(server *gin.Engine) {
 	g := server.Group("/interview-journeys")
-	g.POST("/create", ginx.BS[CreateJourneyReq](h.Create))
-	g.POST("/update", ginx.BS[UpdateJourneyReq](h.Update))
+	g.POST("/save", ginx.BS[SaveReq](h.Save))
 	g.POST("/list", ginx.BS[ListReq](h.List))
-	g.POST("/detail", ginx.BS[JourneyDetailReq](h.Detail))
+	g.POST("/detail", ginx.BS[DetailReq](h.Detail))
 }
 
 func (h *InterviewJourneyHandler) PublicRoutes(_ *gin.Engine) {}
 
-// Create 创建一个新的面试历程
-func (h *InterviewJourneyHandler) Create(ctx *ginx.Context, req CreateJourneyReq, sess session.Session) (ginx.Result, error) {
-	id, err := h.svc.Create(ctx, h.toDomain(sess.Claims().Uid, req.Journey))
+// Save 创建一个新的面试历程
+func (h *InterviewJourneyHandler) Save(ctx *ginx.Context, req SaveReq, sess session.Session) (ginx.Result, error) {
+	id, err := h.svc.Save(ctx, h.toDomain(sess.Claims().Uid, req.Journey))
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -67,16 +66,23 @@ func (h *InterviewJourneyHandler) toDomain(uid int64, journey Journey) domain.In
 		Status:      domain.JourneyStatus(journey.Status),
 		Stime:       journey.Stime,
 		Etime:       journey.Etime,
+		Rounds: slice.Map(journey.Rounds, func(_ int, src Round) domain.InterviewRound {
+			return domain.InterviewRound{
+				ID:            src.ID,
+				Uid:           uid,
+				RoundNumber:   src.RoundNumber,
+				RoundType:     src.RoundType,
+				InterviewDate: src.InterviewDate,
+				JobInfo:       src.JobInfo,
+				ResumeURL:     src.ResumeURL,
+				AudioURL:      src.AudioURL,
+				SelfResult:    src.SelfResult,
+				SelfSummary:   src.SelfSummary,
+				Result:        domain.RoundResult(src.Result),
+				AllowSharing:  src.AllowSharing,
+			}
+		}),
 	}
-}
-
-// Update 更新一个面试历程
-func (h *InterviewJourneyHandler) Update(ctx *ginx.Context, req UpdateJourneyReq, sess session.Session) (ginx.Result, error) {
-	err := h.svc.Update(ctx, h.toDomain(sess.Claims().Uid, req.Journey))
-	if err != nil {
-		return systemErrorResult, err
-	}
-	return ginx.Result{Msg: "OK"}, nil
 }
 
 // List 获取当前用户的所有面试历程
@@ -108,7 +114,6 @@ func (h *InterviewJourneyHandler) toVO(j domain.InterviewJourney) Journey {
 		Rounds: slice.Map(j.Rounds, func(_ int, src domain.InterviewRound) Round {
 			return Round{
 				ID:            src.ID,
-				Jid:           src.Jid,
 				RoundNumber:   src.RoundNumber,
 				RoundType:     src.RoundType,
 				InterviewDate: src.InterviewDate,
@@ -125,7 +130,7 @@ func (h *InterviewJourneyHandler) toVO(j domain.InterviewJourney) Journey {
 }
 
 // Detail 获取面试历程的完整信息
-func (h *InterviewJourneyHandler) Detail(ctx *ginx.Context, req JourneyDetailReq, sess session.Session) (ginx.Result, error) {
+func (h *InterviewJourneyHandler) Detail(ctx *ginx.Context, req DetailReq, sess session.Session) (ginx.Result, error) {
 	j, err := h.svc.Detail(ctx, req.ID, sess.Claims().Uid)
 	if err != nil {
 		return systemErrorResult, err
