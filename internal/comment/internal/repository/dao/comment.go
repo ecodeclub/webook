@@ -61,8 +61,8 @@ type CommentDAO interface {
 	Create(ctx context.Context, comment Comment) (int64, error)
 	// FindAncestors 查找某一业务下的所有直接评论（始祖评论），按评论时间的倒序排序
 	FindAncestors(ctx context.Context, biz string, bizID, minID int64, limit int) ([]Comment, error)
-	// FindChildren 查找子评论
-	FindChildren(ctx context.Context, parentID int64, limit int) ([]Comment, error)
+	// FindChildren 批量查找子评论并返回分组后的结果
+	FindChildren(ctx context.Context, parentIDs []int64, limit int) (map[int64][]Comment, error)
 	// CountAncestors 统计某一业务下所有直接评论（始祖评论）的数量
 	CountAncestors(ctx context.Context, biz string, bizID int64) (int64, error)
 	// FindDescendants 查找直接评论（始祖评论）所有后代即所有子评论，孙子评论，按照评论时间排序（即先评论的在前面）
@@ -123,14 +123,37 @@ func (g *commentDAO) FindAncestors(ctx context.Context, biz string, bizID, minID
 	return res, err
 }
 
-func (g *commentDAO) FindChildren(ctx context.Context, parentID int64, limit int) ([]Comment, error) {
-	var res []Comment
-	err := g.db.WithContext(ctx).
-		Where("parent_id", parentID).
-		Order("id ASC").
-		Limit(limit).
-		Find(&res).Error
-	return res, err
+func (g *commentDAO) FindChildren(ctx context.Context, parentIDs []int64, limit int) (map[int64][]Comment, error) {
+	// 处理边界情况：如果传入的 parentIDs 为空，直接返回空 map，避免无效查询。
+	if len(parentIDs) == 0 {
+		return make(map[int64][]Comment), nil
+	}
+
+	// 使用窗口函数，为每个 parent_id 分组内的记录按 id ASC 排序并编号
+	// 然后筛选出每组前 limit 条记录
+	rawSQL := `
+		SELECT *
+		FROM (
+			SELECT *,
+				   ROW_NUMBER() OVER(PARTITION BY parent_id ORDER BY id ASC) as rn
+			FROM comments
+			WHERE parent_id IN (?)
+		) ranked_comments
+		WHERE rn <= ?
+	`
+
+	var comments []Comment
+	if err := g.db.WithContext(ctx).
+		Raw(rawSQL, parentIDs, limit).
+		Scan(&comments).Error; err != nil {
+		return nil, err
+	}
+
+	res := make(map[int64][]Comment, len(parentIDs))
+	for i := range comments {
+		res[comments[i].ParentID.V] = append(res[comments[i].ParentID.V], comments[i])
+	}
+	return res, nil
 }
 
 func (g *commentDAO) CountAncestors(ctx context.Context, biz string, bizID int64) (int64, error) {
