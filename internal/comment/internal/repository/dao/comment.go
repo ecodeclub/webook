@@ -72,7 +72,7 @@ type CommentDAO interface {
 	// FindByID 根据评论ID查找评论
 	FindByID(ctx context.Context, id int64) (Comment, error)
 	// Delete 根据ID删除评论及其后裔评论
-	Delete(ctx context.Context, id int64) error
+	Delete(ctx context.Context, id, uid int64) error
 }
 
 type commentDAO struct {
@@ -166,6 +166,6 @@ func (g *commentDAO) FindByID(ctx context.Context, id int64) (Comment, error) {
 	return c, err
 }
 
-func (g *commentDAO) Delete(ctx context.Context, id int64) error {
-	return g.db.WithContext(ctx).Where("id = ?", id).Delete(&Comment{}).Error
+func (g *commentDAO) Delete(ctx context.Context, id, uid int64) error {
+	return g.db.WithContext(ctx).Where("id = ? AND uid = ?", id, uid).Delete(&Comment{}).Error
 }

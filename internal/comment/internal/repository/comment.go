@@ -35,10 +35,8 @@ type CommentRepository interface {
 	FindDescendants(ctx context.Context, ancestorID, maxID int64, limit int) ([]domain.Comment, error)
 	// CountDescendants 统计直接评论（始祖评论）所有后代即所有子评论，孙子评论的数量
 	CountDescendants(ctx context.Context, ancestorID int64) (int64, error)
-	// FindByID 根据评论ID查找评论
-	FindByID(ctx context.Context, id int64) (domain.Comment, error)
 	// Delete 根据ID删除评论及其后裔评论
-	Delete(ctx context.Context, id int64) error
+	Delete(ctx context.Context, id, uid int64) error
 }
 
 type commentRepository struct {
@@ -126,14 +124,6 @@ func (r *commentRepository) CountDescendants(ctx context.Context, ancestorID int
 	return r.dao.CountDescendants(ctx, ancestorID)
 }
 
-func (r *commentRepository) FindByID(ctx context.Context, id int64) (domain.Comment, error) {
-	found, err := r.dao.FindByID(ctx, id)
-	if err != nil {
-		return domain.Comment{}, err
-	}
-	return r.toDomain(found), nil
-}
-
-func (r *commentRepository) Delete(ctx context.Context, id int64) error {
-	return r.dao.Delete(ctx, id)
+func (r *commentRepository) Delete(ctx context.Context, id, uid int64) error {
+	return r.dao.Delete(ctx, id, uid)
 }

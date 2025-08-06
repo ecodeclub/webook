@@ -684,7 +684,7 @@ func (s *HandlerTestSuite) TestDelete() {
 	}{
 		{
 			name: "删除成功_始祖评论_无后代",
-			before: func() (ID int64) {
+			before: func() (id int64) {
 				return s.createAncestorComment("audio", s.getUniqueBizID())
 			},
 			req: web.DeleteRequest{
@@ -701,7 +701,7 @@ func (s *HandlerTestSuite) TestDelete() {
 		},
 		{
 			name: "删除成功_始祖评论_有后代",
-			before: func() (ID int64) {
+			before: func() (id int64) {
 				ancestorID := s.createAncestorComment("audio", s.getUniqueBizID())
 				reply1ID := s.createReplyComment(ancestorID, ancestorID, "一级回复1")
 				reply2ID := s.createReplyComment(ancestorID, ancestorID, "一级回复2")
@@ -730,21 +730,21 @@ func (s *HandlerTestSuite) TestDelete() {
 		},
 		{
 			name: "删除失败_评论ID不存在",
-			before: func() (ID int64) {
+			before: func() (id int64) {
 				return -1
 			},
 			req: web.DeleteRequest{
 				ID: 0,
 			},
-			wantCode: 500,
+			wantCode: 200,
 			wantResp: test.Result[any]{
-				Code: 517001, Msg: "系统错误",
+				Msg: "OK",
 			},
 			after: func(id int64) {},
 		},
 		{
 			name: "删除失败_操作者不是评论创建者",
-			before: func() (ID int64) {
+			before: func() (id int64) {
 				cmt := dao.Comment{
 					Uid:        testUID3 + 101,
 					Biz:        "audio",
@@ -762,9 +762,9 @@ func (s *HandlerTestSuite) TestDelete() {
 			req: web.DeleteRequest{
 				ID: 0,
 			},
-			wantCode: 500,
+			wantCode: 200,
 			wantResp: test.Result[any]{
-				Code: 517001, Msg: "系统错误",
+				Msg: "OK",
 			},
 			after: func(id int64) {
 				found, err := s.dao.FindByID(context.Background(), id)

@@ -27,14 +27,12 @@ import (
 type CommentService interface {
 	// Create  创建直接评论（始祖评论），子评论及孙子评论
 	Create(ctx context.Context, comment domain.Comment) (int64, error)
-	// Comments 查找某一业务下的所有直接评论（始祖评论），按评论时间的倒序排序
-	Comments(ctx context.Context, biz string, bizID, minID int64, limit, maxSubCnt int) ([]domain.Comment, int64, error)
+	// List 查找某一业务下的所有直接评论（始祖评论），按评论时间的倒序排序
+	List(ctx context.Context, biz string, bizID, minID int64, limit, maxSubCnt int) ([]domain.Comment, int64, error)
 	// Replies 查找直接评论（始祖评论）所有后代即所有子评论，孙子评论，按照评论时间排序（即先评论的在前面）
 	Replies(ctx context.Context, ancestorID, maxID int64, limit int) ([]domain.Comment, int64, error)
-	// FindByID 根据评论ID查找评论
-	FindByID(ctx context.Context, id int64) (domain.Comment, error)
 	// Delete 根据ID删除评论及其后裔评论
-	Delete(ctx context.Context, id int64) error
+	Delete(ctx context.Context, id, uid int64) error
 }
 
 type commentService struct {
@@ -50,7 +48,7 @@ func (s *commentService) Create(ctx context.Context, comment domain.Comment) (in
 	return s.repo.Create(ctx, comment)
 }
 
-func (s *commentService) Comments(ctx context.Context, biz string, bizID, minID int64, limit, maxSubCnt int) ([]domain.Comment, int64, error) {
+func (s *commentService) List(ctx context.Context, biz string, bizID, minID int64, limit, maxSubCnt int) ([]domain.Comment, int64, error) {
 	var (
 		eg       errgroup.Group
 		comments []domain.Comment
@@ -148,10 +146,6 @@ func (s *commentService) Replies(ctx context.Context, ancestorID, maxID int64, l
 	return replies, total, eg.Wait()
 }
 
-func (s *commentService) FindByID(ctx context.Context, id int64) (domain.Comment, error) {
-	return s.repo.FindByID(ctx, id)
-}
-
-func (s *commentService) Delete(ctx context.Context, id int64) error {
-	return s.repo.Delete(ctx, id)
+func (s *commentService) Delete(ctx context.Context, id, uid int64) error {
+	return s.repo.Delete(ctx, id, uid)
 }

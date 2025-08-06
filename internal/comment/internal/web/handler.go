@@ -78,7 +78,7 @@ func (h *Handler) Create(ctx *ginx.Context, req CreateRequest, sess session.Sess
 }
 
 func (h *Handler) List(ctx *ginx.Context, req ListRequest, _ session.Session) (ginx.Result, error) {
-	ancestors, total, err := h.svc.Comments(ctx.Request.Context(), req.Biz, req.BizID, req.MinID, req.Limit, req.MaxSubCnt)
+	ancestors, total, err := h.svc.List(ctx.Request.Context(), req.Biz, req.BizID, req.MinID, req.Limit, req.MaxSubCnt)
 	if err != nil {
 		return systemErrorResult, fmt.Errorf("查找%q业务的%d资源的直接评论（始祖评论）失败: %w", req.Biz, req.BizID, err)
 	}
@@ -127,15 +127,7 @@ func (h *Handler) Replies(ctx *ginx.Context, req RepliesRequest, _ session.Sessi
 }
 
 func (h *Handler) Delete(ctx *ginx.Context, req DeleteRequest, sess session.Session) (ginx.Result, error) {
-	c, err := h.svc.FindByID(ctx.Request.Context(), req.ID)
-	if err != nil {
-		return systemErrorResult, err
-	}
-	// 当前用户与评论用户不匹配
-	if sess.Claims().Uid != c.User.ID {
-		return systemErrorResult, fmt.Errorf("无法删除非本人评论")
-	}
-	err = h.svc.Delete(ctx.Request.Context(), c.ID)
+	err := h.svc.Delete(ctx.Request.Context(), req.ID, sess.Claims().Uid)
 	if err != nil {
 		return systemErrorResult, err
 	}
