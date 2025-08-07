@@ -20,12 +20,14 @@ import (
 	"github.com/ecodeclub/webook/internal/ai"
 	"github.com/ecodeclub/webook/internal/bff"
 	"github.com/ecodeclub/webook/internal/cases"
+	"github.com/ecodeclub/webook/internal/comment"
 	"github.com/ecodeclub/webook/internal/cos"
 	"github.com/ecodeclub/webook/internal/credit"
 	"github.com/ecodeclub/webook/internal/feedback"
 	"github.com/ecodeclub/webook/internal/interactive"
 	"github.com/ecodeclub/webook/internal/label"
 	"github.com/ecodeclub/webook/internal/marketing"
+	"github.com/ecodeclub/webook/internal/material"
 	"github.com/ecodeclub/webook/internal/member"
 	"github.com/ecodeclub/webook/internal/order"
 	"github.com/ecodeclub/webook/internal/payment"
@@ -52,6 +54,7 @@ func InitApp() (*App, error) {
 		InitSession,
 		cos.InitHandler,
 		baguwen.InitModule,
+		initAliSMSClient,
 		initJobs,
 		wire.FieldsOf(new(*baguwen.Module),
 			"AdminHdl", "AdminSetHdl", "KnowledgeJobStarter",
@@ -98,6 +101,10 @@ func InitApp() (*App, error) {
 		wire.FieldsOf(new(*ai.Module), "Hdl", "AdminHandler"),
 		review.InitModule,
 		wire.FieldsOf(new(*review.Module), "Hdl", "AdminHdl"),
+		comment.InitModule,
+		wire.FieldsOf(new(*comment.Module), "Hdl"),
+		material.InitModule,
+		wire.FieldsOf(new(*material.Module), "Hdl", "AdminHdl"),
 
 		initLocalActiveLimiterBuilder,
 		initCronJobs,

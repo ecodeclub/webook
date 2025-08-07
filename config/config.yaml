@@ -55,6 +55,12 @@ kafka:
   addresses:
     - kafka:9092
 
+sms:
+  aliyun:
+    secretID: ""
+    secretKey: ""
+
+
 cron:
 # 超时关闭订单
   closeTimeoutOrder:

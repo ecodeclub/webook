@@ -20,7 +20,9 @@ import (
 	"github.com/ecodeclub/mq-api"
 	"github.com/ecodeclub/webook/internal/member"
 	"github.com/ecodeclub/webook/internal/permission"
+	"github.com/ecodeclub/webook/internal/sms/client"
 	"github.com/ecodeclub/webook/internal/user/internal/event"
+	"github.com/ecodeclub/webook/internal/user/internal/repository"
 	"github.com/ecodeclub/webook/internal/user/internal/repository/dao"
 	"github.com/ecodeclub/webook/internal/user/internal/service"
 	"github.com/ecodeclub/webook/internal/user/internal/web"
@@ -34,8 +36,9 @@ func iniHandler(
 	userSvc service.UserService,
 	memberSvc member.Service,
 	sp session.Provider,
+	veriCodeSvc service.VerificationCodeSvc,
 	permissionSvc permission.Service, creators []string) *Handler {
-	return web.NewHandler(weSvc, weMiniSvc, userSvc, memberSvc, permissionSvc, sp, creators)
+	return web.NewHandler(weSvc, weMiniSvc, userSvc, memberSvc, permissionSvc, sp, veriCodeSvc, creators)
 }
 
 func initWechatMiniOAuthService() wechatMiniOAuth2Service {
@@ -79,4 +82,9 @@ func initRegistrationEventProducer(q mq.MQ) event.RegistrationEventProducer {
 		panic(err)
 	}
 	return producer
+}
+
+func initVerificationCodeSvc(smsClient client.Client,
+	repo repository.VerificationCodeRepo) service.VerificationCodeSvc {
+	return service.NewVerificationCodeSvc(smsClient, repo)
 }
