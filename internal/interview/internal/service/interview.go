@@ -26,7 +26,7 @@ import (
 // InterviewService 定义了面试历程相关的业务服务接口。
 type InterviewService interface {
 	// Save 创建或更新一个新的面试历程。
-	Save(ctx context.Context, journey domain.InterviewJourney) (int64, error)
+	Save(ctx context.Context, journey domain.InterviewJourney) (int64, []int64, error)
 	// Detail 获取一个完整的面试历程详情，包含所有的面试轮次。
 	Detail(ctx context.Context, id, uid int64) (domain.InterviewJourney, error)
 	// List 获取一个用户的所有面试历程列表（不包含轮次信息以优化性能）。
@@ -45,7 +45,7 @@ func NewInterviewService(repo repository.InterviewRepository) InterviewService {
 	return &interviewService{repo: repo}
 }
 
-func (s *interviewService) Save(ctx context.Context, journey domain.InterviewJourney) (int64, error) {
+func (s *interviewService) Save(ctx context.Context, journey domain.InterviewJourney) (int64, []int64, error) {
 	if journey.ID > 0 && len(journey.Rounds) > 0 {
 		unshared := make(map[int64]struct{})
 		for i := range journey.Rounds {
@@ -56,11 +56,11 @@ func (s *interviewService) Save(ctx context.Context, journey domain.InterviewJou
 		if len(unshared) > 0 {
 			rounds, err := s.FindRoundsByJidAndUid(ctx, journey.ID, journey.Uid)
 			if err != nil {
-				return 0, err
+				return 0, nil, err
 			}
 			for i := range rounds {
 				if _, ok := unshared[rounds[i].ID]; ok && rounds[i].IsShared() {
-					return 0, errors.New("不可撤销授权")
+					return 0, nil, errors.New("不可撤销授权")
 				}
 			}
 		}

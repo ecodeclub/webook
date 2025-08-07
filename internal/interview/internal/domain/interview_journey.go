@@ -61,6 +61,18 @@ type InterviewJourney struct {
 	Rounds []InterviewRound
 }
 
+func (i InterviewJourney) IsValid() bool {
+	if i.Uid == 0 ||
+		i.CompanyName == "" ||
+		i.JobInfo == "" ||
+		i.ResumeURL == "" ||
+		i.Stime == 0 ||
+		!i.Status.IsValid() {
+		return false
+	}
+	return true
+}
+
 // RoundResult 定义了面试轮次的官方结果。
 type RoundResult string
 
@@ -103,6 +115,19 @@ type InterviewRound struct {
 }
 
 // IsShared 检查本轮面试是否已授权公开。
-func (r *InterviewRound) IsShared() bool {
+func (r InterviewRound) IsShared() bool {
 	return r.AllowSharing
+}
+
+func (r InterviewRound) IsValid() bool {
+	if r.Uid == 0 ||
+		r.RoundNumber == 0 ||
+		r.RoundType == "" ||
+		r.InterviewDate == 0 ||
+		r.JobInfo == "" ||
+		r.ResumeURL == "" ||
+		!r.Result.IsValid() {
+		return false
+	}
+	return true
 }

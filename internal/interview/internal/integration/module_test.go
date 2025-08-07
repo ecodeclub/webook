@@ -74,36 +74,29 @@ func (s *InterviewModuleTestSuite) newGinServer(handler ginx.Handler) *egin.Comp
 }
 
 func (s *InterviewModuleTestSuite) TearDownSuite() {
-	s.NoError(s.db.Exec("TRUNCATE TABLE `interview_journeys`").Error)
-	s.NoError(s.db.Exec("TRUNCATE TABLE `interview_rounds`").Error)
+	// s.NoError(s.db.Exec("TRUNCATE TABLE `interview_journeys`").Error)
+	// s.NoError(s.db.Exec("TRUNCATE TABLE `interview_rounds`").Error)
 }
 
-func (s *InterviewModuleTestSuite) TestHandler_Create() {
+func (s *InterviewModuleTestSuite) TestHandler_Save() {
 	t := s.T()
 
 	testCases := []struct {
 		name           string
-		before         func(t *testing.T) (jid int64)
+		before         func(t *testing.T) (jid int64, roundIDs []int64)
 		newHandlerFunc func(t *testing.T, ctrl *gomock.Controller) ginx.Handler
 		req            web.SaveReq
 
 		wantCode       int
 		respAssertFunc assert.ValueAssertionFunc
-		after          func(t *testing.T, rid int64, req web.SaveReq)
+		after          func(t *testing.T, req web.SaveReq, resp web.SaveResp)
 	}{
+
 		{
-			name: "创建历程轮数成功",
-			before: func(t *testing.T) (jid int64) {
+			name: "仅创建面试历程无面试轮成功",
+			before: func(t *testing.T) (jid int64, roundIDs []int64) {
 				t.Helper()
-				id, err := s.svc.Save(t.Context(), domain.InterviewJourney{
-					Uid:         testID,
-					CompanyName: "company-name-1",
-					JobInfo:     "/jobinfo/1",
-					ResumeURL:   "/resume/1",
-					Stime:       time.Now().UnixMilli(),
-				})
-				require.NoError(t, err)
-				return id
+				return 0, nil
 			},
 			newHandlerFunc: func(t *testing.T, ctrl *gomock.Controller) ginx.Handler {
 				t.Helper()
@@ -115,6 +108,78 @@ func (s *InterviewModuleTestSuite) TestHandler_Create() {
 					JobInfo:     "/jobinfo/1",
 					ResumeURL:   "/resume/1",
 					Stime:       time.Now().UnixMilli(),
+					Status:      domain.StatusActive.String(),
+				},
+			},
+			wantCode: 200,
+			respAssertFunc: func(t assert.TestingT, i interface{}, i2 ...interface{}) bool {
+				r := i.(test.Result[web.SaveResp])
+				return assert.Positive(t, r.Data.Jid) && assert.Empty(t, r.Data.RoundIDs)
+			},
+			after: func(t *testing.T, req web.SaveReq, resp web.SaveResp) {
+				t.Helper()
+				actual, err := s.svc.Detail(t.Context(), resp.Jid, testID)
+				require.NoError(t, err)
+				s.assertJourney(t, req.Journey, actual)
+			},
+		},
+		{
+			name: "仅更新面试历程无面试轮成功",
+			before: func(t *testing.T) (jid int64, roundIDs []int64) {
+				t.Helper()
+				id, roundIDs, err := s.svc.Save(t.Context(), domain.InterviewJourney{
+					Uid:         testID,
+					CompanyName: "company-name-2",
+					JobInfo:     "/jobinfo/2",
+					ResumeURL:   "/resume/2",
+					Stime:       time.Now().UnixMilli(),
+					Status:      domain.StatusActive,
+				})
+				require.NoError(t, err)
+				return id, roundIDs
+			},
+			newHandlerFunc: func(t *testing.T, ctrl *gomock.Controller) ginx.Handler {
+				t.Helper()
+				return web.NewInterviewJourneyHandler(s.svc)
+			},
+			req: web.SaveReq{
+				Journey: web.Journey{
+					CompanyName: "company-name-3",
+					JobInfo:     "/jobinfo/3",
+					ResumeURL:   "/resume/3",
+					Stime:       time.Now().UnixMilli(),
+					Status:      domain.StatusAbandoned.String(),
+				},
+			},
+			wantCode: 200,
+			respAssertFunc: func(t assert.TestingT, i interface{}, i2 ...interface{}) bool {
+				r := i.(test.Result[web.SaveResp])
+				return assert.Positive(t, r.Data.Jid) && assert.Empty(t, r.Data.RoundIDs)
+			},
+			after: func(t *testing.T, req web.SaveReq, resp web.SaveResp) {
+				t.Helper()
+				actual, err := s.svc.Detail(t.Context(), resp.Jid, testID)
+				require.NoError(t, err)
+				s.assertJourney(t, req.Journey, actual)
+			},
+		},
+		{
+			name: "创建面试历程及一轮面试成功",
+			before: func(t *testing.T) (jid int64, roundIDs []int64) {
+				t.Helper()
+				return 0, nil
+			},
+			newHandlerFunc: func(t *testing.T, ctrl *gomock.Controller) ginx.Handler {
+				t.Helper()
+				return web.NewInterviewJourneyHandler(s.svc)
+			},
+			req: web.SaveReq{
+				Journey: web.Journey{
+					CompanyName: "company-name-4",
+					JobInfo:     "/jobinfo/4",
+					ResumeURL:   "/resume/4",
+					Stime:       time.Now().UnixMilli(),
+					Status:      domain.StatusActive.String(),
 					Rounds: []web.Round{
 						{
 							RoundNumber:   1,
@@ -125,7 +190,7 @@ func (s *InterviewModuleTestSuite) TestHandler_Create() {
 							AudioURL:      "/audio/1",
 							SelfResult:    true,
 							SelfSummary:   "good",
-							Result:        "PENDING",
+							Result:        domain.ResultPending.String(),
 							AllowSharing:  false,
 						},
 					},
@@ -133,183 +198,337 @@ func (s *InterviewModuleTestSuite) TestHandler_Create() {
 			},
 			wantCode: 200,
 			respAssertFunc: func(t assert.TestingT, i interface{}, i2 ...interface{}) bool {
-				r := i.(test.Result[int64])
-				return assert.Positive(t, r.Data)
+				r := i.(test.Result[web.SaveResp])
+				res := assert.Positive(t, r.Data.Jid)
+				res = res && assert.NotEmpty(t, r.Data.RoundIDs)
+				for i := range r.Data.RoundIDs {
+					res = res && assert.Positive(t, r.Data.RoundIDs[i])
+				}
+				return res
 			},
-			after: func(t *testing.T, rid int64, req web.SaveReq) {
+			after: func(t *testing.T, req web.SaveReq, resp web.SaveResp) {
 				t.Helper()
-				_, err := s.svc.FindRoundByID(t.Context(), rid, req.Journey.ID, testID)
+				actual, err := s.svc.Detail(t.Context(), resp.Jid, testID)
 				require.NoError(t, err)
-				// s.assertRound(t, rid, testID, req.Round, actual)
+				s.assertJourney(t, req.Journey, actual)
 			},
 		},
 		{
-			name: "创建轮数失败_轮数编号不唯一",
-			before: func(t *testing.T) (jid int64) {
+			name: "更新面试历程及一轮面试成功",
+			before: func(t *testing.T) (jid int64, roundIDs []int64) {
 				t.Helper()
-				id, err := s.svc.Save(t.Context(), domain.InterviewJourney{
+				id, roundIDs, err := s.svc.Save(t.Context(), domain.InterviewJourney{
 					Uid:         testID,
-					CompanyName: "company-name-2",
-					JobInfo:     "/jobinfo/2",
-					ResumeURL:   "/resume/2",
+					CompanyName: "company-name-5-更新面试历程及一轮面试成功",
+					JobInfo:     "/jobinfo/5",
+					ResumeURL:   "/resume/5",
 					Stime:       time.Now().UnixMilli(),
 					Rounds: []domain.InterviewRound{
 						{
 							Uid:           testID,
+							RoundNumber:   1,
+							RoundType:     "技术1面",
+							InterviewDate: time.Now().UnixMilli(),
+							JobInfo:       "/jobinfo/1",
+							ResumeURL:     "/resume/1",
+							AudioURL:      "/audio/1",
+							SelfResult:    true,
+							SelfSummary:   "good",
+							Result:        domain.ResultPending,
+							AllowSharing:  false,
+						},
+					},
+				})
+				require.NoError(t, err)
+				return id, roundIDs
+			},
+			newHandlerFunc: func(t *testing.T, ctrl *gomock.Controller) ginx.Handler {
+				t.Helper()
+				return web.NewInterviewJourneyHandler(s.svc)
+			},
+			req: web.SaveReq{
+				Journey: web.Journey{
+					CompanyName: "company-name-6-更新面试历程及一轮面试成功",
+					JobInfo:     "/jobinfo/6",
+					ResumeURL:   "/resume/6",
+					Stime:       time.Now().UnixMilli(),
+					Status:      domain.StatusSucceeded.String(),
+					Rounds: []web.Round{
+						{
+							RoundNumber:   1,
+							RoundType:     "技术1面",
+							InterviewDate: time.Now().UnixMilli(),
+							JobInfo:       "/jobinfo/1",
+							ResumeURL:     "/resume/1",
+							AudioURL:      "/audio/1",
+							SelfResult:    false,
+							SelfSummary:   "一般",
+							Result:        domain.ResultApproved.String(),
+							AllowSharing:  false,
+						},
+					},
+				},
+			},
+			wantCode: 200,
+			respAssertFunc: func(t assert.TestingT, i interface{}, i2 ...interface{}) bool {
+				r := i.(test.Result[web.SaveResp])
+				return assert.Positive(t, r.Data.Jid) && assert.Len(t, r.Data.RoundIDs, 1)
+			},
+			after: func(t *testing.T, req web.SaveReq, resp web.SaveResp) {
+				t.Helper()
+				actual, err := s.svc.Detail(t.Context(), resp.Jid, testID)
+				require.NoError(t, err)
+				s.assertJourney(t, req.Journey, actual)
+			},
+		},
+		{
+			name: "创建面试历程及多轮面试成功",
+			before: func(t *testing.T) (jid int64, roundIDs []int64) {
+				t.Helper()
+				return 0, nil
+			},
+			newHandlerFunc: func(t *testing.T, ctrl *gomock.Controller) ginx.Handler {
+				t.Helper()
+				return web.NewInterviewJourneyHandler(s.svc)
+			},
+			req: web.SaveReq{
+				Journey: web.Journey{
+					CompanyName: "company-name-7",
+					JobInfo:     "/jobinfo/7",
+					ResumeURL:   "/resume/7",
+					Stime:       time.Now().UnixMilli(),
+					Status:      domain.StatusFailed.String(),
+					Rounds: []web.Round{
+						{
 							RoundNumber:   2,
-							RoundType:     "技术二面",
+							RoundType:     "技术2面",
 							InterviewDate: time.Now().UnixMilli(),
 							JobInfo:       "/jobinfo/2",
 							ResumeURL:     "/resume/2",
 							AudioURL:      "/audio/2",
 							SelfResult:    true,
 							SelfSummary:   "good",
-							Result:        "REJECTED",
+							Result:        domain.ResultPending.String(),
+							AllowSharing:  false,
+						},
+						{
+							RoundNumber:   4,
+							RoundType:     "技术4面",
+							InterviewDate: time.Now().UnixMilli(),
+							JobInfo:       "/jobinfo/2",
+							ResumeURL:     "/resume/2",
+							AudioURL:      "/audio/2",
+							SelfResult:    false,
+							SelfSummary:   "bad",
+							Result:        domain.ResultRejected.String(),
+							AllowSharing:  false,
+						},
+					},
+				},
+			},
+			wantCode: 200,
+			respAssertFunc: func(t assert.TestingT, i interface{}, i2 ...interface{}) bool {
+				r := i.(test.Result[web.SaveResp])
+				res := assert.Positive(t, r.Data.Jid)
+				res = res && assert.Len(t, r.Data.RoundIDs, 2)
+				for i := range r.Data.RoundIDs {
+					res = res && assert.Positive(t, r.Data.RoundIDs[i])
+				}
+				return res
+			},
+			after: func(t *testing.T, req web.SaveReq, resp web.SaveResp) {
+				t.Helper()
+				actual, err := s.svc.Detail(t.Context(), resp.Jid, testID)
+				require.NoError(t, err)
+				s.assertJourney(t, req.Journey, actual)
+			},
+		},
+		{
+			name: "更新面试历程及多轮面试成功",
+			before: func(t *testing.T) (jid int64, roundIDs []int64) {
+				t.Helper()
+				id, roundIDs, err := s.svc.Save(t.Context(), domain.InterviewJourney{
+					Uid:         testID,
+					CompanyName: "company-name-8",
+					JobInfo:     "/jobinfo/8",
+					ResumeURL:   "/resume/8",
+					Stime:       time.Now().UnixMilli(),
+					Status:      domain.StatusActive,
+					Rounds: []domain.InterviewRound{
+						{
+							Uid:           testID,
+							RoundNumber:   1,
+							RoundType:     "技术1面",
+							InterviewDate: time.Now().UnixMilli(),
+							JobInfo:       "/jobinfo/1",
+							ResumeURL:     "/resume/1",
+							AudioURL:      "/audio/1",
+							SelfResult:    true,
+							SelfSummary:   "good",
+							Result:        domain.ResultApproved,
+							AllowSharing:  false,
+						},
+						{
+							Uid:           testID,
+							RoundNumber:   3,
+							RoundType:     "技术3面",
+							InterviewDate: time.Now().UnixMilli(),
+							JobInfo:       "/jobinfo/1",
+							ResumeURL:     "/resume/1",
+							AudioURL:      "/audio/1",
+							SelfResult:    true,
+							SelfSummary:   "good",
+							Result:        domain.ResultPending,
 							AllowSharing:  false,
 						},
 					},
 				})
 				require.NoError(t, err)
-				return id
+				return id, roundIDs
 			},
 			newHandlerFunc: func(t *testing.T, ctrl *gomock.Controller) ginx.Handler {
 				t.Helper()
 				return web.NewInterviewJourneyHandler(s.svc)
 			},
 			req: web.SaveReq{
-				// Round: web.Round{
-				// 	RoundNumber:   2,
-				// 	RoundType:     "技术二面",
-				// 	InterviewDate: time.Now().UnixMilli(),
-				// 	JobInfo:       "/jobinfo/2",
-				// 	ResumeURL:     "/resume/2",
-				// 	AudioURL:      "/audio/2",
-				// 	SelfResult:    true,
-				// 	SelfSummary:   "good",
-				// 	Result:        "REJECTED",
-				// 	AllowSharing:  false,
-				// },
-			},
-			wantCode: 500,
-			respAssertFunc: func(t assert.TestingT, i interface{}, i2 ...interface{}) bool {
-				return assert.Equal(t, test.Result[int64]{
-					Code: 519001, Msg: "系统错误",
-				}, i)
-			},
-			after: func(t *testing.T, rid int64, req web.SaveReq) {
-				t.Helper()
-			},
-		},
-		{
-			name: "创建轮数失败_官方结果非法",
-			before: func(t *testing.T) (jid int64) {
-				t.Helper()
-				id, err := s.svc.Save(t.Context(), domain.InterviewJourney{
-					Uid:         testID,
-					CompanyName: "company-name-3",
-					JobInfo:     "/jobinfo/3",
-					ResumeURL:   "/resume/3",
+				Journey: web.Journey{
+					CompanyName: "company-name-9",
+					JobInfo:     "/jobinfo/9",
+					ResumeURL:   "/resume/9",
 					Stime:       time.Now().UnixMilli(),
-				})
+					Status:      domain.StatusFailed.String(),
+					Rounds: []web.Round{
+						{
+							RoundNumber:   1,
+							RoundType:     "技术1面",
+							InterviewDate: time.Now().UnixMilli(),
+							JobInfo:       "/jobinfo/2",
+							ResumeURL:     "/resume/2",
+							AudioURL:      "/audio/2",
+							SelfResult:    true,
+							SelfSummary:   "good",
+							Result:        domain.ResultPending.String(),
+							AllowSharing:  true,
+						},
+						{
+							RoundNumber:   3,
+							RoundType:     "技术3面",
+							InterviewDate: time.Now().UnixMilli(),
+							JobInfo:       "/jobinfo/1",
+							ResumeURL:     "/resume/1",
+							AudioURL:      "/audio/1",
+							SelfResult:    true,
+							SelfSummary:   "good",
+							Result:        domain.ResultPending.String(),
+							AllowSharing:  true,
+						},
+					},
+				},
+			},
+			wantCode: 200,
+			respAssertFunc: func(t assert.TestingT, i interface{}, i2 ...interface{}) bool {
+				r := i.(test.Result[web.SaveResp])
+				return assert.Positive(t, r.Data.Jid) && assert.Len(t, r.Data.RoundIDs, 2)
+			},
+			after: func(t *testing.T, req web.SaveReq, resp web.SaveResp) {
+				t.Helper()
+				actual, err := s.svc.Detail(t.Context(), resp.Jid, testID)
 				require.NoError(t, err)
-				return id
-			},
-			newHandlerFunc: func(t *testing.T, ctrl *gomock.Controller) ginx.Handler {
-				t.Helper()
-				return web.NewInterviewJourneyHandler(s.svc)
-			},
-			req: web.SaveReq{
-				// Round: web.Round{
-				// 	RoundNumber:   3,
-				// 	RoundType:     "技术3面",
-				// 	InterviewDate: time.Now().UnixMilli(),
-				// 	JobInfo:       "/jobinfo/3",
-				// 	ResumeURL:     "/resume/3",
-				// 	AudioURL:      "/audio/3",
-				// 	SelfResult:    true,
-				// 	SelfSummary:   "good",
-				// 	Result:        "",
-				// 	AllowSharing:  false,
-				// },
-			},
-			wantCode: 500,
-			respAssertFunc: func(t assert.TestingT, i interface{}, i2 ...interface{}) bool {
-				return assert.Equal(t, test.Result[int64]{
-					Code: 519001, Msg: "系统错误",
-				}, i)
-			},
-			after: func(t *testing.T, rid int64, req web.SaveReq) {
-				t.Helper()
+				s.assertJourney(t, req.Journey, actual)
 			},
 		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			ctrl := gomock.NewController(t)
-			defer ctrl.Finish()
-
-			jid := tc.before(t)
-
-			tc.req.Journey.ID = jid
-
-			req, err := http.NewRequest(http.MethodPost,
-				"/interview-rounds/create", iox.NewJSONReader(tc.req))
-			require.NoError(t, err)
-			req.Header.Set("content-type", "application/json")
-			recorder := test.NewJSONResponseRecorder[int64]()
-			server := s.newGinServer(tc.newHandlerFunc(t, ctrl))
-			server.ServeHTTP(recorder, req)
-			require.Equal(t, tc.wantCode, recorder.Code)
-			result := recorder.MustScan()
-			tc.respAssertFunc(t, result)
-			tc.after(t, result.Data, tc.req)
-		})
-	}
-}
-
-func (s *InterviewModuleTestSuite) assertRound(t *testing.T, rid, uid int64, expected web.Round, actual domain.InterviewRound) {
-	t.Helper()
-	assert.Equal(t, rid, actual.ID)
-	assert.Equal(t, uid, actual.Uid)
-	assert.Equal(t, expected.RoundNumber, actual.RoundNumber)
-	assert.Equal(t, expected.RoundType, actual.RoundType)
-	assert.Equal(t, expected.InterviewDate, actual.InterviewDate)
-	assert.Equal(t, expected.JobInfo, actual.JobInfo)
-	assert.Equal(t, expected.ResumeURL, actual.ResumeURL)
-	assert.Equal(t, expected.AudioURL, actual.AudioURL)
-	assert.Equal(t, expected.SelfResult, actual.SelfResult)
-	assert.Equal(t, expected.SelfSummary, actual.SelfSummary)
-	assert.Equal(t, expected.Result, actual.Result.String())
-	assert.Equal(t, expected.AllowSharing, actual.AllowSharing)
-}
-
-func (s *InterviewModuleTestSuite) TestHandler_Update() {
-	t := s.T()
-
-	testCases := []struct {
-		name           string
-		before         func(t *testing.T) (jid, rid int64)
-		newHandlerFunc func(t *testing.T, ctrl *gomock.Controller) ginx.Handler
-		req            web.SaveReq
-
-		wantCode       int
-		respAssertFunc assert.ValueAssertionFunc
-		after          func(t *testing.T, req web.SaveReq)
-	}{
 		{
-			name: "更新轮数成功",
-			before: func(t *testing.T) (jid, rid int64) {
+			name: "更新面试历程及多个面试并创建多个面试成功",
+			before: func(t *testing.T) (jid int64, roundIDs []int64) {
 				t.Helper()
-				jid, err := s.svc.Save(t.Context(), domain.InterviewJourney{
+				id, roundIDs, err := s.svc.Save(t.Context(), domain.InterviewJourney{
 					Uid:         testID,
-					CompanyName: "company-name-4",
-					JobInfo:     "/jobinfo/4",
-					ResumeURL:   "/resume/4",
+					CompanyName: "company-name-10",
+					JobInfo:     "/jobinfo/10",
+					ResumeURL:   "/resume/10",
 					Stime:       time.Now().UnixMilli(),
+					Status:      domain.StatusActive,
 					Rounds: []domain.InterviewRound{
 						{
 							Uid:           testID,
+							RoundNumber:   1,
+							RoundType:     "技术1面",
+							InterviewDate: time.Now().UnixMilli(),
+							JobInfo:       "/jobinfo/1",
+							ResumeURL:     "/resume/1",
+							AudioURL:      "/audio/1",
+							SelfResult:    true,
+							SelfSummary:   "good",
+							Result:        domain.ResultApproved,
+							AllowSharing:  false,
+						},
+						{
+							Uid:           testID,
+							RoundNumber:   2,
+							RoundType:     "技术2面",
+							InterviewDate: time.Now().UnixMilli(),
+							JobInfo:       "/jobinfo/2",
+							ResumeURL:     "/resume/2",
+							AudioURL:      "/audio/2",
+							SelfResult:    true,
+							SelfSummary:   "good",
+							Result:        domain.ResultPending,
+							AllowSharing:  false,
+						},
+					},
+				})
+				require.NoError(t, err)
+				return id, roundIDs
+			},
+			newHandlerFunc: func(t *testing.T, ctrl *gomock.Controller) ginx.Handler {
+				t.Helper()
+				return web.NewInterviewJourneyHandler(s.svc)
+			},
+			req: web.SaveReq{
+				Journey: web.Journey{
+					CompanyName: "company-name-11",
+					JobInfo:     "/jobinfo/11",
+					ResumeURL:   "/resume/11",
+					Stime:       time.Now().UnixMilli(),
+					Status:      domain.StatusFailed.String(),
+					Rounds: []web.Round{
+						{
+							RoundNumber:   1,
+							RoundType:     "技术1面",
+							InterviewDate: time.Now().UnixMilli(),
+							JobInfo:       "/jobinfo/2",
+							ResumeURL:     "/resume/2",
+							AudioURL:      "/audio/2",
+							SelfResult:    true,
+							SelfSummary:   "good",
+							Result:        domain.ResultPending.String(),
+							AllowSharing:  true,
+						},
+						{
+							RoundNumber:   2,
+							RoundType:     "技术2面",
+							InterviewDate: time.Now().UnixMilli(),
+							JobInfo:       "/jobinfo/2",
+							ResumeURL:     "/resume/2",
+							AudioURL:      "/audio/2",
+							SelfResult:    false,
+							SelfSummary:   "bad",
+							Result:        domain.ResultPending.String(),
+							AllowSharing:  true,
+						},
+						{
+							RoundNumber:   3,
+							RoundType:     "技术3面",
+							InterviewDate: time.Now().UnixMilli(),
+							JobInfo:       "/jobinfo/3",
+							ResumeURL:     "/resume/3",
+							AudioURL:      "/audio/3",
+							SelfResult:    true,
+							SelfSummary:   "good",
+							Result:        domain.ResultPending.String(),
+							AllowSharing:  true,
+						},
+						{
 							RoundNumber:   4,
 							RoundType:     "技术4面",
 							InterviewDate: time.Now().UnixMilli(),
@@ -318,96 +537,27 @@ func (s *InterviewModuleTestSuite) TestHandler_Update() {
 							AudioURL:      "/audio/4",
 							SelfResult:    true,
 							SelfSummary:   "good",
-							Result:        "REJECTED",
-							AllowSharing:  false,
+							Result:        domain.ResultPending.String(),
+							AllowSharing:  true,
 						},
 					},
-				})
-				require.NoError(t, err)
-				return
-			},
-			newHandlerFunc: func(t *testing.T, ctrl *gomock.Controller) ginx.Handler {
-				t.Helper()
-				return web.NewInterviewJourneyHandler(s.svc)
-			},
-			req: web.SaveReq{
-				// Round: web.Round{
-				// 	RoundNumber:   5,
-				// 	RoundType:     "技术5面",
-				// 	InterviewDate: time.Now().UnixMilli(),
-				// 	JobInfo:       "/jobinfo/5",
-				// 	ResumeURL:     "/resume/5",
-				// 	AudioURL:      "/audio/5",
-				// 	SelfResult:    true,
-				// 	SelfSummary:   "good",
-				// 	Result:        "REJECTED",
-				// 	AllowSharing:  false,
-				// },
+				},
 			},
 			wantCode: 200,
 			respAssertFunc: func(t assert.TestingT, i interface{}, i2 ...interface{}) bool {
-				return assert.Equal(t, test.Result[any]{Msg: "OK"}, i)
+				r := i.(test.Result[web.SaveResp])
+				res := assert.Positive(t, r.Data.Jid)
+				res = res && assert.Len(t, r.Data.RoundIDs, 4)
+				for i := range r.Data.RoundIDs {
+					res = res && assert.Positive(t, r.Data.RoundIDs[i])
+				}
+				return res
 			},
-			after: func(t *testing.T, req web.SaveReq) {
+			after: func(t *testing.T, req web.SaveReq, resp web.SaveResp) {
 				t.Helper()
-				// actual, err := s.svc.FindRoundByID(t.Context(), req.Round.ID, req.Round.Jid, testID)
-				// require.NoError(t, err)
-				// s.assertRound(t, req.Round.ID, testID, req.Round, actual)
-			},
-		},
-		{
-			name: "更新轮数失败_不可撤销授权",
-			before: func(t *testing.T) (jid, rid int64) {
-				t.Helper()
-				jid, err := s.svc.Save(t.Context(), domain.InterviewJourney{
-					Uid:         testID,
-					CompanyName: "company-name-5",
-					JobInfo:     "/jobinfo/5",
-					ResumeURL:   "/resume/5",
-					Stime:       time.Now().UnixMilli(),
-					Rounds: []domain.InterviewRound{{
-						Uid:           testID,
-						RoundNumber:   5,
-						RoundType:     "技术5面",
-						InterviewDate: time.Now().UnixMilli(),
-						JobInfo:       "/jobinfo/5",
-						ResumeURL:     "/resume/5",
-						AudioURL:      "/audio/5",
-						SelfResult:    true,
-						SelfSummary:   "good",
-						Result:        "REJECTED",
-						AllowSharing:  true,
-					}},
-				})
+				actual, err := s.svc.Detail(t.Context(), resp.Jid, testID)
 				require.NoError(t, err)
-				return
-			},
-			newHandlerFunc: func(t *testing.T, ctrl *gomock.Controller) ginx.Handler {
-				t.Helper()
-				return web.NewInterviewJourneyHandler(s.svc)
-			},
-			req: web.SaveReq{
-				// Round: web.Round{
-				// 	RoundNumber:   5,
-				// 	RoundType:     "技术5面",
-				// 	InterviewDate: time.Now().UnixMilli(),
-				// 	JobInfo:       "/jobinfo/5",
-				// 	ResumeURL:     "/resume/5",
-				// 	AudioURL:      "/audio/5",
-				// 	SelfResult:    true,
-				// 	SelfSummary:   "good",
-				// 	Result:        "REJECTED",
-				// 	AllowSharing:  false,
-				// },
-			},
-			wantCode: 500,
-			respAssertFunc: func(t assert.TestingT, i interface{}, i2 ...interface{}) bool {
-				return assert.Equal(t, test.Result[any]{
-					Code: 519001, Msg: "系统错误",
-				}, i)
-			},
-			after: func(t *testing.T, req web.SaveReq) {
-				t.Helper()
+				s.assertJourney(t, req.Journey, actual)
 			},
 		},
 	}
@@ -417,212 +567,50 @@ func (s *InterviewModuleTestSuite) TestHandler_Update() {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
 
-			jid, _ := tc.before(t)
+			jid, roundIDs := tc.before(t)
 
 			tc.req.Journey.ID = jid
+			require.GreaterOrEqual(t, len(tc.req.Journey.Rounds), len(roundIDs))
+			for i := range roundIDs {
+				tc.req.Journey.Rounds[i].ID = roundIDs[i]
+			}
 
 			req, err := http.NewRequest(http.MethodPost,
-				"/interview-rounds/update", iox.NewJSONReader(tc.req))
+				"/interview-journeys/save", iox.NewJSONReader(tc.req))
 			require.NoError(t, err)
 			req.Header.Set("content-type", "application/json")
-			recorder := test.NewJSONResponseRecorder[any]()
-			server := s.newGinServer(tc.newHandlerFunc(t, ctrl))
-			server.ServeHTTP(recorder, req)
-			require.Equal(t, tc.wantCode, recorder.Code)
-			tc.respAssertFunc(t, recorder.MustScan())
-			tc.after(t, tc.req)
-		})
-	}
-}
-
-/*
-func (s *InterviewModuleTestSuite) TestJourneyHandler_Create() {
-	t := s.T()
-
-	testCases := []struct {
-		name           string
-		before         func(t *testing.T) (jid int64)
-		newHandlerFunc func(t *testing.T, ctrl *gomock.Controller) ginx.Handler
-		req            web.CreateJourneyReq
-
-		wantCode       int
-		respAssertFunc assert.ValueAssertionFunc
-		after          func(t *testing.T, rid int64, req web.CreateJourneyReq)
-	}{
-		{
-			name: "创建旅程成功",
-			before: func(t *testing.T) (jid int64) {
-				t.Helper()
-				id, err := s.journeySvc.Save(t.Context(), domain.InterviewJourney{
-					Uid:         testID,
-					CompanyName: "company-name-6",
-					JobInfo:     "/jobinfo/6",
-					ResumeURL:   "/resume/6",
-					Stime:       time.Now().UnixMilli(),
-				})
-				require.NoError(t, err)
-				return id
-			},
-			newHandlerFunc: func(t *testing.T, ctrl *gomock.Controller) ginx.Handler {
-				t.Helper()
-				return web.NewInterviewJourneyHandler(s.journeySvc)
-			},
-			req: web.CreateJourneyReq{
-				Journey: web.Journey{
-					ID:          0,
-					CompanyID:   0,
-					CompanyName: "",
-					JobInfo:     "",
-					ResumeURL:   "",
-					Status:      "",
-					Stime:       0,
-					Etime:       0,
-					Rounds:      nil,
-				},
-			},
-			wantCode: 200,
-			respAssertFunc: func(t assert.TestingT, i interface{}, i2 ...interface{}) bool {
-				r := i.(test.Result[int64])
-				return assert.Positive(t, r.Data)
-			},
-			after: func(t *testing.T, rid int64, req web.CreateJourneyReq) {
-				t.Helper()
-				actual, err := s.roundSvc.FindByJourneyID(t.Context(), rid, req.Round.Jid, testID)
-				require.NoError(t, err)
-				s.assertRound(t, rid, testID, req.Round, actual)
-			},
-		},
-		{
-			name: "创建轮数失败_轮数编号不唯一",
-			before: func(t *testing.T) (jid int64) {
-				t.Helper()
-				id, err := s.journeySvc.Save(t.Context(), domain.InterviewJourney{
-					Uid:         testID,
-					CompanyName: "company-name-2",
-					JobInfo:     "/jobinfo/2",
-					ResumeURL:   "/resume/2",
-					Stime:       time.Now().UnixMilli(),
-				})
-				require.NoError(t, err)
-
-				_, err = s.roundSvc.Save(t.Context(), domain.InterviewRound{
-					Jid:           id,
-					Uid:           testID,
-					RoundNumber:   2,
-					RoundType:     "技术二面",
-					InterviewDate: time.Now().UnixMilli(),
-					JobInfo:       "/jobinfo/2",
-					ResumeURL:     "/resume/2",
-					AudioURL:      "/audio/2",
-					SelfResult:    true,
-					SelfSummary:   "good",
-					Result:        "REJECTED",
-					AllowSharing:  false,
-				})
-				require.NoError(t, err)
-				return id
-			},
-			newHandlerFunc: func(t *testing.T, ctrl *gomock.Controller) ginx.Handler {
-				t.Helper()
-				return web.NewInterviewRoundHandler(s.roundSvc)
-			},
-			req: web.CreateRoundReq{
-				Round: web.Round{
-					RoundNumber:   2,
-					RoundType:     "技术二面",
-					InterviewDate: time.Now().UnixMilli(),
-					JobInfo:       "/jobinfo/2",
-					ResumeURL:     "/resume/2",
-					AudioURL:      "/audio/2",
-					SelfResult:    true,
-					SelfSummary:   "good",
-					Result:        "REJECTED",
-					AllowSharing:  false,
-				},
-			},
-			wantCode: 500,
-			respAssertFunc: func(t assert.TestingT, i interface{}, i2 ...interface{}) bool {
-				return assert.Equal(t, test.Result[int64]{
-					Code: 519001, Msg: "系统错误",
-				}, i)
-			},
-			after: func(t *testing.T, rid int64, req web.CreateRoundReq) {
-				t.Helper()
-			},
-		},
-		{
-			name: "创建轮数失败_官方结果非法",
-			before: func(t *testing.T) (jid int64) {
-				t.Helper()
-				id, err := s.journeySvc.Save(t.Context(), domain.InterviewJourney{
-					Uid:         testID,
-					CompanyName: "company-name-3",
-					JobInfo:     "/jobinfo/3",
-					ResumeURL:   "/resume/3",
-					Stime:       time.Now().UnixMilli(),
-				})
-				require.NoError(t, err)
-				return id
-			},
-			newHandlerFunc: func(t *testing.T, ctrl *gomock.Controller) ginx.Handler {
-				t.Helper()
-				return web.NewInterviewRoundHandler(s.roundSvc)
-			},
-			req: web.CreateRoundReq{
-				Round: web.Round{
-					RoundNumber:   3,
-					RoundType:     "技术3面",
-					InterviewDate: time.Now().UnixMilli(),
-					JobInfo:       "/jobinfo/3",
-					ResumeURL:     "/resume/3",
-					AudioURL:      "/audio/3",
-					SelfResult:    true,
-					SelfSummary:   "good",
-					Result:        "",
-					AllowSharing:  false,
-				},
-			},
-			wantCode: 500,
-			respAssertFunc: func(t assert.TestingT, i interface{}, i2 ...interface{}) bool {
-				return assert.Equal(t, test.Result[int64]{
-					Code: 519001, Msg: "系统错误",
-				}, i)
-			},
-			after: func(t *testing.T, rid int64, req web.CreateRoundReq) {
-				t.Helper()
-			},
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			ctrl := gomock.NewController(t)
-			defer ctrl.Finish()
-
-			jid := tc.before(t)
-
-			tc.req.Round.Jid = jid
-
-			req, err := http.NewRequest(http.MethodPost,
-				"/interview-rounds/create", iox.NewJSONReader(tc.req))
-			require.NoError(t, err)
-			req.Header.Set("content-type", "application/json")
-			recorder := test.NewJSONResponseRecorder[int64]()
+			recorder := test.NewJSONResponseRecorder[web.SaveResp]()
 			server := s.newGinServer(tc.newHandlerFunc(t, ctrl))
 			server.ServeHTTP(recorder, req)
 			require.Equal(t, tc.wantCode, recorder.Code)
 			result := recorder.MustScan()
 			tc.respAssertFunc(t, result)
-			tc.after(t, result.Data, tc.req)
+			tc.after(t, tc.req, result.Data)
 		})
 	}
 }
 
-func (s *InterviewModuleTestSuite) assertJourney(t *testing.T, rid, uid int64, expected web.Round, actual domain.InterviewRound) {
+func (s *InterviewModuleTestSuite) assertJourney(t *testing.T, expected web.Journey, actual domain.InterviewJourney) {
 	t.Helper()
-	assert.Equal(t, rid, actual.ID)
-	assert.Equal(t, expected.Jid, actual.Jid)
-	assert.Equal(t, uid, actual.Uid)
+
+	assert.Equal(t, expected.CompanyID, actual.CompanyID)
+	assert.Equal(t, expected.CompanyName, actual.CompanyName)
+	assert.Equal(t, expected.JobInfo, actual.JobInfo)
+	assert.Equal(t, expected.ResumeURL, actual.ResumeURL)
+	assert.Equal(t, expected.Status, actual.Status.String())
+	assert.Equal(t, expected.Stime, actual.Stime)
+	assert.Equal(t, expected.Etime, actual.Etime)
+
+	require.Equal(t, len(expected.Rounds), len(actual.Rounds))
+	for i := range expected.Rounds {
+		s.assertRound(t, expected.Rounds[i], actual.Rounds[i])
+	}
+}
+
+func (s *InterviewModuleTestSuite) assertRound(t *testing.T, expected web.Round, actual domain.InterviewRound) {
+	t.Helper()
+	assert.Greater(t, actual.ID, int64(0))
+	assert.Equal(t, testID, actual.Uid)
 	assert.Equal(t, expected.RoundNumber, actual.RoundNumber)
 	assert.Equal(t, expected.RoundType, actual.RoundType)
 	assert.Equal(t, expected.InterviewDate, actual.InterviewDate)
@@ -635,136 +623,359 @@ func (s *InterviewModuleTestSuite) assertJourney(t *testing.T, rid, uid int64, e
 	assert.Equal(t, expected.AllowSharing, actual.AllowSharing)
 }
 
-func (s *InterviewModuleTestSuite) TestJourneyHandler_Update() {
+func (s *InterviewModuleTestSuite) TestHandler_Save_Failed() {
 	t := s.T()
 
 	testCases := []struct {
 		name           string
-		before         func(t *testing.T) (jid, rid int64)
+		before         func(t *testing.T) (jid int64, roundIDs []int64)
 		newHandlerFunc func(t *testing.T, ctrl *gomock.Controller) ginx.Handler
-		req            web.UpdateRoundReq
+		req            web.SaveReq
 
 		wantCode       int
 		respAssertFunc assert.ValueAssertionFunc
-		after          func(t *testing.T, req web.UpdateRoundReq)
 	}{
-		{
-			name: "更新轮数成功",
-			before: func(t *testing.T) (jid, rid int64) {
-				t.Helper()
-				jid, err := s.journeySvc.Save(t.Context(), domain.InterviewJourney{
-					Uid:         testID,
-					CompanyName: "company-name-4",
-					JobInfo:     "/jobinfo/4",
-					ResumeURL:   "/resume/4",
-					Stime:       time.Now().UnixMilli(),
-				})
-				require.NoError(t, err)
 
-				rid, err = s.roundSvc.Save(t.Context(), domain.InterviewRound{
-					Jid:           jid,
-					Uid:           testID,
-					RoundNumber:   4,
-					RoundType:     "技术4面",
-					InterviewDate: time.Now().UnixMilli(),
-					JobInfo:       "/jobinfo/4",
-					ResumeURL:     "/resume/4",
-					AudioURL:      "/audio/4",
-					SelfResult:    true,
-					SelfSummary:   "good",
-					Result:        "REJECTED",
-					AllowSharing:  false,
+		{
+			name: "有面试历程撤销一个授权失败",
+			before: func(t *testing.T) (jid int64, roundIDs []int64) {
+				t.Helper()
+				id, roundIDs, err := s.svc.Save(t.Context(), domain.InterviewJourney{
+					Uid:         testID,
+					CompanyName: "company-name-12",
+					JobInfo:     "/jobinfo/12",
+					ResumeURL:   "/resume/12",
+					Stime:       time.Now().UnixMilli(),
+					Rounds: []domain.InterviewRound{
+						{
+							Uid:           testID,
+							RoundNumber:   1,
+							RoundType:     "技术1面",
+							InterviewDate: time.Now().UnixMilli(),
+							JobInfo:       "/jobinfo/1",
+							ResumeURL:     "/resume/1",
+							AudioURL:      "/audio/1",
+							SelfResult:    true,
+							SelfSummary:   "good",
+							Result:        domain.ResultApproved,
+							AllowSharing:  true,
+						},
+					},
 				})
-				t.Logf("jid = %d, rid = %d\n", jid, rid)
 				require.NoError(t, err)
-				return
+				return id, roundIDs
 			},
 			newHandlerFunc: func(t *testing.T, ctrl *gomock.Controller) ginx.Handler {
 				t.Helper()
-				return web.NewInterviewRoundHandler(s.roundSvc)
+				return web.NewInterviewJourneyHandler(s.svc)
 			},
-			req: web.UpdateRoundReq{
-				Round: web.Round{
-					RoundNumber:   5,
-					RoundType:     "技术5面",
-					InterviewDate: time.Now().UnixMilli(),
-					JobInfo:       "/jobinfo/5",
-					ResumeURL:     "/resume/5",
-					AudioURL:      "/audio/5",
-					SelfResult:    true,
-					SelfSummary:   "good",
-					Result:        "REJECTED",
-					AllowSharing:  false,
-				},
-			},
-			wantCode: 200,
-			respAssertFunc: func(t assert.TestingT, i interface{}, i2 ...interface{}) bool {
-				return assert.Equal(t, test.Result[any]{Msg: "OK"}, i)
-			},
-			after: func(t *testing.T, req web.UpdateRoundReq) {
-				t.Helper()
-				actual, err := s.roundSvc.FindByJourneyID(t.Context(), req.Round.ID, req.Round.Jid, testID)
-				require.NoError(t, err)
-				s.assertRound(t, req.Round.ID, testID, req.Round, actual)
-			},
-		},
-		{
-			name: "更新轮数失败_不可撤销授权",
-			before: func(t *testing.T) (jid, rid int64) {
-				t.Helper()
-				jid, err := s.journeySvc.Save(t.Context(), domain.InterviewJourney{
-					Uid:         testID,
-					CompanyName: "company-name-4",
-					JobInfo:     "/jobinfo/4",
-					ResumeURL:   "/resume/4",
+			req: web.SaveReq{
+				Journey: web.Journey{
+					CompanyName: "company-name-13",
+					JobInfo:     "/jobinfo/13",
+					ResumeURL:   "/resume/13",
 					Stime:       time.Now().UnixMilli(),
-				})
-				require.NoError(t, err)
-
-				rid, err = s.roundSvc.Save(t.Context(), domain.InterviewRound{
-					Jid:           jid,
-					Uid:           testID,
-					RoundNumber:   4,
-					RoundType:     "技术4面",
-					InterviewDate: time.Now().UnixMilli(),
-					JobInfo:       "/jobinfo/4",
-					ResumeURL:     "/resume/4",
-					AudioURL:      "/audio/4",
-					SelfResult:    true,
-					SelfSummary:   "good",
-					Result:        "REJECTED",
-					AllowSharing:  true,
-				})
-				t.Logf("jid = %d, rid = %d\n", jid, rid)
-				require.NoError(t, err)
-				return
-			},
-			newHandlerFunc: func(t *testing.T, ctrl *gomock.Controller) ginx.Handler {
-				t.Helper()
-				return web.NewInterviewRoundHandler(s.roundSvc)
-			},
-			req: web.UpdateRoundReq{
-				Round: web.Round{
-					RoundNumber:   5,
-					RoundType:     "技术5面",
-					InterviewDate: time.Now().UnixMilli(),
-					JobInfo:       "/jobinfo/5",
-					ResumeURL:     "/resume/5",
-					AudioURL:      "/audio/5",
-					SelfResult:    true,
-					SelfSummary:   "good",
-					Result:        "REJECTED",
-					AllowSharing:  false,
+					Status:      domain.StatusSucceeded.String(),
+					Rounds: []web.Round{
+						{
+							RoundNumber:   1,
+							RoundType:     "技术1面",
+							InterviewDate: time.Now().UnixMilli(),
+							JobInfo:       "/jobinfo/1",
+							ResumeURL:     "/resume/1",
+							AudioURL:      "/audio/1",
+							SelfResult:    false,
+							SelfSummary:   "一般",
+							Result:        domain.ResultApproved.String(),
+							AllowSharing:  false,
+						},
+					},
 				},
 			},
 			wantCode: 500,
 			respAssertFunc: func(t assert.TestingT, i interface{}, i2 ...interface{}) bool {
-				return assert.Equal(t, test.Result[any]{
-					Code: 519001, Msg: "系统错误",
-				}, i)
+				r := i.(test.Result[any])
+				return assert.Equal(t, test.Result[any]{Code: 519001, Msg: "系统错误"}, r)
 			},
-			after: func(t *testing.T, req web.UpdateRoundReq) {
+		},
+		{
+			name: "有面试历程撤销多个授权失败",
+			before: func(t *testing.T) (jid int64, roundIDs []int64) {
 				t.Helper()
+				id, roundIDs, err := s.svc.Save(t.Context(), domain.InterviewJourney{
+					Uid:         testID,
+					CompanyName: "company-name-12",
+					JobInfo:     "/jobinfo/12",
+					ResumeURL:   "/resume/12",
+					Stime:       time.Now().UnixMilli(),
+					Rounds: []domain.InterviewRound{
+						{
+							Uid:           testID,
+							RoundNumber:   1,
+							RoundType:     "技术1面",
+							InterviewDate: time.Now().UnixMilli(),
+							JobInfo:       "/jobinfo/1",
+							ResumeURL:     "/resume/1",
+							AudioURL:      "/audio/1",
+							SelfResult:    true,
+							SelfSummary:   "good",
+							Result:        domain.ResultApproved,
+							AllowSharing:  true,
+						},
+						{
+							Uid:           testID,
+							RoundNumber:   2,
+							RoundType:     "技术2面",
+							InterviewDate: time.Now().UnixMilli(),
+							JobInfo:       "/jobinfo/2",
+							ResumeURL:     "/resume/2",
+							AudioURL:      "/audio/2",
+							SelfResult:    true,
+							SelfSummary:   "good",
+							Result:        domain.ResultApproved,
+							AllowSharing:  true,
+						},
+						{
+							Uid:           testID,
+							RoundNumber:   3,
+							RoundType:     "技术3面",
+							InterviewDate: time.Now().UnixMilli(),
+							JobInfo:       "/jobinfo/3",
+							ResumeURL:     "/resume/3",
+							AudioURL:      "/audio/3",
+							SelfResult:    true,
+							SelfSummary:   "good",
+							Result:        domain.ResultApproved,
+							AllowSharing:  true,
+						},
+					},
+				})
+				require.NoError(t, err)
+				return id, roundIDs
+			},
+			newHandlerFunc: func(t *testing.T, ctrl *gomock.Controller) ginx.Handler {
+				t.Helper()
+				return web.NewInterviewJourneyHandler(s.svc)
+			},
+			req: web.SaveReq{
+				Journey: web.Journey{
+					CompanyName: "company-name-13",
+					JobInfo:     "/jobinfo/13",
+					ResumeURL:   "/resume/13",
+					Stime:       time.Now().UnixMilli(),
+					Status:      domain.StatusSucceeded.String(),
+					Rounds: []web.Round{
+						{
+							RoundNumber:   1,
+							RoundType:     "技术1面",
+							InterviewDate: time.Now().UnixMilli(),
+							JobInfo:       "/jobinfo/1",
+							ResumeURL:     "/resume/1",
+							AudioURL:      "/audio/1",
+							SelfResult:    true,
+							SelfSummary:   "good",
+							Result:        domain.ResultApproved.String(),
+							AllowSharing:  false,
+						},
+						{
+							RoundNumber:   2,
+							RoundType:     "技术2面",
+							InterviewDate: time.Now().UnixMilli(),
+							JobInfo:       "/jobinfo/2",
+							ResumeURL:     "/resume/2",
+							AudioURL:      "/audio/2",
+							SelfResult:    true,
+							SelfSummary:   "good",
+							Result:        domain.ResultApproved.String(),
+							AllowSharing:  true,
+						},
+						{
+							RoundNumber:   3,
+							RoundType:     "技术3面",
+							InterviewDate: time.Now().UnixMilli(),
+							JobInfo:       "/jobinfo/3",
+							ResumeURL:     "/resume/3",
+							AudioURL:      "/audio/3",
+							SelfResult:    true,
+							SelfSummary:   "good",
+							Result:        domain.ResultApproved.String(),
+							AllowSharing:  false,
+						},
+					},
+				},
+			},
+			wantCode: 500,
+			respAssertFunc: func(t assert.TestingT, i interface{}, i2 ...interface{}) bool {
+				r := i.(test.Result[any])
+				return assert.Equal(t, test.Result[any]{Code: 519001, Msg: "系统错误"}, r)
+			},
+		},
+		{
+			name: "无面试历程仅创建一轮面试失败",
+			before: func(t *testing.T) (jid int64, roundIDs []int64) {
+				t.Helper()
+				return 0, nil
+			},
+			newHandlerFunc: func(t *testing.T, ctrl *gomock.Controller) ginx.Handler {
+				t.Helper()
+				return web.NewInterviewJourneyHandler(s.svc)
+			},
+			req: web.SaveReq{
+				Journey: web.Journey{
+					Rounds: []web.Round{
+						{
+							RoundNumber:   1,
+							RoundType:     "技术1面",
+							InterviewDate: time.Now().UnixMilli(),
+							JobInfo:       "/jobinfo/1",
+							ResumeURL:     "/resume/1",
+							AudioURL:      "/audio/1",
+							SelfResult:    false,
+							SelfSummary:   "一般",
+							Result:        domain.ResultApproved.String(),
+							AllowSharing:  false,
+						},
+					},
+				},
+			},
+			wantCode: 500,
+			respAssertFunc: func(t assert.TestingT, i interface{}, i2 ...interface{}) bool {
+				r := i.(test.Result[any])
+				return assert.Equal(t, test.Result[any]{Code: 419001, Msg: "面试历程有必填字段未填写"}, r)
+			},
+		},
+		{
+			name: "无面试历程仅创建多轮面试失败",
+			before: func(t *testing.T) (jid int64, roundIDs []int64) {
+				t.Helper()
+				return 0, nil
+			},
+			newHandlerFunc: func(t *testing.T, ctrl *gomock.Controller) ginx.Handler {
+				t.Helper()
+				return web.NewInterviewJourneyHandler(s.svc)
+			},
+			req: web.SaveReq{
+				Journey: web.Journey{
+					Rounds: []web.Round{
+						{
+							RoundNumber:   1,
+							RoundType:     "技术1面",
+							InterviewDate: time.Now().UnixMilli(),
+							JobInfo:       "/jobinfo/1",
+							ResumeURL:     "/resume/1",
+							AudioURL:      "/audio/1",
+							SelfResult:    false,
+							SelfSummary:   "一般",
+							Result:        domain.ResultApproved.String(),
+							AllowSharing:  false,
+						},
+						{
+							RoundNumber:   2,
+							RoundType:     "技术2面",
+							InterviewDate: time.Now().UnixMilli(),
+							JobInfo:       "/jobinfo/2",
+							ResumeURL:     "/resume/2",
+							AudioURL:      "/audio/2",
+							SelfResult:    false,
+							SelfSummary:   "一般",
+							Result:        domain.ResultApproved.String(),
+							AllowSharing:  false,
+						},
+					},
+				},
+			},
+			wantCode: 500,
+			respAssertFunc: func(t assert.TestingT, i interface{}, i2 ...interface{}) bool {
+				r := i.(test.Result[any])
+				return assert.Equal(t, test.Result[any]{Code: 419001, Msg: "面试历程有必填字段未填写"}, r)
+			},
+		},
+		{
+			name: "有面试历程仅创建一轮面试失败",
+			before: func(t *testing.T) (jid int64, roundIDs []int64) {
+				t.Helper()
+				return 0, nil
+			},
+			newHandlerFunc: func(t *testing.T, ctrl *gomock.Controller) ginx.Handler {
+				t.Helper()
+				return web.NewInterviewJourneyHandler(s.svc)
+			},
+			req: web.SaveReq{
+				Journey: web.Journey{
+					CompanyName: "company-name-14",
+					JobInfo:     "/jobinfo/14",
+					ResumeURL:   "/resume/14",
+					Stime:       time.Now().UnixMilli(),
+					Status:      domain.StatusSucceeded.String(),
+					Rounds: []web.Round{
+						{
+							RoundNumber:   1,
+							RoundType:     "技术1面",
+							InterviewDate: time.Now().UnixMilli(),
+							JobInfo:       "/jobinfo/1",
+							AudioURL:      "/audio/1",
+							SelfResult:    false,
+							SelfSummary:   "一般",
+							Result:        domain.ResultApproved.String(),
+							AllowSharing:  false,
+						},
+					},
+				},
+			},
+			wantCode: 500,
+			respAssertFunc: func(t assert.TestingT, i interface{}, i2 ...interface{}) bool {
+				r := i.(test.Result[any])
+				return assert.Equal(t, test.Result[any]{Code: 419002, Msg: "面试轮次有必填字段未填写"}, r)
+			},
+		},
+		{
+			name: "有面试历程仅创建多轮面试失败",
+			before: func(t *testing.T) (jid int64, roundIDs []int64) {
+				t.Helper()
+				return 0, nil
+			},
+			newHandlerFunc: func(t *testing.T, ctrl *gomock.Controller) ginx.Handler {
+				t.Helper()
+				return web.NewInterviewJourneyHandler(s.svc)
+			},
+			req: web.SaveReq{
+				Journey: web.Journey{
+					CompanyName: "company-name-15",
+					JobInfo:     "/jobinfo/15",
+					ResumeURL:   "/resume/15",
+					Stime:       time.Now().UnixMilli(),
+					Status:      domain.StatusFailed.String(),
+					Rounds: []web.Round{
+						{
+							RoundNumber:   1,
+							RoundType:     "技术1面",
+							InterviewDate: time.Now().UnixMilli(),
+							JobInfo:       "/jobinfo/1",
+							ResumeURL:     "/resume/1",
+							AudioURL:      "/audio/1",
+							SelfResult:    false,
+							SelfSummary:   "一般",
+							Result:        domain.ResultApproved.String(),
+							AllowSharing:  false,
+						},
+						{
+							RoundNumber:   2,
+							InterviewDate: time.Now().UnixMilli(),
+							JobInfo:       "/jobinfo/2",
+							ResumeURL:     "/resume/2",
+							AudioURL:      "/audio/2",
+							SelfResult:    false,
+							SelfSummary:   "一般",
+							Result:        domain.ResultApproved.String(),
+							AllowSharing:  false,
+						},
+					},
+				},
+			},
+			wantCode: 500,
+			respAssertFunc: func(t assert.TestingT, i interface{}, i2 ...interface{}) bool {
+				r := i.(test.Result[any])
+				return assert.Equal(t, test.Result[any]{Code: 419002, Msg: "面试轮次有必填字段未填写"}, r)
 			},
 		},
 	}
@@ -774,25 +985,28 @@ func (s *InterviewModuleTestSuite) TestJourneyHandler_Update() {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
 
-			jid, rid := tc.before(t)
+			jid, roundIDs := tc.before(t)
 
-			tc.req.Round.Jid = jid
-			tc.req.Round.ID = rid
+			tc.req.Journey.ID = jid
+			require.GreaterOrEqual(t, len(tc.req.Journey.Rounds), len(roundIDs))
+			for i := range roundIDs {
+				tc.req.Journey.Rounds[i].ID = roundIDs[i]
+			}
 
 			req, err := http.NewRequest(http.MethodPost,
-				"/interview-rounds/update", iox.NewJSONReader(tc.req))
+				"/interview-journeys/save", iox.NewJSONReader(tc.req))
 			require.NoError(t, err)
 			req.Header.Set("content-type", "application/json")
 			recorder := test.NewJSONResponseRecorder[any]()
 			server := s.newGinServer(tc.newHandlerFunc(t, ctrl))
 			server.ServeHTTP(recorder, req)
 			require.Equal(t, tc.wantCode, recorder.Code)
-			tc.respAssertFunc(t, recorder.MustScan())
-			tc.after(t, tc.req)
+			result := recorder.MustScan()
+			tc.respAssertFunc(t, result)
 		})
 	}
 }
-*/
+
 /*
 func (s *InterviewModuleTestSuite) TestAdminHandler_List() {
 	t := s.T()

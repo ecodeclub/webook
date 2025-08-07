@@ -18,6 +18,11 @@ type SaveReq struct {
 	Journey Journey `json:"journey"`
 }
 
+type SaveResp struct {
+	Jid      int64   `json:"jid"`
+	RoundIDs []int64 `json:"roundIDs,omitzero"`
+}
+
 type Journey struct {
 	ID          int64  `json:"id"`
 	CompanyID   int64  `json:"companyId"`

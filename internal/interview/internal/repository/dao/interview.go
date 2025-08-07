@@ -47,8 +47,8 @@ func (InterviewJourney) TableName() string {
 type InterviewRound struct {
 	ID            int64  `gorm:"type:BIGINT;primaryKey;autoIncrement;comment:'主键ID'"`
 	Uid           int64  `gorm:"type:BIGINT;NOT NULL;index:idx_user_id;comment:'用户ID'"`
-	Jid           int64  `gorm:"type:BIGINT;NOT NULL;index:idx_journey_id;unique:unq_journey_id_round_number,priority:1;comment:'所属面试历程ID'"`
-	RoundNumber   int    `gorm:"type:INT;NOT NULL;default:1;unique:unq_journey_id_round_number,priority:2;comment:'轮数编号，例如 1, 2, 3'"`
+	Jid           int64  `gorm:"type:BIGINT;NOT NULL;index:idx_journey_id;uniqueIndex:unq_journey_id_round_number,priority:1;comment:'所属面试历程ID'"`
+	RoundNumber   int    `gorm:"type:INT;NOT NULL;default:1;uniqueIndex:unq_journey_id_round_number,priority:2;comment:'轮数编号，例如 1, 2, 3'"`
 	RoundType     string `gorm:"type:VARCHAR(255);comment:'轮数类型，允许为NULL，可以填入例如——同事、虚线leader、leader、manager、CTO、CEO、HR'"`
 	InterviewDate int64  `gorm:"NOT NULL;comment:'面试时间'"`
 	JobInfo       string `gorm:"type:TEXT;NOT NULL;comment:'本轮实际面试的岗位信息（岗位名称+职责描述+任职要求）'"`
@@ -69,7 +69,7 @@ func (InterviewRound) TableName() string {
 
 // InterviewDAO 定义面试历程的数据访问接口
 type InterviewDAO interface {
-	Save(ctx context.Context, journey InterviewJourney, rounds []InterviewRound) (int64, error)
+	Save(ctx context.Context, journey InterviewJourney, rounds []InterviewRound) (int64, []int64, error)
 	Find(ctx context.Context, id, uid int64) (InterviewJourney, []InterviewRound, error)
 
 	FindJourneysByUID(ctx context.Context, uid int64, offset, limit int) ([]InterviewJourney, error)
@@ -88,7 +88,7 @@ func NewGORMInterviewDAO(db *egorm.Component) InterviewDAO {
 	return &GORMInterviewDAO{db: db}
 }
 
-func (g *GORMInterviewDAO) Save(ctx context.Context, journey InterviewJourney, rounds []InterviewRound) (int64, error) {
+func (g *GORMInterviewDAO) Save(ctx context.Context, journey InterviewJourney, rounds []InterviewRound) (int64, []int64, error) {
 	// 为 journey 和 rounds 统一设置时间
 	now := time.Now().UnixMilli()
 	journey.Utime = now
@@ -103,8 +103,9 @@ func (g *GORMInterviewDAO) Save(ctx context.Context, journey InterviewJourney, r
 	}
 
 	var jid int64
+	roundIDs := make([]int64, 0, len(rounds))
 	err := g.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		// 步骤1: 保存 Journey 主体，使用 Clauses(OnConflict)
+		// 步骤1: 保存 Journey 主体
 		if err := tx.Clauses(clause.OnConflict{
 			// 冲突目标是主键 id
 			Columns: []clause.Column{{Name: "id"}},
@@ -124,33 +125,26 @@ func (g *GORMInterviewDAO) Save(ctx context.Context, journey InterviewJourney, r
 		}
 		jid = journey.ID
 
-		if len(rounds) == 0 {
-			return nil
-		}
-
-		// 步骤2: 遍历并保存所有 Round，逻辑保持一致
+		// 步骤2: 处理 rounds 的保存逻辑
 		for i := range rounds {
 			rounds[i].Jid = jid // 确保关联ID正确
+			if err := tx.Clauses(clause.OnConflict{
+				// 冲突检测：使用 jid + round_number 联合唯一索引
+				Columns: []clause.Column{{Name: "jid"}, {Name: "round_number"}},
+				// 冲突时更新所有字段（除了主键和创建时间）
+				DoUpdates: clause.AssignmentColumns([]string{
+					"uid", "round_type", "interview_date", "job_info", "resume_url",
+					"audio_url", "self_result", "self_summary", "result",
+					"allow_sharing", "utime",
+				}),
+			}).Create(&rounds[i]).Error; err != nil {
+				return err
+			}
+			roundIDs = append(roundIDs, rounds[i].ID)
 		}
-		return tx.Clauses(clause.OnConflict{
-			// 冲突的目标是联合唯一索引
-			Columns: []clause.Column{{Name: "jid"}, {Name: "round_number"}},
-			// 在冲突时，需要更新除了唯一键和创建时间之外的所有字段
-			DoUpdates: clause.AssignmentColumns([]string{
-				"round_type",
-				"interview_date",
-				"job_info",
-				"resume_url",
-				"audio_url",
-				"self_result",
-				"self_summary",
-				"result",
-				"allow_sharing",
-				"utime",
-			}),
-		}).Create(&rounds).Error
+		return nil
 	})
-	return jid, err
+	return jid, roundIDs, err
 }
 
 func (g *GORMInterviewDAO) Find(ctx context.Context, id, uid int64) (InterviewJourney, []InterviewRound, error) {

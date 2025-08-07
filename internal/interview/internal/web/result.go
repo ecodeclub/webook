@@ -24,4 +24,12 @@ var (
 		Code: errs.SystemError.Code,
 		Msg:  errs.SystemError.Msg,
 	}
+	JourneyErrorResult = ginx.Result{
+		Code: errs.JourneyError.Code,
+		Msg:  errs.JourneyError.Msg,
+	}
+	RoundErrorResult = ginx.Result{
+		Code: errs.RoundError.Code,
+		Msg:  errs.RoundError.Msg,
+	}
 )

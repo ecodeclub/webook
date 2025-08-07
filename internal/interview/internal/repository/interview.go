@@ -26,7 +26,7 @@ import (
 // InterviewRepository 定义了面试历程聚合根的仓储接口
 type InterviewRepository interface {
 	// Save 是一个事务性操作，原子性地保存整个面试历程聚合（包括所有轮次）
-	Save(ctx context.Context, journey domain.InterviewJourney) (int64, error)
+	Save(ctx context.Context, journey domain.InterviewJourney) (int64, []int64, error)
 	// FindJourneyByID 根据ID查找并完整重建一个面试历程聚合（包含其所有的Rounds）。
 	FindJourneyByID(ctx context.Context, id, uid int64) (domain.InterviewJourney, error)
 	// FindJourneysByUID 查找一个用户的所有面试历程（不包含Rounds以提高性能）。
@@ -49,7 +49,7 @@ func NewInterviewRepository(interviewDAO dao.InterviewDAO) InterviewRepository {
 	}
 }
 
-func (r *interviewRepository) Save(ctx context.Context, journey domain.InterviewJourney) (int64, error) {
+func (r *interviewRepository) Save(ctx context.Context, journey domain.InterviewJourney) (int64, []int64, error) {
 	j, rounds := r.toJourneyEntity(journey)
 	return r.dao.Save(ctx, j, rounds)
 }

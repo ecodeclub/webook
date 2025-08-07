@@ -15,7 +15,9 @@
 package errs
 
 var (
-	SystemError = ErrorCode{Code: 519001, Msg: "系统错误"}
+	JourneyError = ErrorCode{Code: 419001, Msg: "面试历程有必填字段未填写"}
+	RoundError   = ErrorCode{Code: 419002, Msg: "面试轮次有必填字段未填写"}
+	SystemError  = ErrorCode{Code: 519001, Msg: "系统错误"}
 )
 
 type ErrorCode struct {

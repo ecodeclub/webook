@@ -15,6 +15,8 @@
 package web
 
 import (
+	"errors"
+
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/ecodeclub/ginx"
 	"github.com/ecodeclub/ginx/session"
@@ -46,12 +48,24 @@ func (h *InterviewJourneyHandler) PublicRoutes(_ *gin.Engine) {}
 
 // Save 创建一个新的面试历程
 func (h *InterviewJourneyHandler) Save(ctx *ginx.Context, req SaveReq, sess session.Session) (ginx.Result, error) {
-	id, err := h.svc.Save(ctx, h.toDomain(sess.Claims().Uid, req.Journey))
+	journey := h.toDomain(sess.Claims().Uid, req.Journey)
+	if !journey.IsValid() {
+		return JourneyErrorResult, errors.New("面试历程有必填字段未填写")
+	}
+	for i := range journey.Rounds {
+		if !journey.Rounds[i].IsValid() {
+			return RoundErrorResult, errors.New("面试轮次有必填字段未填写")
+		}
+	}
+	id, roundIDs, err := h.svc.Save(ctx, journey)
 	if err != nil {
 		return systemErrorResult, err
 	}
 	return ginx.Result{
-		Data: id,
+		Data: SaveResp{
+			Jid:      id,
+			RoundIDs: roundIDs,
+		},
 	}, nil
 }
 
