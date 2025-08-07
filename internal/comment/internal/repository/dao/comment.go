@@ -118,7 +118,7 @@ func (g *commentDAO) FindAncestors(ctx context.Context, biz string, bizID, minID
 		Where("id < ? AND biz = ? AND biz_id = ?", minID, biz, bizID).
 		// 直接评论、根评论、始祖评论
 		Where("ancestor_id IS NULL AND parent_id IS NULL").
-		Order("ctime DESC").
+		Order("id DESC").
 		Limit(limit).
 		Find(&res).Error
 	return res, err
@@ -137,7 +137,7 @@ func (g *commentDAO) FindDescendants(ctx context.Context, ancestorID, minID int6
 	var res []Comment
 	err := g.db.WithContext(ctx).
 		Where("id < ? AND ancestor_id = ?", minID, ancestorID).
-		Order("ctime DESC").
+		Order("id DESC").
 		Limit(limit).
 		Find(&res).Error
 	return res, err
