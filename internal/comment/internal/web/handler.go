@@ -46,9 +46,9 @@ func (h *Handler) MemberRoutes(server *gin.Engine) {
 	// 在这里注册路由
 	group := server.Group("/comment")
 	group.POST("/", ginx.BS[CreateRequest](h.Create))
-	// 查询直接（始祖）评论，目前按照评论时间的倒序（注意和replies接口的区别）排序
+	// 查询直接（始祖）评论，按照评论ID的倒序排序
 	group.POST("/list", ginx.BS[ListRequest](h.List))
-	// 获得某个直接（始祖）评论的所有子评论，孙子评论，按照评论时间倒序排序（即后评论的在前面）
+	// 获得某个直接（始祖）评论的所有子评论，孙子评论，按照评论ID的倒序排序
 	group.POST("/replies", ginx.BS[RepliesRequest](h.Replies))
 	group.POST("/delete", ginx.BS[DeleteRequest](h.Delete))
 }
