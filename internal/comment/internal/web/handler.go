@@ -78,7 +78,7 @@ func (h *Handler) Create(ctx *ginx.Context, req CreateRequest, sess session.Sess
 }
 
 func (h *Handler) List(ctx *ginx.Context, req ListRequest, _ session.Session) (ginx.Result, error) {
-	ancestors, total, err := h.svc.List(ctx.Request.Context(), req.Biz, req.BizID, req.MinID, req.Limit, req.MaxSubCnt)
+	ancestors, total, err := h.svc.List(ctx.Request.Context(), req.Biz, req.BizID, req.MinID, req.Limit)
 	if err != nil {
 		return systemErrorResult, fmt.Errorf("查找%q业务的%d资源的直接评论（始祖评论）失败: %w", req.Biz, req.BizID, err)
 	}
@@ -100,14 +100,12 @@ func (h *Handler) toVO(c domain.Comment) Comment {
 			Nickname: c.User.NickName,
 			Avatar:   c.User.Avatar,
 		},
-		Biz:      c.Biz,
-		BizID:    c.BizID,
-		ParentID: c.ParentID,
-		Content:  c.Content,
-		Utime:    c.Utime,
-		Replies: slice.Map(c.Replies, func(_ int, src domain.Comment) Comment {
-			return h.toVO(src)
-		}),
+		Biz:        c.Biz,
+		BizID:      c.BizID,
+		ParentID:   c.ParentID,
+		Content:    c.Content,
+		Utime:      c.Utime,
+		ReplyCount: c.ReplyCount,
 	}
 }
 

@@ -47,8 +47,8 @@ type Comment struct {
 
 	Utime int64 `json:"utime"`
 
-	// 当前评论的回复
-	Replies []Comment `json:"replies"`
+	// 当前评论的回复总数
+	ReplyCount int64 `json:"replyCount"`
 }
 
 type ListRequest struct {
@@ -58,9 +58,6 @@ type ListRequest struct {
 	// 上一页最小的评论ID，如果是第一页就传0
 	MinID int64 `json:"minId"`
 	Limit int   `json:"limit"`
-
-	// 顺带返回的最大子评论数
-	MaxSubCnt int `json:"maxSubCnt"`
 }
 
 type RepliesRequest struct {

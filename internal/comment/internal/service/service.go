@@ -28,7 +28,7 @@ type CommentService interface {
 	// Create  创建直接评论（始祖评论），子评论及孙子评论
 	Create(ctx context.Context, comment domain.Comment) (int64, error)
 	// List 查找某一业务下的所有直接评论（始祖评论），按评论时间的倒序排序
-	List(ctx context.Context, biz string, bizID, minID int64, limit, maxSubCnt int) ([]domain.Comment, int64, error)
+	List(ctx context.Context, biz string, bizID, minID int64, limit int) ([]domain.Comment, int64, error)
 	// Replies 查找直接评论（始祖评论）所有后代即所有子评论，孙子评论，按照评论时间倒序排序（即后评论的在前面）
 	Replies(ctx context.Context, ancestorID, minID int64, limit int) ([]domain.Comment, int64, error)
 	// Delete 根据ID删除评论及其后裔评论
@@ -48,7 +48,7 @@ func (s *commentService) Create(ctx context.Context, comment domain.Comment) (in
 	return s.repo.Create(ctx, comment)
 }
 
-func (s *commentService) List(ctx context.Context, biz string, bizID, minID int64, limit, maxSubCnt int) ([]domain.Comment, int64, error) {
+func (s *commentService) List(ctx context.Context, biz string, bizID, minID int64, limit int) ([]domain.Comment, int64, error) {
 	var (
 		eg       errgroup.Group
 		comments []domain.Comment
@@ -61,7 +61,7 @@ func (s *commentService) List(ctx context.Context, biz string, bizID, minID int6
 
 	eg.Go(func() error {
 		var err error
-		comments, err = s.repo.FindAncestors(ctx, biz, bizID, minID, limit, maxSubCnt)
+		comments, err = s.repo.FindAncestors(ctx, biz, bizID, minID, limit)
 		if err != nil {
 			return err
 		}
@@ -86,10 +86,6 @@ func (s *commentService) setUserInfo(ctx context.Context, comments []domain.Comm
 	uids := make([]int64, 0, len(comments)*2)
 	for i := range comments {
 		uids = append(uids, comments[i].User.ID)
-		// 同时收集子评论的 aID
-		for j := range comments[i].Replies {
-			uids = append(uids, comments[i].Replies[j].User.ID)
-		}
 	}
 
 	// 批量查询用户信息
@@ -110,12 +106,6 @@ func (s *commentService) setUserInfo(ctx context.Context, comments []domain.Comm
 	for i := range comments {
 		if u, ok := userInfoMap[comments[i].User.ID]; ok {
 			comments[i].User = u
-		}
-		// 填充子评论的用户信息
-		for j := range comments[i].Replies {
-			if u, ok := userInfoMap[comments[i].Replies[j].User.ID]; ok {
-				comments[i].Replies[j].User = u
-			}
 		}
 	}
 	return nil

@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/ecodeclub/ekit/slice"
 	"github.com/ego-component/egorm"
 	"gorm.io/gorm"
 )
@@ -61,14 +62,14 @@ type CommentDAO interface {
 	Create(ctx context.Context, comment Comment) (int64, error)
 	// FindAncestors 查找某一业务下的所有直接评论（始祖评论），按评论时间的倒序排序
 	FindAncestors(ctx context.Context, biz string, bizID, minID int64, limit int) ([]Comment, error)
-	// FindChildren 批量查找子评论并返回分组后的结果
-	FindChildren(ctx context.Context, parentIDs []int64, limit int) (map[int64][]Comment, error)
 	// CountAncestors 统计某一业务下所有直接评论（始祖评论）的数量
 	CountAncestors(ctx context.Context, biz string, bizID int64) (int64, error)
 	// FindDescendants 查找直接评论（始祖评论）所有后代即所有子评论，孙子评论，按照评论时间倒序排序（即后评论的在前面）
 	FindDescendants(ctx context.Context, ancestorID, minID int64, limit int) ([]Comment, error)
 	// CountDescendants 统计直接评论（始祖评论）所有后代即所有子评论，孙子评论的数量
 	CountDescendants(ctx context.Context, ancestorID int64) (int64, error)
+	// BatchCountDescendants 批量统计直接评论（始祖评论）所有后代即所有子评论，孙子评论的数量
+	BatchCountDescendants(ctx context.Context, ancestorIDs []int64) (map[int64]int64, error)
 	// FindByID 根据评论ID查找评论
 	FindByID(ctx context.Context, id int64) (Comment, error)
 	// Delete 根据ID删除评论及其后裔评论
@@ -123,39 +124,6 @@ func (g *commentDAO) FindAncestors(ctx context.Context, biz string, bizID, minID
 	return res, err
 }
 
-func (g *commentDAO) FindChildren(ctx context.Context, parentIDs []int64, limit int) (map[int64][]Comment, error) {
-	// 处理边界情况：如果传入的 parentIDs 为空，直接返回空 map，避免无效查询。
-	if len(parentIDs) == 0 {
-		return make(map[int64][]Comment), nil
-	}
-
-	// 使用窗口函数，为每个 parent_id 分组内的记录按 id ASC 排序并编号
-	// 然后筛选出每组前 limit 条记录
-	rawSQL := `
-		SELECT *
-		FROM (
-			SELECT *,
-				   ROW_NUMBER() OVER(PARTITION BY parent_id ORDER BY id ASC) as rn
-			FROM comments
-			WHERE parent_id IN (?)
-		) ranked_comments
-		WHERE rn <= ?
-	`
-
-	var comments []Comment
-	if err := g.db.WithContext(ctx).
-		Raw(rawSQL, parentIDs, limit).
-		Scan(&comments).Error; err != nil {
-		return nil, err
-	}
-
-	res := make(map[int64][]Comment, len(parentIDs))
-	for i := range comments {
-		res[comments[i].ParentID.V] = append(res[comments[i].ParentID.V], comments[i])
-	}
-	return res, nil
-}
-
 func (g *commentDAO) CountAncestors(ctx context.Context, biz string, bizID int64) (int64, error) {
 	var count int64
 	err := g.db.WithContext(ctx).Model(&Comment{}).
@@ -181,6 +149,20 @@ func (g *commentDAO) CountDescendants(ctx context.Context, ancestorID int64) (in
 		Where("ancestor_id = ?", ancestorID).
 		Count(&count).Error
 	return count, err
+}
+
+func (g *commentDAO) BatchCountDescendants(ctx context.Context, ancestorIDs []int64) (map[int64]int64, error) {
+	type Result struct {
+		AncestorID int64
+		Count      int64
+	}
+	var results []Result
+	err := g.db.WithContext(ctx).Model(&Comment{}).Select("ancestor_id", "count(id) as count").
+		Where("ancestor_id IN ?", ancestorIDs).Group("ancestor_id").
+		Find(&results).Error
+	return slice.ToMapV(results, func(element Result) (int64, int64) {
+		return element.AncestorID, element.Count
+	}), err
 }
 
 func (g *commentDAO) FindByID(ctx context.Context, id int64) (Comment, error) {
