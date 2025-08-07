@@ -66,8 +66,8 @@ type ListRequest struct {
 type RepliesRequest struct {
 	// 直接评论、根评论、始祖评论 ID
 	AncestorID int64 `json:"ancestorId"`
-	// 上一页最大的评论ID，如果是第一页就传0
-	MaxID int64 `json:"maxId"`
+	// 上一页最小的评论ID，如果是第一页就传0
+	MinID int64 `json:"minId"`
 	Limit int   `json:"limit"`
 }
 

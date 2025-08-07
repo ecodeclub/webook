@@ -30,8 +30,8 @@ type CommentRepository interface {
 	FindAncestors(ctx context.Context, biz string, bizID, minID int64, limit, maxSubCnt int) ([]domain.Comment, error)
 	// CountAncestors 统计某一业务下所有直接评论（始祖评论）的数量
 	CountAncestors(ctx context.Context, biz string, bizID int64) (int64, error)
-	// FindDescendants 查找直接评论（始祖评论）所有后代即所有子评论，孙子评论，按照评论时间排序（即先评论的在前面）
-	FindDescendants(ctx context.Context, ancestorID, maxID int64, limit int) ([]domain.Comment, error)
+	// FindDescendants 查找直接评论（始祖评论）所有后代即所有子评论，孙子评论，按照评论时间倒序排序（即后评论的在前面）
+	FindDescendants(ctx context.Context, ancestorID, minID int64, limit int) ([]domain.Comment, error)
 	// CountDescendants 统计直接评论（始祖评论）所有后代即所有子评论，孙子评论的数量
 	CountDescendants(ctx context.Context, ancestorID int64) (int64, error)
 	// Delete 根据ID删除评论及其后裔评论
@@ -109,12 +109,12 @@ func (r *commentRepository) CountAncestors(ctx context.Context, biz string, bizI
 	return r.dao.CountAncestors(ctx, biz, bizID)
 }
 
-func (r *commentRepository) FindDescendants(ctx context.Context, ancestorID, maxID int64, limit int) ([]domain.Comment, error) {
-	found, err := r.dao.FindDescendants(ctx, ancestorID, maxID, limit)
+func (r *commentRepository) FindDescendants(ctx context.Context, ancestorID, minID int64, limit int) ([]domain.Comment, error) {
+	found, err := r.dao.FindDescendants(ctx, ancestorID, minID, limit)
 	if err != nil {
 		return nil, err
 	}
-	// 后裔评论不需要填充replies前端后组装。
+	// 后裔评论不需要填充replies
 	return slice.Map(found, func(_ int, src dao.Comment) domain.Comment {
 		return r.toDomain(src)
 	}), nil
