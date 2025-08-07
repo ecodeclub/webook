@@ -336,22 +336,19 @@ func (s *HandlerTestSuite) TestCommentList() {
 				return biz, bizID, ids
 			},
 			req: web.ListRequest{
-				Limit:     10,
-				MaxSubCnt: 0,
+				Limit: 10,
 			},
 			wantCode: 200,
 			after: func(result web.CommentList) {
-				list := result.List
-				total := result.Total
-				s.Equal(3, len(list))
-				s.Equal(3, total)
-				if len(list) >= 2 {
-					s.True(list[0].Utime >= list[1].Utime) // 倒序
+				s.Equal(3, len(result.List))
+				s.Equal(3, result.Total)
+				if len(result.List) >= 2 {
+					s.True(result.List[0].Utime >= result.List[1].Utime) // 倒序
 				}
 			},
 		},
 		{
-			name: "带子评论预加载的分页查询",
+			name: "带子评论总数的预加载的分页查询",
 			before: func() (biz string, bizID int64, commentIDs []int64) {
 				biz = "article"
 				bizID = s.getUniqueBizID()
@@ -359,22 +356,28 @@ func (s *HandlerTestSuite) TestCommentList() {
 				ancestorID := s.createAncestorComment(biz, bizID)
 				ancestorID2 := s.createAncestorComment(biz, bizID)
 
-				for i := 0; i < 5; i++ {
+				for i := range 5 {
 					s.createReplyComment(ancestorID, ancestorID, fmt.Sprintf("子评论%d", i+1))
+				}
+
+				for i := range 2 {
 					s.createReplyComment(ancestorID2, ancestorID2, fmt.Sprintf("子评论%d", i+1))
 				}
 
 				return biz, bizID, []int64{ancestorID, ancestorID2}
 			},
 			req: web.ListRequest{
-				Limit:     10,
-				MaxSubCnt: 3,
+				Limit: 10,
 			},
 			wantCode: 200,
 			after: func(result web.CommentList) {
 				s.Equal(2, len(result.List))
 				for i := range result.List {
-					s.Equal(3, len(result.List[i].Replies)) // 只预加载了3个
+					if i == 0 {
+						s.Equal(int64(2), result.List[i].ReplyCount)
+					} else {
+						s.Equal(int64(5), result.List[i].ReplyCount)
+					}
 					// 验证评论用户信息填充
 					s.Equal("测试用户1", result.List[i].User.Nickname)
 					s.Equal("avatar1.jpg", result.List[i].User.Avatar)
@@ -396,8 +399,7 @@ func (s *HandlerTestSuite) TestCommentList() {
 				return biz, bizID, ids
 			},
 			req: web.ListRequest{
-				Limit:     3,
-				MaxSubCnt: 0,
+				Limit: 3,
 			},
 			wantCode: 200,
 			after: func(result web.CommentList) {
@@ -411,8 +413,7 @@ func (s *HandlerTestSuite) TestCommentList() {
 				return "article", s.getUniqueBizID(), nil
 			},
 			req: web.ListRequest{
-				Limit:     10,
-				MaxSubCnt: 0,
+				Limit: 10,
 			},
 			wantCode: 200,
 			after: func(result web.CommentList) {

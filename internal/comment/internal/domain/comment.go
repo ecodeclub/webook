@@ -37,6 +37,6 @@ type Comment struct {
 	// 评论时间，因为评论本身是不允许修改的，所以这个时间基本上就是评论时间
 	Utime int64
 
-	// 当前评论的回复，只有再查询”始祖评论“的时候带上部分子回复。
-	Replies []Comment
+	// 展示“始祖评论”的时候，要设置其后裔回复的总数
+	ReplyCount int64
 }

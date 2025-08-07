@@ -27,7 +27,7 @@ type CommentRepository interface {
 	// Create 创建直接评论（始祖评论），子评论及孙子评论
 	Create(ctx context.Context, comment domain.Comment) (int64, error)
 	// FindAncestors 查找某一业务下的所有直接评论（始祖评论）评论时间的倒序
-	FindAncestors(ctx context.Context, biz string, bizID, minID int64, limit, maxSubCnt int) ([]domain.Comment, error)
+	FindAncestors(ctx context.Context, biz string, bizID, minID int64, limit int) ([]domain.Comment, error)
 	// CountAncestors 统计某一业务下所有直接评论（始祖评论）的数量
 	CountAncestors(ctx context.Context, biz string, bizID int64) (int64, error)
 	// FindDescendants 查找直接评论（始祖评论）所有后代即所有子评论，孙子评论，按照评论时间倒序排序（即后评论的在前面）
@@ -79,30 +79,23 @@ func (r *commentRepository) toDomain(comment dao.Comment) domain.Comment {
 	}
 }
 
-func (r *commentRepository) FindAncestors(ctx context.Context, biz string, bizID, minID int64, limit, maxSubCnt int) ([]domain.Comment, error) {
+func (r *commentRepository) FindAncestors(ctx context.Context, biz string, bizID, minID int64, limit int) ([]domain.Comment, error) {
 	ancestors, err := r.dao.FindAncestors(ctx, biz, bizID, minID, limit)
 	if err != nil {
 		return nil, err
 	}
-
-	parentIDs := make([]int64, 0, len(ancestors))
+	ancestorIDs := make([]int64, 0, len(ancestors))
 	comments := slice.Map(ancestors, func(_ int, src dao.Comment) domain.Comment {
-		parentIDs = append(parentIDs, src.ID)
+		ancestorIDs = append(ancestorIDs, src.ID)
 		return r.toDomain(src)
 	})
 
-	children, err := r.dao.FindChildren(ctx, parentIDs, maxSubCnt)
-	if err != nil {
-		return nil, err
-	}
+	counts, err := r.dao.BatchCountDescendants(ctx, ancestorIDs)
+	// 就算 err 不为 nil，这里也不会有问题
 	for i := range comments {
-		if c, ok := children[comments[i].ID]; ok {
-			comments[i].Replies = slice.Map(c, func(_ int, src dao.Comment) domain.Comment {
-				return r.toDomain(src)
-			})
-		}
+		comments[i].ReplyCount = counts[comments[i].ID]
 	}
-	return comments, nil
+	return comments, err
 }
 
 func (r *commentRepository) CountAncestors(ctx context.Context, biz string, bizID int64) (int64, error) {
@@ -114,7 +107,7 @@ func (r *commentRepository) FindDescendants(ctx context.Context, ancestorID, min
 	if err != nil {
 		return nil, err
 	}
-	// 后裔评论不需要填充replies
+	// 后裔评论不需要填充ReplyCount
 	return slice.Map(found, func(_ int, src dao.Comment) domain.Comment {
 		return r.toDomain(src)
 	}), nil
