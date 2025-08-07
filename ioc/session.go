@@ -39,8 +39,8 @@ func InitSession(cmd redis.Cmdable) session.Provider {
 	if err != nil {
 		panic(err)
 	}
-	// 默认是一天
-	const day = time.Hour * 24
+	// 默认是一个月，也不是啥危险项目
+	const day = time.Hour * 24 * 30
 	sp := redis2.NewSessionProvider(cmd, cfg.SessionEncryptedKey, day)
 	cookieC := &cookie.TokenCarrier{
 		MaxAge:   int(day.Seconds()),
