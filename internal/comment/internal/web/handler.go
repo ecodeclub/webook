@@ -48,7 +48,7 @@ func (h *Handler) MemberRoutes(server *gin.Engine) {
 	group.POST("/", ginx.BS[CreateRequest](h.Create))
 	// 查询直接（始祖）评论，目前按照评论时间的倒序（注意和replies接口的区别）排序
 	group.POST("/list", ginx.BS[ListRequest](h.List))
-	// 获得某个直接（始祖）评论的所有子评论，孙子评论，按照评论时间排序（即先评论的在前面）
+	// 获得某个直接（始祖）评论的所有子评论，孙子评论，按照评论时间倒序排序（即后评论的在前面）
 	group.POST("/replies", ginx.BS[RepliesRequest](h.Replies))
 	group.POST("/delete", ginx.BS[DeleteRequest](h.Delete))
 }
@@ -112,7 +112,7 @@ func (h *Handler) toVO(c domain.Comment) Comment {
 }
 
 func (h *Handler) Replies(ctx *ginx.Context, req RepliesRequest, _ session.Session) (ginx.Result, error) {
-	descendants, total, err := h.svc.Replies(ctx.Request.Context(), req.AncestorID, req.MaxID, req.Limit)
+	descendants, total, err := h.svc.Replies(ctx.Request.Context(), req.AncestorID, req.MinID, req.Limit)
 	if err != nil {
 		return systemErrorResult, fmt.Errorf("查找评论ID=%d的后裔评论失败: %w", req.AncestorID, err)
 	}

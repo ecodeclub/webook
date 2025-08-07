@@ -20,6 +20,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"math"
 	"math/rand"
 	"net/http"
 	"strconv"
@@ -451,10 +452,10 @@ func (s *HandlerTestSuite) TestGetReplies() {
 		before   func() (ancestorID int64, replyIDs []int64)
 		req      web.RepliesRequest
 		wantCode int
-		after    func(result map[string]any)
+		after    func(result web.CommentList)
 	}{
 		{
-			name: "回复分页查询按时间正序",
+			name: "回复分页查询按时间倒序",
 			before: func() (ancestorID int64, replyIDs []int64) {
 				biz := "article"
 				bizID := s.getUniqueBizID()
@@ -474,32 +475,23 @@ func (s *HandlerTestSuite) TestGetReplies() {
 				return ancestorID, replyIDs
 			},
 			req: web.RepliesRequest{
-				MaxID: 0,
+				MinID: 0,
 				Limit: 10,
 			},
 			wantCode: 200,
-			after: func(result map[string]any) {
-				list := result["list"].([]any)
-				total := int(result["total"].(float64))
+			after: func(result web.CommentList) {
+				s.Equal(6, len(result.List)) // 2个一级 + 4个二级
+				s.Equal(6, result.Total)
 
-				s.Equal(6, len(list)) // 2个一级 + 4个二级
-				s.Equal(6, total)
-
-				// 验证按时间正序排列（与始祖评论查询相反）
-				if len(list) >= 2 {
-					first := list[0].(map[string]any)
-					second := list[1].(map[string]any)
-					firstTime := int64(first["utime"].(float64))
-					secondTime := int64(second["utime"].(float64))
-					s.True(firstTime <= secondTime) // 正序
+				// 验证按时间倒序排列
+				if len(result.List) >= 2 {
+					s.True(result.List[0].Utime >= result.List[1].Utime)
 				}
 
-				// TC10-验证回复用户信息填充
-				if len(list) > 0 {
-					reply := list[0].(map[string]any)
-					u := reply["user"].(map[string]any)
-					s.Equal("测试用户2", u["nickname"])
-					s.Equal("avatar2.jpg", u["avatar"])
+				// 验证回复用户信息填充
+				if len(result.List) > 0 {
+					s.Equal("测试用户2", result.List[0].User.Nickname)
+					s.Equal("avatar2.jpg", result.List[0].User.Avatar)
 				}
 			},
 		},
@@ -519,16 +511,13 @@ func (s *HandlerTestSuite) TestGetReplies() {
 				return ancestorID, replyIDs
 			},
 			req: web.RepliesRequest{
-				MaxID: 0,
+				MinID: 0,
 				Limit: 3,
 			},
 			wantCode: 200,
-			after: func(result map[string]any) {
-				list := result["list"].([]any)
-				total := int(result["total"].(float64))
-
-				s.Equal(3, len(list)) // 分页限制
-				s.Equal(5, total)     // 总数
+			after: func(result web.CommentList) {
+				s.Equal(3, len(result.List)) // 分页限制
+				s.Equal(5, result.Total)     // 总数
 			},
 		},
 		{
@@ -537,16 +526,13 @@ func (s *HandlerTestSuite) TestGetReplies() {
 				return 99999999, nil // 不存在的ID
 			},
 			req: web.RepliesRequest{
-				MaxID: 0,
+				MinID: 0,
 				Limit: 10,
 			},
 			wantCode: 200,
-			after: func(result map[string]any) {
-				list := result["list"].([]any)
-				total := int(result["total"].(float64))
-
-				s.Equal(0, len(list))
-				s.Equal(0, total)
+			after: func(result web.CommentList) {
+				s.Equal(0, len(result.List))
+				s.Equal(0, result.Total)
 			},
 		},
 	}
@@ -560,7 +546,7 @@ func (s *HandlerTestSuite) TestGetReplies() {
 			httpReq, err := http.NewRequest(http.MethodPost, "/comment/replies", iox.NewJSONReader(tc.req))
 			s.NoError(err)
 			httpReq.Header.Set("Content-Type", "application/json")
-			recorder := test.NewJSONResponseRecorder[map[string]any]()
+			recorder := test.NewJSONResponseRecorder[web.CommentList]()
 
 			s.server.ServeHTTP(recorder, httpReq)
 
@@ -710,7 +696,7 @@ func (s *HandlerTestSuite) TestDelete() {
 				_, err := s.dao.FindByID(context.Background(), id)
 				s.Error(err)
 
-				descendants, err := s.dao.FindDescendants(context.Background(), id, 0, 100)
+				descendants, err := s.dao.FindDescendants(context.Background(), id, math.MaxInt64, 100)
 				s.NoError(err)
 				s.Empty(descendants)
 			},

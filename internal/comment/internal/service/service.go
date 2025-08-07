@@ -29,8 +29,8 @@ type CommentService interface {
 	Create(ctx context.Context, comment domain.Comment) (int64, error)
 	// List 查找某一业务下的所有直接评论（始祖评论），按评论时间的倒序排序
 	List(ctx context.Context, biz string, bizID, minID int64, limit, maxSubCnt int) ([]domain.Comment, int64, error)
-	// Replies 查找直接评论（始祖评论）所有后代即所有子评论，孙子评论，按照评论时间排序（即先评论的在前面）
-	Replies(ctx context.Context, ancestorID, maxID int64, limit int) ([]domain.Comment, int64, error)
+	// Replies 查找直接评论（始祖评论）所有后代即所有子评论，孙子评论，按照评论时间倒序排序（即后评论的在前面）
+	Replies(ctx context.Context, ancestorID, minID int64, limit int) ([]domain.Comment, int64, error)
 	// Delete 根据ID删除评论及其后裔评论
 	Delete(ctx context.Context, id, uid int64) error
 }
@@ -121,16 +121,20 @@ func (s *commentService) setUserInfo(ctx context.Context, comments []domain.Comm
 	return nil
 }
 
-func (s *commentService) Replies(ctx context.Context, ancestorID, maxID int64, limit int) ([]domain.Comment, int64, error) {
+func (s *commentService) Replies(ctx context.Context, ancestorID, minID int64, limit int) ([]domain.Comment, int64, error) {
 	var (
 		eg      errgroup.Group
 		replies []domain.Comment
 		total   int64
 	)
 
+	if minID <= 0 {
+		minID = math.MaxInt64
+	}
+
 	eg.Go(func() error {
 		var err error
-		replies, err = s.repo.FindDescendants(ctx, ancestorID, maxID, limit)
+		replies, err = s.repo.FindDescendants(ctx, ancestorID, minID, limit)
 		if err != nil {
 			return err
 		}

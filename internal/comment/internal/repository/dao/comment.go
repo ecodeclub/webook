@@ -65,8 +65,8 @@ type CommentDAO interface {
 	FindChildren(ctx context.Context, parentIDs []int64, limit int) (map[int64][]Comment, error)
 	// CountAncestors 统计某一业务下所有直接评论（始祖评论）的数量
 	CountAncestors(ctx context.Context, biz string, bizID int64) (int64, error)
-	// FindDescendants 查找直接评论（始祖评论）所有后代即所有子评论，孙子评论，按照评论时间排序（即先评论的在前面）
-	FindDescendants(ctx context.Context, ancestorID, maxID int64, limit int) ([]Comment, error)
+	// FindDescendants 查找直接评论（始祖评论）所有后代即所有子评论，孙子评论，按照评论时间倒序排序（即后评论的在前面）
+	FindDescendants(ctx context.Context, ancestorID, minID int64, limit int) ([]Comment, error)
 	// CountDescendants 统计直接评论（始祖评论）所有后代即所有子评论，孙子评论的数量
 	CountDescendants(ctx context.Context, ancestorID int64) (int64, error)
 	// FindByID 根据评论ID查找评论
@@ -117,7 +117,7 @@ func (g *commentDAO) FindAncestors(ctx context.Context, biz string, bizID, minID
 		Where("id < ? AND biz = ? AND biz_id = ?", minID, biz, bizID).
 		// 直接评论、根评论、始祖评论
 		Where("ancestor_id IS NULL AND parent_id IS NULL").
-		Order("id DESC").
+		Order("ctime DESC").
 		Limit(limit).
 		Find(&res).Error
 	return res, err
@@ -165,11 +165,11 @@ func (g *commentDAO) CountAncestors(ctx context.Context, biz string, bizID int64
 	return count, err
 }
 
-func (g *commentDAO) FindDescendants(ctx context.Context, ancestorID, maxID int64, limit int) ([]Comment, error) {
+func (g *commentDAO) FindDescendants(ctx context.Context, ancestorID, minID int64, limit int) ([]Comment, error) {
 	var res []Comment
 	err := g.db.WithContext(ctx).
-		Where("id > ? AND ancestor_id = ?", maxID, ancestorID).
-		Order("id ASC").
+		Where("id < ? AND ancestor_id = ?", minID, ancestorID).
+		Order("ctime DESC").
 		Limit(limit).
 		Find(&res).Error
 	return res, err
