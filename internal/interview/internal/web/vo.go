@@ -19,7 +19,8 @@ type SaveReq struct {
 }
 
 type SaveResp struct {
-	Jid      int64   `json:"jid"`
+	Jid int64 `json:"jid"`
+	// 与 SaveReq 中 Journey.Rounds 中顺序、个数一致
 	RoundIDs []int64 `json:"roundIDs,omitzero"`
 }
 

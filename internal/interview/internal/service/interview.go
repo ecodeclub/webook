@@ -33,8 +33,6 @@ type InterviewService interface {
 	List(ctx context.Context, uid int64, offset, limit int) ([]domain.InterviewJourney, int64, error)
 	// FindRoundsByJidAndUid 根据面试历程ID和uid查找所有轮次
 	FindRoundsByJidAndUid(ctx context.Context, jid, uid int64) ([]domain.InterviewRound, error)
-	// FindRoundByID 根据ID查找面试轮次，用于测试
-	FindRoundByID(ctx context.Context, id, jid, uid int64) (domain.InterviewRound, error)
 }
 
 type interviewService struct {
@@ -95,8 +93,4 @@ func (s *interviewService) List(ctx context.Context, uid int64, offset, limit in
 
 func (s *interviewService) FindRoundsByJidAndUid(ctx context.Context, jid, uid int64) ([]domain.InterviewRound, error) {
 	return s.repo.FindRoundsByJidAndUid(ctx, jid, uid)
-}
-
-func (s *interviewService) FindRoundByID(ctx context.Context, id, jid, uid int64) (domain.InterviewRound, error) {
-	return s.repo.FindRoundByID(ctx, id, jid, uid)
 }

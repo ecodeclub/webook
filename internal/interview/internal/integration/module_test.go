@@ -17,6 +17,7 @@
 package integration
 
 import (
+	"fmt"
 	"net/http"
 	"testing"
 	"time"
@@ -41,7 +42,15 @@ import (
 	"go.uber.org/mock/gomock"
 )
 
-const testID = int64(223999)
+const (
+	testID  = int64(223999)
+	testID2 = int64(224000)
+	testID3 = int64(224001)
+	testID4 = int64(224002)
+	testID5 = int64(224003)
+	testID6 = int64(224004)
+	testID7 = int64(224005)
+)
 
 func TestInterviewModule(t *testing.T) {
 	suite.Run(t, new(InterviewModuleTestSuite))
@@ -60,12 +69,12 @@ func (s *InterviewModuleTestSuite) SetupSuite() {
 	s.svc = m.JourneySvc
 }
 
-func (s *InterviewModuleTestSuite) newGinServer(handler ginx.Handler) *egin.Component {
+func (s *InterviewModuleTestSuite) newGinServer(uid int64, handler ginx.Handler) *egin.Component {
 	econf.Set("server", map[string]any{"contextTimeout": "1s"})
 	server := egin.Load("server").Build()
 	server.Use(func(ctx *gin.Context) {
 		ctx.Set("_session", session.NewMemorySession(session.Claims{
-			Uid: testID,
+			Uid: uid,
 		}))
 	})
 
@@ -74,8 +83,8 @@ func (s *InterviewModuleTestSuite) newGinServer(handler ginx.Handler) *egin.Comp
 }
 
 func (s *InterviewModuleTestSuite) TearDownSuite() {
-	// s.NoError(s.db.Exec("TRUNCATE TABLE `interview_journeys`").Error)
-	// s.NoError(s.db.Exec("TRUNCATE TABLE `interview_rounds`").Error)
+	s.NoError(s.db.Exec("TRUNCATE TABLE `interview_journeys`").Error)
+	s.NoError(s.db.Exec("TRUNCATE TABLE `interview_rounds`").Error)
 }
 
 func (s *InterviewModuleTestSuite) TestHandler_Save() {
@@ -580,7 +589,7 @@ func (s *InterviewModuleTestSuite) TestHandler_Save() {
 			require.NoError(t, err)
 			req.Header.Set("content-type", "application/json")
 			recorder := test.NewJSONResponseRecorder[web.SaveResp]()
-			server := s.newGinServer(tc.newHandlerFunc(t, ctrl))
+			server := s.newGinServer(testID, tc.newHandlerFunc(t, ctrl))
 			server.ServeHTTP(recorder, req)
 			require.Equal(t, tc.wantCode, recorder.Code)
 			result := recorder.MustScan()
@@ -998,7 +1007,7 @@ func (s *InterviewModuleTestSuite) TestHandler_Save_Failed() {
 			require.NoError(t, err)
 			req.Header.Set("content-type", "application/json")
 			recorder := test.NewJSONResponseRecorder[any]()
-			server := s.newGinServer(tc.newHandlerFunc(t, ctrl))
+			server := s.newGinServer(testID, tc.newHandlerFunc(t, ctrl))
 			server.ServeHTTP(recorder, req)
 			require.Equal(t, tc.wantCode, recorder.Code)
 			result := recorder.MustScan()
@@ -1007,508 +1016,530 @@ func (s *InterviewModuleTestSuite) TestHandler_Save_Failed() {
 	}
 }
 
-/*
-func (s *InterviewModuleTestSuite) TestAdminHandler_List() {
+func (s *InterviewModuleTestSuite) TestHandler_List() {
 	t := s.T()
 
-	err := s.db.Exec("TRUNCATE TABLE `materials`").Error
-	require.NoError(t, err)
-
-	total := 10
-	for idx := 0; idx < total; idx++ {
-		id := int64(3000 + idx)
-		_, err := s.svc.Submit(context.Background(), domain.interview{
-			Uid:       id,
-			AudioURL:  fmt.Sprintf("/%d/admin/audio", id),
-			ResumeURL: fmt.Sprintf("/%d/admin/resume", id),
-			Remark:    fmt.Sprintf("admin/remark-%d", id),
-		})
-		require.NoError(t, err)
-	}
-
-	listReq := web.ListMaterialsReq{
-		Limit:  2,
-		Offset: 0,
-	}
-
-	req, err := http.NewRequest(http.MethodPost,
-		"/interview/list", iox.NewJSONReader(listReq))
-	require.NoError(t, err)
-	req.Header.Set("content-type", "application/json")
-	recorder := test.NewJSONResponseRecorder[web.ListMaterialsResp]()
-	server := s.newAdminGinServer(web.NewAdminHandler(s.svc, nil, nil, nil))
-	server.ServeHTTP(recorder, req)
-	require.Equal(t, 200, recorder.Code)
-	result := recorder.MustScan()
-	require.Equal(t, int64(total), result.Data.Total)
-	require.Len(t, result.Data.Materials, listReq.Limit)
-}
-
-func (s *InterviewModuleTestSuite) TestAdminHandler_Accept() {
-	t := s.T()
 	testCases := []struct {
 		name           string
-		before         func(t *testing.T) int64
-		newHandlerFunc func(t *testing.T, ctrl *gomock.Controller, id int64) *web.AdminHandler
-		req            web.AcceptMaterialReq
+		before         func(t *testing.T) (journeyIDs []int64, uid int64)
+		newHandlerFunc func(t *testing.T, ctrl *gomock.Controller) ginx.Handler
+		req            web.ListReq
 
-		wantCode int
-		wantResp test.Result[any]
-		after    func(t *testing.T, id int64)
+		wantCode       int
+		respAssertFunc assert.ValueAssertionFunc
+		after          func(t *testing.T, resp ginx.DataList[web.Journey])
 	}{
 		{
-			name: "接受素材成功",
-			before: func(t *testing.T) int64 {
+			name: "空列表查询成功",
+			before: func(t *testing.T) (journeyIDs []int64, uid int64) {
 				t.Helper()
-				id, err := s.svc.Submit(t.Context(), domain.interview{
-					Uid:       testID,
-					AudioURL:  fmt.Sprintf("/%d/admin/audio", testID),
-					ResumeURL: fmt.Sprintf("/%d/admin/resume", testID),
-					Remark:    fmt.Sprintf("admin/remark-%d", testID),
-				})
-				require.NoError(t, err)
-				return id
+				return []int64{}, testID2 // 不创建任何数据
 			},
-			newHandlerFunc: func(t *testing.T, ctrl *gomock.Controller, id int64) *web.AdminHandler {
+			newHandlerFunc: func(t *testing.T, ctrl *gomock.Controller) ginx.Handler {
 				t.Helper()
-				producer := evtmocks.NewMockMemberEventProducer(ctrl)
-				producer.EXPECT().Produce(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, event event.MemberEvent) error {
-					assert.NotZero(t, event.Key)
-					assert.Equal(t, testID, event.Uid)
-					assert.Equal(t, uint64(30), event.Days)
-					assert.Equal(t, "interview", event.Biz)
-					assert.Equal(t, id, event.BizId)
-					assert.Equal(t, "素材被采纳", event.Action)
-					return nil
-				}).Times(1)
-				return web.NewAdminHandler(s.svc, nil, producer, nil)
+				return web.NewInterviewJourneyHandler(s.svc)
 			},
-			req: web.AcceptMaterialReq{
-				ID: 0,
+			req: web.ListReq{
+				Offset: 0,
+				Limit:  10,
 			},
 			wantCode: 200,
-			wantResp: test.Result[any]{
-				Msg: "OK",
+			respAssertFunc: func(t assert.TestingT, i interface{}, i2 ...interface{}) bool {
+				r := i.(test.Result[ginx.DataList[web.Journey]])
+				return assert.Empty(t, r.Data.List) && assert.Equal(t, 0, r.Data.Total)
 			},
-			after: func(t *testing.T, id int64) {
+			after: func(t *testing.T, resp ginx.DataList[web.Journey]) {
 				t.Helper()
-				var interview domain.interview
-				assert.NoError(t, s.db.WithContext(t.Context()).Where("id = ?", id).FindByJourneyID(&interview).Error)
-				assert.Equal(t, testID, interview.Uid)
-				assert.Equal(t, fmt.Sprintf("/%d/admin/audio", testID), interview.AudioURL)
-				assert.Equal(t, fmt.Sprintf("/%d/admin/resume", testID), interview.ResumeURL)
-				assert.Equal(t, fmt.Sprintf("admin/remark-%d", testID), interview.Remark)
-				assert.Equal(t, domain.MaterialStatusAccepted, interview.Status)
-				assert.NotZero(t, interview.Ctime)
-				assert.NotZero(t, interview.Utime)
+				assert.Empty(t, resp.List)
+				assert.Equal(t, 0, resp.Total)
 			},
 		},
 		{
-			name: "接受素材失败_素材ID不存在",
-			before: func(t *testing.T) int64 {
+			name: "单条记录查询成功",
+			before: func(t *testing.T) (journeyIDs []int64, uid int64) {
 				t.Helper()
-				return -1
+				id, _, err := s.svc.Save(t.Context(), domain.InterviewJourney{
+					Uid:         testID4,
+					CompanyName: "单条记录公司",
+					JobInfo:     "/jobinfo/single",
+					ResumeURL:   "/resume/single",
+					Stime:       time.Now().UnixMilli(),
+					Status:      domain.StatusActive,
+				})
+				require.NoError(t, err)
+				return []int64{id}, testID4
 			},
-			newHandlerFunc: func(t *testing.T, _ *gomock.Controller, _ int64) *web.AdminHandler {
+			newHandlerFunc: func(t *testing.T, ctrl *gomock.Controller) ginx.Handler {
 				t.Helper()
-				return web.NewAdminHandler(s.svc, nil, nil, nil)
+				return web.NewInterviewJourneyHandler(s.svc)
 			},
-			req: web.AcceptMaterialReq{
-				ID: 0,
+			req: web.ListReq{
+				Offset: 0,
+				Limit:  10,
 			},
-			wantCode: 500,
-			wantResp: test.Result[any]{
-				Code: 518001, Msg: "系统错误",
+			wantCode: 200,
+			respAssertFunc: func(t assert.TestingT, i interface{}, i2 ...interface{}) bool {
+				r := i.(test.Result[ginx.DataList[web.Journey]])
+				return assert.Len(t, r.Data.List, 1) && assert.Equal(t, 1, r.Data.Total)
 			},
-			after: func(t *testing.T, id int64) {
+			after: func(t *testing.T, resp ginx.DataList[web.Journey]) {
 				t.Helper()
+				assert.Len(t, resp.List, 1)
+				assert.Equal(t, 1, resp.Total)
+				assert.Equal(t, "单条记录公司", resp.List[0].CompanyName)
+				assert.Empty(t, resp.List[0].Rounds) // List接口不包含轮次信息
 			},
 		},
 		{
-			name: "接受素材失败_福利发放失败",
-			before: func(t *testing.T) int64 {
+			name: "多条记录查询成功",
+			before: func(t *testing.T) (journeyIDs []int64, uid int64) {
 				t.Helper()
-				id, err := s.svc.Submit(t.Context(), domain.interview{
-					Uid:       testID,
-					AudioURL:  fmt.Sprintf("/%d/admin/2/audio", testID),
-					ResumeURL: fmt.Sprintf("/%d/admin/2/resume", testID),
-					Remark:    fmt.Sprintf("admin/2/remark-%d", testID),
-				})
-				require.NoError(t, err)
-				return id
+				var ids []int64
+				companies := []string{"公司A", "公司B", "公司C"}
+
+				uid = testID5
+				for i, company := range companies {
+					id, _, err := s.svc.Save(t.Context(), domain.InterviewJourney{
+						Uid:         uid,
+						CompanyName: company,
+						JobInfo:     fmt.Sprintf("/jobinfo/%d", i),
+						ResumeURL:   fmt.Sprintf("/resume/%d", i),
+						Stime:       time.Now().UnixMilli() + int64(i*1000), // 确保不同的时间
+						Status:      domain.StatusActive,
+					})
+					require.NoError(t, err)
+					ids = append(ids, id)
+					time.Sleep(time.Millisecond) // 确保时间差异
+				}
+				return ids, uid
 			},
-			newHandlerFunc: func(t *testing.T, ctrl *gomock.Controller, _ int64) *web.AdminHandler {
+			newHandlerFunc: func(t *testing.T, ctrl *gomock.Controller) ginx.Handler {
 				t.Helper()
-				producer := evtmocks.NewMockMemberEventProducer(ctrl)
-				producer.EXPECT().Produce(gomock.Any(), gomock.Any()).DoAndReturn(func(_ context.Context, _ event.MemberEvent) error {
-					return errors.New("fake error")
-				}).Times(1)
-				return web.NewAdminHandler(s.svc, nil, producer, nil)
+				return web.NewInterviewJourneyHandler(s.svc)
 			},
-			req: web.AcceptMaterialReq{
-				ID: 0,
+			req: web.ListReq{
+				Offset: 0,
+				Limit:  10,
 			},
 			wantCode: 200,
-			wantResp: test.Result[any]{
-				Msg: "OK",
+			respAssertFunc: func(t assert.TestingT, i interface{}, i2 ...interface{}) bool {
+				r := i.(test.Result[ginx.DataList[web.Journey]])
+				return assert.Len(t, r.Data.List, 3) && assert.Equal(t, 3, r.Data.Total)
 			},
-			after: func(t *testing.T, id int64) {
+			after: func(t *testing.T, resp ginx.DataList[web.Journey]) {
 				t.Helper()
-				var interview domain.interview
-				assert.NoError(t, s.db.WithContext(t.Context()).Where("id = ?", id).FindByJourneyID(&interview).Error)
-				assert.Equal(t, testID, interview.Uid)
-				assert.Equal(t, fmt.Sprintf("/%d/admin/2/audio", testID), interview.AudioURL)
-				assert.Equal(t, fmt.Sprintf("/%d/admin/2/resume", testID), interview.ResumeURL)
-				assert.Equal(t, fmt.Sprintf("admin/2/remark-%d", testID), interview.Remark)
-				assert.Equal(t, domain.MaterialStatusAccepted, interview.Status)
-				assert.NotZero(t, interview.Ctime)
-				assert.NotZero(t, interview.Utime)
+				assert.Len(t, resp.List, 3)
+				assert.Equal(t, 3, resp.Total)
+				// 验证按更新时间倒序排列（最新的在前面）
+				assert.Equal(t, "公司C", resp.List[0].CompanyName)
+				assert.Equal(t, "公司B", resp.List[1].CompanyName)
+				assert.Equal(t, "公司A", resp.List[2].CompanyName)
+			},
+		},
+		{
+			name: "分页查询第一页",
+			before: func(t *testing.T) (journeyIDs []int64, uid int64) {
+				t.Helper()
+				var ids []int64
+				uid = testID6
+				for i := 0; i < 5; i++ {
+					id, _, err := s.svc.Save(t.Context(), domain.InterviewJourney{
+						Uid:         uid,
+						CompanyName: fmt.Sprintf("分页公司%d", i),
+						JobInfo:     fmt.Sprintf("/jobinfo/page/%d", i),
+						ResumeURL:   fmt.Sprintf("/resume/page/%d", i),
+						Stime:       time.Now().UnixMilli() + int64(i*1000),
+						Status:      domain.StatusActive,
+					})
+					require.NoError(t, err)
+					ids = append(ids, id)
+					time.Sleep(time.Millisecond)
+				}
+				return ids, uid
+			},
+			newHandlerFunc: func(t *testing.T, ctrl *gomock.Controller) ginx.Handler {
+				t.Helper()
+				return web.NewInterviewJourneyHandler(s.svc)
+			},
+			req: web.ListReq{
+				Offset: 0,
+				Limit:  2,
+			},
+			wantCode: 200,
+			respAssertFunc: func(t assert.TestingT, i interface{}, i2 ...interface{}) bool {
+				r := i.(test.Result[ginx.DataList[web.Journey]])
+				return assert.Len(t, r.Data.List, 2) && assert.Equal(t, 5, r.Data.Total)
+			},
+			after: func(t *testing.T, resp ginx.DataList[web.Journey]) {
+				t.Helper()
+				assert.Len(t, resp.List, 2)
+				assert.Equal(t, 5, resp.Total)
+			},
+		},
+		{
+			name: "分页查询第二页",
+			before: func(t *testing.T) (journeyIDs []int64, uid int64) {
+				t.Helper()
+				var ids []int64
+				uid = testID7
+				for i := 0; i < 5; i++ {
+					id, _, err := s.svc.Save(t.Context(), domain.InterviewJourney{
+						Uid:         uid,
+						CompanyName: fmt.Sprintf("分页公司2_%d", i),
+						JobInfo:     fmt.Sprintf("/jobinfo/page2/%d", i),
+						ResumeURL:   fmt.Sprintf("/resume/page2/%d", i),
+						Stime:       time.Now().UnixMilli() + int64(i*1000),
+						Status:      domain.StatusActive,
+					})
+					require.NoError(t, err)
+					ids = append(ids, id)
+					time.Sleep(time.Millisecond)
+				}
+				return ids, uid
+			},
+			newHandlerFunc: func(t *testing.T, ctrl *gomock.Controller) ginx.Handler {
+				t.Helper()
+				return web.NewInterviewJourneyHandler(s.svc)
+			},
+			req: web.ListReq{
+				Offset: 2,
+				Limit:  2,
+			},
+			wantCode: 200,
+			respAssertFunc: func(t assert.TestingT, i interface{}, i2 ...interface{}) bool {
+				r := i.(test.Result[ginx.DataList[web.Journey]])
+				return assert.Len(t, r.Data.List, 2) && assert.Equal(t, 5, r.Data.Total)
+			},
+			after: func(t *testing.T, resp ginx.DataList[web.Journey]) {
+				t.Helper()
+				assert.Len(t, resp.List, 2)
+				assert.Equal(t, 5, resp.Total)
 			},
 		},
 	}
 
 	for _, tc := range testCases {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
 
-			id := tc.before(t)
-			tc.req.ID = id
+			_, uid := tc.before(t)
 
 			req, err := http.NewRequest(http.MethodPost,
-				"/interview/accept", iox.NewJSONReader(tc.req))
+				"/interview-journeys/list", iox.NewJSONReader(tc.req))
 			require.NoError(t, err)
 			req.Header.Set("content-type", "application/json")
-			recorder := test.NewJSONResponseRecorder[any]()
-			server := s.newAdminGinServer(tc.newHandlerFunc(t, ctrl, id))
+			recorder := test.NewJSONResponseRecorder[ginx.DataList[web.Journey]]()
+			server := s.newGinServer(uid, tc.newHandlerFunc(t, ctrl))
 			server.ServeHTTP(recorder, req)
 			require.Equal(t, tc.wantCode, recorder.Code)
-			assert.Equal(t, tc.wantResp.Data, recorder.MustScan().Data)
-
-			tc.after(t, id)
+			result := recorder.MustScan()
+			tc.respAssertFunc(t, result)
+			tc.after(t, result.Data)
 		})
 	}
 }
 
-func (s *InterviewModuleTestSuite) TestAdminHandler_Notify() {
+func (s *InterviewModuleTestSuite) TestHandler_Detail() {
 	t := s.T()
+
 	testCases := []struct {
 		name           string
-		before         func(t *testing.T) int64
-		newHandlerFunc func(t *testing.T, ctrl *gomock.Controller) *web.AdminHandler
-		req            web.NotifyUserReq
+		before         func(t *testing.T) int64 // 返回创建的journey ID
+		newHandlerFunc func(t *testing.T, ctrl *gomock.Controller) ginx.Handler
+		req            web.DetailReq
 
-		wantCode int
-		wantResp test.Result[any]
-		after    func(t *testing.T, id int64)
+		wantCode       int
+		respAssertFunc assert.ValueAssertionFunc
+		after          func(t *testing.T, resp web.Journey)
 	}{
 		{
-			name: "通知用户成功",
+			name: "成功获取详情-无面试轮次",
 			before: func(t *testing.T) int64 {
 				t.Helper()
-				id, err := s.svc.Submit(t.Context(), domain.interview{
-					Uid:       testID,
-					AudioURL:  fmt.Sprintf("/%d/admin/3/audio", testID),
-					ResumeURL: fmt.Sprintf("/%d/admin/3/resume", testID),
-					Remark:    fmt.Sprintf("admin/3/remark-%d", testID),
+				id, _, err := s.svc.Save(t.Context(), domain.InterviewJourney{
+					Uid:         testID3,
+					CompanyName: "无轮次公司",
+					JobInfo:     "/jobinfo/no-rounds",
+					ResumeURL:   "/resume/no-rounds",
+					Stime:       time.Now().UnixMilli(),
+					Status:      domain.StatusActive,
 				})
-				require.NoError(t, err)
-				err = s.svc.Accept(t.Context(), id)
 				require.NoError(t, err)
 				return id
 			},
-			newHandlerFunc: func(t *testing.T, ctrl *gomock.Controller) *web.AdminHandler {
+			newHandlerFunc: func(t *testing.T, ctrl *gomock.Controller) ginx.Handler {
 				t.Helper()
-				userSvc := usermocks.NewMockUserService(ctrl)
-				userSvc.EXPECT().Profile(gomock.Any(), testID).Return(user.User{Id: testID, Phone: "13845016319"}, nil).Times(1)
-
-				cli := smsmocks.NewMockClient(ctrl)
-				cli.EXPECT().Send(gomock.Any()).DoAndReturn(func(req client.SendReq) (client.SendResp, error) {
-					assert.Contains(t, req.PhoneNumbers, "13845016319")
-					assert.NotZero(t, req.TemplateID)
-					assert.Equal(t, "2025-7-01 20:00", req.TemplateParam["date"])
-					return client.SendResp{
-						RequestID: fmt.Sprintf("%d", time.Now().UnixMilli()),
-						PhoneNumbers: map[string]client.SendRespStatus{
-							"13845016319": {
-								Code:    client.OK,
-								Message: "发送成功",
-							},
-						},
-					}, nil
-				})
-				return web.NewAdminHandler(s.svc, userSvc, nil, cli)
+				return web.NewInterviewJourneyHandler(s.svc)
 			},
-			req: web.NotifyUserReq{
-				Date: "2025-7-01 20:00",
-			},
+			req:      web.DetailReq{},
 			wantCode: 200,
-			wantResp: test.Result[any]{
-				Msg: "OK",
+			respAssertFunc: func(t assert.TestingT, i interface{}, i2 ...interface{}) bool {
+				r := i.(test.Result[web.Journey])
+				return assert.Equal(t, "无轮次公司", r.Data.CompanyName) &&
+					assert.Empty(t, r.Data.Rounds)
 			},
-			after: func(t *testing.T, id int64) {
+			after: func(t *testing.T, resp web.Journey) {
 				t.Helper()
-				var interview domain.interview
-				assert.NoError(t, s.db.WithContext(t.Context()).Where("id = ?", id).FindByJourneyID(&interview).Error)
-				assert.Equal(t, testID, interview.Uid)
-				assert.Equal(t, fmt.Sprintf("/%d/admin/3/audio", testID), interview.AudioURL)
-				assert.Equal(t, fmt.Sprintf("/%d/admin/3/resume", testID), interview.ResumeURL)
-				assert.Equal(t, fmt.Sprintf("admin/3/remark-%d", testID), interview.Remark)
-				assert.Equal(t, domain.MaterialStatusAccepted, interview.Status)
-				assert.NotZero(t, interview.Ctime)
-				assert.NotZero(t, interview.Utime)
+				assert.Equal(t, "无轮次公司", resp.CompanyName)
+				assert.Equal(t, "/jobinfo/no-rounds", resp.JobInfo)
+				assert.Equal(t, "/resume/no-rounds", resp.ResumeURL)
+				assert.Equal(t, domain.StatusActive.String(), resp.Status)
+				assert.Empty(t, resp.Rounds)
 			},
 		},
 		{
-			name: "通知用户失败_素材未被接受",
+			name: "成功获取详情-包含单个面试轮次",
 			before: func(t *testing.T) int64 {
 				t.Helper()
-				id, err := s.svc.Submit(t.Context(), domain.interview{
-					Uid:       testID,
-					AudioURL:  fmt.Sprintf("/%d/admin/4/audio", testID),
-					ResumeURL: fmt.Sprintf("/%d/admin/4/resume", testID),
-					Remark:    fmt.Sprintf("admin/4/remark-%d", testID),
-				})
-				require.NoError(t, err)
-				return id
-			},
-			newHandlerFunc: func(t *testing.T, _ *gomock.Controller) *web.AdminHandler {
-				t.Helper()
-				return web.NewAdminHandler(s.svc, nil, nil, nil)
-			},
-			req: web.NotifyUserReq{
-				Date: "2025-7-02 20:00",
-			},
-			wantCode: 500,
-			wantResp: test.Result[any]{
-				Code: 518001, Msg: "系统错误",
-			},
-			after: func(t *testing.T, id int64) {
-				t.Helper()
-				var interview domain.interview
-				assert.NoError(t, s.db.WithContext(t.Context()).Where("id = ?", id).FindByJourneyID(&interview).Error)
-				assert.Equal(t, testID, interview.Uid)
-				assert.Equal(t, fmt.Sprintf("/%d/admin/4/audio", testID), interview.AudioURL)
-				assert.Equal(t, fmt.Sprintf("/%d/admin/4/resume", testID), interview.ResumeURL)
-				assert.Equal(t, fmt.Sprintf("admin/4/remark-%d", testID), interview.Remark)
-				assert.Equal(t, domain.MaterialStatusInit, interview.Status)
-				assert.NotZero(t, interview.Ctime)
-				assert.NotZero(t, interview.Utime)
-			},
-		},
-		{
-			name: "通知用户失败_用户ID不存在",
-			before: func(t *testing.T) int64 {
-				t.Helper()
-				id, err := s.svc.Submit(t.Context(), domain.interview{
-					Uid:       testID,
-					AudioURL:  fmt.Sprintf("/%d/admin/5/audio", testID),
-					ResumeURL: fmt.Sprintf("/%d/admin/5/resume", testID),
-					Remark:    fmt.Sprintf("admin/5/remark-%d", testID),
-				})
-				require.NoError(t, err)
-				err = s.svc.Accept(t.Context(), id)
-				require.NoError(t, err)
-				return id
-			},
-			newHandlerFunc: func(t *testing.T, ctrl *gomock.Controller) *web.AdminHandler {
-				t.Helper()
-				userSvc := usermocks.NewMockUserService(ctrl)
-				userSvc.EXPECT().Profile(gomock.Any(), testID).Return(user.User{}, errors.New("fake error")).Times(1)
-				return web.NewAdminHandler(s.svc, userSvc, nil, nil)
-			},
-			req: web.NotifyUserReq{
-				Date: "2025-7-03 20:00",
-			},
-			wantCode: 500,
-			wantResp: test.Result[any]{
-				Code: 518001, Msg: "系统错误",
-			},
-			after: func(t *testing.T, id int64) {
-				t.Helper()
-				var interview domain.interview
-				assert.NoError(t, s.db.WithContext(t.Context()).Where("id = ?", id).FindByJourneyID(&interview).Error)
-				assert.Equal(t, testID, interview.Uid)
-				assert.Equal(t, fmt.Sprintf("/%d/admin/5/audio", testID), interview.AudioURL)
-				assert.Equal(t, fmt.Sprintf("/%d/admin/5/resume", testID), interview.ResumeURL)
-				assert.Equal(t, fmt.Sprintf("admin/5/remark-%d", testID), interview.Remark)
-				assert.Equal(t, domain.MaterialStatusAccepted, interview.Status)
-				assert.NotZero(t, interview.Ctime)
-				assert.NotZero(t, interview.Utime)
-			},
-		},
-		{
-			name: "通知用户失败_用户未绑定手机号",
-			before: func(t *testing.T) int64 {
-				t.Helper()
-				id, err := s.svc.Submit(t.Context(), domain.interview{
-					Uid:       testID,
-					AudioURL:  fmt.Sprintf("/%d/admin/6/audio", testID),
-					ResumeURL: fmt.Sprintf("/%d/admin/6/resume", testID),
-					Remark:    fmt.Sprintf("admin/6/remark-%d", testID),
-				})
-				require.NoError(t, err)
-				err = s.svc.Accept(t.Context(), id)
-				require.NoError(t, err)
-				return id
-			},
-			newHandlerFunc: func(t *testing.T, ctrl *gomock.Controller) *web.AdminHandler {
-				t.Helper()
-				userSvc := usermocks.NewMockUserService(ctrl)
-				userSvc.EXPECT().Profile(gomock.Any(), testID).Return(user.User{Id: testID, Phone: ""}, nil).Times(1)
-				return web.NewAdminHandler(s.svc, userSvc, nil, nil)
-			},
-			req: web.NotifyUserReq{
-				Date: "2025-7-04 20:00",
-			},
-			wantCode: 500,
-			wantResp: test.Result[any]{
-				Code: 418001, Msg: "用户未绑定手机号",
-			},
-			after: func(t *testing.T, id int64) {
-				t.Helper()
-				var interview domain.interview
-				assert.NoError(t, s.db.WithContext(t.Context()).Where("id = ?", id).FindByJourneyID(&interview).Error)
-				assert.Equal(t, testID, interview.Uid)
-				assert.Equal(t, fmt.Sprintf("/%d/admin/6/audio", testID), interview.AudioURL)
-				assert.Equal(t, fmt.Sprintf("/%d/admin/6/resume", testID), interview.ResumeURL)
-				assert.Equal(t, fmt.Sprintf("admin/6/remark-%d", testID), interview.Remark)
-				assert.Equal(t, domain.MaterialStatusAccepted, interview.Status)
-				assert.NotZero(t, interview.Ctime)
-				assert.NotZero(t, interview.Utime)
-			},
-		},
-		{
-			name: "通知用户失败_发送短信失败",
-			before: func(t *testing.T) int64 {
-				t.Helper()
-				id, err := s.svc.Submit(t.Context(), domain.interview{
-					Uid:       testID,
-					AudioURL:  fmt.Sprintf("/%d/admin/7/audio", testID),
-					ResumeURL: fmt.Sprintf("/%d/admin/7/resume", testID),
-					Remark:    fmt.Sprintf("admin/7/remark-%d", testID),
-				})
-				require.NoError(t, err)
-				err = s.svc.Accept(t.Context(), id)
-				require.NoError(t, err)
-				return id
-			},
-			newHandlerFunc: func(t *testing.T, ctrl *gomock.Controller) *web.AdminHandler {
-				t.Helper()
-				t.Helper()
-				userSvc := usermocks.NewMockUserService(ctrl)
-				userSvc.EXPECT().Profile(gomock.Any(), testID).Return(user.User{Id: testID, Phone: "13845016319"}, nil).Times(1)
-
-				cli := smsmocks.NewMockClient(ctrl)
-				cli.EXPECT().Send(gomock.Any()).DoAndReturn(func(req client.SendReq) (client.SendResp, error) {
-					assert.Contains(t, req.PhoneNumbers, "13845016319")
-					assert.NotZero(t, req.TemplateID)
-					assert.Equal(t, "2025-7-05 20:00", req.TemplateParam["date"])
-					return client.SendResp{}, errors.New("fake error")
-				})
-				return web.NewAdminHandler(s.svc, userSvc, nil, cli)
-			},
-			req: web.NotifyUserReq{
-				Date: "2025-7-05 20:00",
-			},
-			wantCode: 500,
-			wantResp: test.Result[any]{
-				Code: 518001, Msg: "系统错误",
-			},
-			after: func(t *testing.T, id int64) {
-				t.Helper()
-				var interview domain.interview
-				assert.NoError(t, s.db.WithContext(t.Context()).Where("id = ?", id).FindByJourneyID(&interview).Error)
-				assert.Equal(t, testID, interview.Uid)
-				assert.Equal(t, fmt.Sprintf("/%d/admin/7/audio", testID), interview.AudioURL)
-				assert.Equal(t, fmt.Sprintf("/%d/admin/7/resume", testID), interview.ResumeURL)
-				assert.Equal(t, fmt.Sprintf("admin/7/remark-%d", testID), interview.Remark)
-				assert.Equal(t, domain.MaterialStatusAccepted, interview.Status)
-				assert.NotZero(t, interview.Ctime)
-				assert.NotZero(t, interview.Utime)
-			},
-		},
-		{
-			name: "通知用户失败_用户接收失败",
-			before: func(t *testing.T) int64 {
-				t.Helper()
-				id, err := s.svc.Submit(t.Context(), domain.interview{
-					Uid:       testID,
-					AudioURL:  fmt.Sprintf("/%d/admin/8/audio", testID),
-					ResumeURL: fmt.Sprintf("/%d/admin/8/resume", testID),
-					Remark:    fmt.Sprintf("admin/8/remark-%d", testID),
-				})
-				require.NoError(t, err)
-				err = s.svc.Accept(t.Context(), id)
-				require.NoError(t, err)
-				return id
-			},
-			newHandlerFunc: func(t *testing.T, ctrl *gomock.Controller) *web.AdminHandler {
-				t.Helper()
-				userSvc := usermocks.NewMockUserService(ctrl)
-				userSvc.EXPECT().Profile(gomock.Any(), testID).Return(user.User{Id: testID, Phone: "13845016329"}, nil).Times(1)
-
-				cli := smsmocks.NewMockClient(ctrl)
-				cli.EXPECT().Send(gomock.Any()).DoAndReturn(func(req client.SendReq) (client.SendResp, error) {
-					assert.Contains(t, req.PhoneNumbers, "13845016329")
-					assert.NotZero(t, req.TemplateID)
-					assert.Equal(t, "2025-7-06 20:00", req.TemplateParam["date"])
-					return client.SendResp{
-						RequestID: fmt.Sprintf("%d", time.Now().UnixMilli()),
-						PhoneNumbers: map[string]client.SendRespStatus{
-							"13845016329": {
-								Code:    "Failed",
-								Message: "用户已停机",
-							},
+				id, _, err := s.svc.Save(t.Context(), domain.InterviewJourney{
+					Uid:         testID3,
+					CompanyName: "单轮面试公司",
+					JobInfo:     "/jobinfo/single-round",
+					ResumeURL:   "/resume/single-round",
+					Stime:       time.Now().UnixMilli(),
+					Status:      domain.StatusActive,
+					Rounds: []domain.InterviewRound{
+						{
+							Uid:           testID3,
+							RoundNumber:   1,
+							RoundType:     "技术1面",
+							InterviewDate: time.Now().UnixMilli(),
+							JobInfo:       "/jobinfo/round1",
+							ResumeURL:     "/resume/round1",
+							AudioURL:      "/audio/round1",
+							SelfResult:    true,
+							SelfSummary:   "表现良好",
+							Result:        domain.ResultPending,
+							AllowSharing:  false,
 						},
-					}, nil
+					},
 				})
-				return web.NewAdminHandler(s.svc, userSvc, nil, cli)
+				require.NoError(t, err)
+				return id
 			},
-			req: web.NotifyUserReq{
-				Date: "2025-7-06 20:00",
-			},
-			wantCode: 500,
-			wantResp: test.Result[any]{
-				Code: 518002, Msg: "用户接收通知失败",
-			},
-			after: func(t *testing.T, id int64) {
+			newHandlerFunc: func(t *testing.T, ctrl *gomock.Controller) ginx.Handler {
 				t.Helper()
-				var interview domain.interview
-				assert.NoError(t, s.db.WithContext(t.Context()).Where("id = ?", id).FindByJourneyID(&interview).Error)
-				assert.Equal(t, testID, interview.Uid)
-				assert.Equal(t, fmt.Sprintf("/%d/admin/8/audio", testID), interview.AudioURL)
-				assert.Equal(t, fmt.Sprintf("/%d/admin/8/resume", testID), interview.ResumeURL)
-				assert.Equal(t, fmt.Sprintf("admin/8/remark-%d", testID), interview.Remark)
-				assert.Equal(t, domain.MaterialStatusAccepted, interview.Status)
-				assert.NotZero(t, interview.Ctime)
-				assert.NotZero(t, interview.Utime)
+				return web.NewInterviewJourneyHandler(s.svc)
+			},
+			req:      web.DetailReq{},
+			wantCode: 200,
+			respAssertFunc: func(t assert.TestingT, i interface{}, i2 ...interface{}) bool {
+				r := i.(test.Result[web.Journey])
+				return assert.Equal(t, "单轮面试公司", r.Data.CompanyName) &&
+					assert.Len(t, r.Data.Rounds, 1)
+			},
+			after: func(t *testing.T, resp web.Journey) {
+				t.Helper()
+				assert.Equal(t, "单轮面试公司", resp.CompanyName)
+				assert.Len(t, resp.Rounds, 1)
+				round := resp.Rounds[0]
+				assert.Equal(t, 1, round.RoundNumber)
+				assert.Equal(t, "技术1面", round.RoundType)
+				assert.Equal(t, "/jobinfo/round1", round.JobInfo)
+				assert.Equal(t, "/resume/round1", round.ResumeURL)
+				assert.Equal(t, "/audio/round1", round.AudioURL)
+				assert.Equal(t, true, round.SelfResult)
+				assert.Equal(t, "表现良好", round.SelfSummary)
+				assert.Equal(t, domain.ResultPending.String(), round.Result)
+				assert.Equal(t, false, round.AllowSharing)
+			},
+		},
+		{
+			name: "成功获取详情-包含多个面试轮次",
+			before: func(t *testing.T) int64 {
+				t.Helper()
+				id, _, err := s.svc.Save(t.Context(), domain.InterviewJourney{
+					Uid:         testID3,
+					CompanyName: "多轮面试公司",
+					JobInfo:     "/jobinfo/multi-rounds",
+					ResumeURL:   "/resume/multi-rounds",
+					Stime:       time.Now().UnixMilli(),
+					Status:      domain.StatusActive,
+					Rounds: []domain.InterviewRound{
+						{
+							Uid:           testID3,
+							RoundNumber:   1,
+							RoundType:     "技术1面",
+							InterviewDate: time.Now().UnixMilli(),
+							JobInfo:       "/jobinfo/round1",
+							ResumeURL:     "/resume/round1",
+							AudioURL:      "/audio/round1",
+							SelfResult:    true,
+							SelfSummary:   "第一轮表现良好",
+							Result:        domain.ResultApproved,
+							AllowSharing:  false,
+						},
+						{
+							Uid:           testID3,
+							RoundNumber:   2,
+							RoundType:     "技术2面",
+							InterviewDate: time.Now().UnixMilli() + 1000,
+							JobInfo:       "/jobinfo/round2",
+							ResumeURL:     "/resume/round2",
+							AudioURL:      "/audio/round2",
+							SelfResult:    false,
+							SelfSummary:   "第二轮有待提高",
+							Result:        domain.ResultPending,
+							AllowSharing:  true,
+						},
+					},
+				})
+				require.NoError(t, err)
+				return id
+			},
+			newHandlerFunc: func(t *testing.T, ctrl *gomock.Controller) ginx.Handler {
+				t.Helper()
+				return web.NewInterviewJourneyHandler(s.svc)
+			},
+			req:      web.DetailReq{},
+			wantCode: 200,
+			respAssertFunc: func(t assert.TestingT, i interface{}, i2 ...interface{}) bool {
+				r := i.(test.Result[web.Journey])
+				return assert.Equal(t, "多轮面试公司", r.Data.CompanyName) &&
+					assert.Len(t, r.Data.Rounds, 2)
+			},
+			after: func(t *testing.T, resp web.Journey) {
+				t.Helper()
+				assert.Equal(t, "多轮面试公司", resp.CompanyName)
+				assert.Len(t, resp.Rounds, 2)
+
+				// 验证第一轮
+				round1 := resp.Rounds[0]
+				assert.Equal(t, 1, round1.RoundNumber)
+				assert.Equal(t, "技术1面", round1.RoundType)
+				assert.Equal(t, domain.ResultApproved.String(), round1.Result)
+				assert.Equal(t, false, round1.AllowSharing)
+
+				// 验证第二轮
+				round2 := resp.Rounds[1]
+				assert.Equal(t, 2, round2.RoundNumber)
+				assert.Equal(t, "技术2面", round2.RoundType)
+				assert.Equal(t, domain.ResultPending.String(), round2.Result)
+				assert.Equal(t, true, round2.AllowSharing)
+			},
+		},
+		{
+			name: "记录不存在测试",
+			before: func(t *testing.T) int64 {
+				t.Helper()
+				// 不创建任何记录，直接返回一个不存在的ID
+				return 999999
+			},
+			newHandlerFunc: func(t *testing.T, ctrl *gomock.Controller) ginx.Handler {
+				t.Helper()
+				return web.NewInterviewJourneyHandler(s.svc)
+			},
+			req:      web.DetailReq{},
+			wantCode: 500,
+			respAssertFunc: func(t assert.TestingT, i interface{}, i2 ...interface{}) bool {
+				r := i.(test.Result[any])
+				return assert.Equal(t, test.Result[any]{Code: 519001, Msg: "系统错误"}, r)
+			},
+			after: func(t *testing.T, resp web.Journey) {
+				t.Helper()
+				// 错误情况下，不会有有效的响应数据
+			},
+		},
+		{
+			name: "不同状态的面试历程-成功状态",
+			before: func(t *testing.T) int64 {
+				t.Helper()
+				id, _, err := s.svc.Save(t.Context(), domain.InterviewJourney{
+					Uid:         testID3,
+					CompanyName: "成功状态公司",
+					JobInfo:     "/jobinfo/succeeded",
+					ResumeURL:   "/resume/succeeded",
+					Stime:       time.Now().UnixMilli(),
+					Etime:       time.Now().UnixMilli() + 86400000, // 结束时间
+					Status:      domain.StatusSucceeded,
+				})
+				require.NoError(t, err)
+				return id
+			},
+			newHandlerFunc: func(t *testing.T, ctrl *gomock.Controller) ginx.Handler {
+				t.Helper()
+				return web.NewInterviewJourneyHandler(s.svc)
+			},
+			req:      web.DetailReq{},
+			wantCode: 200,
+			respAssertFunc: func(t assert.TestingT, i interface{}, i2 ...interface{}) bool {
+				r := i.(test.Result[web.Journey])
+				return assert.Equal(t, "成功状态公司", r.Data.CompanyName) &&
+					assert.Equal(t, domain.StatusSucceeded.String(), r.Data.Status)
+			},
+			after: func(t *testing.T, resp web.Journey) {
+				t.Helper()
+				assert.Equal(t, "成功状态公司", resp.CompanyName)
+				assert.Equal(t, domain.StatusSucceeded.String(), resp.Status)
+				assert.Greater(t, resp.Etime, int64(0)) // 验证有结束时间
+			},
+		},
+		{
+			name: "不同状态的面试历程-失败状态",
+			before: func(t *testing.T) int64 {
+				t.Helper()
+				id, _, err := s.svc.Save(t.Context(), domain.InterviewJourney{
+					Uid:         testID3,
+					CompanyName: "失败状态公司",
+					JobInfo:     "/jobinfo/failed",
+					ResumeURL:   "/resume/failed",
+					Stime:       time.Now().UnixMilli(),
+					Status:      domain.StatusFailed,
+				})
+				require.NoError(t, err)
+				return id
+			},
+			newHandlerFunc: func(t *testing.T, ctrl *gomock.Controller) ginx.Handler {
+				t.Helper()
+				return web.NewInterviewJourneyHandler(s.svc)
+			},
+			req:      web.DetailReq{},
+			wantCode: 200,
+			respAssertFunc: func(t assert.TestingT, i interface{}, i2 ...interface{}) bool {
+				r := i.(test.Result[web.Journey])
+				return assert.Equal(t, "失败状态公司", r.Data.CompanyName) &&
+					assert.Equal(t, domain.StatusFailed.String(), r.Data.Status)
+			},
+			after: func(t *testing.T, resp web.Journey) {
+				t.Helper()
+				assert.Equal(t, "失败状态公司", resp.CompanyName)
+				assert.Equal(t, domain.StatusFailed.String(), resp.Status)
 			},
 		},
 	}
 
 	for _, tc := range testCases {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
 
-			id := tc.before(t)
-			tc.req.ID = id
+			jid := tc.before(t)
+			tc.req.ID = jid
 
 			req, err := http.NewRequest(http.MethodPost,
-				"/interview/notify", iox.NewJSONReader(tc.req))
+				"/interview-journeys/detail", iox.NewJSONReader(tc.req))
 			require.NoError(t, err)
 			req.Header.Set("content-type", "application/json")
-			recorder := test.NewJSONResponseRecorder[any]()
-			server := s.newAdminGinServer(tc.newHandlerFunc(t, ctrl))
-			server.ServeHTTP(recorder, req)
-			require.Equal(t, tc.wantCode, recorder.Code)
-			assert.Equal(t, tc.wantResp.Data, recorder.MustScan().Data)
 
-			tc.after(t, id)
+			// 根据预期状态码选择不同的录制器类型
+			if tc.wantCode == 200 {
+				recorder := test.NewJSONResponseRecorder[web.Journey]()
+				server := s.newGinServer(testID3, tc.newHandlerFunc(t, ctrl))
+				server.ServeHTTP(recorder, req)
+				require.Equal(t, tc.wantCode, recorder.Code)
+				result := recorder.MustScan()
+				tc.respAssertFunc(t, result)
+				tc.after(t, result.Data)
+			} else {
+				recorder := test.NewJSONResponseRecorder[any]()
+				server := s.newGinServer(testID3, tc.newHandlerFunc(t, ctrl))
+				server.ServeHTTP(recorder, req)
+				require.Equal(t, tc.wantCode, recorder.Code)
+				result := recorder.MustScan()
+				tc.respAssertFunc(t, result)
+				tc.after(t, web.Journey{}) // 错误情况传空对象
+			}
 		})
 	}
 }
-*/

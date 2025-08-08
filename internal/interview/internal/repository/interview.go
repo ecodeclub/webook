@@ -33,8 +33,7 @@ type InterviewRepository interface {
 	FindJourneysByUID(ctx context.Context, uid int64, offset, limit int) ([]domain.InterviewJourney, error)
 	// CountJourneyByUID 计算一个用户的面试历程总数。
 	CountJourneyByUID(ctx context.Context, uid int64) (int64, error)
-
-	FindRoundByID(ctx context.Context, id, jid, uid int64) (domain.InterviewRound, error)
+	// FindRoundsByJidAndUid 根据Journey ID和uid查找全部面试轮次
 	FindRoundsByJidAndUid(ctx context.Context, jid, uid int64) ([]domain.InterviewRound, error)
 }
 
@@ -147,14 +146,6 @@ func (r *interviewRepository) FindJourneysByUID(ctx context.Context, uid int64, 
 
 func (r *interviewRepository) CountJourneyByUID(ctx context.Context, uid int64) (int64, error) {
 	return r.dao.CountJourneyByUID(ctx, uid)
-}
-
-func (r *interviewRepository) FindRoundByID(ctx context.Context, id, jid, uid int64) (domain.InterviewRound, error) {
-	found, err := r.dao.FindRoundByID(ctx, id, jid, uid)
-	if err != nil {
-		return domain.InterviewRound{}, err
-	}
-	return r.toRoundDomain(found), nil
 }
 
 func (r *interviewRepository) FindRoundsByJidAndUid(ctx context.Context, jid, uid int64) ([]domain.InterviewRound, error) {

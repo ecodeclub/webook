@@ -75,7 +75,6 @@ type InterviewDAO interface {
 	FindJourneysByUID(ctx context.Context, uid int64, offset, limit int) ([]InterviewJourney, error)
 	CountJourneyByUID(ctx context.Context, uid int64) (int64, error)
 
-	FindRoundByID(ctx context.Context, id, jid, uid int64) (InterviewRound, error)
 	FindRoundsByJidAndUid(ctx context.Context, jid, uid int64) ([]InterviewRound, error)
 }
 
@@ -173,12 +172,6 @@ func (g *GORMInterviewDAO) CountJourneyByUID(ctx context.Context, uid int64) (in
 	var count int64
 	err := g.db.WithContext(ctx).Model(&InterviewJourney{}).Where("uid = ?", uid).Count(&count).Error
 	return count, err
-}
-
-func (g *GORMInterviewDAO) FindRoundByID(ctx context.Context, id, jid, uid int64) (InterviewRound, error) {
-	var round InterviewRound
-	err := g.db.WithContext(ctx).Where("id = ? AND jid = ? AND uid = ?", id, jid, uid).First(&round).Error
-	return round, err
 }
 
 func (g *GORMInterviewDAO) FindRoundsByJidAndUid(ctx context.Context, jid, uid int64) ([]InterviewRound, error) {
