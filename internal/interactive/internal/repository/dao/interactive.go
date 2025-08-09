@@ -45,8 +45,9 @@ type InteractiveDAO interface {
 	SaveCollection(ctx context.Context, collection Collection) (int64, error)
 	// 删除收藏夹
 	DeleteCollection(ctx context.Context, uid, collectionId int64) error
-	// 收藏夹列表
-	CollectionList(ctx context.Context, uid int64, offset, limit int) ([]Collection, error)
+	// CollectionList 收藏夹列表，如果biz == "" 则不作为查询条件
+	CollectionList(ctx context.Context, uid int64, biz string, offset, limit int) ([]Collection, error)
+	CountCollections(ctx context.Context, uid int64, biz string) (int64, error)
 	// 收藏夹下的收藏内容带分页
 	CollectionInfoWithPage(ctx context.Context, uid, collectionId int64, offset, limit int) ([]UserCollectionBiz, error)
 	// 收藏夹下的所有内容
@@ -130,15 +131,31 @@ func (g *GORMInteractiveDAO) DeleteCollection(ctx context.Context, uid, collecti
 	})
 }
 
-func (g *GORMInteractiveDAO) CollectionList(ctx context.Context, uid int64, offset, limit int) ([]Collection, error) {
+func (g *GORMInteractiveDAO) CollectionList(ctx context.Context, uid int64, biz string, offset, limit int) ([]Collection, error) {
 	var collections []Collection
-	err := g.db.WithContext(ctx).
-		Model(&Collection{}).
-		Where("uid = ?", uid).
-		Order("id DESC").
+	tx := g.db.WithContext(ctx).
+		Model(&Collection{})
+	if biz == "" {
+		tx = tx.Where("uid = ?", uid)
+	} else {
+		tx = tx.Where("uid = ? AND biz = ?", uid, biz)
+	}
+	err := tx.Order("id DESC").
 		Limit(limit).
 		Offset(offset).Scan(&collections).Error
 	return collections, err
+}
+
+func (g *GORMInteractiveDAO) CountCollections(ctx context.Context, uid int64, biz string) (int64, error) {
+	var count int64
+	tx := g.db.WithContext(ctx).Model(&Collection{})
+	if biz == "" {
+		tx = tx.Where("uid = ?", uid)
+	} else {
+		tx = tx.Where("uid = ? AND biz = ?", uid, biz)
+	}
+	err := tx.Count(&count).Error
+	return count, err
 }
 
 func (g *GORMInteractiveDAO) CollectionInfoWithPage(ctx context.Context, uid, collectionId int64, offset, limit int) ([]UserCollectionBiz, error) {

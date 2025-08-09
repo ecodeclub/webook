@@ -37,8 +37,8 @@ type Service interface {
 	SaveCollection(ctx context.Context, collection domain.Collection) (int64, error)
 	// DeleteCollection 删除收藏夹
 	DeleteCollection(ctx context.Context, uid, id int64) error
-	// CollectionList 收藏夹列表
-	CollectionList(ctx context.Context, uid int64, offset, limit int) ([]domain.Collection, error)
+	// CollectionList 收藏夹列表，如果biz == "" 则不作为查询条件
+	CollectionList(ctx context.Context, uid int64, biz string, offset, limit int) ([]domain.Collection, int64, error)
 	// CollectionInfo 收藏详情带分页
 	CollectionInfo(ctx context.Context, uid, id int64, offset, limit int) ([]domain.CollectionRecord, error)
 	// MoveToCollection 将收藏内容转移到另一个收藏夹，前一个id是收藏记录的，collectionId收藏夹id
@@ -66,8 +66,29 @@ func (i *interactiveService) DeleteCollection(ctx context.Context, uid, id int64
 	return i.repo.DeleteCollection(ctx, uid, id)
 }
 
-func (i *interactiveService) CollectionList(ctx context.Context, uid int64, offset, limit int) ([]domain.Collection, error) {
-	return i.repo.CollectionList(ctx, uid, offset, limit)
+func (i *interactiveService) CollectionList(ctx context.Context, uid int64, biz string, offset, limit int) ([]domain.Collection, int64, error) {
+	var (
+		collections []domain.Collection
+		total       int64
+	)
+	var eg errgroup.Group
+	eg.Go(func() error {
+		var err error
+		collections, err = i.repo.CollectionList(ctx, uid, biz, offset, limit)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	eg.Go(func() error {
+		var err error
+		total, err = i.repo.CountCollections(ctx, uid, biz)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	return collections, total, eg.Wait()
 }
 
 func (i *interactiveService) MoveToCollection(ctx context.Context, biz string, bizid, uid, collectionId int64) error {

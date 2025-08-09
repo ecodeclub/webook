@@ -23,6 +23,7 @@ type CollectReq struct {
 type Collection struct {
 	// 如果传递了这个参数，那么就是更新，如果没有则是插入
 	Id   int64  `json:"id"`
+	Biz  string `json:"biz"`
 	Name string `json:"name"`
 }
 
@@ -70,9 +71,10 @@ type BatchGetCntResp struct {
 	InteractiveMap map[int64]Interactive `json:"interactiveMap"`
 }
 
-type Page struct {
-	Limit  int
-	Offset int
+type CollectionListReq struct {
+	Biz    string `json:"biz"`
+	Limit  int    `json:"limit"`
+	Offset int    `json:"offset"`
 }
 
 type IdReq struct {

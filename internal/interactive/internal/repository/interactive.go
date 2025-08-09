@@ -19,6 +19,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/ecodeclub/ekit/slice"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/gotomicro/ego/core/elog"
@@ -50,12 +51,13 @@ type InteractiveRepository interface {
 	SaveCollection(ctx context.Context, collection domain.Collection) (int64, error)
 	// 删除收藏夹
 	DeleteCollection(ctx context.Context, uid, collectionId int64) error
-	// 收藏夹列表
-	CollectionList(ctx context.Context, uid int64, offset, limit int) ([]domain.Collection, error)
+	// CollectionList 收藏夹列表，如果biz == "" 则不作为查询条件
+	CollectionList(ctx context.Context, uid int64, biz string, offset, limit int) ([]domain.Collection, error)
+	CountCollections(ctx context.Context, uid int64, biz string) (int64, error)
 	// CollectionInfo 收藏夹收藏记录
 	CollectionInfo(ctx context.Context, uid, collectionId int64, offset, limit int) ([]domain.CollectionRecord, error)
 	// MoveCollection 转移收藏夹
-	MoveCollection(ctx context.Context, biz string, bizid, uid, collectionId int64) error
+	MoveCollection(ctx context.Context, biz string, bizId, uid, collectionId int64) error
 }
 
 type interactiveRepository struct {
@@ -63,8 +65,8 @@ type interactiveRepository struct {
 	logger         *elog.Component
 }
 
-func (i *interactiveRepository) MoveCollection(ctx context.Context, biz string, bizid, uid, collectionId int64) error {
-	return i.interactiveDao.MoveCollection(ctx, biz, bizid, uid, collectionId)
+func (i *interactiveRepository) MoveCollection(ctx context.Context, biz string, bizId, uid, collectionId int64) error {
+	return i.interactiveDao.MoveCollection(ctx, biz, bizId, uid, collectionId)
 }
 
 func (i *interactiveRepository) SaveCollection(ctx context.Context, collection domain.Collection) (int64, error) {
@@ -87,16 +89,18 @@ func (i *interactiveRepository) DeleteCollection(ctx context.Context, uid, colle
 	return nil
 }
 
-func (i *interactiveRepository) CollectionList(ctx context.Context, uid int64, offset, limit int) ([]domain.Collection, error) {
-	clist, err := i.interactiveDao.CollectionList(ctx, uid, offset, limit)
+func (i *interactiveRepository) CollectionList(ctx context.Context, uid int64, biz string, offset, limit int) ([]domain.Collection, error) {
+	clist, err := i.interactiveDao.CollectionList(ctx, uid, biz, offset, limit)
 	if err != nil {
 		return nil, err
 	}
-	collections := make([]domain.Collection, 0)
-	for _, c := range clist {
-		collections = append(collections, i.collectionToDomain(c))
-	}
-	return collections, nil
+	return slice.Map(clist, func(_ int, src dao.Collection) domain.Collection {
+		return i.collectionToDomain(src)
+	}), nil
+}
+
+func (i *interactiveRepository) CountCollections(ctx context.Context, uid int64, biz string) (int64, error) {
+	return i.interactiveDao.CountCollections(ctx, uid, biz)
 }
 
 func (i *interactiveRepository) CollectionInfo(ctx context.Context, uid, collectionId int64, offset, limit int) ([]domain.CollectionRecord, error) {
@@ -237,6 +241,7 @@ func (i *interactiveRepository) collectionToDomain(collectionDao dao.Collection)
 	return domain.Collection{
 		Id:   collectionDao.Id,
 		Uid:  collectionDao.Uid,
+		Biz:  collectionDao.Biz,
 		Name: collectionDao.Name,
 	}
 }
@@ -245,6 +250,7 @@ func (i *interactiveRepository) collectionToEntity(ie domain.Collection) dao.Col
 	return dao.Collection{
 		Id:   ie.Id,
 		Uid:  ie.Uid,
+		Biz:  ie.Biz,
 		Name: ie.Name,
 	}
 }
