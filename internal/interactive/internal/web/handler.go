@@ -42,7 +42,7 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g.POST("/collect/toggle", ginx.BS[CollectReq](h.Collect))
 	// 创建一个收藏夹
 	g.POST("/collection/save", ginx.BS[Collection](h.CollectionSave))
-	g.POST("/collection/list", ginx.BS[Page](h.CollectionList))
+	g.POST("/collection/list", ginx.BS[CollectionListReq](h.CollectionList))
 	g.POST("/collection/delete", ginx.BS[IdReq](h.CollectionDelete))
 	g.POST("/collection/move", ginx.BS[MoveCollectionReq](h.MoveCollection))
 
@@ -87,20 +87,23 @@ func (h *Handler) CollectionSave(ctx *ginx.Context, req Collection, sess session
 	}, nil
 }
 
-func (h *Handler) CollectionList(ctx *ginx.Context, req Page, sess session.Session) (ginx.Result, error) {
+func (h *Handler) CollectionList(ctx *ginx.Context, req CollectionListReq, sess session.Session) (ginx.Result, error) {
 	// 根据 ID 倒序返回数据
-	uid := sess.Claims().Uid
-	collections, err := h.svc.CollectionList(ctx, uid, req.Offset, req.Limit)
+	collections, total, err := h.svc.CollectionList(ctx, sess.Claims().Uid, req.Biz, req.Offset, req.Limit)
 	if err != nil {
 		return systemErrorResult, err
 	}
 	return ginx.Result{
-		Data: slice.Map(collections, func(idx int, src domain.Collection) Collection {
-			return Collection{
-				Id:   src.Id,
-				Name: src.Name,
-			}
-		}),
+		Data: ginx.DataList[Collection]{
+			List: slice.Map(collections, func(_ int, src domain.Collection) Collection {
+				return Collection{
+					Id:   src.Id,
+					Biz:  src.Biz,
+					Name: src.Name,
+				}
+			}),
+			Total: int(total),
+		},
 	}, nil
 }
 

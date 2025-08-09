@@ -25,6 +25,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ecodeclub/ginx"
 	"github.com/ecodeclub/webook/internal/interactive/internal/domain"
 
 	"github.com/ecodeclub/webook/internal/interactive"
@@ -664,10 +665,17 @@ func (i *InteractiveTestSuite) TestCollection_Delete() {
 }
 
 func (i *InteractiveTestSuite) TestCollection_List() {
+	var biz string
 	for j := 1; j <= 4; j++ {
+		if j%2 == 0 {
+			biz = "go"
+		} else {
+			biz = "py"
+		}
 		err := i.db.Create(&dao.Collection{
 			Id:   int64(j),
 			Uid:  uid,
+			Biz:  biz,
 			Name: fmt.Sprintf("%d", j),
 		}).Error
 		require.NoError(i.T(), err)
@@ -675,68 +683,126 @@ func (i *InteractiveTestSuite) TestCollection_List() {
 	err := i.db.Create(&dao.Collection{
 		Id:   int64(33),
 		Uid:  222,
+		Biz:  "ts",
 		Name: fmt.Sprintf("%d", 33),
 	}).Error
 	require.NoError(i.T(), err)
 
 	testcases := []struct {
 		name     string
-		offset   int
-		limit    int
-		wantVal  []web.Collection
+		req      web.CollectionListReq
+		wantVal  ginx.DataList[web.Collection]
 		wantCode int
 	}{
 		{
-			name:     "偏移2",
-			offset:   2,
-			limit:    2,
+			name: "偏移0",
+			req: web.CollectionListReq{
+				Biz:    "go",
+				Offset: 0,
+				Limit:  2,
+			},
 			wantCode: 200,
-			wantVal: []web.Collection{
-				{
-					Id:   2,
-					Name: "2",
+			wantVal: ginx.DataList[web.Collection]{
+				List: []web.Collection{
+					{
+						Id:   4,
+						Biz:  "go",
+						Name: "4",
+					},
+					{
+						Id:   2,
+						Biz:  "go",
+						Name: "2",
+					},
 				},
-				{
-					Id:   1,
-					Name: "1",
-				},
+				Total: 2,
 			},
 		},
 		{
-			name:     "不包含别人的",
-			offset:   0,
-			limit:    10,
+			name: "偏移1",
+			req: web.CollectionListReq{
+				Biz:    "py",
+				Offset: 1,
+				Limit:  3,
+			},
 			wantCode: 200,
-			wantVal: []web.Collection{
-				{
-					Id:   4,
-					Name: "4",
+			wantVal: ginx.DataList[web.Collection]{
+				List: []web.Collection{
+					{
+						Id:   1,
+						Biz:  "py",
+						Name: "1",
+					},
 				},
-				{
-					Id:   3,
-					Name: "3",
+				Total: 2,
+			},
+		},
+		{
+			name: "偏移2",
+			req: web.CollectionListReq{
+				Biz:    "py",
+				Offset: 2,
+				Limit:  3,
+			},
+			wantCode: 200,
+			wantVal: ginx.DataList[web.Collection]{
+				List:  []web.Collection{},
+				Total: 2,
+			},
+		},
+		{
+			name: "偏移4",
+			req: web.CollectionListReq{
+				Offset: 4,
+				Limit:  3,
+			},
+			wantCode: 200,
+			wantVal: ginx.DataList[web.Collection]{
+				List:  []web.Collection{},
+				Total: 4,
+			},
+		},
+		{
+			name: "不包含别人的",
+			req: web.CollectionListReq{
+				Offset: 0,
+				Limit:  10,
+			},
+			wantCode: 200,
+			wantVal: ginx.DataList[web.Collection]{
+				List: []web.Collection{
+					{
+						Id:   4,
+						Biz:  "go",
+						Name: "4",
+					},
+					{
+						Id:   3,
+						Biz:  "py",
+						Name: "3",
+					},
+					{
+						Id:   2,
+						Biz:  "go",
+						Name: "2",
+					},
+					{
+						Id:   1,
+						Biz:  "py",
+						Name: "1",
+					},
 				},
-				{
-					Id:   2,
-					Name: "2",
-				},
-				{
-					Id:   1,
-					Name: "1",
-				},
+				Total: 4,
 			},
 		},
 	}
 	for _, tc := range testcases {
 		i.T().Run(tc.name, func(t *testing.T) {
 			req, err := http.NewRequest(http.MethodPost,
-				"/interactive/collection/list", iox.NewJSONReader(web.Page{
-					Offset: tc.offset,
-					Limit:  tc.limit,
-				}))
+				"/interactive/collection/list", iox.NewJSONReader(tc.req))
 			req.Header.Set("content-type", "application/json")
 			require.NoError(t, err)
-			recorder := test.NewJSONResponseRecorder[[]web.Collection]()
+			recorder := test.NewJSONResponseRecorder[ginx.DataList[web.Collection]]()
 			i.server.ServeHTTP(recorder, req)
 			require.Equal(t, tc.wantCode, recorder.Code)
 			assert.Equal(t, tc.wantVal, recorder.MustScan().Data)

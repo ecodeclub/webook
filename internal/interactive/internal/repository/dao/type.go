@@ -51,9 +51,10 @@ type UserCollectionBiz struct {
 
 type Collection struct {
 	Id int64 `gorm:"primaryKey,autoIncrement"`
-	// 在 Uid 和 Name 上创建唯一索引，确保用户不会创建同名收藏夹
-	Uid   int64  `gorm:"uniqueIndex:uid_name"`
-	Name  string `gorm:"type:varchar(256);uniqueIndex:uid_name"`
+	// 在 Uid、Biz、Name 上创建唯一索引，确保用户不会在同一biz下创建同名收藏夹
+	Uid   int64  `gorm:"uniqueIndex:uid_biz_name,priority:1;"`
+	Biz   string `gorm:"type:varchar(128);uniqueIndex:uid_biz_name,priority:2;"`
+	Name  string `gorm:"type:varchar(256);uniqueIndex:uid_biz_name,priority:3;"`
 	Utime int64
 	Ctime int64
 }

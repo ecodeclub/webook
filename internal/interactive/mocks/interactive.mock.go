@@ -21,6 +21,7 @@ import (
 type MockService struct {
 	ctrl     *gomock.Controller
 	recorder *MockServiceMockRecorder
+	isgomock struct{}
 }
 
 // MockServiceMockRecorder is the mock recorder for MockService.
@@ -118,18 +119,19 @@ func (c *MockServiceCollectionInfoCall) DoAndReturn(f func(context.Context, int6
 }
 
 // CollectionList mocks base method.
-func (m *MockService) CollectionList(ctx context.Context, uid int64, offset, limit int) ([]domain.Collection, error) {
+func (m *MockService) CollectionList(ctx context.Context, uid int64, biz string, offset, limit int) ([]domain.Collection, int64, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CollectionList", ctx, uid, offset, limit)
+	ret := m.ctrl.Call(m, "CollectionList", ctx, uid, biz, offset, limit)
 	ret0, _ := ret[0].([]domain.Collection)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	ret1, _ := ret[1].(int64)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
 }
 
 // CollectionList indicates an expected call of CollectionList.
-func (mr *MockServiceMockRecorder) CollectionList(ctx, uid, offset, limit any) *MockServiceCollectionListCall {
+func (mr *MockServiceMockRecorder) CollectionList(ctx, uid, biz, offset, limit any) *MockServiceCollectionListCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CollectionList", reflect.TypeOf((*MockService)(nil).CollectionList), ctx, uid, offset, limit)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CollectionList", reflect.TypeOf((*MockService)(nil).CollectionList), ctx, uid, biz, offset, limit)
 	return &MockServiceCollectionListCall{Call: call}
 }
 
@@ -139,19 +141,19 @@ type MockServiceCollectionListCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockServiceCollectionListCall) Return(arg0 []domain.Collection, arg1 error) *MockServiceCollectionListCall {
-	c.Call = c.Call.Return(arg0, arg1)
+func (c *MockServiceCollectionListCall) Return(arg0 []domain.Collection, arg1 int64, arg2 error) *MockServiceCollectionListCall {
+	c.Call = c.Call.Return(arg0, arg1, arg2)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockServiceCollectionListCall) Do(f func(context.Context, int64, int, int) ([]domain.Collection, error)) *MockServiceCollectionListCall {
+func (c *MockServiceCollectionListCall) Do(f func(context.Context, int64, string, int, int) ([]domain.Collection, int64, error)) *MockServiceCollectionListCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockServiceCollectionListCall) DoAndReturn(f func(context.Context, int64, int, int) ([]domain.Collection, error)) *MockServiceCollectionListCall {
+func (c *MockServiceCollectionListCall) DoAndReturn(f func(context.Context, int64, string, int, int) ([]domain.Collection, int64, error)) *MockServiceCollectionListCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
