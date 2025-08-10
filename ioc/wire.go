@@ -17,32 +17,45 @@
 package ioc
 
 import (
-	"github.com/ecodeclub/webook/internal/ai"
-	"github.com/ecodeclub/webook/internal/bff"
-	"github.com/ecodeclub/webook/internal/cases"
 	"github.com/ecodeclub/webook/internal/comment"
-	"github.com/ecodeclub/webook/internal/cos"
-	"github.com/ecodeclub/webook/internal/credit"
-	"github.com/ecodeclub/webook/internal/feedback"
-	"github.com/ecodeclub/webook/internal/interactive"
-	"github.com/ecodeclub/webook/internal/interview"
-	"github.com/ecodeclub/webook/internal/label"
-	"github.com/ecodeclub/webook/internal/marketing"
-	"github.com/ecodeclub/webook/internal/material"
 	"github.com/ecodeclub/webook/internal/member"
-	"github.com/ecodeclub/webook/internal/order"
-	"github.com/ecodeclub/webook/internal/payment"
 	"github.com/ecodeclub/webook/internal/permission"
-	"github.com/ecodeclub/webook/internal/pkg/middleware"
-	"github.com/ecodeclub/webook/internal/product"
-	"github.com/ecodeclub/webook/internal/project"
-	baguwen "github.com/ecodeclub/webook/internal/question"
 	"github.com/ecodeclub/webook/internal/recon"
-	"github.com/ecodeclub/webook/internal/resume"
 	"github.com/ecodeclub/webook/internal/review"
+
+	"github.com/ecodeclub/webook/internal/ai"
+
+	"github.com/ecodeclub/webook/internal/resume"
+
+	"github.com/ecodeclub/webook/internal/bff"
+
 	"github.com/ecodeclub/webook/internal/roadmap"
+
 	"github.com/ecodeclub/webook/internal/search"
+
+	"github.com/ecodeclub/webook/internal/interactive"
+
+	"github.com/ecodeclub/webook/internal/company"
+	"github.com/ecodeclub/webook/internal/credit"
+	"github.com/ecodeclub/webook/internal/marketing"
+	"github.com/ecodeclub/webook/internal/payment"
+	"github.com/ecodeclub/webook/internal/project"
+
+	"github.com/ecodeclub/webook/internal/feedback"
+	"github.com/ecodeclub/webook/internal/order"
+	"github.com/ecodeclub/webook/internal/product"
+
+	"github.com/ecodeclub/webook/internal/pkg/middleware"
 	"github.com/ecodeclub/webook/internal/skill"
+
+	"github.com/ecodeclub/webook/internal/cases"
+
+	"github.com/ecodeclub/webook/internal/label"
+
+	"github.com/ecodeclub/webook/internal/cos"
+
+	baguwen "github.com/ecodeclub/webook/internal/question"
+
 	"github.com/ecodeclub/webook/internal/user"
 	"github.com/google/wire"
 )
@@ -103,17 +116,8 @@ func InitApp() (*App, error) {
 		review.InitModule,
 		wire.FieldsOf(new(*review.Module), "Hdl", "AdminHdl"),
 		comment.InitModule,
-		wire.FieldsOf(new(*comment.Module), "Hdl"),
-		material.InitModule,
-		wire.FieldsOf(new(*material.Module), "Hdl", "AdminHdl"),
-		interview.InitModule,
-		wire.FieldsOf(new(*interview.Module), "JourneyHdl"),
-
-		initLocalActiveLimiterBuilder,
-		initCronJobs,
-		// 这两个顺序不要换
-		initGinxServer,
-		InitAdminServer,
+		company.InitModule,
+		wire.FieldsOf(new(*company.Module), "Hdl"),
 	)
-	return new(App), nil
+	return &App{}, nil
 }
