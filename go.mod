@@ -4,8 +4,11 @@ go 1.24.5
 
 require (
 	github.com/alibabacloud-go/darabonba-openapi/v2 v2.1.9
+	github.com/alibabacloud-go/dm-20151123/v2 v2.6.1
 	github.com/alibabacloud-go/dysmsapi-20170525/v4 v4.1.3
 	github.com/alibabacloud-go/tea v1.3.10
+	github.com/alibabacloud-go/tea-utils/v2 v2.0.7
+	github.com/aliyun/credentials-go v1.4.5
 	github.com/bwmarrin/snowflake v0.3.0
 	github.com/ecodeclub/ecache v0.0.0-20240111145855-75679834beca
 	github.com/ecodeclub/ekit v0.0.10
@@ -45,8 +48,6 @@ require (
 	github.com/alibabacloud-go/debug v1.0.1 // indirect
 	github.com/alibabacloud-go/endpoint-util v1.1.0 // indirect
 	github.com/alibabacloud-go/openapi-util v0.1.1 // indirect
-	github.com/alibabacloud-go/tea-utils/v2 v2.0.7 // indirect
-	github.com/aliyun/credentials-go v1.4.5 // indirect
 	github.com/andybalholm/brotli v1.2.0 // indirect
 	github.com/antlr/antlr4/runtime/Go/antlr v0.0.0-20220418222510-f25a4f6275ed // indirect
 	github.com/beorn7/perks v1.0.1 // indirect

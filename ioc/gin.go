@@ -97,6 +97,7 @@ func initGinxServer(sp session.Provider,
 	commentHdl *comment.Handler,
 	materialHdl *material.Handler,
 	journeyHdl *interview.JourneyHandler,
+	offerHdl *interview.OfferHandler,
 ) *egin.Component {
 	session.SetDefaultProvider(sp)
 	res := egin.Load("web").Build()
@@ -173,5 +174,6 @@ func initGinxServer(sp session.Provider,
 	resumeAnaHdl.MemberRoutes(res.Engine)
 	aiHdl.MemberRoutes(res.Engine)
 	commentHdl.MemberRoutes(res.Engine)
+	offerHdl.MemberRoutes(res.Engine)
 	return res
 }
