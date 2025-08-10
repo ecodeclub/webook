@@ -1,4 +1,5 @@
 package web
+
 type SaveCompanyReq struct {
 	ID   int64  `json:"id"`
 	Name string `json:"name"`
@@ -21,6 +22,6 @@ type Page struct {
 }
 
 type ListCompanyResp struct {
-	List []CompanyVO `json:"list"`
+	List  []CompanyVO `json:"list"`
 	Total int64       `json:"total"`
 }

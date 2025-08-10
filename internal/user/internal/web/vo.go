@@ -15,8 +15,9 @@
 package web
 
 import (
-	"github.com/ecodeclub/webook/internal/user/internal/domain"
 	"strings"
+
+	"github.com/ecodeclub/webook/internal/user/internal/domain"
 )
 
 type Profile struct {
@@ -26,7 +27,7 @@ type Profile struct {
 	SN        string `json:"sn,omitempty"`
 	IsCreator bool   `json:"isCreator,omitempty"`
 	// 毫秒数
-	MemberDDL int64 `json:"memberDDL,omitempty"`
+	MemberDDL int64  `json:"memberDDL,omitempty"`
 	Phone     string `json:"phone,omitempty"`
 }
 

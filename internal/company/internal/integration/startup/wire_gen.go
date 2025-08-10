@@ -8,7 +8,7 @@ package startup
 
 import (
 	"github.com/ecodeclub/webook/internal/company"
-	"github.com/ecodeclub/webook/internal/test/ioc"
+	testioc "github.com/ecodeclub/webook/internal/test/ioc"
 )
 
 // Injectors from wire.go:
