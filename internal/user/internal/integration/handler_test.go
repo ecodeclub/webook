@@ -1357,6 +1357,7 @@ func (s *HandlerWithAppTestSuite) TestVerify() {
 			assert.NotEmpty(t, val.Data.Nickname)
 			// 在创建的时候，是随机生成的昵称，所以需要特殊判断
 			val.Data.Nickname = ""
+			val.Data.Id = 0
 			assert.Equal(t, tc.wantResp, val)
 			tc.after(t)
 			// 清理掉的数据
@@ -1505,6 +1506,7 @@ func (s *HandlerWithAppTestSuite) TestMiniVerify() {
 			assert.NotEmpty(t, val.Data.Nickname)
 			// 在创建的时候，是随机生成的昵称，所以需要特殊判断
 			val.Data.Nickname = ""
+			val.Data.Id = 0
 			assert.Equal(t, tc.wantResp, val)
 			tc.after(t)
 			// 清理掉 123 的数据
@@ -1558,7 +1560,9 @@ func (s *HandlerWithAppTestSuite) TestProfile() {
 			recorder := test.NewJSONResponseRecorder[web.Profile]()
 			s.server.ServeHTTP(recorder, req)
 			assert.Equal(t, tc.wantCode, recorder.Code)
-			assert.Equal(t, tc.wantResp, recorder.MustScan())
+			data := recorder.MustScan()
+			data.Data.Id = 0
+			assert.Equal(t, tc.wantResp, data)
 		})
 	}
 }

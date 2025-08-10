@@ -7,13 +7,14 @@
 package company
 
 import (
+	"sync"
+
 	"github.com/ecodeclub/webook/internal/company/internal/repository"
 	"github.com/ecodeclub/webook/internal/company/internal/repository/dao"
 	"github.com/ecodeclub/webook/internal/company/internal/service"
 	"github.com/ecodeclub/webook/internal/company/internal/web"
 	"github.com/ego-component/egorm"
 	"github.com/google/wire"
-	"sync"
 )
 
 // Injectors from wire.go:
