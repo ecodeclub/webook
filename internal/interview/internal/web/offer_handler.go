@@ -6,7 +6,6 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-
 type OfferHandler struct {
 	svc service.OfferService
 }

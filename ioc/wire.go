@@ -107,7 +107,7 @@ func InitApp() (*App, error) {
 		material.InitModule,
 		wire.FieldsOf(new(*material.Module), "Hdl", "AdminHdl"),
 		interview.InitModule,
-		wire.FieldsOf(new(*interview.Module), "JourneyHdl","OfferHdl"),
+		wire.FieldsOf(new(*interview.Module), "JourneyHdl", "OfferHdl"),
 
 		initLocalActiveLimiterBuilder,
 		initCronJobs,

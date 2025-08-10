@@ -7,10 +7,10 @@ type Service interface {
 }
 
 type Mail struct {
-	From       string
-	To         string
-	Subject    string
-	Body       []byte
+	From        string
+	To          string
+	Subject     string
+	Body        []byte
 	Attachments []Attachment
 }
 

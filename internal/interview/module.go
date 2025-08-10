@@ -16,5 +16,5 @@ package interview
 
 type Module struct {
 	JourneyHdl *JourneyHandler
-	OfferHdl *OfferHandler
+	OfferHdl   *OfferHandler
 }

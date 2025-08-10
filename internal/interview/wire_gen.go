@@ -7,6 +7,8 @@
 package interview
 
 import (
+	"sync"
+
 	"github.com/ecodeclub/webook/internal/email"
 	"github.com/ecodeclub/webook/internal/email/aliyun"
 	"github.com/ecodeclub/webook/internal/interview/internal/repository"
@@ -17,7 +19,6 @@ import (
 	"github.com/ego-component/egorm"
 	"github.com/gotomicro/ego/core/econf"
 	"gorm.io/gorm"
-	"sync"
 )
 
 // Injectors from wire.go:

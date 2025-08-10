@@ -92,6 +92,3 @@ func (c *RemotePDFConverter) ConvertHTMLToPDF(ctx context.Context, html string, 
 	}
 	return respBytes, nil
 }
-
-
-

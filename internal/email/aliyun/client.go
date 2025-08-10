@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -18,9 +19,8 @@ import (
 
 // AliyunDirectMailAPI 阿里云邮件推送API客户端
 type AliyunDirectMailAPI struct {
-	client      *dm20151123.Client
-	fromEmail   string
-	region      string
+	client    *dm20151123.Client
+	fromEmail string
 }
 
 // NewAliyunDirectMailAPI 创建阿里云邮件推送API客户端
@@ -55,7 +55,8 @@ func NewAliyunDirectMailAPI(accessKeyID, accessKeySecret, accountName string) (*
 	}
 
 	return &AliyunDirectMailAPI{
-		client:      client,
+		client:    client,
+		fromEmail: accountName,
 	}, nil
 }
 
@@ -100,7 +101,7 @@ func (a *AliyunDirectMailAPI) handleError(err error) error {
 		var errorData interface{}
 		if sdkError.Data != nil {
 			decoder := json.NewDecoder(strings.NewReader(tea.StringValue(sdkError.Data)))
-			decoder.Decode(&errorData)
+			_ = decoder.Decode(&errorData)
 		}
 
 		// 构建详细错误信息
@@ -117,7 +118,7 @@ func (a *AliyunDirectMailAPI) handleError(err error) error {
 			}
 		}
 
-		return fmt.Errorf(errorMsg)
+		return errors.New(errorMsg)
 	}
 
 	return fmt.Errorf("邮件发送失败: %w", err)
