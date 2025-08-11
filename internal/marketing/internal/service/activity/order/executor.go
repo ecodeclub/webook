@@ -37,7 +37,7 @@ func NewOrderActivityExecutor(
 	memberEventProducer producer.MemberEventProducer,
 	creditEventProducer producer.CreditEventProducer,
 	permissionEventProducer producer.PermissionEventProducer,
-	qywechatEventProducer producer.QYWeiChatEventProducer,
+	qywechatEventProducer producer.WechatRobotEventProducer,
 ) *ActivityExecutor {
 
 	registry := NewHandlerRegistry()
