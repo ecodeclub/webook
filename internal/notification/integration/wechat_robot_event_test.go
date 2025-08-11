@@ -12,7 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package consumer_test
+//go:build e2e
+
+package integration
 
 import (
 	"context"
@@ -30,10 +32,20 @@ import (
 	"github.com/ecodeclub/webook/internal/test/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
 	"go.uber.org/mock/gomock"
 )
 
-func TestWechatRobotEventConsumer_New(t *testing.T) {
+func TestWechatRobotEvent(t *testing.T) {
+	suite.Run(t, new(WechatRobotEventTestSuite))
+}
+
+type WechatRobotEventTestSuite struct {
+	suite.Suite
+}
+
+func (s *WechatRobotEventTestSuite) TestNew() {
+	t := s.T()
 
 	testCases := []struct {
 		name            string
@@ -80,7 +92,9 @@ func TestWechatRobotEventConsumer_New(t *testing.T) {
 		})
 	}
 }
-func TestWechatRobotEventConsumer_Start(t *testing.T) {
+func (s *WechatRobotEventTestSuite) TestStart() {
+	t := s.T()
+
 	testCases := []struct {
 		name    string
 		before  func(t *testing.T, ctrl *gomock.Controller) mq.MQ
@@ -122,7 +136,8 @@ func TestWechatRobotEventConsumer_Start(t *testing.T) {
 	}
 }
 
-func TestWechatRobotEventConsumer_Consume(t *testing.T) {
+func (s *WechatRobotEventTestSuite) TestConsume() {
+	t := s.T()
 
 	http.HandleFunc("/hello", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "Hello, adminRobot!")
