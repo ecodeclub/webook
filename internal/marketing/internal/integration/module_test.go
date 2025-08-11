@@ -866,7 +866,7 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeOrderEvent() {
 							},
 						},
 					}, nil).Times(2)
-				qyWechatEventProducer := evtmocks.NewMockWeChatRobotEventProducer(ctrl)
+				qyWechatEventProducer := evtmocks.NewMockWechatRobotEventProducer(ctrl)
 				qyWechatEventProducer.EXPECT().Produce(gomock.Any(), gomock.Any()).Return(nil).Times(2)
 				return service.NewService(nil, mockOrderSvc, nil, nil, nil, nil, nil, nil, qyWechatEventProducer)
 			},
