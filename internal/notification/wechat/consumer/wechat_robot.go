@@ -20,7 +20,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"log"
 	"net/http"
 
@@ -36,8 +35,6 @@ type WechatRobotMessage struct {
 	MsgType string `json:"msgtype"`
 	Text    Text   `json:"text"`
 }
-
-type HTTPPOSTFunc func(url, contentType string, body io.Reader) (resp *http.Response, err error)
 
 type WechatRobotConfig struct {
 	ChatRobots map[string]string `yaml:"chatRobots"`
