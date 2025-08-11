@@ -483,6 +483,7 @@ func (i *InteractiveTestSuite) TestCollection_Save() {
 		{
 			name: "新建",
 			req: web.Collection{
+				Biz:  "面经",
 				Name: "收藏夹",
 			},
 			before: func(t *testing.T) {
@@ -499,6 +500,7 @@ func (i *InteractiveTestSuite) TestCollection_Save() {
 				assert.Equal(t, dao.Collection{
 					Id:   id,
 					Uid:  uid,
+					Biz:  "面经",
 					Name: "收藏夹",
 				}, collection)
 			},
@@ -508,12 +510,14 @@ func (i *InteractiveTestSuite) TestCollection_Save() {
 			name: "编辑",
 			req: web.Collection{
 				Id:   2,
+				Biz:  "项目",
 				Name: "旧收藏夹",
 			},
 			before: func(t *testing.T) {
 				err := i.db.WithContext(context.Background()).Create(&dao.Collection{
 					Id:    2,
 					Uid:   uid,
+					Biz:   "习题",
 					Name:  "新收藏夹",
 					Ctime: 123,
 					Utime: 123,
@@ -532,6 +536,7 @@ func (i *InteractiveTestSuite) TestCollection_Save() {
 				assert.Equal(t, dao.Collection{
 					Id:   id,
 					Uid:  uid,
+					Biz:  "项目",
 					Name: "旧收藏夹",
 				}, collection)
 			},

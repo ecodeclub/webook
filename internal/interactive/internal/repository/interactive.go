@@ -70,8 +70,7 @@ func (i *interactiveRepository) MoveCollection(ctx context.Context, biz string, 
 }
 
 func (i *interactiveRepository) SaveCollection(ctx context.Context, collection domain.Collection) (int64, error) {
-	collectionEntity := i.collectionToEntity(collection)
-	return i.interactiveDao.SaveCollection(ctx, collectionEntity)
+	return i.interactiveDao.SaveCollection(ctx, i.collectionToEntity(collection))
 }
 
 func (i *interactiveRepository) DeleteCollection(ctx context.Context, uid, collectionId int64) error {

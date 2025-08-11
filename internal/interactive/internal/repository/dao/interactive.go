@@ -92,11 +92,8 @@ func (g *GORMInteractiveDAO) GetUserCollects(ctx context.Context, uid int64, biz
 }
 
 func (g *GORMInteractiveDAO) SaveCollection(ctx context.Context, collection Collection) (int64, error) {
-	now := time.Now()
-	ctime := now.UnixMilli()
-	utime := now.UnixMilli()
-	collection.Utime = utime
-	collection.Ctime = ctime
+	now := time.Now().UnixMilli()
+	collection.Ctime, collection.Utime = now, now
 	err := g.db.WithContext(ctx).Clauses(
 		clause.OnConflict{
 			Columns: []clause.Column{
@@ -105,6 +102,7 @@ func (g *GORMInteractiveDAO) SaveCollection(ctx context.Context, collection Coll
 				},
 			},
 			DoUpdates: clause.Assignments(map[string]any{
+				"biz":   collection.Biz,
 				"name":  collection.Name,
 				"utime": collection.Utime,
 			}),

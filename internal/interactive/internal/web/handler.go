@@ -73,11 +73,11 @@ func (h *Handler) Like(ctx *ginx.Context, req LikeReq, sess session.Session) (gi
 
 func (h *Handler) CollectionSave(ctx *ginx.Context, req Collection, sess session.Session) (ginx.Result, error) {
 	// 把 ID 返回回来
-	uid := sess.Claims().Uid
 	id, err := h.svc.SaveCollection(ctx, domain.Collection{
 		Id:   req.Id,
+		Uid:  sess.Claims().Uid,
+		Biz:  req.Biz,
 		Name: req.Name,
-		Uid:  uid,
 	})
 	if err != nil {
 		return systemErrorResult, err
