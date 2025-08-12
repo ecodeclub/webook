@@ -2,6 +2,7 @@ package email
 
 import "context"
 
+//go:generate mockgen -source=./type.go -package=emailmocks -destination=./mocks/email.mock.go -typed Service
 type Service interface {
 	SendMail(ctx context.Context, mail Mail) error
 }

@@ -42,5 +42,5 @@ func (h *OfferHandler) Send(ctx *ginx.Context, req OfferSendRequest) (ginx.Resul
 	if err != nil {
 		return systemErrorResult, err
 	}
-	return ginx.Result{Msg: "OK"}, nil
+	return ginx.Result{}, nil
 }

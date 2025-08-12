@@ -7,9 +7,15 @@ import (
 	"html/template"
 	"time"
 
-	"github.com/ecodeclub/webook/internal/pkg/pdf"
+	_ "embed"
 
 	"github.com/ecodeclub/webook/internal/email"
+	"github.com/ecodeclub/webook/internal/pkg/pdf"
+)
+
+var (
+	//go:embed offer.html
+	offerTemplate string
 )
 
 type OfferService interface {
@@ -27,18 +33,15 @@ type OfferSendReq struct {
 type offerService struct {
 	emailClient  email.Service
 	pdfConverter pdf.Converter
-	template     string
 }
 
 func NewOfferService(
 	emailClient email.Service,
 	pdfConverter pdf.Converter,
-	template string,
 ) OfferService {
 	return &offerService{
 		emailClient:  emailClient,
 		pdfConverter: pdfConverter,
-		template:     template,
 	}
 }
 
@@ -47,7 +50,7 @@ func (o *offerService) Send(ctx context.Context, req OfferSendReq) error {
 	subject := fmt.Sprintf("【%s】%s岗位录取通知书", req.CompanyName, req.JobName)
 
 	// 构造邮件内容 (HTML格式)
-	body, err := renderWithHTMLTemplate(o.template, req)
+	body, err := renderWithHTMLTemplate(offerTemplate, req)
 	if err != nil {
 		return err
 	}
@@ -90,7 +93,7 @@ func renderWithHTMLTemplate(tmpl string, req OfferSendReq) (string, error) {
 		CompanyName: req.CompanyName,
 		JobName:     req.JobName,
 		Salary:      req.Salary,
-		EntryDate:   time.Unix(req.EntryTime, 0).Format("2006年01月02日"),
+		EntryDate:   time.UnixMilli(req.EntryTime).Format("2006年01月02日"),
 	}
 	var buf bytes.Buffer
 	if err := t.Execute(&buf, data); err != nil {

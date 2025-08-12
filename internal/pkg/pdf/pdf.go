@@ -12,6 +12,8 @@ import (
 )
 
 // Converter PDF转换器接口
+//
+//go:generate mockgen -source=./pdf.go -package=pdfmocks -destination=./mocks/pdf.mock.go -typed Converter
 type Converter interface {
 	// ConvertHTMLToPDF 将HTML内容转换为PDF
 	ConvertHTMLToPDF(ctx context.Context, html string, opts ...Option) ([]byte, error)

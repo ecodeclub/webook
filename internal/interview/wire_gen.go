@@ -58,14 +58,8 @@ func initDAO(db *gorm.DB) dao.InterviewDAO {
 func initOfferHdl() *web.OfferHandler {
 	emailCli := initEmailClient()
 	converter := initPDFConverter()
-	tmpl := initOfferTemplate()
-	oSvc := service.NewOfferService(emailCli, converter, tmpl)
+	oSvc := service.NewOfferService(emailCli, converter)
 	return web.NewOfferHandler(oSvc)
-}
-
-func initOfferTemplate() string {
-
-	return econf.GetString("offer.template")
 }
 
 func initPDFConverter() pdf.Converter {
