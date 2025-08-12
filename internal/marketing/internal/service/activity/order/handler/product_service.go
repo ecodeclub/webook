@@ -6,18 +6,18 @@ import (
 	"time"
 
 	"github.com/ecodeclub/ekit/retry"
-	"github.com/ecodeclub/webook/internal/marketing/internal/event"
 	"github.com/ecodeclub/webook/internal/marketing/internal/event/producer"
+	"github.com/ecodeclub/webook/internal/notification/event"
 )
 
 var _ OrderHandler = (*ProductServiceHandler)(nil)
 
 // ProductServiceHandler 面试服务商品处理器 —— 通过企业微信机器人发群消息
 type ProductServiceHandler struct {
-	qywechatEventProducer producer.QYWeiChatEventProducer
+	qywechatEventProducer producer.WechatRobotEventProducer
 }
 
-func NewProductServiceHandler(qywechatEventProducer producer.QYWeiChatEventProducer) *ProductServiceHandler {
+func NewProductServiceHandler(qywechatEventProducer producer.WechatRobotEventProducer) *ProductServiceHandler {
 	return &ProductServiceHandler{qywechatEventProducer: qywechatEventProducer}
 }
 
@@ -26,8 +26,9 @@ func (h *ProductServiceHandler) Handle(ctx context.Context, info OrderInfo) erro
 	var err error
 	for {
 
-		err = h.qywechatEventProducer.Produce(ctx, event.QYWechatEvent{
-			Content: fmt.Sprintf("新订单: ID=%d", info.Order.ID),
+		err = h.qywechatEventProducer.Produce(ctx, event.WechatRobotEvent{
+			Robot:      "adminRobot",
+			RawContent: fmt.Sprintf("新订单: ID=%d", info.Order.ID),
 		})
 
 		if err == nil {

@@ -111,8 +111,10 @@ func InitApp() (*App, error) {
 		wire.FieldsOf(new(*interview.Module), "JourneyHdl"),
 		company.InitModule,
 		wire.FieldsOf(new(*company.Module), "Hdl"),
+
 		initLocalActiveLimiterBuilder,
 		initCronJobs,
+		initMQConsumers,
 		// 这两个顺序不要换
 		initGinxServer,
 		InitAdminServer,
