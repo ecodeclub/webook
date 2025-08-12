@@ -5,6 +5,7 @@ import (
 
 	"github.com/ecodeclub/webook/ioc"
 	"github.com/gotomicro/ego"
+	"github.com/gotomicro/ego/core/elog"
 	"github.com/gotomicro/ego/server/egin"
 	"github.com/gotomicro/ego/server/egovernor"
 )
@@ -19,14 +20,13 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	// 启动消费者
+	for i := range app.Consumers {
+		app.Consumers[i].Start(context.Background())
+	}
 	err = egoApp.
 		// Invoker 在 Ego 里面，应该叫做初始化函数
-		Invoker(func() error {
-			for i := range app.Consumers {
-				app.Consumers[i].Start(context.Background())
-			}
-			return nil
-		}).
+		Invoker().
 		Serve(
 			egovernor.Load("server.governor").Build(),
 			app.Web,
@@ -35,6 +35,6 @@ func main() {
 		Cron(app.Crons...).
 		Run()
 	if err != nil {
-		panic(err)
+		elog.DefaultLogger.Error("App运行错误", elog.FieldErr(err))
 	}
 }
