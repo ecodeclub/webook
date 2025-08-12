@@ -26,7 +26,9 @@ type MaterialService interface {
 	Submit(ctx context.Context, m domain.Material) (int64, error)
 	FindByID(ctx context.Context, id int64) (domain.Material, error)
 	Accept(ctx context.Context, id int64) error
-	List(ctx context.Context, offset, limit int) ([]domain.Material, int64, error)
+	Reject(ctx context.Context, id int64) error
+	// List  分页查询素材列表，如果uid == 0 则在dao层不以uid作为查询条件
+	List(ctx context.Context, uid int64, offset, limit int) ([]domain.Material, int64, error)
 }
 
 type materialService struct {
@@ -48,10 +50,14 @@ func (s *materialService) FindByID(ctx context.Context, id int64) (domain.Materi
 }
 
 func (s *materialService) Accept(ctx context.Context, id int64) error {
-	return s.repo.Accept(ctx, id)
+	return s.repo.UpdateStatus(ctx, id, domain.MaterialStatusAccepted)
 }
 
-func (s *materialService) List(ctx context.Context, offset int, limit int) ([]domain.Material, int64, error) {
+func (s *materialService) Reject(ctx context.Context, id int64) error {
+	return s.repo.UpdateStatus(ctx, id, domain.MaterialStatusRejected)
+}
+
+func (s *materialService) List(ctx context.Context, uid int64, offset int, limit int) ([]domain.Material, int64, error) {
 	var (
 		materials []domain.Material
 		total     int64
@@ -60,12 +66,12 @@ func (s *materialService) List(ctx context.Context, offset int, limit int) ([]do
 	// 并发执行两个查询
 	eg.Go(func() error {
 		var err error
-		materials, err = s.repo.FindAll(ctx, offset, limit)
+		materials, err = s.repo.Find(ctx, uid, offset, limit)
 		return err
 	})
 	eg.Go(func() error {
 		var err error
-		total, err = s.repo.CountAll(ctx)
+		total, err = s.repo.Count(ctx, uid)
 		return err
 	})
 	// 转换并返回结果

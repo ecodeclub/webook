@@ -26,9 +26,11 @@ import (
 type MaterialRepository interface {
 	Create(ctx context.Context, m domain.Material) (int64, error)
 	FindByID(ctx context.Context, id int64) (domain.Material, error)
-	Accept(ctx context.Context, id int64) error
-	FindAll(ctx context.Context, offset int, limit int) ([]domain.Material, error)
-	CountAll(ctx context.Context) (int64, error)
+	UpdateStatus(ctx context.Context, id int64, status domain.MaterialStatus) error
+	// Find  分页查询素材列表，如果uid == 0 则在dao层不以uid作为查询条件
+	Find(ctx context.Context, uid int64, offset, limit int) ([]domain.Material, error)
+	// Count 统计素材列表总数，如果uid == 0 则在dao层不以uid作为查询条件
+	Count(ctx context.Context, uid int64) (int64, error)
 }
 
 // materialRepository 是 MaterialRepository 的实现
@@ -52,12 +54,12 @@ func (r *materialRepository) FindByID(ctx context.Context, id int64) (domain.Mat
 	return r.toDomain(material), nil
 }
 
-func (r *materialRepository) Accept(ctx context.Context, id int64) error {
-	return r.dao.UpdateStatus(ctx, id, domain.MaterialStatusAccepted.String())
+func (r *materialRepository) UpdateStatus(ctx context.Context, id int64, status domain.MaterialStatus) error {
+	return r.dao.UpdateStatus(ctx, id, status.String())
 }
 
-func (r *materialRepository) FindAll(ctx context.Context, offset int, limit int) ([]domain.Material, error) {
-	materials, err := r.dao.FindAll(ctx, offset, limit)
+func (r *materialRepository) Find(ctx context.Context, uid int64, offset, limit int) ([]domain.Material, error) {
+	materials, err := r.dao.Find(ctx, uid, offset, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -66,14 +68,15 @@ func (r *materialRepository) FindAll(ctx context.Context, offset int, limit int)
 	}), nil
 }
 
-func (r *materialRepository) CountAll(ctx context.Context) (int64, error) {
-	return r.dao.CountAll(ctx)
+func (r *materialRepository) Count(ctx context.Context, uid int64) (int64, error) {
+	return r.dao.Count(ctx, uid)
 }
 
 func (r *materialRepository) toDomain(m dao.Material) domain.Material {
 	return domain.Material{
 		ID:        m.ID,
 		Uid:       m.Uid,
+		Title:     m.Title,
 		AudioURL:  m.AudioURL,
 		ResumeURL: m.ResumeURL,
 		Remark:    m.Remark,
@@ -87,6 +90,7 @@ func (r *materialRepository) toEntity(m domain.Material) dao.Material {
 	return dao.Material{
 		ID:        m.ID,
 		Uid:       m.Uid,
+		Title:     m.Title,
 		AudioURL:  m.AudioURL,
 		ResumeURL: m.ResumeURL,
 		Remark:    m.Remark,

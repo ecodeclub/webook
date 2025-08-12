@@ -11,6 +11,7 @@ import (
 	"github.com/ecodeclub/webook/internal/bff"
 	"github.com/ecodeclub/webook/internal/cases"
 	"github.com/ecodeclub/webook/internal/comment"
+	"github.com/ecodeclub/webook/internal/company"
 	"github.com/ecodeclub/webook/internal/cos"
 	"github.com/ecodeclub/webook/internal/credit"
 	"github.com/ecodeclub/webook/internal/feedback"
@@ -172,23 +173,28 @@ func InitApp() (*App, error) {
 	v42 := casesModule.KnowledgeBaseHandler
 	v43 := baguwenModule.KnowledgeBaseHdl
 	v44 := materialModule.AdminHdl
-	adminServer := InitAdminServer(v33, v34, v35, v36, v37, v38, v39, v40, v41, v42, v43, v44)
-	v45 := orderModule.CloseTimeoutOrdersJob
-	v46 := creditModule.CloseTimeoutLockedCreditsJob
-	v47 := paymentModule.SyncWechatOrderJob
+	companyModule, err := company.InitModule(v)
+	if err != nil {
+		return nil, err
+	}
+	v45 := companyModule.Hdl
+	adminServer := InitAdminServer(v33, v34, v35, v36, v37, v38, v39, v40, v41, v42, v43, v44, v45)
+	v46 := orderModule.CloseTimeoutOrdersJob
+	v47 := creditModule.CloseTimeoutLockedCreditsJob
+	v48 := paymentModule.SyncWechatOrderJob
 	reconModule, err := recon.InitModule(orderModule, paymentModule, creditModule)
 	if err != nil {
 		return nil, err
 	}
-	v48 := reconModule.SyncPaymentAndOrderJob
-	v49 := initCronJobs(v45, v46, v47, v48)
-	v50 := baguwenModule.KnowledgeJobStarter
-	v51 := initJobs(v50)
+	v49 := reconModule.SyncPaymentAndOrderJob
+	v50 := initCronJobs(v46, v47, v48, v49)
+	v51 := baguwenModule.KnowledgeJobStarter
+	v52 := initJobs(v51)
 	app := &App{
 		Web:   component,
 		Admin: adminServer,
-		Crons: v49,
-		Jobs:  v51,
+		Crons: v50,
+		Jobs:  v52,
 	}
 	return app, nil
 }

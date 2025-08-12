@@ -21,6 +21,7 @@ import (
 	"github.com/ecodeclub/webook/internal/bff"
 	"github.com/ecodeclub/webook/internal/cases"
 	"github.com/ecodeclub/webook/internal/comment"
+	"github.com/ecodeclub/webook/internal/company"
 	"github.com/ecodeclub/webook/internal/cos"
 	"github.com/ecodeclub/webook/internal/credit"
 	"github.com/ecodeclub/webook/internal/feedback"
@@ -108,7 +109,8 @@ func InitApp() (*App, error) {
 		wire.FieldsOf(new(*material.Module), "Hdl", "AdminHdl"),
 		interview.InitModule,
 		wire.FieldsOf(new(*interview.Module), "JourneyHdl", "OfferHdl"),
-
+		company.InitModule,
+		wire.FieldsOf(new(*company.Module), "Hdl"),
 		initLocalActiveLimiterBuilder,
 		initCronJobs,
 		// 这两个顺序不要换

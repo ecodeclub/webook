@@ -340,6 +340,8 @@ func (s *HandleTestSuite) TestVerify() {
 			assert.NotEmpty(t, val.Data.Nickname)
 			// 在创建的时候，是随机生成的昵称，所以需要特殊判断
 			val.Data.Nickname = ""
+			require.True(t, val.Data.Id > 0)
+			val.Data.Id = 0
 			assert.Equal(t, tc.wantResp, val)
 			tc.after(t)
 			// 清理掉 123 的数据
@@ -479,6 +481,7 @@ func (s *HandleTestSuite) TestMiniVerify() {
 			assert.NotEmpty(t, val.Data.Nickname)
 			// 在创建的时候，是随机生成的昵称，所以需要特殊判断
 			val.Data.Nickname = ""
+			val.Data.Id = 0
 			assert.Equal(t, tc.wantResp, val)
 			tc.after(t)
 			// 清理掉 123 的数据
@@ -507,6 +510,7 @@ func (s *HandleTestSuite) TestProfile() {
 			},
 			wantResp: test.Result[web.Profile]{
 				Data: web.Profile{
+					Id:        123,
 					Nickname:  "old name",
 					Avatar:    "old avatar",
 					MemberDDL: 1234,
@@ -578,6 +582,8 @@ func (s *HandleTestSuite) TestPhoneLogin() {
 			},
 			wantResp: test.Result[web.Profile]{
 				Data: web.Profile{
+					Id:        124,
+					Phone:     "138****5678",
 					Nickname:  "test user",
 					Avatar:    "test avatar",
 					MemberDDL: 1234,
@@ -696,6 +702,7 @@ func (s *HandleTestSuite) TestPhoneRegister() {
 			wantResp: test.Result[web.Profile]{
 				Data: web.Profile{
 					MemberDDL: 1234,
+					Phone:     "139****5678",
 				},
 			},
 			wantCode: 200,
@@ -770,6 +777,8 @@ func (s *HandleTestSuite) TestPhoneRegister() {
 			if strings.HasPrefix(val.Data.Nickname, "用户") {
 				val.Data.Nickname = ""
 			}
+
+			val.Data.Id = 0
 			assert.Equal(t, tc.wantResp, val)
 			tc.after(t)
 		})
@@ -1348,6 +1357,7 @@ func (s *HandlerWithAppTestSuite) TestVerify() {
 			assert.NotEmpty(t, val.Data.Nickname)
 			// 在创建的时候，是随机生成的昵称，所以需要特殊判断
 			val.Data.Nickname = ""
+			val.Data.Id = 0
 			assert.Equal(t, tc.wantResp, val)
 			tc.after(t)
 			// 清理掉的数据
@@ -1496,6 +1506,7 @@ func (s *HandlerWithAppTestSuite) TestMiniVerify() {
 			assert.NotEmpty(t, val.Data.Nickname)
 			// 在创建的时候，是随机生成的昵称，所以需要特殊判断
 			val.Data.Nickname = ""
+			val.Data.Id = 0
 			assert.Equal(t, tc.wantResp, val)
 			tc.after(t)
 			// 清理掉 123 的数据
@@ -1549,7 +1560,9 @@ func (s *HandlerWithAppTestSuite) TestProfile() {
 			recorder := test.NewJSONResponseRecorder[web.Profile]()
 			s.server.ServeHTTP(recorder, req)
 			assert.Equal(t, tc.wantCode, recorder.Code)
-			assert.Equal(t, tc.wantResp, recorder.MustScan())
+			data := recorder.MustScan()
+			data.Data.Id = 0
+			assert.Equal(t, tc.wantResp, data)
 		})
 	}
 }

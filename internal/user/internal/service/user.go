@@ -121,7 +121,7 @@ func (svc *userService) CreateWithPhone(ctx context.Context, phone string) (doma
 	sn := shortuuid.New()
 	u := domain.User{
 		SN:       sn,
-		Nickname: fmt.Sprintf("用户%s", phone),
+		Nickname: fmt.Sprintf("用户%s", phone[len(phone)-4:]),
 		Phone:    phone,
 	}
 	id, err := svc.repo.Create(ctx, u)
