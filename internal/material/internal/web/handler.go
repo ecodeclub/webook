@@ -15,6 +15,9 @@
 package web
 
 import (
+	"fmt"
+
+	"github.com/ecodeclub/ekit/slice"
 	"github.com/ecodeclub/ginx"
 	"github.com/ecodeclub/ginx/session"
 	"github.com/ecodeclub/webook/internal/material/internal/domain"
@@ -35,6 +38,7 @@ func NewHandler(svc service.MaterialService) *Handler {
 func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g := server.Group("/material")
 	g.POST("/submit", ginx.BS[SubmitMaterialReq](h.Submit))
+	g.POST("/history", ginx.BS[ListMaterialsReq](h.History))
 }
 
 func (h *Handler) PublicRoutes(_ *gin.Engine) {}
@@ -42,6 +46,7 @@ func (h *Handler) PublicRoutes(_ *gin.Engine) {}
 func (h *Handler) Submit(ctx *ginx.Context, req SubmitMaterialReq, sess session.Session) (ginx.Result, error) {
 	_, err := h.svc.Submit(ctx.Request.Context(), domain.Material{
 		Uid:       sess.Claims().Uid,
+		Title:     req.Material.Title,
 		AudioURL:  req.Material.AudioURL,
 		ResumeURL: req.Material.ResumeURL,
 		Remark:    req.Material.Remark,
@@ -50,4 +55,28 @@ func (h *Handler) Submit(ctx *ginx.Context, req SubmitMaterialReq, sess session.
 		return systemErrorResult, err
 	}
 	return ginx.Result{Msg: "OK"}, nil
+}
+
+func (h *Handler) History(ctx *ginx.Context, req ListMaterialsReq, sess session.Session) (ginx.Result, error) {
+	materials, total, err := h.svc.List(ctx.Request.Context(), sess.Claims().Uid, req.Offset, req.Limit)
+	if err != nil {
+		return systemErrorResult, fmt.Errorf("获取素材列表失败: %w", err)
+	}
+	return ginx.Result{
+		Data: ListMaterialsResp{
+			Total: int(total),
+			List: slice.Map(materials, func(idx int, src domain.Material) Material {
+				return Material{
+					ID:        src.ID,
+					Title:     src.Title,
+					AudioURL:  src.AudioURL,
+					ResumeURL: src.ResumeURL,
+					Remark:    src.Remark,
+					Status:    src.Status.String(),
+					Ctime:     src.Ctime,
+					Utime:     src.Utime,
+				}
+			}),
+		},
+	}, nil
 }

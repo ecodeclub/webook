@@ -21,21 +21,14 @@ import (
 	"github.com/ego-component/egorm"
 )
 
-// Status 定义了素材的状态枚举
-type Status string
-
-const (
-	StatusInit     Status = "INIT"
-	StatusAccepted Status = "ACCEPTED"
-)
-
 type Material struct {
 	ID        int64  `gorm:"primaryKey,autoIncrement"`
 	Uid       int64  `gorm:"NOT NULL;index;comment:'上传用户的ID'"`
-	AudioURL  string `gorm:"type:VARCHAR(512);NOT NULL;comment:'面试录音的URL'"`
-	ResumeURL string `gorm:"type:VARCHAR(512);NOT NULL;comment:'面试简历的URL'"`
+	Title     string `gorm:"type:VARCHAR(255);NOT NULL;comment:'素材标题'"`
+	AudioURL  string `gorm:"type:VARCHAR(255);NOT NULL;comment:'面试录音的URL'"`
+	ResumeURL string `gorm:"type:VARCHAR(255);NOT NULL;comment:'面试简历的URL'"`
 	Remark    string `gorm:"type:TEXT;comment:'备注'"`
-	Status    string `gorm:"type:ENUM('INIT','ACCEPTED');NOT NULL;default:'INIT';index;comment:'素材状态'"`
+	Status    string `gorm:"type:ENUM('INIT','ACCEPTED','REJECTED');NOT NULL;default:'INIT';index;comment:'素材状态'"`
 	Ctime     int64
 	Utime     int64
 }
@@ -49,8 +42,10 @@ type MaterialDAO interface {
 	Create(ctx context.Context, m Material) (int64, error)
 	FindByID(ctx context.Context, id int64) (Material, error)
 	UpdateStatus(ctx context.Context, id int64, status string) error
-	FindAll(ctx context.Context, offset, limit int) ([]Material, error)
-	CountAll(ctx context.Context) (int64, error)
+	// Find 分页查找所有用户（uid为0）或者指定用户（uid 不为0）的所有素材
+	Find(ctx context.Context, uid int64, offset, limit int) ([]Material, error)
+	// Count 统计所有用户（uid为0）或者指定用户（uid 不为0）的素材数
+	Count(ctx context.Context, uid int64) (int64, error)
 }
 
 // GORMMaterialDAO 是 MaterialDAO 的 GORM 实现
@@ -85,9 +80,13 @@ func (g *GORMMaterialDAO) UpdateStatus(ctx context.Context, id int64, status str
 		}).Error
 }
 
-func (g *GORMMaterialDAO) FindAll(ctx context.Context, offset, limit int) ([]Material, error) {
+func (g *GORMMaterialDAO) Find(ctx context.Context, uid int64, offset, limit int) ([]Material, error) {
 	var res []Material
-	err := g.db.WithContext(ctx).Model(&Material{}).
+	tx := g.db.WithContext(ctx).Model(&Material{})
+	if uid != 0 {
+		tx = tx.Where("uid = ?", uid)
+	}
+	err := tx.
 		Order("id DESC").
 		Offset(offset).
 		Limit(limit).
@@ -95,8 +94,12 @@ func (g *GORMMaterialDAO) FindAll(ctx context.Context, offset, limit int) ([]Mat
 	return res, err
 }
 
-func (g *GORMMaterialDAO) CountAll(ctx context.Context) (int64, error) {
+func (g *GORMMaterialDAO) Count(ctx context.Context, uid int64) (int64, error) {
 	var total int64
-	err := g.db.WithContext(ctx).Model(&Material{}).Count(&total).Error
+	tx := g.db.WithContext(ctx).Model(&Material{})
+	if uid != 0 {
+		tx = tx.Where("uid = ?", uid)
+	}
+	err := tx.Count(&total).Error
 	return total, err
 }

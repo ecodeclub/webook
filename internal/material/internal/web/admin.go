@@ -56,13 +56,14 @@ func (h *AdminHandler) PrivateRoutes(server *gin.Engine) {
 	g := server.Group("/material")
 	g.POST("/list", ginx.BS[ListMaterialsReq](h.List))
 	g.POST("/accept", ginx.BS[AcceptMaterialReq](h.Accept))
+	g.POST("/reject", ginx.BS[RejectMaterialReq](h.Reject))
 	g.POST("/notify", ginx.BS[NotifyUserReq](h.Notify))
 }
 
 func (h *AdminHandler) List(ctx *ginx.Context, req ListMaterialsReq, _ session.Session) (ginx.Result, error) {
-	materials, total, err := h.svc.List(ctx.Request.Context(), req.Offset, req.Limit)
+	materials, total, err := h.svc.List(ctx.Request.Context(), 0, req.Offset, req.Limit)
 	if err != nil {
-		return systemErrorResult, fmt.Errorf("获取兑换码失败: %w", err)
+		return systemErrorResult, fmt.Errorf("获取素材列表失败: %w", err)
 	}
 	return ginx.Result{
 		Data: ListMaterialsResp{
@@ -71,6 +72,7 @@ func (h *AdminHandler) List(ctx *ginx.Context, req ListMaterialsReq, _ session.S
 				return Material{
 					ID:        src.ID,
 					Uid:       src.Uid,
+					Title:     src.Title,
 					AudioURL:  src.AudioURL,
 					ResumeURL: src.ResumeURL,
 					Remark:    src.Remark,
@@ -86,7 +88,7 @@ func (h *AdminHandler) List(ctx *ginx.Context, req ListMaterialsReq, _ session.S
 func (h *AdminHandler) Accept(ctx *ginx.Context, req AcceptMaterialReq, _ session.Session) (ginx.Result, error) {
 	err := h.svc.Accept(ctx.Request.Context(), req.ID)
 	if err != nil {
-		return systemErrorResult, fmt.Errorf("更新素材状态为接受状态失败:%w", err)
+		return systemErrorResult, fmt.Errorf("更新素材状态为'已接受'失败:%w", err)
 	}
 	m, err := h.svc.FindByID(ctx.Request.Context(), req.ID)
 	if err != nil {
@@ -105,6 +107,14 @@ func (h *AdminHandler) Accept(ctx *ginx.Context, req AcceptMaterialReq, _ sessio
 			elog.FieldErr(er),
 			elog.Any("event", evt),
 		)
+	}
+	return ginx.Result{Msg: "OK"}, nil
+}
+
+func (h *AdminHandler) Reject(ctx *ginx.Context, req RejectMaterialReq, _ session.Session) (ginx.Result, error) {
+	err := h.svc.Reject(ctx.Request.Context(), req.ID)
+	if err != nil {
+		return systemErrorResult, fmt.Errorf("更新素材状态为'已拒绝'失败:%w", err)
 	}
 	return ginx.Result{Msg: "OK"}, nil
 }
