@@ -83,7 +83,7 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	users.POST("/logout", ginx.W(h.Logout))
 	users.POST("/profile", ginx.BS[EditReq](h.Edit))
 	// 绑定手机号
-	users.POST("/bind/phone", ginx.BS[PhoneReq](h.BindPhone))
+	users.POST("/phone/bind", ginx.BS[PhoneReq](h.BindPhone))
 }
 
 func (h *Handler) PublicRoutes(server *gin.Engine) {
