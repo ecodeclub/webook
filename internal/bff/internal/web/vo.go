@@ -8,9 +8,10 @@ import (
 )
 
 type CollectionInfoReq struct {
-	ID     int64 `json:"id"`
-	Offset int   `json:"offset"`
-	Limit  int   `json:"limit"`
+	ID     int64  `json:"id"`
+	Biz    string `json:"biz"`
+	Offset int    `json:"offset"`
+	Limit  int    `json:"limit"`
 }
 
 type CollectionRecord struct {
