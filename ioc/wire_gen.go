@@ -27,7 +27,7 @@ import (
 	"github.com/ecodeclub/webook/internal/pkg/middleware"
 	"github.com/ecodeclub/webook/internal/product"
 	"github.com/ecodeclub/webook/internal/project"
-	baguwen "github.com/ecodeclub/webook/internal/question"
+	"github.com/ecodeclub/webook/internal/question"
 	"github.com/ecodeclub/webook/internal/recon"
 	"github.com/ecodeclub/webook/internal/resume"
 	"github.com/ecodeclub/webook/internal/review"
@@ -190,11 +190,13 @@ func InitApp() (*App, error) {
 	v50 := initCronJobs(v46, v47, v48, v49)
 	v51 := baguwenModule.KnowledgeJobStarter
 	v52 := initJobs(v51)
+	v53 := initMQConsumers(mq)
 	app := &App{
-		Web:   component,
-		Admin: adminServer,
-		Crons: v50,
-		Jobs:  v52,
+		Web:       component,
+		Admin:     adminServer,
+		Crons:     v50,
+		Jobs:      v52,
+		Consumers: v53,
 	}
 	return app, nil
 }

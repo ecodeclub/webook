@@ -19,8 +19,8 @@ wechat:
 # 企业微信
 qywechat:
   # 机器人
-  chatRobot:
-    webhookURL: "your/webhookURL"
+  chatRobots:
+    adminRobot: "your/webhookURL"
 
 zhipu:
   apikey: ''
