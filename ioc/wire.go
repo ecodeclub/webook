@@ -108,7 +108,7 @@ func InitApp() (*App, error) {
 		material.InitModule,
 		wire.FieldsOf(new(*material.Module), "Hdl", "AdminHdl"),
 		interview.InitModule,
-		wire.FieldsOf(new(*interview.Module), "JourneyHdl"),
+		wire.FieldsOf(new(*interview.Module), "JourneyHdl", "OfferHdl"),
 		company.InitModule,
 		wire.FieldsOf(new(*company.Module), "Hdl"),
 

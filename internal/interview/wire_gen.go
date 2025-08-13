@@ -9,22 +9,29 @@ package interview
 import (
 	"sync"
 
+	"github.com/ecodeclub/webook/internal/email"
+	"github.com/ecodeclub/webook/internal/email/aliyun"
 	"github.com/ecodeclub/webook/internal/interview/internal/repository"
 	"github.com/ecodeclub/webook/internal/interview/internal/repository/dao"
 	"github.com/ecodeclub/webook/internal/interview/internal/service"
 	"github.com/ecodeclub/webook/internal/interview/internal/web"
+	"github.com/ecodeclub/webook/internal/pkg/pdf"
+	"github.com/ego-component/egorm"
+	"github.com/gotomicro/ego/core/econf"
 	"gorm.io/gorm"
 )
 
 // Injectors from wire.go:
 
-func InitModule(db *gorm.DB) (*Module, error) {
+func InitModule(db *egorm.Component) (*Module, error) {
 	interviewDAO := initDAO(db)
 	interviewRepository := repository.NewInterviewRepository(interviewDAO)
 	interviewService := service.NewInterviewService(interviewRepository)
-	interviewJourneyHandler := web.NewInterviewJourneyHandler(interviewService)
+	v := web.NewInterviewJourneyHandler(interviewService)
+	v2 := initOfferHdl()
 	module := &Module{
-		JourneyHdl: interviewJourneyHandler,
+		JourneyHdl: v,
+		OfferHdl:   v2,
 	}
 	return module, nil
 }
@@ -33,6 +40,7 @@ func InitModule(db *gorm.DB) (*Module, error) {
 
 type (
 	JourneyHandler = web.InterviewJourneyHandler
+	OfferHandler   = web.OfferHandler
 )
 
 var initOnce sync.Once
@@ -45,4 +53,40 @@ func initDAO(db *gorm.DB) dao.InterviewDAO {
 		}
 	})
 	return dao.NewGORMInterviewDAO(db)
+}
+
+func initOfferHdl() *web.OfferHandler {
+	emailCli := initEmailClient()
+	converter := initPDFConverter()
+	oSvc := service.NewOfferService(emailCli, converter)
+	return web.NewOfferHandler(oSvc)
+}
+
+func initPDFConverter() pdf.Converter {
+	type cfg struct {
+		Endpoint string `yaml:"endpoint"`
+	}
+	var c cfg
+
+	err := econf.UnmarshalKey("pdf", &c)
+	if err != nil {
+		panic(err)
+	}
+	return pdf.NewRemotePDFConverter(c.Endpoint)
+}
+
+func initEmailClient() email.Service {
+	type Cfg struct {
+		AccessID     string `yaml:"accessId"`
+		AccessSecret string `yaml:"accessSecret"`
+		AccountName  string `yaml:"accountName"`
+	}
+	var cfg Cfg
+
+	_ = econf.UnmarshalKey("email.ali", &cfg)
+	cli, err := aliyun.NewAliyunDirectMailAPI(cfg.AccessID, cfg.AccessSecret, cfg.AccountName)
+	if err != nil {
+		panic(err)
+	}
+	return cli
 }
