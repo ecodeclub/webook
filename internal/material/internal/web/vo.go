@@ -16,8 +16,8 @@ package web
 
 import "github.com/ecodeclub/ginx"
 
-// SubmitMaterialReq 提交素材请求
-type SubmitMaterialReq struct {
+// SaveMaterialReq 提交素材请求
+type SaveMaterialReq struct {
 	Material Material `json:"material"`
 }
 

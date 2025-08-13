@@ -930,7 +930,7 @@ func (s *HandleTestSuite) TestBindPhone() {
 		s.T().Run(tc.name, func(t *testing.T) {
 			tc.before(t)
 			req, err := http.NewRequest(http.MethodPost,
-				"/users/bind/phone", iox.NewJSONReader(tc.req))
+				"/users/phone/bind", iox.NewJSONReader(tc.req))
 			req.Header.Set("content-type", "application/json")
 			require.NoError(t, err)
 			recorder := test.NewJSONResponseRecorder[any]()

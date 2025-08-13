@@ -7,6 +7,7 @@ import (
 
 func initAliSMSClient() client.Client {
 	type Config struct {
+		Mock      bool   `json:"mock"`
 		SecretID  string `yaml:"secretID"`
 		SecretKey string `yaml:"secretKey"`
 	}
@@ -14,6 +15,9 @@ func initAliSMSClient() client.Client {
 	err := econf.UnmarshalKey("sms.aliyun", &cfg)
 	if err != nil {
 		panic(err)
+	}
+	if cfg.Mock {
+		return client.NewConsoleClient()
 	}
 	aliClient, err := client.NewAliyunSMS(cfg.SecretID, cfg.SecretKey)
 	if err != nil {

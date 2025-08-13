@@ -104,11 +104,11 @@ func (s *MaterialModuleTestSuite) TestHandler_Submit() {
 	testCases := []struct {
 		name           string
 		newHandlerFunc func(t *testing.T, ctrl *gomock.Controller) *web.Handler
-		req            web.SubmitMaterialReq
+		req            web.SaveMaterialReq
 
 		wantCode int
 		wantResp test.Result[any]
-		after    func(t *testing.T, req web.SubmitMaterialReq)
+		after    func(t *testing.T, req web.SaveMaterialReq)
 	}{
 		{
 			name: "提交素材成功",
@@ -116,7 +116,7 @@ func (s *MaterialModuleTestSuite) TestHandler_Submit() {
 				t.Helper()
 				return web.NewHandler(s.svc)
 			},
-			req: web.SubmitMaterialReq{
+			req: web.SaveMaterialReq{
 				Material: web.Material{
 					Title:     fmt.Sprintf("/%d/title", testID),
 					AudioURL:  fmt.Sprintf("/%d/audio", testID),
@@ -128,7 +128,7 @@ func (s *MaterialModuleTestSuite) TestHandler_Submit() {
 			wantResp: test.Result[any]{
 				Msg: "OK",
 			},
-			after: func(t *testing.T, req web.SubmitMaterialReq) {
+			after: func(t *testing.T, req web.SaveMaterialReq) {
 				t.Helper()
 				var material domain.Material
 				assert.NoError(t, s.db.WithContext(t.Context()).Where("uid = ?", testID).First(&material).Error)
@@ -151,7 +151,7 @@ func (s *MaterialModuleTestSuite) TestHandler_Submit() {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
 			req, err := http.NewRequest(http.MethodPost,
-				"/material/submit", iox.NewJSONReader(tc.req))
+				"/material/save", iox.NewJSONReader(tc.req))
 			require.NoError(t, err)
 			req.Header.Set("content-type", "application/json")
 			recorder := test.NewJSONResponseRecorder[any]()
@@ -185,7 +185,7 @@ func (s *MaterialModuleTestSuite) TestHandler_History() {
 	}
 
 	req, err := http.NewRequest(http.MethodPost,
-		"/material/history", iox.NewJSONReader(listReq))
+		"/material/list", iox.NewJSONReader(listReq))
 	require.NoError(t, err)
 	req.Header.Set("content-type", "application/json")
 	recorder := test.NewJSONResponseRecorder[web.ListMaterialsResp]()

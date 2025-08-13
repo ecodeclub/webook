@@ -37,13 +37,13 @@ func NewHandler(svc service.MaterialService) *Handler {
 
 func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g := server.Group("/material")
-	g.POST("/submit", ginx.BS[SubmitMaterialReq](h.Submit))
-	g.POST("/history", ginx.BS[ListMaterialsReq](h.History))
+	g.POST("/list", ginx.BS[ListMaterialsReq](h.History))
+	g.POST("/save", ginx.BS[SaveMaterialReq](h.Save))
 }
 
 func (h *Handler) PublicRoutes(_ *gin.Engine) {}
 
-func (h *Handler) Submit(ctx *ginx.Context, req SubmitMaterialReq, sess session.Session) (ginx.Result, error) {
+func (h *Handler) Save(ctx *ginx.Context, req SaveMaterialReq, sess session.Session) (ginx.Result, error) {
 	_, err := h.svc.Submit(ctx.Request.Context(), domain.Material{
 		Uid:       sess.Claims().Uid,
 		Title:     req.Material.Title,
