@@ -21,6 +21,7 @@ import (
 type MockService struct {
 	ctrl     *gomock.Controller
 	recorder *MockServiceMockRecorder
+	isgomock struct{}
 }
 
 // MockServiceMockRecorder is the mock recorder for MockService.
@@ -79,18 +80,18 @@ func (c *MockServiceCollectToggleCall) DoAndReturn(f func(context.Context, strin
 }
 
 // CollectionInfo mocks base method.
-func (m *MockService) CollectionInfo(ctx context.Context, uid, id int64, offset, limit int) ([]domain.CollectionRecord, error) {
+func (m *MockService) CollectionInfo(ctx context.Context, uid, id int64, biz string, offset, limit int) ([]domain.CollectionRecord, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CollectionInfo", ctx, uid, id, offset, limit)
+	ret := m.ctrl.Call(m, "CollectionInfo", ctx, uid, id, biz, offset, limit)
 	ret0, _ := ret[0].([]domain.CollectionRecord)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // CollectionInfo indicates an expected call of CollectionInfo.
-func (mr *MockServiceMockRecorder) CollectionInfo(ctx, uid, id, offset, limit any) *MockServiceCollectionInfoCall {
+func (mr *MockServiceMockRecorder) CollectionInfo(ctx, uid, id, biz, offset, limit any) *MockServiceCollectionInfoCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CollectionInfo", reflect.TypeOf((*MockService)(nil).CollectionInfo), ctx, uid, id, offset, limit)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CollectionInfo", reflect.TypeOf((*MockService)(nil).CollectionInfo), ctx, uid, id, biz, offset, limit)
 	return &MockServiceCollectionInfoCall{Call: call}
 }
 
@@ -106,13 +107,13 @@ func (c *MockServiceCollectionInfoCall) Return(arg0 []domain.CollectionRecord, a
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockServiceCollectionInfoCall) Do(f func(context.Context, int64, int64, int, int) ([]domain.CollectionRecord, error)) *MockServiceCollectionInfoCall {
+func (c *MockServiceCollectionInfoCall) Do(f func(context.Context, int64, int64, string, int, int) ([]domain.CollectionRecord, error)) *MockServiceCollectionInfoCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockServiceCollectionInfoCall) DoAndReturn(f func(context.Context, int64, int64, int, int) ([]domain.CollectionRecord, error)) *MockServiceCollectionInfoCall {
+func (c *MockServiceCollectionInfoCall) DoAndReturn(f func(context.Context, int64, int64, string, int, int) ([]domain.CollectionRecord, error)) *MockServiceCollectionInfoCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -349,17 +350,17 @@ func (c_2 *MockServiceLikeToggleCall) DoAndReturn(f func(context.Context, string
 }
 
 // MoveToCollection mocks base method.
-func (m *MockService) MoveToCollection(ctx context.Context, biz string, bizid, uid, collectionId int64) error {
+func (m *MockService) MoveToCollection(ctx context.Context, biz string, bizId, uid, collectionId int64) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "MoveToCollection", ctx, biz, bizid, uid, collectionId)
+	ret := m.ctrl.Call(m, "MoveToCollection", ctx, biz, bizId, uid, collectionId)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // MoveToCollection indicates an expected call of MoveToCollection.
-func (mr *MockServiceMockRecorder) MoveToCollection(ctx, biz, bizid, uid, collectionId any) *MockServiceMoveToCollectionCall {
+func (mr *MockServiceMockRecorder) MoveToCollection(ctx, biz, bizId, uid, collectionId any) *MockServiceMoveToCollectionCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MoveToCollection", reflect.TypeOf((*MockService)(nil).MoveToCollection), ctx, biz, bizid, uid, collectionId)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MoveToCollection", reflect.TypeOf((*MockService)(nil).MoveToCollection), ctx, biz, bizId, uid, collectionId)
 	return &MockServiceMoveToCollectionCall{Call: call}
 }
 

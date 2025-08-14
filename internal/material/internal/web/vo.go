@@ -16,14 +16,16 @@ package web
 
 import "github.com/ecodeclub/ginx"
 
-// SubmitMaterialReq 提交素材请求
-type SubmitMaterialReq struct {
+// SaveMaterialReq 提交素材请求
+type SaveMaterialReq struct {
 	Material Material `json:"material"`
 }
 
 type Material struct {
-	ID        int64  `json:"id"`
-	Uid       int64  `json:"uid"`
+	ID int64 `json:"id"`
+	// uid 字段只有admin会用到
+	Uid       int64  `json:"uid,omitzero"`
+	Title     string `json:"title"`
 	AudioURL  string `json:"audioURL"`
 	ResumeURL string `json:"resumeURL"`
 	Remark    string `json:"remark"`
@@ -34,13 +36,17 @@ type Material struct {
 
 // ListMaterialsReq 分页查询用户所提交的素材
 type ListMaterialsReq struct {
-	Offset int `json:"offset,omitempty"`
-	Limit  int `json:"limit,omitempty"`
+	Offset int `json:"offset"`
+	Limit  int `json:"limit"`
 }
 
 type ListMaterialsResp ginx.DataList[Material]
 
 type AcceptMaterialReq struct {
+	ID int64 `json:"id"`
+}
+
+type RejectMaterialReq struct {
 	ID int64 `json:"id"`
 }
 

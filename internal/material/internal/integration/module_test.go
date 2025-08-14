@@ -67,12 +67,12 @@ func (s *MaterialModuleTestSuite) SetupSuite() {
 	s.svc = service.NewMaterialService(repository.NewMaterialRepository(dao.NewGORMMaterialDAO(s.db)))
 }
 
-func (s *MaterialModuleTestSuite) newGinServer(handler *web.Handler) *egin.Component {
+func (s *MaterialModuleTestSuite) newGinServer(handler *web.Handler, uid int64) *egin.Component {
 	econf.Set("server", map[string]any{"contextTimeout": "1s"})
 	server := egin.Load("server").Build()
 	server.Use(func(ctx *gin.Context) {
 		ctx.Set("_session", session.NewMemorySession(session.Claims{
-			Uid: testID,
+			Uid: uid,
 		}))
 	})
 
@@ -104,11 +104,11 @@ func (s *MaterialModuleTestSuite) TestHandler_Submit() {
 	testCases := []struct {
 		name           string
 		newHandlerFunc func(t *testing.T, ctrl *gomock.Controller) *web.Handler
-		req            web.SubmitMaterialReq
+		req            web.SaveMaterialReq
 
 		wantCode int
 		wantResp test.Result[any]
-		after    func(t *testing.T, req web.SubmitMaterialReq)
+		after    func(t *testing.T, req web.SaveMaterialReq)
 	}{
 		{
 			name: "提交素材成功",
@@ -116,8 +116,9 @@ func (s *MaterialModuleTestSuite) TestHandler_Submit() {
 				t.Helper()
 				return web.NewHandler(s.svc)
 			},
-			req: web.SubmitMaterialReq{
+			req: web.SaveMaterialReq{
 				Material: web.Material{
+					Title:     fmt.Sprintf("/%d/title", testID),
 					AudioURL:  fmt.Sprintf("/%d/audio", testID),
 					ResumeURL: fmt.Sprintf("/%d/resume", testID),
 					Remark:    "备注内容",
@@ -127,12 +128,13 @@ func (s *MaterialModuleTestSuite) TestHandler_Submit() {
 			wantResp: test.Result[any]{
 				Msg: "OK",
 			},
-			after: func(t *testing.T, req web.SubmitMaterialReq) {
+			after: func(t *testing.T, req web.SaveMaterialReq) {
 				t.Helper()
 				var material domain.Material
 				assert.NoError(t, s.db.WithContext(t.Context()).Where("uid = ?", testID).First(&material).Error)
 				assert.NotZero(t, material.ID)
 				assert.Equal(t, testID, material.Uid)
+				assert.Equal(t, req.Material.Title, material.Title)
 				assert.Equal(t, req.Material.AudioURL, material.AudioURL)
 				assert.Equal(t, req.Material.ResumeURL, material.ResumeURL)
 				assert.Equal(t, req.Material.Remark, material.Remark)
@@ -149,16 +151,50 @@ func (s *MaterialModuleTestSuite) TestHandler_Submit() {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
 			req, err := http.NewRequest(http.MethodPost,
-				"/material/submit", iox.NewJSONReader(tc.req))
+				"/material/save", iox.NewJSONReader(tc.req))
 			require.NoError(t, err)
 			req.Header.Set("content-type", "application/json")
 			recorder := test.NewJSONResponseRecorder[any]()
-			server := s.newGinServer(tc.newHandlerFunc(t, ctrl))
+			server := s.newGinServer(tc.newHandlerFunc(t, ctrl), testID)
 			server.ServeHTTP(recorder, req)
 			require.Equal(t, tc.wantCode, recorder.Code)
 			assert.Equal(t, tc.wantResp.Data, recorder.MustScan().Data)
 		})
 	}
+}
+
+func (s *MaterialModuleTestSuite) TestHandler_History() {
+	t := s.T()
+
+	total := 10
+	uid := testID + 17
+	for idx := 0; idx < total; idx++ {
+		_, err := s.svc.Submit(context.Background(), domain.Material{
+			Uid:       uid,
+			Title:     fmt.Sprintf("/%d/title", uid),
+			AudioURL:  fmt.Sprintf("/%d/audio", uid),
+			ResumeURL: fmt.Sprintf("/%d/resume", uid),
+			Remark:    fmt.Sprintf("/remark-%d", uid),
+		})
+		require.NoError(t, err)
+	}
+
+	listReq := web.ListMaterialsReq{
+		Limit:  2,
+		Offset: 0,
+	}
+
+	req, err := http.NewRequest(http.MethodPost,
+		"/material/list", iox.NewJSONReader(listReq))
+	require.NoError(t, err)
+	req.Header.Set("content-type", "application/json")
+	recorder := test.NewJSONResponseRecorder[web.ListMaterialsResp]()
+	server := s.newGinServer(web.NewHandler(s.svc), uid)
+	server.ServeHTTP(recorder, req)
+	require.Equal(t, 200, recorder.Code)
+	result := recorder.MustScan()
+	require.Equal(t, total, result.Data.Total)
+	require.Len(t, result.Data.List, listReq.Limit)
 }
 
 func (s *MaterialModuleTestSuite) TestAdminHandler_List() {
@@ -172,6 +208,7 @@ func (s *MaterialModuleTestSuite) TestAdminHandler_List() {
 		id := int64(3000 + idx)
 		_, err := s.svc.Submit(context.Background(), domain.Material{
 			Uid:       id,
+			Title:     fmt.Sprintf("/%d/admin/title", id),
 			AudioURL:  fmt.Sprintf("/%d/admin/audio", id),
 			ResumeURL: fmt.Sprintf("/%d/admin/resume", id),
 			Remark:    fmt.Sprintf("admin/remark-%d", id),
@@ -215,6 +252,7 @@ func (s *MaterialModuleTestSuite) TestAdminHandler_Accept() {
 				t.Helper()
 				id, err := s.svc.Submit(t.Context(), domain.Material{
 					Uid:       testID,
+					Title:     fmt.Sprintf("/%d/admin/title", testID),
 					AudioURL:  fmt.Sprintf("/%d/admin/audio", testID),
 					ResumeURL: fmt.Sprintf("/%d/admin/resume", testID),
 					Remark:    fmt.Sprintf("admin/remark-%d", testID),
@@ -248,6 +286,7 @@ func (s *MaterialModuleTestSuite) TestAdminHandler_Accept() {
 				var material domain.Material
 				assert.NoError(t, s.db.WithContext(t.Context()).Where("id = ?", id).First(&material).Error)
 				assert.Equal(t, testID, material.Uid)
+				assert.Equal(t, fmt.Sprintf("/%d/admin/title", testID), material.Title)
 				assert.Equal(t, fmt.Sprintf("/%d/admin/audio", testID), material.AudioURL)
 				assert.Equal(t, fmt.Sprintf("/%d/admin/resume", testID), material.ResumeURL)
 				assert.Equal(t, fmt.Sprintf("admin/remark-%d", testID), material.Remark)
@@ -283,6 +322,7 @@ func (s *MaterialModuleTestSuite) TestAdminHandler_Accept() {
 				t.Helper()
 				id, err := s.svc.Submit(t.Context(), domain.Material{
 					Uid:       testID,
+					Title:     fmt.Sprintf("/%d/admin/2/title", testID),
 					AudioURL:  fmt.Sprintf("/%d/admin/2/audio", testID),
 					ResumeURL: fmt.Sprintf("/%d/admin/2/resume", testID),
 					Remark:    fmt.Sprintf("admin/2/remark-%d", testID),
@@ -310,6 +350,7 @@ func (s *MaterialModuleTestSuite) TestAdminHandler_Accept() {
 				var material domain.Material
 				assert.NoError(t, s.db.WithContext(t.Context()).Where("id = ?", id).First(&material).Error)
 				assert.Equal(t, testID, material.Uid)
+				assert.Equal(t, fmt.Sprintf("/%d/admin/2/title", testID), material.Title)
 				assert.Equal(t, fmt.Sprintf("/%d/admin/2/audio", testID), material.AudioURL)
 				assert.Equal(t, fmt.Sprintf("/%d/admin/2/resume", testID), material.ResumeURL)
 				assert.Equal(t, fmt.Sprintf("admin/2/remark-%d", testID), material.Remark)
@@ -362,6 +403,7 @@ func (s *MaterialModuleTestSuite) TestAdminHandler_Notify() {
 				t.Helper()
 				id, err := s.svc.Submit(t.Context(), domain.Material{
 					Uid:       testID,
+					Title:     fmt.Sprintf("/%d/admin/3/title", testID),
 					AudioURL:  fmt.Sprintf("/%d/admin/3/audio", testID),
 					ResumeURL: fmt.Sprintf("/%d/admin/3/resume", testID),
 					Remark:    fmt.Sprintf("admin/3/remark-%d", testID),
@@ -405,6 +447,7 @@ func (s *MaterialModuleTestSuite) TestAdminHandler_Notify() {
 				var material domain.Material
 				assert.NoError(t, s.db.WithContext(t.Context()).Where("id = ?", id).First(&material).Error)
 				assert.Equal(t, testID, material.Uid)
+				assert.Equal(t, fmt.Sprintf("/%d/admin/3/title", testID), material.Title)
 				assert.Equal(t, fmt.Sprintf("/%d/admin/3/audio", testID), material.AudioURL)
 				assert.Equal(t, fmt.Sprintf("/%d/admin/3/resume", testID), material.ResumeURL)
 				assert.Equal(t, fmt.Sprintf("admin/3/remark-%d", testID), material.Remark)
@@ -419,10 +462,13 @@ func (s *MaterialModuleTestSuite) TestAdminHandler_Notify() {
 				t.Helper()
 				id, err := s.svc.Submit(t.Context(), domain.Material{
 					Uid:       testID,
+					Title:     fmt.Sprintf("/%d/admin/4/title", testID),
 					AudioURL:  fmt.Sprintf("/%d/admin/4/audio", testID),
 					ResumeURL: fmt.Sprintf("/%d/admin/4/resume", testID),
 					Remark:    fmt.Sprintf("admin/4/remark-%d", testID),
 				})
+				require.NoError(t, err)
+				err = s.svc.Reject(t.Context(), id)
 				require.NoError(t, err)
 				return id
 			},
@@ -442,10 +488,11 @@ func (s *MaterialModuleTestSuite) TestAdminHandler_Notify() {
 				var material domain.Material
 				assert.NoError(t, s.db.WithContext(t.Context()).Where("id = ?", id).First(&material).Error)
 				assert.Equal(t, testID, material.Uid)
+				assert.Equal(t, fmt.Sprintf("/%d/admin/4/title", testID), material.Title)
 				assert.Equal(t, fmt.Sprintf("/%d/admin/4/audio", testID), material.AudioURL)
 				assert.Equal(t, fmt.Sprintf("/%d/admin/4/resume", testID), material.ResumeURL)
 				assert.Equal(t, fmt.Sprintf("admin/4/remark-%d", testID), material.Remark)
-				assert.Equal(t, domain.MaterialStatusInit, material.Status)
+				assert.Equal(t, domain.MaterialStatusRejected, material.Status)
 				assert.NotZero(t, material.Ctime)
 				assert.NotZero(t, material.Utime)
 			},
@@ -456,6 +503,7 @@ func (s *MaterialModuleTestSuite) TestAdminHandler_Notify() {
 				t.Helper()
 				id, err := s.svc.Submit(t.Context(), domain.Material{
 					Uid:       testID,
+					Title:     fmt.Sprintf("/%d/admin/5/title", testID),
 					AudioURL:  fmt.Sprintf("/%d/admin/5/audio", testID),
 					ResumeURL: fmt.Sprintf("/%d/admin/5/resume", testID),
 					Remark:    fmt.Sprintf("admin/5/remark-%d", testID),
@@ -483,6 +531,7 @@ func (s *MaterialModuleTestSuite) TestAdminHandler_Notify() {
 				var material domain.Material
 				assert.NoError(t, s.db.WithContext(t.Context()).Where("id = ?", id).First(&material).Error)
 				assert.Equal(t, testID, material.Uid)
+				assert.Equal(t, fmt.Sprintf("/%d/admin/5/title", testID), material.Title)
 				assert.Equal(t, fmt.Sprintf("/%d/admin/5/audio", testID), material.AudioURL)
 				assert.Equal(t, fmt.Sprintf("/%d/admin/5/resume", testID), material.ResumeURL)
 				assert.Equal(t, fmt.Sprintf("admin/5/remark-%d", testID), material.Remark)
@@ -497,6 +546,7 @@ func (s *MaterialModuleTestSuite) TestAdminHandler_Notify() {
 				t.Helper()
 				id, err := s.svc.Submit(t.Context(), domain.Material{
 					Uid:       testID,
+					Title:     fmt.Sprintf("/%d/admin/6/title", testID),
 					AudioURL:  fmt.Sprintf("/%d/admin/6/audio", testID),
 					ResumeURL: fmt.Sprintf("/%d/admin/6/resume", testID),
 					Remark:    fmt.Sprintf("admin/6/remark-%d", testID),
@@ -524,6 +574,7 @@ func (s *MaterialModuleTestSuite) TestAdminHandler_Notify() {
 				var material domain.Material
 				assert.NoError(t, s.db.WithContext(t.Context()).Where("id = ?", id).First(&material).Error)
 				assert.Equal(t, testID, material.Uid)
+				assert.Equal(t, fmt.Sprintf("/%d/admin/6/title", testID), material.Title)
 				assert.Equal(t, fmt.Sprintf("/%d/admin/6/audio", testID), material.AudioURL)
 				assert.Equal(t, fmt.Sprintf("/%d/admin/6/resume", testID), material.ResumeURL)
 				assert.Equal(t, fmt.Sprintf("admin/6/remark-%d", testID), material.Remark)
@@ -538,6 +589,7 @@ func (s *MaterialModuleTestSuite) TestAdminHandler_Notify() {
 				t.Helper()
 				id, err := s.svc.Submit(t.Context(), domain.Material{
 					Uid:       testID,
+					Title:     fmt.Sprintf("/%d/admin/7/title", testID),
 					AudioURL:  fmt.Sprintf("/%d/admin/7/audio", testID),
 					ResumeURL: fmt.Sprintf("/%d/admin/7/resume", testID),
 					Remark:    fmt.Sprintf("admin/7/remark-%d", testID),
@@ -548,7 +600,6 @@ func (s *MaterialModuleTestSuite) TestAdminHandler_Notify() {
 				return id
 			},
 			newHandlerFunc: func(t *testing.T, ctrl *gomock.Controller) *web.AdminHandler {
-				t.Helper()
 				t.Helper()
 				userSvc := usermocks.NewMockUserService(ctrl)
 				userSvc.EXPECT().Profile(gomock.Any(), testID).Return(user.User{Id: testID, Phone: "13845016319"}, nil).Times(1)
@@ -574,6 +625,7 @@ func (s *MaterialModuleTestSuite) TestAdminHandler_Notify() {
 				var material domain.Material
 				assert.NoError(t, s.db.WithContext(t.Context()).Where("id = ?", id).First(&material).Error)
 				assert.Equal(t, testID, material.Uid)
+				assert.Equal(t, fmt.Sprintf("/%d/admin/7/title", testID), material.Title)
 				assert.Equal(t, fmt.Sprintf("/%d/admin/7/audio", testID), material.AudioURL)
 				assert.Equal(t, fmt.Sprintf("/%d/admin/7/resume", testID), material.ResumeURL)
 				assert.Equal(t, fmt.Sprintf("admin/7/remark-%d", testID), material.Remark)
@@ -588,6 +640,7 @@ func (s *MaterialModuleTestSuite) TestAdminHandler_Notify() {
 				t.Helper()
 				id, err := s.svc.Submit(t.Context(), domain.Material{
 					Uid:       testID,
+					Title:     fmt.Sprintf("/%d/admin/8/title", testID),
 					AudioURL:  fmt.Sprintf("/%d/admin/8/audio", testID),
 					ResumeURL: fmt.Sprintf("/%d/admin/8/resume", testID),
 					Remark:    fmt.Sprintf("admin/8/remark-%d", testID),
@@ -631,6 +684,7 @@ func (s *MaterialModuleTestSuite) TestAdminHandler_Notify() {
 				var material domain.Material
 				assert.NoError(t, s.db.WithContext(t.Context()).Where("id = ?", id).First(&material).Error)
 				assert.Equal(t, testID, material.Uid)
+				assert.Equal(t, fmt.Sprintf("/%d/admin/8/title", testID), material.Title)
 				assert.Equal(t, fmt.Sprintf("/%d/admin/8/audio", testID), material.AudioURL)
 				assert.Equal(t, fmt.Sprintf("/%d/admin/8/resume", testID), material.ResumeURL)
 				assert.Equal(t, fmt.Sprintf("admin/8/remark-%d", testID), material.Remark)
@@ -656,6 +710,83 @@ func (s *MaterialModuleTestSuite) TestAdminHandler_Notify() {
 			req.Header.Set("content-type", "application/json")
 			recorder := test.NewJSONResponseRecorder[any]()
 			server := s.newAdminGinServer(tc.newHandlerFunc(t, ctrl))
+			server.ServeHTTP(recorder, req)
+			require.Equal(t, tc.wantCode, recorder.Code)
+			assert.Equal(t, tc.wantResp.Data, recorder.MustScan().Data)
+
+			tc.after(t, id)
+		})
+	}
+}
+
+func (s *MaterialModuleTestSuite) TestAdminHandler_Reject() {
+	t := s.T()
+	testCases := []struct {
+		name           string
+		before         func(t *testing.T) int64
+		newHandlerFunc func(t *testing.T) *web.AdminHandler
+		req            web.RejectMaterialReq
+
+		wantCode int
+		wantResp test.Result[any]
+		after    func(t *testing.T, id int64)
+	}{
+		{
+			name: "拒绝素材成功",
+			before: func(t *testing.T) int64 {
+				t.Helper()
+				id, err := s.svc.Submit(t.Context(), domain.Material{
+					Uid:       testID,
+					Title:     fmt.Sprintf("/%d/admin/9/title", testID),
+					AudioURL:  fmt.Sprintf("/%d/admin/9/audio", testID),
+					ResumeURL: fmt.Sprintf("/%d/admin/9/resume", testID),
+					Remark:    fmt.Sprintf("admin/9/remark-%d", testID),
+				})
+				require.NoError(t, err)
+				return id
+			},
+			newHandlerFunc: func(t *testing.T) *web.AdminHandler {
+				t.Helper()
+				return web.NewAdminHandler(s.svc, nil, nil, nil)
+			},
+			req: web.RejectMaterialReq{
+				ID: 0,
+			},
+			wantCode: 200,
+			wantResp: test.Result[any]{
+				Msg: "OK",
+			},
+			after: func(t *testing.T, id int64) {
+				t.Helper()
+				var material domain.Material
+				assert.NoError(t, s.db.WithContext(t.Context()).Where("id = ?", id).First(&material).Error)
+				assert.Equal(t, testID, material.Uid)
+				assert.Equal(t, fmt.Sprintf("/%d/admin/9/title", testID), material.Title)
+				assert.Equal(t, fmt.Sprintf("/%d/admin/9/audio", testID), material.AudioURL)
+				assert.Equal(t, fmt.Sprintf("/%d/admin/9/resume", testID), material.ResumeURL)
+				assert.Equal(t, fmt.Sprintf("admin/9/remark-%d", testID), material.Remark)
+				assert.Equal(t, domain.MaterialStatusRejected, material.Status)
+				assert.NotZero(t, material.Ctime)
+				assert.NotZero(t, material.Utime)
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			id := tc.before(t)
+			tc.req.ID = id
+
+			req, err := http.NewRequest(http.MethodPost,
+				"/material/reject", iox.NewJSONReader(tc.req))
+			require.NoError(t, err)
+			req.Header.Set("content-type", "application/json")
+			recorder := test.NewJSONResponseRecorder[any]()
+			server := s.newAdminGinServer(tc.newHandlerFunc(t))
 			server.ServeHTTP(recorder, req)
 			require.Equal(t, tc.wantCode, recorder.Code)
 			assert.Equal(t, tc.wantResp.Data, recorder.MustScan().Data)

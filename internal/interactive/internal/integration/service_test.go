@@ -231,6 +231,7 @@ func (i *InteractiveTestSuite) TestCollection_Info() {
 		name    string
 		before  func(t *testing.T) int64
 		wantVal []domain.CollectionRecord
+		biz     string
 		offset  int
 		limit   int
 		wantErr error
@@ -243,13 +244,13 @@ func (i *InteractiveTestSuite) TestCollection_Info() {
 					Name: "收藏夹",
 				})
 				require.NoError(t, err)
-				err = i.svc.CollectToggle(context.Background(), "case", 1, uid)
+				err = i.svc.CollectToggle(context.Background(), repository.CaseBiz, 1, uid)
 				require.NoError(t, err)
-				err = i.svc.CollectToggle(context.Background(), "case", 2, uid)
+				err = i.svc.CollectToggle(context.Background(), repository.CaseBiz, 2, uid)
 				require.NoError(t, err)
-				err = i.svc.MoveToCollection(context.Background(), "case", 1, uid, id)
+				err = i.svc.MoveToCollection(context.Background(), repository.CaseBiz, 1, uid, id)
 				require.NoError(t, err)
-				err = i.svc.MoveToCollection(context.Background(), "case", 2, uid, id)
+				err = i.svc.MoveToCollection(context.Background(), repository.CaseBiz, 2, uid, id)
 				require.NoError(t, err)
 				err = i.svc.CollectToggle(context.Background(), repository.QuestionBiz, 1, uid)
 				require.NoError(t, err)
@@ -283,6 +284,7 @@ func (i *InteractiveTestSuite) TestCollection_Info() {
 					Case: 1,
 				},
 			},
+			biz:    "",
 			offset: 0,
 			limit:  10,
 		},
@@ -294,9 +296,9 @@ func (i *InteractiveTestSuite) TestCollection_Info() {
 					Name: "收藏夹2",
 				})
 				require.NoError(t, err)
-				err = i.svc.CollectToggle(context.Background(), "case", 3, uid)
+				err = i.svc.CollectToggle(context.Background(), repository.CaseBiz, 3, uid)
 				require.NoError(t, err)
-				err = i.svc.MoveToCollection(context.Background(), "case", 3, uid, id)
+				err = i.svc.MoveToCollection(context.Background(), repository.CaseBiz, 3, uid, id)
 				require.NoError(t, err)
 				err = i.svc.CollectToggle(context.Background(), repository.QuestionBiz, 2, uid)
 				require.NoError(t, err)
@@ -314,20 +316,16 @@ func (i *InteractiveTestSuite) TestCollection_Info() {
 					Biz:      repository.QuestionBiz,
 					Question: 2,
 				},
-				{
-					Id:   5,
-					Biz:  repository.CaseBiz,
-					Case: 3,
-				},
 			},
-			offset: 1,
+			biz:    repository.QuestionBiz,
+			offset: 0,
 			limit:  2,
 		},
 	}
 	for _, tc := range testcases {
 		i.T().Run(tc.name, func(t *testing.T) {
 			id := tc.before(t)
-			res, err := i.svc.CollectionInfo(context.Background(), uid, id, tc.offset, tc.limit)
+			res, err := i.svc.CollectionInfo(context.Background(), uid, id, tc.biz, tc.offset, tc.limit)
 			assert.Equal(t, err, tc.wantErr)
 			if err != nil {
 				return

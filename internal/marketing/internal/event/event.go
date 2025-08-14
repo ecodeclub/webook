@@ -86,7 +86,3 @@ type UserRegistrationEvent struct {
 	Uid            int64  `json:"uid,omitempty"`
 	InvitationCode string `json:"invitationCode,omitempty"`
 }
-
-type QYWechatEvent struct {
-	Content string `json:"content"`
-}

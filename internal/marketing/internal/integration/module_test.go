@@ -20,7 +20,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"sync"
 	"testing"
@@ -32,6 +31,7 @@ import (
 	"github.com/ecodeclub/webook/internal/marketing/internal/domain"
 	"github.com/ecodeclub/webook/internal/marketing/internal/event"
 	"github.com/ecodeclub/webook/internal/marketing/internal/event/consumer"
+	evtmocks "github.com/ecodeclub/webook/internal/marketing/internal/event/mocks"
 	"github.com/ecodeclub/webook/internal/marketing/internal/event/producer"
 	"github.com/ecodeclub/webook/internal/marketing/internal/repository"
 	"github.com/ecodeclub/webook/internal/marketing/internal/repository/cache"
@@ -866,29 +866,8 @@ func (s *ModuleTestSuite) TestConsumer_ConsumeOrderEvent() {
 							},
 						},
 					}, nil).Times(2)
-
-				postFunc := func(url, contentType string, body io.Reader) (resp *http.Response, err error) {
-
-					require.NotZero(t, url)
-
-					require.Equal(t, "application/json", contentType)
-
-					bs, err := io.ReadAll(body)
-					require.NoError(t, err)
-					type Message struct {
-						MsgType string              `json:"msgtype"`
-						Text    event.QYWechatEvent `json:"text"`
-					}
-					var msg Message
-					err = json.Unmarshal(bs, &msg)
-					require.NoError(t, err)
-					require.Equal(t, "text", msg.MsgType)
-					require.Contains(t, msg.Text.Content, fmt.Sprintf("%d", orderId))
-
-					return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(body)}, nil
-				}
-
-				qyWechatEventProducer := producer.NewQYWeChatEventProducer("whatever", postFunc)
+				qyWechatEventProducer := evtmocks.NewMockWechatRobotEventProducer(ctrl)
+				qyWechatEventProducer.EXPECT().Produce(gomock.Any(), gomock.Any()).Return(nil).Times(2)
 				return service.NewService(nil, mockOrderSvc, nil, nil, nil, nil, nil, nil, qyWechatEventProducer)
 			},
 			evt: event.OrderEvent{

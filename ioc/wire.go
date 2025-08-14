@@ -21,10 +21,12 @@ import (
 	"github.com/ecodeclub/webook/internal/bff"
 	"github.com/ecodeclub/webook/internal/cases"
 	"github.com/ecodeclub/webook/internal/comment"
+	"github.com/ecodeclub/webook/internal/company"
 	"github.com/ecodeclub/webook/internal/cos"
 	"github.com/ecodeclub/webook/internal/credit"
 	"github.com/ecodeclub/webook/internal/feedback"
 	"github.com/ecodeclub/webook/internal/interactive"
+	"github.com/ecodeclub/webook/internal/interview"
 	"github.com/ecodeclub/webook/internal/label"
 	"github.com/ecodeclub/webook/internal/marketing"
 	"github.com/ecodeclub/webook/internal/material"
@@ -105,9 +107,14 @@ func InitApp() (*App, error) {
 		wire.FieldsOf(new(*comment.Module), "Hdl"),
 		material.InitModule,
 		wire.FieldsOf(new(*material.Module), "Hdl", "AdminHdl"),
+		interview.InitModule,
+		wire.FieldsOf(new(*interview.Module), "JourneyHdl", "OfferHdl"),
+		company.InitModule,
+		wire.FieldsOf(new(*company.Module), "Hdl"),
 
 		initLocalActiveLimiterBuilder,
 		initCronJobs,
+		initMQConsumers,
 		// 这两个顺序不要换
 		initGinxServer,
 		InitAdminServer,

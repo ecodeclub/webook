@@ -19,6 +19,7 @@ type MaterialStatus string
 const (
 	MaterialStatusInit     MaterialStatus = "INIT"
 	MaterialStatusAccepted MaterialStatus = "ACCEPTED"
+	MaterialStatusRejected MaterialStatus = "REJECTED"
 )
 
 func (m MaterialStatus) String() string {
@@ -32,6 +33,7 @@ func (m MaterialStatus) IsAccepted() bool {
 type Material struct {
 	ID        int64
 	Uid       int64
+	Title     string
 	AudioURL  string
 	ResumeURL string
 	Remark    string
