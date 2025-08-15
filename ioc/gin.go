@@ -18,6 +18,9 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/ecodeclub/webook/internal/comment"
+	"github.com/ecodeclub/webook/internal/interview"
+	"github.com/ecodeclub/webook/internal/material"
 	"github.com/ecodeclub/webook/internal/review"
 
 	"github.com/ecodeclub/webook/internal/ai"
@@ -91,6 +94,10 @@ func initGinxServer(sp session.Provider,
 	resumeAnaHdl *resume.AnalysisHandler,
 	aiHdl *ai.LLMHandler,
 	reviewHdl *review.Hdl,
+	commentHdl *comment.Handler,
+	materialHdl *material.Handler,
+	journeyHdl *interview.JourneyHandler,
+	offerHdl *interview.OfferHandler,
 ) *egin.Component {
 	session.SetDefaultProvider(sp)
 	res := egin.Load("web").Build()
@@ -113,9 +120,8 @@ func initGinxServer(sp session.Provider,
 	res.GET("/hello", func(ctx *gin.Context) {
 		ctx.String(http.StatusOK, "hello, world!")
 	})
-
 	// 放到这里统一管理，后续扩展性更加好
-	res.Use(middleware.NewCheckAppIdBuilder().Build())
+	res.Use(middleware.NewCheckAppIdBuilder().Build(), middleware.NewMetricsBuilder().Build())
 
 	// 微信支付的回调不需要安全校验机制
 	paymentHdl.PublicRoutes(res.Engine)
@@ -153,6 +159,8 @@ func initGinxServer(sp session.Provider,
 	prjHdl.PrivateRoutes(res.Engine)
 	bffHdl.PrivateRoutes(res.Engine)
 	csHdl.PrivateRoutes(res.Engine)
+	materialHdl.PrivateRoutes(res.Engine)
+	journeyHdl.PrivateRoutes(res.Engine)
 
 	// 权限校验
 
@@ -165,5 +173,7 @@ func initGinxServer(sp session.Provider,
 	resumePrjHdl.MemberRoutes(res.Engine)
 	resumeAnaHdl.MemberRoutes(res.Engine)
 	aiHdl.MemberRoutes(res.Engine)
+	commentHdl.MemberRoutes(res.Engine)
+	offerHdl.MemberRoutes(res.Engine)
 	return res
 }

@@ -59,7 +59,7 @@ func NewService(
 	memberEventProducer producer.MemberEventProducer,
 	creditEventProducer producer.CreditEventProducer,
 	permissionEventProducer producer.PermissionEventProducer,
-	qywechatEventProducer producer.QYWeiChatEventProducer,
+	qywechatEventProducer producer.WechatRobotEventProducer,
 ) Service {
 
 	return &service{

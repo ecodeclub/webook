@@ -19,6 +19,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/ecodeclub/ekit/slice"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/gotomicro/ego/core/elog"
@@ -52,10 +53,10 @@ type InteractiveRepository interface {
 	DeleteCollection(ctx context.Context, uid, collectionId int64) error
 	// 收藏夹列表
 	CollectionList(ctx context.Context, uid int64, offset, limit int) ([]domain.Collection, error)
-	// CollectionInfo 收藏夹收藏记录
+	// CollectionInfo 收藏详情带分页 biz == ""时，dao层不作为查询条件
 	CollectionInfo(ctx context.Context, uid, collectionId int64, biz string, offset, limit int) ([]domain.CollectionRecord, error)
 	// MoveCollection 转移收藏夹
-	MoveCollection(ctx context.Context, biz string, bizid, uid, collectionId int64) error
+	MoveCollection(ctx context.Context, biz string, bizId, uid, collectionId int64) error
 }
 
 type interactiveRepository struct {
@@ -63,8 +64,8 @@ type interactiveRepository struct {
 	logger         *elog.Component
 }
 
-func (i *interactiveRepository) MoveCollection(ctx context.Context, biz string, bizid, uid, collectionId int64) error {
-	return i.interactiveDao.MoveCollection(ctx, biz, bizid, uid, collectionId)
+func (i *interactiveRepository) MoveCollection(ctx context.Context, biz string, bizId, uid, collectionId int64) error {
+	return i.interactiveDao.MoveCollection(ctx, biz, bizId, uid, collectionId)
 }
 
 func (i *interactiveRepository) SaveCollection(ctx context.Context, collection domain.Collection) (int64, error) {
@@ -104,12 +105,9 @@ func (i *interactiveRepository) CollectionInfo(ctx context.Context, uid, collect
 	if err != nil {
 		return nil, err
 	}
-	records := make([]domain.CollectionRecord, 0, len(userBizs))
-	for _, userBiz := range userBizs {
-		record := i.toCollectionRecord(userBiz)
-		records = append(records, record)
-	}
-	return records, nil
+	return slice.Map(userBizs, func(_ int, src dao.UserCollectionBiz) domain.CollectionRecord {
+		return i.toCollectionRecord(src)
+	}), nil
 }
 
 func (i *interactiveRepository) IncrViewCnt(ctx context.Context, biz string, bizId int64) error {

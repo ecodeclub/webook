@@ -19,8 +19,8 @@ wechat:
 # 企业微信
 qywechat:
   # 机器人
-  chatRobot:
-    webhookURL: "your/webhookURL"
+  chatRobots:
+    adminRobot: "your/webhookURL"
 
 zhipu:
   apikey: ''
@@ -55,6 +55,12 @@ kafka:
   addresses:
     - kafka:9092
 
+sms:
+  aliyun:
+    secretID: ""
+    secretKey: ""
+
+
 cron:
 # 超时关闭订单
   closeTimeoutOrder:
@@ -72,3 +78,69 @@ cron:
   syncPaymentAndOrder:
     enableSeconds: true          # 是否使用秒作解析器，默认否
     spec: "* * * * *"           # 每分钟执行一次
+
+
+email:
+  ali:
+   accessId: ""
+   accessSecret: ""
+   accountName: ""  #就是发送的email
+
+pdf:
+  endpoint: ""
+
+offer:
+  template: |-
+    <!DOCTYPE html>
+    <html lang="zh-CN">
+    <head>
+      <meta charset="UTF-8" />
+      <title>{{.CompanyName}} 录用通知书</title>
+      <meta name="viewport" content="width=device-width, initial-scale=1" />
+      <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif; background: #f7f8fa; margin: 0; padding: 24px; color: #1f2328; }
+        .card { max-width: 720px; margin: 0 auto; background: #fff; border-radius: 12px; box-shadow: 0 6px 24px rgba(0,0,0,0.06); overflow: hidden; }
+        .header { padding: 24px 28px; background: #0b5fff; color: #fff; }
+        .header h1 { margin: 0; font-size: 22px; }
+        .content { padding: 28px; line-height: 1.75; font-size: 15px; }
+        .section { margin: 18px 0; }
+        .kv { margin: 14px 0 0; padding: 0; list-style: none; }
+        .kv li { margin: 8px 0; }
+        .kv strong { display: inline-block; min-width: 90px; color: #555; }
+        .note { background: #f8fafc; border: 1px solid #eef2f7; padding: 14px; border-radius: 8px; color: #475569; }
+        .footer { padding: 20px 28px; border-top: 1px solid #f0f3f7; color: #6b7280; font-size: 13px; }
+      </style>
+    </head>
+    <body>
+      <div class="card">
+        <div class="header">
+          <h1>{{.CompanyName}} 录用通知书</h1>
+        </div>
+        <div class="content">
+          <div class="section">
+            尊敬的候选人，<br />
+            恭喜您通过面试评估！我们诚挚邀请您加入 <strong>{{.CompanyName}}</strong>，担任 <strong>{{.JobName}}</strong> 职位。
+          </div>
+          <div class="section">
+            以下为本次录用的关键信息：
+            <ul class="kv">
+              <li><strong>岗位名称：</strong>{{.JobName}}</li>
+              <li><strong>薪资待遇：</strong>{{.Salary}}</li>
+              <li><strong>预计入职时间：</strong>{{.EntryDate}}</li>
+            </ul>
+          </div>
+          <div class="section note">
+            请您在收到本通知后尽快与我们沟通入职安排。如对上述信息有任何疑问，欢迎随时联系 HR 与招聘团队。
+          </div>
+          <div class="section">
+            我们期待与您携手共进，一同创造更大的价值！
+          </div>
+        </div>
+        <div class="footer">
+          此致<br />
+          敬礼<br /><br />
+          {{.CompanyName}} 招聘与人力资源团队
+        </div>
+      </div>
+    </body>
+    </html>

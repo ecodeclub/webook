@@ -17,12 +17,16 @@ var ErrDataNotFound = gorm.ErrRecordNotFound
 // ErrUserDuplicate 这个算是 user 专属的
 var ErrUserDuplicate = errors.New("用户已经注册")
 
+var ErrPhoneNotFound = errors.New("手机号没找到")
+
 //go:generate mockgen -source=./user.go -package=daomocks -destination=mocks/user.mock.go UserDAO
 type UserDAO interface {
 	Insert(ctx context.Context, u User) (int64, error)
 	UpdateNonZeroFields(ctx context.Context, u User) error
 	FindByWechat(ctx context.Context, unionId string) (User, error)
 	FindById(ctx context.Context, id int64) (User, error)
+	FindByIds(ctx context.Context, ids []int64) ([]User, error)
+	FindByPhone(ctx context.Context, phone string) (User, error)
 }
 
 type GORMUserDAO struct {
@@ -33,6 +37,15 @@ func NewGORMUserDAO(db *egorm.Component) UserDAO {
 	return &GORMUserDAO{
 		db: db,
 	}
+}
+
+func (ud *GORMUserDAO) FindByPhone(ctx context.Context, phone string) (User, error) {
+	var u User
+	err := ud.db.WithContext(ctx).First(&u, "phone = ?", phone).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return User{}, ErrPhoneNotFound
+	}
+	return u, err
 }
 
 func (ud *GORMUserDAO) UpdateNonZeroFields(ctx context.Context, u User) error {
@@ -65,11 +78,18 @@ func (ud *GORMUserDAO) FindById(ctx context.Context, id int64) (User, error) {
 	return u, err
 }
 
+func (ud *GORMUserDAO) FindByIds(ctx context.Context, ids []int64) ([]User, error) {
+	var us []User
+	err := ud.db.WithContext(ctx).Find(&us, "id IN ?", ids).Error
+	return us, err
+}
+
 type User struct {
 	Id       int64 `gorm:"primaryKey,autoIncrement"`
 	Nickname string
 	Avatar   string
-	SN       string `gorm:"type:varchar(256);unique"`
+	SN       string         `gorm:"type:varchar(256);unique"`
+	Phone    sql.NullString `gorm:"type:varchar(50);unique"`
 	// TODO 后面要考虑拆分出去作为单表了
 	WechatOpenId     sql.NullString `gorm:"type:varchar(256);unique"`
 	WechatUnionId    sql.NullString `gorm:"type:varchar(256);unique"`

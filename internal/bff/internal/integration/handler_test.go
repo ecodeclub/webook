@@ -2,6 +2,7 @@ package integration
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -22,7 +23,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gotomicro/ego/core/econf"
 	"github.com/gotomicro/ego/server/egin"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"go.uber.org/mock/gomock"
@@ -42,7 +42,41 @@ func (c *CollectionHandlerTestSuite) SetupSuite() {
 	examSvc := quemocks.NewMockExamineService(ctrl)
 	intrSvc := intrmocks.NewMockService(ctrl)
 	intrSvc.EXPECT().CollectionInfo(gomock.Any(), int64(uid), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, uid int64, id int64, biz string, offset int, limit int) ([]interactive.CollectionRecord, error) {
-		if biz == "" {
+
+		switch biz {
+		case web.CaseBiz:
+			return []interactive.CollectionRecord{
+				{
+					Biz:  web.CaseBiz,
+					Case: 1,
+				},
+			}, nil
+		case web.CaseSetBiz:
+			return []interactive.CollectionRecord{
+				{
+					Biz:     web.CaseSetBiz,
+					CaseSet: 5,
+				},
+			}, nil
+		case web.QuestionBiz:
+			return []interactive.CollectionRecord{
+				{
+					Biz:      web.QuestionBiz,
+					Question: 2,
+				},
+			}, nil
+		case web.QuestionSetBiz:
+			return []interactive.CollectionRecord{
+				{
+					Biz:         web.QuestionSetBiz,
+					QuestionSet: 3,
+				},
+				{
+					Biz:         web.QuestionSetBiz,
+					QuestionSet: 4,
+				},
+			}, nil
+		case "":
 			return []interactive.CollectionRecord{
 				{
 					Biz:  web.CaseBiz,
@@ -65,28 +99,10 @@ func (c *CollectionHandlerTestSuite) SetupSuite() {
 					CaseSet: 5,
 				},
 			}, nil
+		default:
+			return nil, errors.New("unknown biz")
 		}
-		if biz == "case" {
-			return []interactive.CollectionRecord{
-				{
-					Biz:  web.CaseBiz,
-					Case: 1,
-				},
-				{
-					Biz:  web.CaseBiz,
-					Case: 2,
-				},
-			}, nil
-		}
-		if biz == "question" {
-			return []interactive.CollectionRecord{
-				{
-					Biz:      web.QuestionBiz,
-					Question: 1,
-				},
-			}, nil
-		}
-		return []interactive.CollectionRecord{}, nil
+
 	}).AnyTimes()
 	queSvc.EXPECT().GetPubByIDs(gomock.Any(), gomock.Any()).
 		DoAndReturn(func(ctx context.Context, ids []int64) ([]baguwen.Question, error) {
@@ -190,121 +206,216 @@ func (c *CollectionHandlerTestSuite) SetupSuite() {
 
 func (c *CollectionHandlerTestSuite) Test_Handler() {
 	t := c.T()
-	req, err := http.NewRequest(http.MethodPost,
-		"/interactive/collection/records", iox.NewJSONReader(web.CollectionInfoReq{
-			ID:     1,
-			Offset: 0,
-			Limit:  10,
-		}))
-	req.Header.Set("content-type", "application/json")
-	require.NoError(t, err)
-	recorder := test.NewJSONResponseRecorder[[]web.CollectionRecord]()
-	c.server.ServeHTTP(recorder, req)
-	require.Equal(t, 200, recorder.Code)
-	assert.Equal(t, []web.CollectionRecord{
-		{
-			Biz: web.CaseBiz,
-			Case: web.Case{
-				ID:    1,
-				Title: "这是案例1",
-			},
-		},
-		{
-			Biz: web.QuestionBiz,
-			Question: web.Question{
-				ID:            2,
-				Title:         "这是题目2",
-				ExamineResult: 2 % 4,
-			},
-		},
-		{
-			Biz: web.QuestionSetBiz,
-			QuestionSet: web.QuestionSet{
-				ID:    3,
-				Title: "这是题集3",
-				Questions: []web.Question{
-					{
-						ID:            33,
-						Title:         "这是题目33",
-						ExamineResult: 33 % 4,
-					},
-					{
-						ID:            36,
-						Title:         "这是题目36",
-						ExamineResult: 36 % 4,
-					},
-				},
-			},
-		},
-		{
-			Biz: web.QuestionSetBiz,
-			QuestionSet: web.QuestionSet{
-				ID:    4,
-				Title: "这是题集4",
-				Questions: []web.Question{
-					{
-						ID:            44,
-						Title:         "这是题目44",
-						ExamineResult: 44 % 4,
-					},
-					{
-						ID:            48,
-						Title:         "这是题目48",
-						ExamineResult: 48 % 4,
-					},
-				},
-			},
-		},
-		{
-			Biz: web.CaseSetBiz,
-			CaseSet: web.CaseSet{
-				ID:    5,
-				Title: "这是案例集5",
-				Cases: []web.Case{
-					{
-						ID:            51,
-						ExamineResult: 1,
-					},
-					{
-						ID: 52,
-					},
-				},
-			},
-		},
-	}, recorder.MustScan().Data)
-}
 
-func (c *CollectionHandlerTestSuite) Test_HandlerWithBiz() {
-	t := c.T()
-	req, err := http.NewRequest(http.MethodPost,
-		"/interactive/collection/records", iox.NewJSONReader(web.CollectionInfoReq{
-			ID:     1,
-			Offset: 0,
-			Limit:  10,
-			Biz:    "case",
-		}))
-	req.Header.Set("content-type", "application/json")
-	require.NoError(t, err)
-	recorder := test.NewJSONResponseRecorder[[]web.CollectionRecord]()
-	c.server.ServeHTTP(recorder, req)
-	require.Equal(t, 200, recorder.Code)
-	assert.Equal(t, []web.CollectionRecord{
-		{
-			Biz: web.CaseBiz,
-			Case: web.Case{
-				ID:    1,
-				Title: "这是案例1",
-			},
-		},
-		{
-			Biz: web.CaseBiz,
-			Case: web.Case{
-				ID:    2,
-				Title: "这是案例2",
-			},
-		},
-	}, recorder.MustScan().Data)
+	testCases := []struct {
+		name string
+		req  web.CollectionInfoReq
 
+		wantCode int
+		wantResp []web.CollectionRecord
+	}{
+		{
+			name: "获取全部收藏夹记录成功",
+			req: web.CollectionInfoReq{
+				ID:     1,
+				Biz:    "",
+				Offset: 0,
+				Limit:  10,
+			},
+			wantCode: http.StatusOK,
+			wantResp: []web.CollectionRecord{
+				{
+					Case: web.Case{
+						ID:    1,
+						Title: "这是案例1",
+					},
+				},
+				{
+					Question: web.Question{
+						ID:            2,
+						Title:         "这是题目2",
+						ExamineResult: 2 % 4,
+					},
+				},
+				{
+					QuestionSet: web.QuestionSet{
+						ID:    3,
+						Title: "这是题集3",
+						Questions: []web.Question{
+							{
+								ID:            33,
+								Title:         "这是题目33",
+								ExamineResult: 33 % 4,
+							},
+							{
+								ID:            36,
+								Title:         "这是题目36",
+								ExamineResult: 36 % 4,
+							},
+						},
+					},
+				},
+				{
+					QuestionSet: web.QuestionSet{
+						ID:    4,
+						Title: "这是题集4",
+						Questions: []web.Question{
+							{
+								ID:            44,
+								Title:         "这是题目44",
+								ExamineResult: 44 % 4,
+							},
+							{
+								ID:            48,
+								Title:         "这是题目48",
+								ExamineResult: 48 % 4,
+							},
+						},
+					},
+				},
+				{
+					CaseSet: web.CaseSet{
+						ID:    5,
+						Title: "这是案例集5",
+						Cases: []web.Case{
+							{
+								ID:            51,
+								ExamineResult: 1,
+							},
+							{
+								ID: 52,
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "仅获取收藏夹中的Case记录成功",
+			req: web.CollectionInfoReq{
+				ID:     1,
+				Biz:    web.CaseBiz,
+				Offset: 0,
+				Limit:  10,
+			},
+			wantCode: http.StatusOK,
+			wantResp: []web.CollectionRecord{
+				{
+					Case: web.Case{
+						ID:    1,
+						Title: "这是案例1",
+					},
+				},
+			},
+		},
+		{
+			name: "仅获取收藏夹中的CaseSet记录成功",
+			req: web.CollectionInfoReq{
+				ID:     1,
+				Biz:    web.CaseSetBiz,
+				Offset: 0,
+				Limit:  10,
+			},
+			wantCode: http.StatusOK,
+			wantResp: []web.CollectionRecord{
+				{
+					CaseSet: web.CaseSet{
+						ID:    5,
+						Title: "这是案例集5",
+						Cases: []web.Case{
+							{
+								ID:            51,
+								ExamineResult: 1,
+							},
+							{
+								ID: 52,
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "仅获取收藏夹中的Question记录成功",
+			req: web.CollectionInfoReq{
+				ID:     1,
+				Biz:    web.QuestionBiz,
+				Offset: 0,
+				Limit:  10,
+			},
+			wantCode: http.StatusOK,
+			wantResp: []web.CollectionRecord{
+				{
+					Question: web.Question{
+						ID:            2,
+						Title:         "这是题目2",
+						ExamineResult: 2 % 4,
+					},
+				},
+			},
+		},
+		{
+			name: "仅获取收藏夹中的QuestionSet记录成功",
+			req: web.CollectionInfoReq{
+				ID:     1,
+				Biz:    web.QuestionSetBiz,
+				Offset: 0,
+				Limit:  10,
+			},
+			wantCode: http.StatusOK,
+			wantResp: []web.CollectionRecord{
+				{
+					QuestionSet: web.QuestionSet{
+						ID:    3,
+						Title: "这是题集3",
+						Questions: []web.Question{
+							{
+								ID:            33,
+								Title:         "这是题目33",
+								ExamineResult: 33 % 4,
+							},
+							{
+								ID:            36,
+								Title:         "这是题目36",
+								ExamineResult: 36 % 4,
+							},
+						},
+					},
+				},
+				{
+					QuestionSet: web.QuestionSet{
+						ID:    4,
+						Title: "这是题集4",
+						Questions: []web.Question{
+							{
+								ID:            44,
+								Title:         "这是题目44",
+								ExamineResult: 44 % 4,
+							},
+							{
+								ID:            48,
+								Title:         "这是题目48",
+								ExamineResult: 48 % 4,
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			req, err := http.NewRequest(http.MethodPost,
+				"/interactive/collection/records", iox.NewJSONReader(tc.req))
+			require.NoError(t, err)
+			req.Header.Set("content-type", "application/json")
+			recorder := test.NewJSONResponseRecorder[[]web.CollectionRecord]()
+			c.server.ServeHTTP(recorder, req)
+			require.Equal(t, tc.wantCode, recorder.Code)
+			require.Equal(t, tc.wantResp, recorder.MustScan().Data)
+		})
+	}
 }
 
 func TestCollectionHandler(t *testing.T) {

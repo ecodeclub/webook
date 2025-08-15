@@ -18,6 +18,9 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/ecodeclub/webook/internal/company"
+
+	"github.com/ecodeclub/webook/internal/material"
 	"github.com/ecodeclub/webook/internal/review"
 
 	"github.com/ecodeclub/webook/internal/ai"
@@ -51,6 +54,8 @@ func InitAdminServer(prj *project.AdminHandler,
 	reviewAdminHdl *review.AdminHdl,
 	caseKnowledgeBaseHdl *cases.KnowledgeBaseHandler,
 	queKnowledgeBaseHdl *baguwen.KnowledgeBaseHandler,
+	materialAdminHdl *material.AdminHandler,
+	companyHdl *company.Handler,
 ) AdminServer {
 	res := egin.Load("admin").Build()
 	res.Use(cors.New(cors.Config{
@@ -71,7 +76,7 @@ func InitAdminServer(prj *project.AdminHandler,
 	})
 
 	// 安全校验
-	//res.Use(nonsense.NonSenseV1)
+	// res.Use(nonsense.NonSenseV1)
 	// 登录校验
 	res.Use(session.CheckLoginMiddleware())
 	res.Use(AdminPermission())
@@ -86,6 +91,8 @@ func InitAdminServer(prj *project.AdminHandler,
 	reviewAdminHdl.PrivateRoutes(res.Engine)
 	queKnowledgeBaseHdl.PrivateRoutes(res.Engine)
 	caseKnowledgeBaseHdl.PrivateRoutes(res.Engine)
+	materialAdminHdl.PrivateRoutes(res.Engine)
+	companyHdl.PrivateRoutes(res.Engine)
 	return res
 }
 

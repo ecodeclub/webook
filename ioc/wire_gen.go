@@ -10,12 +10,16 @@ import (
 	"github.com/ecodeclub/webook/internal/ai"
 	"github.com/ecodeclub/webook/internal/bff"
 	"github.com/ecodeclub/webook/internal/cases"
+	"github.com/ecodeclub/webook/internal/comment"
+	"github.com/ecodeclub/webook/internal/company"
 	"github.com/ecodeclub/webook/internal/cos"
 	"github.com/ecodeclub/webook/internal/credit"
 	"github.com/ecodeclub/webook/internal/feedback"
 	"github.com/ecodeclub/webook/internal/interactive"
+	"github.com/ecodeclub/webook/internal/interview"
 	"github.com/ecodeclub/webook/internal/label"
 	"github.com/ecodeclub/webook/internal/marketing"
+	"github.com/ecodeclub/webook/internal/material"
 	"github.com/ecodeclub/webook/internal/member"
 	"github.com/ecodeclub/webook/internal/order"
 	"github.com/ecodeclub/webook/internal/payment"
@@ -75,7 +79,8 @@ func InitApp() (*App, error) {
 	v5 := baguwenModule.ExamineHdl
 	v6 := baguwenModule.QsHdl
 	v7 := label.InitHandler(v)
-	userModule := InitUserModule(v, provider, cache, mq, module, permissionModule)
+	clientClient := initAliSMSClient()
+	userModule := InitUserModule(v, provider, cache, mq, module, clientClient, permissionModule)
 	v8 := userModule.Hdl
 	config := InitCosConfig()
 	v9 := cos.InitHandler(config)
@@ -139,35 +144,59 @@ func InitApp() (*App, error) {
 	v27 := aiModule.Hdl
 	reviewModule := review.InitModule(v, interactiveModule, mq, provider, cache)
 	v28 := reviewModule.Hdl
-	component := initGinxServer(provider, checkMembershipMiddlewareBuilder, localActiveLimit, checkPermissionMiddlewareBuilder, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13, v14, v15, v16, v17, v18, v19, v20, v21, v22, v23, v24, v25, v26, v27, v28)
-	v29 := projectModule.AdminHdl
-	v30 := roadmapModule.AdminHdl
-	v31 := baguwenModule.AdminHdl
-	v32 := baguwenModule.AdminSetHdl
-	v33 := casesModule.AdminHandler
-	v34 := casesModule.AdminSetHandler
-	v35 := marketingModule.AdminHdl
-	v36 := aiModule.AdminHandler
-	v37 := reviewModule.AdminHdl
-	v38 := casesModule.KnowledgeBaseHandler
-	v39 := baguwenModule.KnowledgeBaseHdl
-	adminServer := InitAdminServer(v29, v30, v31, v32, v33, v34, v35, v36, v37, v38, v39)
-	v40 := orderModule.CloseTimeoutOrdersJob
-	v41 := creditModule.CloseTimeoutLockedCreditsJob
-	v42 := paymentModule.SyncWechatOrderJob
+	commentModule, err := comment.InitModule(v, userModule)
+	if err != nil {
+		return nil, err
+	}
+	v29 := commentModule.Hdl
+	materialModule, err := material.InitModule(v, mq, clientClient, userModule)
+	if err != nil {
+		return nil, err
+	}
+	v30 := materialModule.Hdl
+	interviewModule, err := interview.InitModule(v)
+	if err != nil {
+		return nil, err
+	}
+	v31 := interviewModule.JourneyHdl
+	v32 := interviewModule.OfferHdl
+	component := initGinxServer(provider, checkMembershipMiddlewareBuilder, localActiveLimit, checkPermissionMiddlewareBuilder, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13, v14, v15, v16, v17, v18, v19, v20, v21, v22, v23, v24, v25, v26, v27, v28, v29, v30, v31, v32)
+	v33 := projectModule.AdminHdl
+	v34 := roadmapModule.AdminHdl
+	v35 := baguwenModule.AdminHdl
+	v36 := baguwenModule.AdminSetHdl
+	v37 := casesModule.AdminHandler
+	v38 := casesModule.AdminSetHandler
+	v39 := marketingModule.AdminHdl
+	v40 := aiModule.AdminHandler
+	v41 := reviewModule.AdminHdl
+	v42 := casesModule.KnowledgeBaseHandler
+	v43 := baguwenModule.KnowledgeBaseHdl
+	v44 := materialModule.AdminHdl
+	companyModule, err := company.InitModule(v)
+	if err != nil {
+		return nil, err
+	}
+	v45 := companyModule.Hdl
+	adminServer := InitAdminServer(v33, v34, v35, v36, v37, v38, v39, v40, v41, v42, v43, v44, v45)
+	v46 := orderModule.CloseTimeoutOrdersJob
+	v47 := creditModule.CloseTimeoutLockedCreditsJob
+	v48 := paymentModule.SyncWechatOrderJob
 	reconModule, err := recon.InitModule(orderModule, paymentModule, creditModule)
 	if err != nil {
 		return nil, err
 	}
-	v43 := reconModule.SyncPaymentAndOrderJob
-	v44 := initCronJobs(v40, v41, v42, v43)
-	v45 := baguwenModule.KnowledgeJobStarter
-	v46 := initJobs(v45)
+	v49 := reconModule.SyncPaymentAndOrderJob
+	v50 := initCronJobs(v46, v47, v48, v49)
+	v51 := baguwenModule.KnowledgeJobStarter
+	v52 := initJobs(v51)
+	v53 := initMQConsumers(mq)
 	app := &App{
-		Web:   component,
-		Admin: adminServer,
-		Crons: v44,
-		Jobs:  v46,
+		Web:       component,
+		Admin:     adminServer,
+		Crons:     v50,
+		Jobs:      v52,
+		Consumers: v53,
 	}
 	return app, nil
 }

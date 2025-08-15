@@ -14,7 +14,11 @@
 
 package web
 
-import "github.com/ecodeclub/webook/internal/user/internal/domain"
+import (
+	"strings"
+
+	"github.com/ecodeclub/webook/internal/user/internal/domain"
+)
 
 type Profile struct {
 	Id        int64  `json:"id,omitempty"`
@@ -23,15 +27,32 @@ type Profile struct {
 	SN        string `json:"sn,omitempty"`
 	IsCreator bool   `json:"isCreator,omitempty"`
 	// 毫秒数
-	MemberDDL int64 `json:"memberDDL,omitempty"`
+	MemberDDL int64  `json:"memberDDL,omitempty"`
+	Phone     string `json:"phone,omitempty"`
 }
 
 func newProfile(u domain.User) Profile {
 	return Profile{
+		Id:       u.Id,
 		Nickname: u.Nickname,
 		Avatar:   u.Avatar,
 		SN:       u.SN,
+		Phone:    maskPhoneNumber(u.Phone),
 	}
+}
+
+func maskPhoneNumber(phone string) string {
+	// 检查手机号长度是否合法（11位）
+	if len(phone) != 11 {
+		return phone
+	}
+	// 使用strings.Builder高效构建字符串
+	var builder strings.Builder
+	builder.WriteString(phone[:3]) // 前三位
+	builder.WriteString("****")    // 中间四位用****
+	builder.WriteString(phone[7:]) // 后四位
+
+	return builder.String()
 }
 
 type WechatCallback struct {
@@ -42,4 +63,13 @@ type WechatCallback struct {
 type EditReq struct {
 	Avatar   string `json:"avatar"`
 	Nickname string `json:"nickname"`
+}
+
+type SendCodeReq struct {
+	Phone string `json:"phone"`
+}
+
+type PhoneReq struct {
+	Phone string `json:"phone"`
+	Code  string `json:"code"`
 }

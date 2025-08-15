@@ -21,7 +21,10 @@ import (
 	"database/sql"
 	"fmt"
 	"net/http"
+	"strings"
 	"testing"
+
+	"github.com/ecodeclub/webook/internal/user/internal/repository/cache"
 
 	"github.com/ecodeclub/webook/internal/pkg/middleware"
 
@@ -59,6 +62,7 @@ import (
 type HandleTestSuite struct {
 	suite.Suite
 	db            *egorm.Component
+	cache         cache.VerificationCodeCache
 	server        *egin.Component
 	mockWeSvc     *svcmocks.MockOAuth2Service
 	mockWeMiniSvc *svcmocks.MockOAuth2Service
@@ -67,6 +71,8 @@ type HandleTestSuite struct {
 
 func (s *HandleTestSuite) SetupSuite() {
 	s.db = testioc.InitDB()
+	ca := testioc.InitCache()
+	s.cache = cache.NewVerificationCodeCache(ca)
 	err := dao.InitTables(s.db)
 	require.NoError(s.T(), err)
 	econf.Set("server", map[string]any{"debug": true})
@@ -94,6 +100,10 @@ func (s *HandleTestSuite) SetupSuite() {
 	s.mockWeSvc = wesvc
 	s.mockWeMiniSvc = weMiniSvc
 	server.Use(func(ctx *gin.Context) {
+		path := ctx.FullPath()
+		if strings.Contains(path, "login") {
+			return
+		}
 		ctx.Set("_session", session.NewMemorySession(session.Claims{
 			Uid: 123,
 		}))
@@ -330,6 +340,8 @@ func (s *HandleTestSuite) TestVerify() {
 			assert.NotEmpty(t, val.Data.Nickname)
 			// 在创建的时候，是随机生成的昵称，所以需要特殊判断
 			val.Data.Nickname = ""
+			require.True(t, val.Data.Id > 0)
+			val.Data.Id = 0
 			assert.Equal(t, tc.wantResp, val)
 			tc.after(t)
 			// 清理掉 123 的数据
@@ -469,6 +481,7 @@ func (s *HandleTestSuite) TestMiniVerify() {
 			assert.NotEmpty(t, val.Data.Nickname)
 			// 在创建的时候，是随机生成的昵称，所以需要特殊判断
 			val.Data.Nickname = ""
+			val.Data.Id = 0
 			assert.Equal(t, tc.wantResp, val)
 			tc.after(t)
 			// 清理掉 123 的数据
@@ -497,6 +510,7 @@ func (s *HandleTestSuite) TestProfile() {
 			},
 			wantResp: test.Result[web.Profile]{
 				Data: web.Profile{
+					Id:        123,
 					Nickname:  "old name",
 					Avatar:    "old avatar",
 					MemberDDL: 1234,
@@ -518,6 +532,412 @@ func (s *HandleTestSuite) TestProfile() {
 			s.server.ServeHTTP(recorder, req)
 			assert.Equal(t, tc.wantCode, recorder.Code)
 			assert.Equal(t, tc.wantResp, recorder.MustScan())
+		})
+	}
+}
+
+func (s *HandleTestSuite) TestPhoneLogin() {
+	testCases := []struct {
+		name     string
+		before   func(t *testing.T)
+		after    func(t *testing.T)
+		req      web.PhoneReq
+		wantResp test.Result[web.Profile]
+		wantCode int
+	}{
+		{
+			name: "登录成功",
+			before: func(t *testing.T) {
+				// 创建用户
+				err := s.db.Create(&dao.User{
+					Id:       124,
+					Nickname: "test user",
+					Avatar:   "test avatar",
+					Phone:    sqlx.NewNullString("13812345678"),
+				}).Error
+				require.NoError(t, err)
+				err = s.cache.SetPhoneCode(s.T().Context(), "13812345678", "123456")
+				require.NoError(t, err)
+				s.mockPermSvc.EXPECT().
+					FindPersonalPermissions(gomock.Any(), gomock.Any()).
+					Return(map[string][]permission.Permission{
+						"project": {
+							{
+								Uid:   124,
+								Biz:   "project",
+								BizID: 1234,
+								Desc:  "项目权限",
+							},
+						},
+					}, nil)
+
+			},
+			after: func(t *testing.T) {
+				// 清理数据
+				s.db.Exec("DELETE FROM users WHERE id = 124")
+			},
+			req: web.PhoneReq{
+				Phone: "13812345678",
+				Code:  "123456",
+			},
+			wantResp: test.Result[web.Profile]{
+				Data: web.Profile{
+					Id:        124,
+					Phone:     "138****5678",
+					Nickname:  "test user",
+					Avatar:    "test avatar",
+					MemberDDL: 1234,
+				},
+			},
+			wantCode: 200,
+		},
+
+		{
+			name: "验证码错误",
+			before: func(t *testing.T) {
+				// 创建用户
+				err := s.db.Create(&dao.User{
+					Id:       125,
+					Nickname: "test user",
+					Avatar:   "test avatar",
+					Phone:    sqlx.NewNullString("13812345679"),
+				}).Error
+				require.NoError(t, err)
+			},
+			after: func(t *testing.T) {
+				// 清理数据
+				s.db.Exec("DELETE FROM users WHERE id = 125")
+			},
+			req: web.PhoneReq{
+				Phone: "13812345679",
+				Code:  "100006", // 错误的验证码
+			},
+			wantCode: 500,
+			wantResp: test.Result[web.Profile]{
+				Code: 501002,
+				Msg:  "验证码错误",
+			},
+		},
+
+		{
+			name: "手机号未注册",
+			before: func(t *testing.T) {
+				// 模拟验证码服务返回正确验证码
+				err := s.cache.SetPhoneCode(s.T().Context(), "18248862099", "234567")
+				require.NoError(t, err)
+			},
+			after: func(t *testing.T) {
+				// 无需清理
+			},
+			req: web.PhoneReq{
+				Phone: "18248862099", // 未注册的手机号
+				Code:  "234567",
+			},
+			wantResp: test.Result[web.Profile]{
+				Code: 501003,
+				Msg:  "手机号不存在",
+			},
+			wantCode: 500,
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		s.T().Run(tc.name, func(t *testing.T) {
+			tc.before(t)
+			req, err := http.NewRequest(http.MethodPost,
+				"/oauth2/phone/login", iox.NewJSONReader(tc.req))
+			req.Header.Set("content-type", "application/json")
+			require.NoError(t, err)
+			recorder := test.NewJSONResponseRecorder[web.Profile]()
+			s.server.ServeHTTP(recorder, req)
+			assert.Equal(t, tc.wantCode, recorder.Code)
+			val := recorder.MustScan()
+			if val.Data.SN != "" {
+				val.Data.SN = ""
+			}
+			assert.Equal(t, tc.wantResp, val)
+			tc.after(t)
+		})
+	}
+}
+
+func (s *HandleTestSuite) TestPhoneRegister() {
+	testCases := []struct {
+		name     string
+		before   func(t *testing.T)
+		after    func(t *testing.T)
+		req      web.PhoneReq
+		wantResp test.Result[web.Profile]
+		wantCode int
+	}{
+		{
+			name: "注册成功",
+			before: func(t *testing.T) {
+				// 设置验证码
+				err := s.cache.SetPhoneCode(context.Background(), "13912345678", "123456")
+				require.NoError(t, err)
+
+				// 模拟权限服务
+				s.mockPermSvc.EXPECT().
+					FindPersonalPermissions(gomock.Any(), gomock.Any()).
+					Return(map[string][]permission.Permission{
+						"project": {
+							{
+								Biz:   "project",
+								BizID: 1234,
+								Desc:  "项目权限",
+							},
+						},
+					}, nil)
+			},
+			after: func(t *testing.T) {
+				// 清理创建的用户
+				s.db.Exec("DELETE FROM users WHERE phone = '13912345678'")
+			},
+			req: web.PhoneReq{
+				Phone: "13912345678",
+				Code:  "123456",
+			},
+			wantResp: test.Result[web.Profile]{
+				Data: web.Profile{
+					MemberDDL: 1234,
+					Phone:     "139****5678",
+				},
+			},
+			wantCode: 200,
+		},
+		{
+			name: "验证码错误",
+			before: func(t *testing.T) {
+				// 设置正确的验证码
+				err := s.cache.SetPhoneCode(context.Background(), "13912345679", "654321")
+				require.NoError(t, err)
+			},
+			after: func(t *testing.T) {
+				// 无需清理
+			},
+			req: web.PhoneReq{
+				Phone: "13912345679",
+				Code:  "123456", // 错误的验证码
+			},
+			wantResp: test.Result[web.Profile]{
+				Code: 501002,
+				Msg:  "验证码错误",
+			},
+			wantCode: 500,
+		},
+		{
+			name: "手机号已注册",
+			before: func(t *testing.T) {
+				// 创建已存在的用户
+				err := s.db.Create(&dao.User{
+					Id:       126,
+					Nickname: "existing user",
+					Phone:    sqlx.NewNullString("13912345681"),
+				}).Error
+				require.NoError(t, err)
+
+				// 设置验证码
+				err = s.cache.SetPhoneCode(context.Background(), "13912345681", "123456")
+				require.NoError(t, err)
+			},
+			after: func(t *testing.T) {
+				// 清理数据
+				s.db.Exec("DELETE FROM users WHERE id = 126")
+			},
+			req: web.PhoneReq{
+				Phone: "13912345681",
+				Code:  "123456",
+			},
+			wantResp: test.Result[web.Profile]{
+				Code: 501001,
+				Msg:  "系统错误",
+			},
+			wantCode: 500,
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		s.T().Run(tc.name, func(t *testing.T) {
+			tc.before(t)
+			req, err := http.NewRequest(http.MethodPost,
+				"/oauth2/phone/register", iox.NewJSONReader(tc.req))
+			req.Header.Set("content-type", "application/json")
+			require.NoError(t, err)
+			recorder := test.NewJSONResponseRecorder[web.Profile]()
+			s.server.ServeHTTP(recorder, req)
+			assert.Equal(t, tc.wantCode, recorder.Code)
+			val := recorder.MustScan()
+			// 注册成功时，SN和Nickname是随机生成的，需要忽略
+			if val.Data.SN != "" {
+				val.Data.SN = ""
+			}
+			if strings.HasPrefix(val.Data.Nickname, "用户") {
+				val.Data.Nickname = ""
+			}
+
+			val.Data.Id = 0
+			assert.Equal(t, tc.wantResp, val)
+			tc.after(t)
+		})
+	}
+}
+
+func (s *HandleTestSuite) TestBindPhone() {
+	testCases := []struct {
+		name     string
+		before   func(t *testing.T)
+		after    func(t *testing.T)
+		req      web.PhoneReq
+		wantResp test.Result[any]
+		wantCode int
+	}{
+		{
+			name: "绑定手机号成功",
+			before: func(t *testing.T) {
+				// 创建用户（未绑定手机号）
+				err := s.db.Create(&dao.User{
+					Id:       123,
+					Nickname: "test user",
+					Avatar:   "test avatar",
+				}).Error
+				require.NoError(t, err)
+
+				// 设置验证码
+				err = s.cache.SetPhoneCode(context.Background(), "13912345678", "123456")
+				require.NoError(t, err)
+			},
+			after: func(t *testing.T) {
+				// 验证手机号已绑定
+				var u dao.User
+				err := s.db.Where("id = ?", 123).First(&u).Error
+				require.NoError(t, err)
+				assert.Equal(t, "13912345678", u.Phone.String)
+
+				// 清理数据
+				s.db.Exec("DELETE FROM users WHERE id = 123")
+			},
+			req: web.PhoneReq{
+				Phone: "13912345678",
+				Code:  "123456",
+			},
+			wantResp: test.Result[any]{},
+			wantCode: 200,
+		},
+		{
+			name: "验证码错误",
+			before: func(t *testing.T) {
+				// 创建用户
+				err := s.db.Create(&dao.User{
+					Id:       123,
+					Nickname: "test user",
+				}).Error
+				require.NoError(t, err)
+
+				// 设置正确的验证码
+				err = s.cache.SetPhoneCode(context.Background(), "13912345679", "654321")
+				require.NoError(t, err)
+			},
+			after: func(t *testing.T) {
+				// 验证手机号未绑定
+				var u dao.User
+				err := s.db.Where("id = ?", 123).First(&u).Error
+				require.NoError(t, err)
+				assert.False(t, u.Phone.Valid) // 手机号应该未绑定
+
+				// 清理数据
+				s.db.Exec("DELETE FROM users WHERE id = 123")
+			},
+			req: web.PhoneReq{
+				Phone: "13912345679",
+				Code:  "123456", // 错误的验证码
+			},
+			wantResp: test.Result[any]{
+				Code: 501002,
+				Msg:  "验证码错误",
+			},
+			wantCode: 500,
+		},
+		{
+			name: "验证码不存在",
+			before: func(t *testing.T) {
+				// 创建用户
+				err := s.db.Create(&dao.User{
+					Id:       123,
+					Nickname: "test user",
+				}).Error
+				require.NoError(t, err)
+				// 不设置验证码
+			},
+			after: func(t *testing.T) {
+				// 验证手机号未绑定
+				var u dao.User
+				err := s.db.Where("id = ?", 123).First(&u).Error
+				require.NoError(t, err)
+				assert.False(t, u.Phone.Valid)
+
+				// 清理数据
+				s.db.Exec("DELETE FROM users WHERE id = 123")
+			},
+			req: web.PhoneReq{
+				Phone: "13912345680",
+				Code:  "123456",
+			},
+			wantResp: test.Result[any]{
+				Code: 501002,
+				Msg:  "验证码错误",
+			},
+			wantCode: 500,
+		},
+		{
+			name: "更新手机号",
+			before: func(t *testing.T) {
+				// 创建已有手机号的用户
+				err := s.db.Create(&dao.User{
+					Id:       123,
+					Nickname: "test user",
+					Phone:    sqlx.NewNullString("13812345678"),
+				}).Error
+				require.NoError(t, err)
+
+				// 设置验证码
+				err = s.cache.SetPhoneCode(context.Background(), "13912345681", "123456")
+				require.NoError(t, err)
+			},
+			after: func(t *testing.T) {
+				// 验证手机号已更新
+				var u dao.User
+				err := s.db.Where("id = ?", 123).First(&u).Error
+				require.NoError(t, err)
+				assert.Equal(t, "13912345681", u.Phone.String)
+
+				// 清理数据
+				s.db.Exec("DELETE FROM users WHERE id = 123")
+			},
+			req: web.PhoneReq{
+				Phone: "13912345681",
+				Code:  "123456",
+			},
+			wantResp: test.Result[any]{},
+			wantCode: 200,
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		s.T().Run(tc.name, func(t *testing.T) {
+			tc.before(t)
+			req, err := http.NewRequest(http.MethodPost,
+				"/users/phone/bind", iox.NewJSONReader(tc.req))
+			req.Header.Set("content-type", "application/json")
+			require.NoError(t, err)
+			recorder := test.NewJSONResponseRecorder[any]()
+			s.server.ServeHTTP(recorder, req)
+			assert.Equal(t, tc.wantCode, recorder.Code)
+			assert.Equal(t, tc.wantResp, recorder.MustScan())
+			tc.after(t)
 		})
 	}
 }
@@ -937,6 +1357,7 @@ func (s *HandlerWithAppTestSuite) TestVerify() {
 			assert.NotEmpty(t, val.Data.Nickname)
 			// 在创建的时候，是随机生成的昵称，所以需要特殊判断
 			val.Data.Nickname = ""
+			val.Data.Id = 0
 			assert.Equal(t, tc.wantResp, val)
 			tc.after(t)
 			// 清理掉的数据
@@ -1085,6 +1506,7 @@ func (s *HandlerWithAppTestSuite) TestMiniVerify() {
 			assert.NotEmpty(t, val.Data.Nickname)
 			// 在创建的时候，是随机生成的昵称，所以需要特殊判断
 			val.Data.Nickname = ""
+			val.Data.Id = 0
 			assert.Equal(t, tc.wantResp, val)
 			tc.after(t)
 			// 清理掉 123 的数据
@@ -1138,7 +1560,9 @@ func (s *HandlerWithAppTestSuite) TestProfile() {
 			recorder := test.NewJSONResponseRecorder[web.Profile]()
 			s.server.ServeHTTP(recorder, req)
 			assert.Equal(t, tc.wantCode, recorder.Code)
-			assert.Equal(t, tc.wantResp, recorder.MustScan())
+			data := recorder.MustScan()
+			data.Data.Id = 0
+			assert.Equal(t, tc.wantResp, data)
 		})
 	}
 }
