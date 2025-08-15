@@ -42,7 +42,7 @@ func InitModule(es *elastic.Client, q mq.MQ, caModule *cases.Module) (*Module, e
 	module := &Module{
 		SearchSvc:    v,
 		SyncSvc:      v2,
-		c:            syncConsumer,
+		C:            syncConsumer,
 		Hdl:          v4,
 		AdminHandler: v5,
 	}

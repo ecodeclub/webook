@@ -75,7 +75,6 @@ func InitModule(es *elastic.Client, q mq.MQ, caModule *cases.Module) (*Module, e
 		initAdminHandler,
 		wire.FieldsOf(new(*cases.Module), "ExamineSvc"),
 		HandlerSet,
-		//InitSyncSvc,
 		SyncSvcSet,
 		initSyncConsumer,
 		wire.Struct(new(Module), "*"),

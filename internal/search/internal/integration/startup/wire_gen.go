@@ -7,18 +7,54 @@
 package startup
 
 import (
+	"context"
+	"sync"
+
+	"github.com/ecodeclub/mq-api"
 	"github.com/ecodeclub/webook/internal/cases"
 	"github.com/ecodeclub/webook/internal/search"
+	"github.com/ecodeclub/webook/internal/search/internal/event"
+	"github.com/ecodeclub/webook/internal/search/internal/repository"
+	"github.com/ecodeclub/webook/internal/search/internal/repository/dao"
+	"github.com/ecodeclub/webook/internal/search/internal/service"
 	"github.com/ecodeclub/webook/internal/search/internal/web"
+	"github.com/ecodeclub/webook/internal/search/ioc"
 	testioc "github.com/ecodeclub/webook/internal/test/ioc"
+	"github.com/google/wire"
+	"github.com/olivere/elastic/v7"
 )
 
 // Injectors from wire.go:
 
+func InitModule(es *elastic.Client, q mq.MQ, caModule *cases.Module) (*search.Module, error) {
+	questionDAO := ioc.InitQuestionDAO(es)
+	questionRepo := repository.NewQuestionRepo(questionDAO)
+	questionSetDAO := ioc.InitQuestionSetDAO(es)
+	questionSetRepo := repository.NewQuestionSetRepo(questionSetDAO)
+	skillDAO := ioc.InitSkillDAO(es)
+	skillRepo := repository.NewSKillRepo(skillDAO)
+	caseDAO := ioc.InitCaseDAO(es)
+	caseRepo := repository.NewCaseRepo(caseDAO)
+	v := service.NewSearchSvc(questionRepo, questionSetRepo, skillRepo, caseRepo)
+	v2 := InitSyncSvc(es)
+	syncConsumer := initSyncConsumer(v2, q)
+	v3 := caModule.ExamineSvc
+	v4 := web.NewHandler(v, v3)
+	v5 := initAdminHandler(es)
+	module := &search.Module{
+		SearchSvc:    v,
+		SyncSvc:      v2,
+		C:            syncConsumer,
+		Hdl:          v4,
+		AdminHandler: v5,
+	}
+	return module, nil
+}
+
 func InitHandler(caModule *cases.Module) (*web.Handler, error) {
 	client := testioc.InitES()
-	mq := testioc.InitMQ()
-	module, err := search.InitModule(client, mq, caModule)
+	mqMQ := testioc.InitMQ()
+	module, err := InitModule(client, mqMQ, caModule)
 	if err != nil {
 		return nil, err
 	}
@@ -28,11 +64,68 @@ func InitHandler(caModule *cases.Module) (*web.Handler, error) {
 
 func InitAdminHandler(caModule *cases.Module) (*web.AdminHandler, error) {
 	client := testioc.InitES()
-	mq := testioc.InitMQ()
-	module, err := search.InitModule(client, mq, caModule)
+	mqMQ := testioc.InitMQ()
+	module, err := InitModule(client, mqMQ, caModule)
 	if err != nil {
 		return nil, err
 	}
 	adminHandler := module.AdminHandler
 	return adminHandler, nil
+}
+
+// wire.go:
+
+func initAdminHandler(es *elastic.Client) *web.AdminHandler {
+	InitIndexOnce(es)
+	caDAO := ioc.InitAdminCaseDAO(es)
+	questionDAO := ioc.InitAdminQuestionDAO(es)
+	questionSetDAO := ioc.InitAdminQuestionSetDAO(es)
+	skillDAO := ioc.InitAdminSkillDAO(es)
+	caRepo := repository.NewCaseRepo(caDAO)
+	questionRepo := repository.NewQuestionRepo(questionDAO)
+	questionSetRepo := repository.NewQuestionSetRepo(questionSetDAO)
+	skillRepo := repository.NewSKillRepo(skillDAO)
+	adminSvc := service.NewSearchSvc(questionRepo, questionSetRepo, skillRepo, caRepo)
+	return web.NewAdminHandler(adminSvc)
+}
+
+// 初始化c端handler
+var HandlerSet = wire.NewSet(ioc.InitCaseDAO, ioc.InitQuestionDAO, ioc.InitQuestionSetDAO, ioc.InitSkillDAO, repository.NewCaseRepo, repository.NewQuestionRepo, repository.NewQuestionSetRepo, repository.NewSKillRepo, service.NewSearchSvc, web.NewHandler)
+
+// 初始化syncSvc
+var SyncSvcSet = wire.NewSet(
+	InitAnyRepo,
+	InitSyncSvc,
+)
+
+func InitAnyRepo(es *elastic.Client) repository.AnyRepo {
+	InitIndexOnce(es)
+	anyDAO := dao.NewAnyEsDAO(es)
+	anyRepo := repository.NewAnyRepo(anyDAO)
+	return anyRepo
+}
+
+func InitSyncSvc(es *elastic.Client) service.SyncService {
+	anyRepo := InitAnyRepo(es)
+	return service.NewSyncSvc(anyRepo)
+}
+
+var daoOnce = sync.Once{}
+
+func InitIndexOnce(es *elastic.Client) {
+	daoOnce.Do(func() {
+		err := dao.InitEsTest(es)
+		if err != nil {
+			panic(err)
+		}
+	})
+}
+
+func initSyncConsumer(svc service.SyncService, q mq.MQ) *event.SyncConsumer {
+	c, err := event.NewSyncConsumer(svc, q)
+	if err != nil {
+		panic(err)
+	}
+	c.Start(context.Background())
+	return c
 }

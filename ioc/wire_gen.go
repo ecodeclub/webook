@@ -178,25 +178,26 @@ func InitApp() (*App, error) {
 		return nil, err
 	}
 	v45 := companyModule.Hdl
-	adminServer := InitAdminServer(v33, v34, v35, v36, v37, v38, v39, v40, v41, v42, v43, v44, v45)
-	v46 := orderModule.CloseTimeoutOrdersJob
-	v47 := creditModule.CloseTimeoutLockedCreditsJob
-	v48 := paymentModule.SyncWechatOrderJob
+	v46 := searchModule.AdminHandler
+	adminServer := InitAdminServer(v33, v34, v35, v36, v37, v38, v39, v40, v41, v42, v43, v44, v45, v46)
+	v47 := orderModule.CloseTimeoutOrdersJob
+	v48 := creditModule.CloseTimeoutLockedCreditsJob
+	v49 := paymentModule.SyncWechatOrderJob
 	reconModule, err := recon.InitModule(orderModule, paymentModule, creditModule)
 	if err != nil {
 		return nil, err
 	}
-	v49 := reconModule.SyncPaymentAndOrderJob
-	v50 := initCronJobs(v46, v47, v48, v49)
-	v51 := baguwenModule.KnowledgeJobStarter
-	v52 := initJobs(v51)
-	v53 := initMQConsumers(mq)
+	v50 := reconModule.SyncPaymentAndOrderJob
+	v51 := initCronJobs(v47, v48, v49, v50)
+	v52 := baguwenModule.KnowledgeJobStarter
+	v53 := initJobs(v52)
+	v54 := initMQConsumers(mq)
 	app := &App{
 		Web:       component,
 		Admin:     adminServer,
-		Crons:     v50,
-		Jobs:      v52,
-		Consumers: v53,
+		Crons:     v51,
+		Jobs:      v53,
+		Consumers: v54,
 	}
 	return app, nil
 }
