@@ -21,8 +21,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 
@@ -141,14 +141,12 @@ func (s *WechatRobotEventTestSuite) TestStart() {
 func (s *WechatRobotEventTestSuite) TestConsume() {
 	t := s.T()
 
-	http.HandleFunc("/hello", func(w http.ResponseWriter, r *http.Request) {
+	mockHTTPServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
 		fmt.Fprintf(w, "Hello, adminRobot!")
-	})
-	go func() {
-		if err := http.ListenAndServe("localhost:9293", nil); err != nil {
-			log.Fatal(err)
-		}
-	}()
+	}))
+
+	defer mockHTTPServer.Close()
 
 	testCases := []struct {
 		name            string
@@ -177,7 +175,7 @@ func (s *WechatRobotEventTestSuite) TestConsume() {
 				return mockMQ
 			},
 			cfg: &consumer.WechatRobotConfig{ChatRobots: map[string]string{
-				"adminRobot": "http://localhost:9293/hello",
+				"adminRobot": mockHTTPServer.URL,
 			}},
 			errorAssertFunc: assert.NoError,
 		},
@@ -192,7 +190,7 @@ func (s *WechatRobotEventTestSuite) TestConsume() {
 				return mockMQ
 			},
 			cfg: &consumer.WechatRobotConfig{ChatRobots: map[string]string{
-				"adminRobot": "http://localhost:9293/hello",
+				"adminRobot": mockHTTPServer.URL,
 			}},
 			errorAssertFunc: assert.Error,
 		},
@@ -207,7 +205,7 @@ func (s *WechatRobotEventTestSuite) TestConsume() {
 				return mockMQ
 			},
 			cfg: &consumer.WechatRobotConfig{ChatRobots: map[string]string{
-				"adminRobot": "http://localhost:9293/hello",
+				"adminRobot": mockHTTPServer.URL,
 			}},
 			errorAssertFunc: assert.Error,
 		},
@@ -232,7 +230,7 @@ func (s *WechatRobotEventTestSuite) TestConsume() {
 				return mockMQ
 			},
 			cfg: &consumer.WechatRobotConfig{ChatRobots: map[string]string{
-				"adminRobot": "http://localhost:9293/hello",
+				"adminRobot": mockHTTPServer.URL,
 			}},
 			errorAssertFunc: assert.Error,
 		},
