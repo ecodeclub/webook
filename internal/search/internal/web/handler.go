@@ -60,6 +60,6 @@ func (h *Handler) List(ctx *ginx.Context, req SearchReq, sess session.Session) (
 		}
 	}
 	return ginx.Result{
-		Data: NewSearchResult(data, examMap),
+		Data: NewCSearchResult(data, examMap),
 	}, nil
 }

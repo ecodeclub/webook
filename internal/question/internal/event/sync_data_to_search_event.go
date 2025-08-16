@@ -23,6 +23,7 @@ import (
 type QuestionEvent struct {
 	Biz   string `json:"biz"`
 	BizID int    `json:"bizID"`
+	Live  bool   `json:"live"`
 	Data  string `json:"data"`
 }
 type Question struct {
