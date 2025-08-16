@@ -22,5 +22,6 @@ type SyncEvent struct {
 	Biz   string `json:"biz"`
 	BizID int    `json:"bizID"`
 	// 具体内容
+	Live bool   `json:"live"`
 	Data string `json:"data"`
 }

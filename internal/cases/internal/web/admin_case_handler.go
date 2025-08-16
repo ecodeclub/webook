@@ -24,12 +24,14 @@ import (
 )
 
 type AdminCaseHandler struct {
-	svc service.Service
+	svc       service.Service
+	searchSvc service.SearchSyncService
 }
 
-func NewAdminCaseHandler(svc service.Service) *AdminCaseHandler {
+func NewAdminCaseHandler(svc service.Service, searchSvc service.SearchSyncService) *AdminCaseHandler {
 	return &AdminCaseHandler{
-		svc: svc,
+		svc:       svc,
+		searchSvc: searchSvc,
 	}
 }
 
@@ -38,6 +40,11 @@ func (h *AdminCaseHandler) PrivateRoutes(server *gin.Engine) {
 	server.POST("/cases/list", ginx.B[Page](h.List))
 	server.POST("/cases/detail", ginx.B[CaseId](h.Detail))
 	server.POST("/cases/publish", ginx.BS[SaveReq](h.Publish))
+	server.GET("/cases/search/syncAll", ginx.W(h.SyncAll))
+}
+func (h *AdminCaseHandler) SyncAll(ctx *ginx.Context) (ginx.Result, error) {
+	go h.searchSvc.SyncAll()
+	return ginx.Result{}, nil
 }
 
 func (h *AdminCaseHandler) Save(ctx *ginx.Context,

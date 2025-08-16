@@ -159,6 +159,8 @@ func (s *service) Publish(ctx context.Context, question *domain.Question) (int64
 	}
 	// 同步到搜索服务
 	s.syncQuestion(qctx, que)
+
+	s.syncPubQuestion(qctx, que)
 	// 上传到知识库
 	s.uploadQuestion(qctx, que)
 	return id, nil
@@ -181,6 +183,18 @@ func NewService(repo repository.Repository,
 
 func (s *service) syncQuestion(ctx context.Context, que domain.Question) {
 	evt := event.NewQuestionEvent(que)
+	err := s.syncProducer.Produce(ctx, evt)
+	if err != nil {
+		s.logger.Error("发送同步搜索信息",
+			elog.FieldErr(err),
+			elog.Any("event", evt),
+		)
+	}
+}
+
+func (s *service) syncPubQuestion(ctx context.Context, que domain.Question) {
+	evt := event.NewQuestionEvent(que)
+	evt.Live = true
 	err := s.syncProducer.Produce(ctx, evt)
 	if err != nil {
 		s.logger.Error("发送同步搜索信息",

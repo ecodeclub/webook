@@ -46,17 +46,22 @@ func (c *caseRepository) SearchCase(ctx context.Context, offset, limit int, quer
 
 func (*caseRepository) toDomain(p dao.Case) domain.Case {
 	return domain.Case{
-		Id:         p.Id,
-		Uid:        p.Uid,
-		Labels:     p.Labels,
-		Title:      p.Title,
-		Content:    p.Content,
+		Id:     p.Id,
+		Uid:    p.Uid,
+		Labels: p.Labels,
+		Title:  p.Title,
+		Content: domain.EsVal{
+			Val:           p.Content,
+			HighLightVals: p.EsHighLights["content"],
+		},
 		Keywords:   p.Keywords,
 		GithubRepo: p.GithubRepo,
 		GiteeRepo:  p.GiteeRepo,
 		Shorthand:  p.Shorthand,
 		Highlight:  p.Highlight,
 		Guidance:   p.Guidance,
+		Biz:        p.Biz,
+		BizID:      p.BizID,
 		Status:     domain.CaseStatus(p.Status),
 		Ctime:      time.UnixMilli(p.Ctime),
 		Utime:      time.UnixMilli(p.Utime),

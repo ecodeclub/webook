@@ -46,11 +46,16 @@ func (q *questionSetRepo) SearchQuestionSet(ctx context.Context, offset, limit i
 
 func (*questionSetRepo) toDomain(qs dao.QuestionSet) domain.QuestionSet {
 	return domain.QuestionSet{
-		Id:          qs.Id,
-		Uid:         qs.Uid,
-		Title:       qs.Title,
-		Description: qs.Description,
-		Questions:   qs.Questions,
-		Utime:       time.UnixMilli(qs.Utime),
+		Id:    qs.Id,
+		Uid:   qs.Uid,
+		Title: qs.Title,
+		Biz:   qs.Biz,
+		BizID: qs.BizID,
+		Description: domain.EsVal{
+			Val:           qs.Description,
+			HighLightVals: qs.EsHighLights["description"],
+		},
+		Questions: qs.Questions,
+		Utime:     time.UnixMilli(qs.Utime),
 	}
 }

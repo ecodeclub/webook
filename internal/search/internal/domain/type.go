@@ -5,13 +5,21 @@ import (
 	"time"
 )
 
+type EsVal struct {
+	Val string
+	// es 高亮部分
+	HighLightVals []string
+}
+
 type Case struct {
 	Id int64
 	// 作者
 	Uid        int64
 	Labels     []string
 	Title      string
-	Content    string
+	Biz        string
+	BizID      int64
+	Content    EsVal
 	GithubRepo string
 	GiteeRepo  string
 	// 关键字，辅助记忆，提取重点
@@ -45,9 +53,11 @@ const (
 type Question struct {
 	ID      int64
 	UID     int64
+	Biz     string
+	BizID   int64
 	Title   string
 	Labels  []string
-	Content string
+	Content EsVal
 	Status  uint8
 	Answer  Answer
 	Utime   time.Time
@@ -67,7 +77,7 @@ func (s QuestionStatus) ToUint8() uint8 {
 
 type AnswerElement struct {
 	ID        int64
-	Content   string
+	Content   EsVal
 	Keywords  string
 	Shorthand string
 	Highlight string
@@ -76,7 +86,7 @@ type AnswerElement struct {
 
 type SkillLevel struct {
 	ID        int64
-	Desc      string
+	Desc      EsVal
 	Ctime     time.Time
 	Utime     time.Time
 	Questions []int64
@@ -87,7 +97,7 @@ type Skill struct {
 	ID           int64
 	Labels       []string
 	Name         string
-	Desc         string
+	Desc         EsVal
 	Basic        SkillLevel
 	Intermediate SkillLevel
 	Advanced     SkillLevel
@@ -96,12 +106,14 @@ type Skill struct {
 }
 
 type QuestionSet struct {
-	Id  int64
-	Uid int64
+	Id    int64
+	Uid   int64
+	Biz   string
+	BizID int64
 	// 标题
 	Title string
 	// 描述
-	Description string
+	Description EsVal
 
 	// 题集中引用的题目,
 	Questions []int64

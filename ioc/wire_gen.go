@@ -62,6 +62,7 @@ func InitApp() (*App, error) {
 		return nil, err
 	}
 	cache := InitCache(cmdable)
+	client := InitES()
 	creditModule, err := credit.InitModule(v, mq, cache)
 	if err != nil {
 		return nil, err
@@ -70,7 +71,7 @@ func InitApp() (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	baguwenModule, err := baguwen.InitModule(v, interactiveModule, cache, permissionModule, aiModule, module, provider, mq)
+	baguwenModule, err := baguwen.InitModule(v, interactiveModule, cache, client, permissionModule, aiModule, module, provider, mq)
 	if err != nil {
 		return nil, err
 	}
@@ -78,12 +79,12 @@ func InitApp() (*App, error) {
 	v5 := baguwenModule.ExamineHdl
 	v6 := baguwenModule.QsHdl
 	v7 := label.InitHandler(v)
-	client := initAliSMSClient()
-	userModule := InitUserModule(v, provider, cache, mq, module, client, permissionModule)
+	clientClient := initAliSMSClient()
+	userModule := InitUserModule(v, provider, cache, mq, module, clientClient, permissionModule)
 	v8 := userModule.Hdl
 	config := InitCosConfig()
 	v9 := cos.InitHandler(config)
-	casesModule, err := cases.InitModule(v, interactiveModule, aiModule, module, provider, cache, mq)
+	casesModule, err := cases.InitModule(v, interactiveModule, aiModule, client, module, provider, cache, mq)
 	if err != nil {
 		return nil, err
 	}
@@ -123,8 +124,7 @@ func InitApp() (*App, error) {
 	}
 	v18 := marketingModule.Hdl
 	v19 := interactiveModule.Hdl
-	elasticClient := InitES()
-	searchModule, err := search.InitModule(elasticClient, mq, casesModule)
+	searchModule, err := search.InitModule(client, mq, casesModule)
 	if err != nil {
 		return nil, err
 	}
@@ -149,7 +149,7 @@ func InitApp() (*App, error) {
 		return nil, err
 	}
 	v29 := commentModule.Hdl
-	materialModule, err := material.InitModule(v, mq, client, userModule)
+	materialModule, err := material.InitModule(v, mq, clientClient, userModule)
 	if err != nil {
 		return nil, err
 	}
@@ -178,25 +178,26 @@ func InitApp() (*App, error) {
 		return nil, err
 	}
 	v45 := companyModule.Hdl
-	adminServer := InitAdminServer(v33, v34, v35, v36, v37, v38, v39, v40, v41, v42, v43, v44, v45)
-	v46 := orderModule.CloseTimeoutOrdersJob
-	v47 := creditModule.CloseTimeoutLockedCreditsJob
-	v48 := paymentModule.SyncWechatOrderJob
+	v46 := searchModule.AdminHandler
+	adminServer := InitAdminServer(v33, v34, v35, v36, v37, v38, v39, v40, v41, v42, v43, v44, v45, v46)
+	v47 := orderModule.CloseTimeoutOrdersJob
+	v48 := creditModule.CloseTimeoutLockedCreditsJob
+	v49 := paymentModule.SyncWechatOrderJob
 	reconModule, err := recon.InitModule(orderModule, paymentModule, creditModule)
 	if err != nil {
 		return nil, err
 	}
-	v49 := reconModule.SyncPaymentAndOrderJob
-	v50 := initCronJobs(v46, v47, v48, v49)
-	v51 := baguwenModule.KnowledgeJobStarter
-	v52 := initJobs(v51)
-	v53 := initMQConsumers(mq)
+	v50 := reconModule.SyncPaymentAndOrderJob
+	v51 := initCronJobs(v47, v48, v49, v50)
+	v52 := baguwenModule.KnowledgeJobStarter
+	v53 := initJobs(v52)
+	v54 := initMQConsumers(mq)
 	app := &App{
 		Web:       component,
 		Admin:     adminServer,
-		Crons:     v50,
-		Jobs:      v52,
-		Consumers: v53,
+		Crons:     v51,
+		Jobs:      v53,
+		Consumers: v54,
 	}
 	return app, nil
 }

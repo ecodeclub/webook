@@ -19,6 +19,8 @@ package baguwen
 import (
 	"sync"
 
+	"github.com/olivere/elastic/v7"
+
 	"github.com/ecodeclub/ginx/session"
 
 	"github.com/ecodeclub/webook/internal/member"
@@ -57,6 +59,7 @@ var ExamineHandlerSet = wire.NewSet(
 func InitModule(db *egorm.Component,
 	intrModule *interactive.Module,
 	ec ecache.Cache,
+	esClient *elastic.Client,
 	perm *permission.Module,
 	aiModule *ai.Module,
 	memberModule *member.Module,
@@ -69,6 +72,7 @@ func InitModule(db *egorm.Component,
 		event.NewInteractiveEventProducer,
 		InitKnowledgeBaseUploadProducer,
 		service.NewService,
+		service.NewSearchSyncService,
 		web.NewHandler,
 		web.NewAdminHandler,
 		web.NewAdminQuestionSetHandler,

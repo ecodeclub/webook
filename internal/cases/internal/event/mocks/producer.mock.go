@@ -5,6 +5,7 @@
 //
 //	mockgen -source=./producer.go -destination=./mocks/producer.mock.go -package=evtmocks -typed SyncEventProducer
 //
+
 // Package evtmocks is a generated GoMock package.
 package evtmocks
 
@@ -20,6 +21,7 @@ import (
 type MockSyncEventProducer struct {
 	ctrl     *gomock.Controller
 	recorder *MockSyncEventProducerMockRecorder
+	isgomock struct{}
 }
 
 // MockSyncEventProducerMockRecorder is the mock recorder for MockSyncEventProducer.
@@ -48,31 +50,31 @@ func (m *MockSyncEventProducer) Produce(ctx context.Context, evt event.CaseEvent
 }
 
 // Produce indicates an expected call of Produce.
-func (mr *MockSyncEventProducerMockRecorder) Produce(ctx, evt any) *SyncEventProducerProduceCall {
+func (mr *MockSyncEventProducerMockRecorder) Produce(ctx, evt any) *MockSyncEventProducerProduceCall {
 	mr.mock.ctrl.T.Helper()
 	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Produce", reflect.TypeOf((*MockSyncEventProducer)(nil).Produce), ctx, evt)
-	return &SyncEventProducerProduceCall{Call: call}
+	return &MockSyncEventProducerProduceCall{Call: call}
 }
 
-// SyncEventProducerProduceCall wrap *gomock.Call
-type SyncEventProducerProduceCall struct {
+// MockSyncEventProducerProduceCall wrap *gomock.Call
+type MockSyncEventProducerProduceCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *SyncEventProducerProduceCall) Return(arg0 error) *SyncEventProducerProduceCall {
+func (c *MockSyncEventProducerProduceCall) Return(arg0 error) *MockSyncEventProducerProduceCall {
 	c.Call = c.Call.Return(arg0)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *SyncEventProducerProduceCall) Do(f func(context.Context, event.CaseEvent) error) *SyncEventProducerProduceCall {
+func (c *MockSyncEventProducerProduceCall) Do(f func(context.Context, event.CaseEvent) error) *MockSyncEventProducerProduceCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *SyncEventProducerProduceCall) DoAndReturn(f func(context.Context, event.CaseEvent) error) *SyncEventProducerProduceCall {
+func (c *MockSyncEventProducerProduceCall) DoAndReturn(f func(context.Context, event.CaseEvent) error) *MockSyncEventProducerProduceCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

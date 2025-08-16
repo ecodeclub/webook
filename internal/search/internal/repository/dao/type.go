@@ -41,3 +41,7 @@ type QuestionSetDAO interface {
 type AnyDAO interface {
 	Input(ctx context.Context, index string, docID string, data string) error
 }
+
+type EsValSetter interface {
+	SetEsVal(ctx context.Context, index string, docID string, data string) error
+}

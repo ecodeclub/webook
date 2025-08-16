@@ -36,7 +36,11 @@ type QuestionDAO interface {
 	Delete(ctx context.Context, qid int64) error
 
 	Sync(ctx context.Context, que Question, eles []AnswerElement) (int64, error)
-
+	// 给同步给搜索服务用
+	PubListSync(ctx context.Context, offset int, limit int) ([]PublishQuestion, error)
+	// 获取ele
+	PubQuestionElementList(ctx context.Context, qids []int64) (map[int64][]PublishAnswerElement, error)
+	QuestionElementList(ctx context.Context, qids []int64) (map[int64][]AnswerElement, error)
 	// 线上库 API
 	PubList(ctx context.Context, offset int, limit int, biz string) ([]PublishQuestion, error)
 	PubCount(ctx context.Context, biz string) (int64, error)
@@ -48,6 +52,45 @@ type QuestionDAO interface {
 
 type GORMQuestionDAO struct {
 	db *egorm.Component
+}
+
+func (g *GORMQuestionDAO) QuestionElementList(ctx context.Context, qids []int64) (map[int64][]AnswerElement, error) {
+	var eles []AnswerElement
+	err := g.db.WithContext(ctx).
+		Where("qid in (?)", qids).
+		Find(&eles).Error
+	if err != nil {
+		return nil, err
+	}
+	res := make(map[int64][]AnswerElement, len(qids))
+	for _, ele := range eles {
+		res[ele.Qid] = append(res[ele.Qid], ele)
+	}
+	return res, nil
+}
+
+func (g *GORMQuestionDAO) PubQuestionElementList(ctx context.Context, qids []int64) (map[int64][]PublishAnswerElement, error) {
+	var eles []PublishAnswerElement
+	err := g.db.WithContext(ctx).
+		Where("qid in (?)", qids).
+		Find(&eles).Error
+	if err != nil {
+		return nil, err
+	}
+	res := make(map[int64][]PublishAnswerElement, len(qids))
+	for _, ele := range eles {
+		res[ele.Qid] = append(res[ele.Qid], ele)
+	}
+	return res, nil
+}
+
+func (g *GORMQuestionDAO) PubListSync(ctx context.Context, offset int, limit int) ([]PublishQuestion, error) {
+	var res []PublishQuestion
+	err := g.db.WithContext(ctx).
+		Offset(offset).Limit(limit).
+		Order("id DESC").
+		Find(&res).Error
+	return res, err
 }
 
 func (g *GORMQuestionDAO) Ids(ctx context.Context) ([]int64, error) {
@@ -253,6 +296,7 @@ func (g *GORMQuestionDAO) Sync(ctx context.Context, que Question, eles []AnswerE
 			src.Qid = qid
 			return PublishAnswerElement(src)
 		})
+		que.Id = qid
 		return g.saveLive(tx, PublishQuestion(que), pubEles)
 	})
 	return qid, err

@@ -92,7 +92,7 @@ func InitApp() (*App, error) {
 		wire.FieldsOf(new(*permission.Module), "Svc"),
 		middleware.NewCheckPermissionMiddlewareBuilder,
 		search.InitModule,
-		wire.FieldsOf(new(*search.Module), "Hdl"),
+		wire.FieldsOf(new(*search.Module), "Hdl", "AdminHandler"),
 		roadmap.InitModule,
 		wire.FieldsOf(new(*roadmap.Module), "Hdl", "AdminHdl"),
 		ai.InitModule,
