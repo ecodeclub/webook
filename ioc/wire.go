@@ -75,7 +75,7 @@ func InitApp() (*App, error) {
 		product.InitModule,
 		wire.FieldsOf(new(*product.Module), "Hdl"),
 		order.InitModule,
-		wire.FieldsOf(new(*order.Module), "Hdl", "CloseTimeoutOrdersJob"),
+		wire.FieldsOf(new(*order.Module), "Hdl", "AdminHandler", "CloseTimeoutOrdersJob"),
 		payment.InitModule,
 		wire.FieldsOf(new(*payment.Module), "Hdl", "SyncWechatOrderJob"),
 		credit.InitModule,

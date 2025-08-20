@@ -87,8 +87,8 @@ func (h *Handler) PreviewOrder(ctx *ginx.Context, req PreviewOrderReq, sess sess
 				RealTotalAmt:     realTotalPrice,
 				Items: slice.Map(orderItems, func(idx int, src domain.OrderItem) OrderItem {
 					return OrderItem{
-						SPU: h.toSPUVO(src.SPU),
-						SKU: h.toSKUVO(src.SKU),
+						SPU: toSPUVO(src.SPU),
+						SKU: toSKUVO(src.SKU),
 					}
 				}),
 			},
@@ -98,11 +98,11 @@ func (h *Handler) PreviewOrder(ctx *ginx.Context, req PreviewOrderReq, sess sess
 	}, nil
 }
 
-func (h *Handler) toSPUVO(spu domain.SPU) SPU {
+func toSPUVO(spu domain.SPU) SPU {
 	return SPU{Category0: spu.Category0, Category1: spu.Category1}
 }
 
-func (h *Handler) toSKUVO(sku domain.SKU) SKU {
+func toSKUVO(sku domain.SKU) SKU {
 	return SKU{
 		SN:            sku.SN,
 		Image:         sku.Image,
@@ -334,13 +334,13 @@ func (h *Handler) ListOrders(ctx *ginx.Context, req ListOrdersReq, sess session.
 		Data: ListOrdersResp{
 			Total: total,
 			Orders: slice.Map(orders, func(idx int, src domain.Order) Order {
-				return h.toOrderVO(src)
+				return toOrderVO(src)
 			}),
 		},
 	}, nil
 }
 
-func (h *Handler) toOrderVO(order domain.Order) Order {
+func toOrderVO(order domain.Order) Order {
 	return Order{
 		SN:               order.SN,
 		Payment:          Payment{SN: order.Payment.SN},
@@ -349,8 +349,8 @@ func (h *Handler) toOrderVO(order domain.Order) Order {
 		Status:           order.Status.ToUint8(),
 		Items: slice.Map(order.Items, func(idx int, src domain.OrderItem) OrderItem {
 			return OrderItem{
-				SPU: h.toSPUVO(src.SPU),
-				SKU: h.toSKUVO(src.SKU),
+				SPU: toSPUVO(src.SPU),
+				SKU: toSKUVO(src.SKU),
 			}
 		}),
 		Ctime: order.Ctime,
@@ -376,7 +376,7 @@ func (h *Handler) RetrieveOrderDetail(ctx *ginx.Context, req OrderSNReq, sess se
 }
 
 func (h *Handler) toOrderVOWithPaymentInfo(order domain.Order, pr payment.Payment) Order {
-	vo := h.toOrderVO(order)
+	vo := toOrderVO(order)
 	vo.Payment.Items = slice.Map(pr.Records, func(idx int, src payment.Record) PaymentItem {
 		return PaymentItem{
 			Type:   int64(src.Channel),

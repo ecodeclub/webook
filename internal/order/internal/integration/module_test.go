@@ -109,6 +109,138 @@ func (s *OrderModuleTestSuite) newGinServer(handler *web.Handler) *egin.Componen
 	return server
 }
 
+func (s *OrderModuleTestSuite) TestAdminHandler_List() {
+	t := s.T()
+	total := 100
+	for idx := 0; idx < total; idx++ {
+		id := int64(400 + idx)
+		status := domain.StatusSuccess.ToUint8()
+		orderEntity := dao.Order{
+			Id:               id,
+			SN:               fmt.Sprintf("OrderSN-admin-list-%d", id),
+			PaymentId:        sqlx.NewNullInt64(id),
+			PaymentSn:        sqlx.NewNullString(fmt.Sprintf("PaymentSN-admin-list-%d", id)),
+			BuyerId:          testUID,
+			OriginalTotalAmt: 100,
+			RealTotalAmt:     100,
+			Status:           status,
+		}
+		items := []dao.OrderItem{
+			s.newOrderItemDAO(id, id),
+		}
+		_, err := s.dao.CreateOrder(context.Background(), orderEntity, items)
+		require.NoError(s.T(), err)
+	}
+
+	testCases := []struct {
+		name           string
+		newHandlerFunc func(t *testing.T, ctrl *gomock.Controller) *web.AdminHandler
+		req            web.ListOrdersReq
+		wantCode       int
+		wantResp       test.Result[web.ListOrdersResp]
+	}{
+		{
+			name: "获取成功",
+			newHandlerFunc: func(t *testing.T, ctrl *gomock.Controller) *web.AdminHandler {
+				t.Helper()
+				return web.NewAdminHandler(s.svc)
+			},
+			req: web.ListOrdersReq{
+				Limit:  2,
+				Offset: 0,
+			},
+			wantCode: 200,
+			wantResp: test.Result[web.ListOrdersResp]{
+				Data: web.ListOrdersResp{
+					Total: int64(total),
+					Orders: []web.Order{
+						{
+							SN: "OrderSN-admin-list-499",
+							Payment: web.Payment{
+								SN: fmt.Sprintf("PaymentSN-admin-list-%d", 499),
+							},
+							OriginalTotalAmt: 100,
+							RealTotalAmt:     100,
+							Status:           domain.StatusSuccess.ToUint8(),
+							Items: []web.OrderItem{
+								{
+									SPU: web.SPU{Category0: "code", Category1: "member"},
+									SKU: web.SKU{
+										SN:            fmt.Sprintf("SKUSN-%d", 499),
+										Image:         fmt.Sprintf("SKUImage-%d", 499),
+										Name:          fmt.Sprintf("SKUName-%d", 499),
+										Desc:          fmt.Sprintf("SKUDescription-%d", 499),
+										OriginalPrice: 9900,
+										RealPrice:     9900,
+										Quantity:      1,
+									},
+								},
+							},
+						},
+						{
+							SN: "OrderSN-admin-list-498",
+							Payment: web.Payment{
+								SN:    fmt.Sprintf("PaymentSN-admin-list-%d", 498),
+								Items: nil,
+							},
+							OriginalTotalAmt: 100,
+							RealTotalAmt:     100,
+							Status:           domain.StatusSuccess.ToUint8(),
+							Items: []web.OrderItem{
+								{
+									SPU: web.SPU{Category0: "code", Category1: "member"},
+									SKU: web.SKU{
+										SN:            fmt.Sprintf("SKUSN-%d", 498),
+										Image:         fmt.Sprintf("SKUImage-%d", 498),
+										Name:          fmt.Sprintf("SKUName-%d", 498),
+										Desc:          fmt.Sprintf("SKUDescription-%d", 498),
+										OriginalPrice: 9900,
+										RealPrice:     9900,
+										Quantity:      1,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			req, err := http.NewRequest(http.MethodPost,
+				"/order/list", iox.NewJSONReader(tc.req))
+			req.Header.Set("content-type", "application/json")
+			require.NoError(t, err)
+			recorder := test.NewJSONResponseRecorder[web.ListOrdersResp]()
+
+			// Create a new gin server with the admin handler
+			server := s.newGinServerForAdmin(tc.newHandlerFunc(t, ctrl))
+			server.ServeHTTP(recorder, req)
+			require.Equal(t, tc.wantCode, recorder.Code)
+			s.assertListOrdersRespEqual(t, tc.wantResp.Data, recorder.MustScan().Data)
+		})
+	}
+}
+
+func (s *OrderModuleTestSuite) newGinServerForAdmin(handler *web.AdminHandler) *egin.Component {
+	econf.Set("server", map[string]any{"contextTimeout": "1s"})
+	server := egin.Load("server").Build()
+	server.Use(func(ctx *gin.Context) {
+		ctx.Set("_session", session.NewMemorySession(session.Claims{
+			Uid: testUID,
+		}))
+	})
+
+	handler.PrivateRoutes(server.Engine)
+	return server
+}
+
 func (s *OrderModuleTestSuite) TestHandler_PreviewOrder() {
 	t := s.T()
 
@@ -161,9 +293,9 @@ func (s *OrderModuleTestSuite) TestHandler_PreviewOrder() {
 				}, nil)
 				cm := &credit.Module{Svc: mockCreditSvc}
 
-				handler, err := startup.InitHandler(pm, ppm, cm)
+				module, err := startup.InitModule(pm, ppm, cm)
 				require.NoError(t, err)
-				return handler
+				return module.Handler
 			},
 			req: web.PreviewOrderReq{
 				SKUs: []web.SKU{
@@ -248,9 +380,9 @@ func (s *OrderModuleTestSuite) TestHandler_PreviewOrderFailed() {
 
 				cm := &credit.Module{Svc: creditmocks.NewMockService(ctrl)}
 
-				handler, err := startup.InitHandler(pm, ppm, cm)
+				module, err := startup.InitModule(pm, ppm, cm)
 				require.NoError(t, err)
-				return handler
+				return module.Handler
 			},
 			req: web.PreviewOrderReq{
 				SKUs: []web.SKU{
@@ -292,9 +424,9 @@ func (s *OrderModuleTestSuite) TestHandler_PreviewOrderFailed() {
 				mockCreditSvc := creditmocks.NewMockService(ctrl)
 				cm := &credit.Module{Svc: mockCreditSvc}
 
-				handler, err := startup.InitHandler(pm, ppm, cm)
+				module, err := startup.InitModule(pm, ppm, cm)
 				require.NoError(t, err)
-				return handler
+				return module.Handler
 			},
 			req: web.PreviewOrderReq{
 				SKUs: []web.SKU{
@@ -336,9 +468,9 @@ func (s *OrderModuleTestSuite) TestHandler_PreviewOrderFailed() {
 				mockCreditSvc := creditmocks.NewMockService(ctrl)
 				cm := &credit.Module{Svc: mockCreditSvc}
 
-				handler, err := startup.InitHandler(pm, ppm, cm)
+				module, err := startup.InitModule(pm, ppm, cm)
 				require.NoError(t, err)
-				return handler
+				return module.Handler
 			},
 			req: web.PreviewOrderReq{
 				SKUs: []web.SKU{
@@ -391,9 +523,9 @@ func (s *OrderModuleTestSuite) TestHandler_PreviewOrderFailed() {
 				mockCreditSvc.EXPECT().GetCreditsByUID(gomock.Any(), testUID).AnyTimes().Return(credit.Credit{}, mockErr)
 				cm := &credit.Module{Svc: mockCreditSvc}
 
-				handler, err := startup.InitHandler(pm, ppm, cm)
+				module, err := startup.InitModule(pm, ppm, cm)
 				require.NoError(t, err)
-				return handler
+				return module.Handler
 			},
 			req: web.PreviewOrderReq{
 				SKUs: []web.SKU{
@@ -500,9 +632,9 @@ func (s *OrderModuleTestSuite) TestHandler_CreateOrder() {
 
 				cm := &credit.Module{Svc: creditmocks.NewMockService(ctrl)}
 
-				handler, err := startup.InitHandler(pm, ppm, cm)
+				module, err := startup.InitModule(pm, ppm, cm)
 				require.NoError(t, err)
-				return handler
+				return module.Handler
 			},
 			req: web.CreateOrderReq{
 				RequestID: "requestID01",
@@ -596,9 +728,9 @@ func (s *OrderModuleTestSuite) TestHandler_CreateOrder() {
 
 				cm := &credit.Module{Svc: creditmocks.NewMockService(ctrl)}
 
-				handler, err := startup.InitHandler(pm, ppm, cm)
+				module, err := startup.InitModule(pm, ppm, cm)
 				require.NoError(t, err)
-				return handler
+				return module.Handler
 			},
 			req: web.CreateOrderReq{
 				RequestID: "requestID02",
@@ -694,9 +826,9 @@ func (s *OrderModuleTestSuite) TestHandler_CreateOrder() {
 
 				cm := &credit.Module{Svc: creditmocks.NewMockService(ctrl)}
 
-				handler, err := startup.InitHandler(pm, ppm, cm)
+				module, err := startup.InitModule(pm, ppm, cm)
 				require.NoError(t, err)
-				return handler
+				return module.Handler
 			},
 			req: web.CreateOrderReq{
 				RequestID: "requestID03",
@@ -769,9 +901,9 @@ func (s *OrderModuleTestSuite) TestHandler_CreateOrderFailed() {
 				ppm := &product.Module{Svc: productmocks.NewMockService(ctrl)}
 				cm := &credit.Module{Svc: creditmocks.NewMockService(ctrl)}
 
-				handler, err := startup.InitHandler(pm, ppm, cm)
+				module, err := startup.InitModule(pm, ppm, cm)
 				require.NoError(t, err)
-				return handler
+				return module.Handler
 			},
 			req: web.CreateOrderReq{
 				RequestID: "",
@@ -791,9 +923,9 @@ func (s *OrderModuleTestSuite) TestHandler_CreateOrderFailed() {
 				ppm := &product.Module{Svc: productmocks.NewMockService(ctrl)}
 				cm := &credit.Module{Svc: creditmocks.NewMockService(ctrl)}
 
-				handler, err := startup.InitHandler(pm, ppm, cm)
+				module, err := startup.InitModule(pm, ppm, cm)
 				require.NoError(t, err)
-				return handler
+				return module.Handler
 			},
 			req: web.CreateOrderReq{
 				RequestID: "requestID01",
@@ -820,9 +952,9 @@ func (s *OrderModuleTestSuite) TestHandler_CreateOrderFailed() {
 
 				cm := &credit.Module{Svc: creditmocks.NewMockService(ctrl)}
 
-				handler, err := startup.InitHandler(pm, ppm, cm)
+				module, err := startup.InitModule(pm, ppm, cm)
 				require.NoError(t, err)
-				return handler
+				return module.Handler
 			},
 			req: web.CreateOrderReq{
 				RequestID: "requestID02",
@@ -998,9 +1130,9 @@ func (s *OrderModuleTestSuite) TestHandler_CreateOrderFailed() {
 				}, nil)
 				cm := &credit.Module{Svc: mockCreditSvc}
 
-				handler, err := startup.InitHandler(pm, ppm, cm)
+				module, err := startup.InitModule(pm, ppm, cm)
 				require.NoError(t, err)
-				return handler
+				return module.Handler
 			},
 			req: web.CreateOrderReq{
 				RequestID: "requestID07",
@@ -1077,9 +1209,9 @@ func (s *OrderModuleTestSuite) createOrderFailedHandler(t *testing.T, ctrl *gomo
 
 	cm := &credit.Module{Svc: creditmocks.NewMockService(ctrl)}
 
-	handler, err := startup.InitHandler(pm, ppm, cm)
+	module, err := startup.InitModule(pm, ppm, cm)
 	require.NoError(t, err)
-	return handler
+	return module.Handler
 }
 
 func (s *OrderModuleTestSuite) TestHandler_Repay() {
@@ -1144,9 +1276,9 @@ func (s *OrderModuleTestSuite) TestHandler_Repay() {
 				pm := &payment.Module{Svc: mockPaymentSvc}
 				ppm := &product.Module{Svc: productmocks.NewMockService(ctrl)}
 				cm := &credit.Module{Svc: creditmocks.NewMockService(ctrl)}
-				handler, err := startup.InitHandler(pm, ppm, cm)
+				module, err := startup.InitModule(pm, ppm, cm)
 				require.NoError(t, err)
-				return handler
+				return module.Handler
 
 			},
 			req: web.OrderSNReq{
@@ -1202,9 +1334,9 @@ func (s *OrderModuleTestSuite) TestHandler_Repay() {
 				pm := &payment.Module{Svc: mockPaymentSvc}
 				ppm := &product.Module{Svc: productmocks.NewMockService(ctrl)}
 				cm := &credit.Module{Svc: creditmocks.NewMockService(ctrl)}
-				handler, err := startup.InitHandler(pm, ppm, cm)
+				module, err := startup.InitModule(pm, ppm, cm)
 				require.NoError(t, err)
-				return handler
+				return module.Handler
 
 			},
 			req: web.OrderSNReq{
@@ -1269,9 +1401,9 @@ func (s *OrderModuleTestSuite) TestHandler_Repay() {
 				pm := &payment.Module{Svc: mockPaymentSvc}
 				ppm := &product.Module{Svc: productmocks.NewMockService(ctrl)}
 				cm := &credit.Module{Svc: creditmocks.NewMockService(ctrl)}
-				handler, err := startup.InitHandler(pm, ppm, cm)
+				module, err := startup.InitModule(pm, ppm, cm)
 				require.NoError(t, err)
-				return handler
+				return module.Handler
 
 			},
 			req: web.OrderSNReq{
@@ -1327,9 +1459,9 @@ func (s *OrderModuleTestSuite) TestHandler_Repay() {
 				pm := &payment.Module{Svc: mockPaymentSvc}
 				ppm := &product.Module{Svc: productmocks.NewMockService(ctrl)}
 				cm := &credit.Module{Svc: creditmocks.NewMockService(ctrl)}
-				handler, err := startup.InitHandler(pm, ppm, cm)
+				module, err := startup.InitModule(pm, ppm, cm)
 				require.NoError(t, err)
-				return handler
+				return module.Handler
 
 			},
 			req: web.OrderSNReq{
@@ -1559,9 +1691,9 @@ func (s *OrderModuleTestSuite) TestHandler_RepayFailed() {
 				pm := &payment.Module{Svc: mockPaymentSvc}
 				ppm := &product.Module{Svc: productmocks.NewMockService(ctrl)}
 				cm := &credit.Module{Svc: creditmocks.NewMockService(ctrl)}
-				handler, err := startup.InitHandler(pm, ppm, cm)
+				module, err := startup.InitModule(pm, ppm, cm)
 				require.NoError(t, err)
-				return handler
+				return module.Handler
 			},
 			req: web.OrderSNReq{
 				SN: "orderSN-repay-16",
@@ -1624,9 +1756,9 @@ func (s *OrderModuleTestSuite) emptyHandler(t *testing.T, ctrl *gomock.Controlle
 	pm := &payment.Module{Svc: paymentmocks.NewMockService(ctrl)}
 	ppm := &product.Module{Svc: productmocks.NewMockService(ctrl)}
 	cm := &credit.Module{Svc: creditmocks.NewMockService(ctrl)}
-	handler, err := startup.InitHandler(pm, ppm, cm)
+	module, err := startup.InitModule(pm, ppm, cm)
 	require.NoError(t, err)
-	return handler
+	return module.Handler
 }
 
 func (s *OrderModuleTestSuite) TestHandler_ListOrders() {
@@ -1814,9 +1946,9 @@ func (s *OrderModuleTestSuite) TestHandler_RetrieveOrderDetail() {
 				pm := &payment.Module{Svc: mockPaymentSvc}
 				ppm := &product.Module{Svc: productmocks.NewMockService(ctrl)}
 				cm := &credit.Module{Svc: creditmocks.NewMockService(ctrl)}
-				handler, err := startup.InitHandler(pm, ppm, cm)
+				module, err := startup.InitModule(pm, ppm, cm)
 				require.NoError(t, err)
-				return handler
+				return module.Handler
 			},
 			req: web.OrderSNReq{
 				SN: "orderSN-33",
@@ -1967,9 +2099,9 @@ func (s *OrderModuleTestSuite) TestHandler_RetrieveOrderDetailFailed() {
 				pm := &payment.Module{Svc: mockPaymentSvc}
 				ppm := &product.Module{Svc: productmocks.NewMockService(ctrl)}
 				cm := &credit.Module{Svc: creditmocks.NewMockService(ctrl)}
-				handler, err := startup.InitHandler(pm, ppm, cm)
+				module, err := startup.InitModule(pm, ppm, cm)
 				require.NoError(t, err)
-				return handler
+				return module.Handler
 			},
 			req: web.OrderSNReq{
 				SN: "orderSN-55",

@@ -37,6 +37,10 @@ type OrderDAO interface {
 	FindTimeoutOrders(ctx context.Context, offset, limit int, ctime int64) ([]Order, error)
 	CountTimeoutOrders(ctx context.Context, ctime int64) (int64, error)
 	SetOrdersTimeoutClosed(ctx context.Context, orderIDs []int64, ctime int64) error
+
+	FindOrders(ctx context.Context, offset, limit int) ([]Order, error)
+	CountOrders(ctx context.Context) (int64, error)
+	FindItemsByOrderIDs(ctx context.Context, oids []int64) (map[int64][]OrderItem, error)
 }
 
 func NewOrderGORMDAO(db *egorm.Component) OrderDAO {
@@ -45,6 +49,43 @@ func NewOrderGORMDAO(db *egorm.Component) OrderDAO {
 
 type gormOrderDAO struct {
 	db *egorm.Component
+}
+
+func (g *gormOrderDAO) FindItemsByOrderIDs(ctx context.Context, oids []int64) (map[int64][]OrderItem, error) {
+	if len(oids) == 0 {
+		return map[int64][]OrderItem{}, nil
+	}
+	var items []OrderItem
+	err := g.db.WithContext(ctx).
+		Model(&OrderItem{}).
+		Where("order_id IN ?", oids).
+		Order("ctime DESC").
+		Find(&items).Error
+	if err != nil {
+		return nil, err
+	}
+	res := make(map[int64][]OrderItem, len(oids))
+	for i := range items {
+		item := items[i]
+		res[item.OrderId] = append(res[item.OrderId], item)
+	}
+	return res, nil
+}
+
+func (g *gormOrderDAO) CountOrders(ctx context.Context) (int64, error) {
+	var count int64
+	err := g.db.WithContext(ctx).Model(&Order{}).Count(&count).Error
+	return count, err
+}
+
+func (g *gormOrderDAO) FindOrders(ctx context.Context, offset, limit int) ([]Order, error) {
+	var list []Order
+	err := g.db.WithContext(ctx).Model(&Order{}).
+		Order("ctime DESC,id DESC").
+		Offset(offset).
+		Limit(limit).
+		Find(&list).Error
+	return list, err
 }
 
 func (g *gormOrderDAO) CreateOrder(ctx context.Context, order Order, items []OrderItem) (int64, error) {

@@ -40,6 +40,7 @@ import (
 
 type (
 	Handler               = web.Handler
+	AdminHandler          = web.AdminHandler
 	Service               = service.Service
 	CloseTimeoutOrdersJob = job.CloseTimeoutOrdersJob
 	Order                 = domain.Order
@@ -62,6 +63,7 @@ func InitModule(db *egorm.Component, cache ecache.Cache, q mq.MQ, pm *payment.Mo
 		wire.Struct(new(Module), "*"),
 		InitService,
 		InitHandler,
+		web.NewAdminHandler,
 		event.NewOrderEventProducer,
 		initCompleteOrderConsumer,
 		initCloseExpiredOrdersJob,
