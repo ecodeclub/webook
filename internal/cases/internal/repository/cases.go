@@ -28,6 +28,8 @@ type CaseRepo interface {
 	// 管理端接口
 	Ids(ctx context.Context) ([]int64, error)
 	List(ctx context.Context, offset int, limit int) ([]domain.Case, error)
+	ListSync(ctx context.Context, offset int, limit int) ([]domain.Case, error)
+	PubListSync(ctx context.Context, offset int, limit int) ([]domain.Case, error)
 	Total(ctx context.Context) (int64, error)
 	Save(ctx context.Context, ca domain.Case) (int64, error)
 	GetById(ctx context.Context, caseId int64) (domain.Case, error)
@@ -40,6 +42,26 @@ type caseRepo struct {
 	caseDao   dao.CaseDAO
 	caseCache cache.CaseCache
 	logger    *elog.Component
+}
+
+func (c *caseRepo) ListSync(ctx context.Context, offset int, limit int) ([]domain.Case, error) {
+	caseList, err := c.caseDao.ListSync(ctx, offset, limit)
+	if err != nil {
+		return nil, err
+	}
+	return slice.Map(caseList, func(idx int, src dao.Case) domain.Case {
+		return c.toDomain(src)
+	}), nil
+}
+
+func (c *caseRepo) PubListSync(ctx context.Context, offset int, limit int) ([]domain.Case, error) {
+	caseList, err := c.caseDao.PubListSync(ctx, offset, limit)
+	if err != nil {
+		return nil, err
+	}
+	return slice.Map(caseList, func(idx int, src dao.PublishCase) domain.Case {
+		return c.toDomain(dao.Case(src))
+	}), nil
 }
 
 func (c *caseRepo) PubCount(ctx context.Context) (int64, error) {

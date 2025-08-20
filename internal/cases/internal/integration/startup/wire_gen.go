@@ -24,8 +24,8 @@ import (
 // Injectors from wire.go:
 
 func InitModule(syncProducer event.SyncEventProducer, knowledgeBaseProducer event.KnowledgeBaseEventProducer, aiModule *ai.Module, memberModule *member.Module, sp session.Provider, intrModule *interactive.Module) (*cases.Module, error) {
-	db := testioc.InitDB()
-	caseDAO := cases.InitCaseDAO(db)
+	v := testioc.InitDB()
+	caseDAO := cases.InitCaseDAO(v)
 	ecacheCache := testioc.InitCache()
 	caseCache := cache.NewCaseCache(ecacheCache)
 	caseRepo := repository.NewCaseRepo(caseDAO, caseCache)
@@ -35,35 +35,37 @@ func InitModule(syncProducer event.SyncEventProducer, knowledgeBaseProducer even
 		return nil, err
 	}
 	serviceService := service.NewService(caseRepo, interactiveEventProducer, knowledgeBaseProducer, syncProducer)
-	adminCaseHandler := web.NewAdminCaseHandler(serviceService)
-	examineDAO := dao.NewGORMExamineDAO(db)
+	client := testioc.InitES()
+	searchSyncService := service.NewCaseSearchSyncService(caseRepo, client)
+	v2 := web.NewAdminCaseHandler(serviceService, searchSyncService)
+	examineDAO := dao.NewGORMExamineDAO(v)
 	examineRepository := repository.NewCachedExamineRepository(examineDAO)
-	llmService := aiModule.Svc
-	examineService := service.NewLLMExamineService(caseRepo, examineRepository, llmService)
-	service2 := intrModule.Svc
-	service3 := memberModule.Svc
-	handler := web.NewHandler(serviceService, examineService, service2, service3, sp)
-	caseSetDAO := dao.NewCaseSetDAO(db)
+	v3 := aiModule.Svc
+	v4 := service.NewLLMExamineService(caseRepo, examineRepository, v3)
+	v5 := intrModule.Svc
+	v6 := memberModule.Svc
+	v7 := web.NewHandler(serviceService, v4, v5, v6, sp)
+	caseSetDAO := dao.NewCaseSetDAO(v)
 	caseSetRepository := repository.NewCaseSetRepo(caseSetDAO)
 	caseSetService := service.NewCaseSetService(caseSetRepository, caseRepo, interactiveEventProducer)
-	adminCaseSetHandler := web.NewAdminCaseSetHandler(caseSetService)
-	repositoryBaseSvc := aiModule.KnowledgeBaseSvc
-	knowledgeBaseService := initKnowledgeBaseSvc(repositoryBaseSvc, caseRepo)
-	knowledgeBaseHandler := web.NewKnowledgeBaseHandler(knowledgeBaseService)
+	v8 := web.NewAdminCaseSetHandler(caseSetService)
+	v9 := aiModule.KnowledgeBaseSvc
+	knowledgeBaseService := initKnowledgeBaseSvc(v9, caseRepo)
+	v10 := web.NewKnowledgeBaseHandler(knowledgeBaseService)
 	module := &cases.Module{
-		AdminHandler:         adminCaseHandler,
-		ExamineSvc:           examineService,
+		AdminHandler:         v2,
+		ExamineSvc:           v4,
 		Svc:                  serviceService,
-		Hdl:                  handler,
-		AdminSetHandler:      adminCaseSetHandler,
-		KnowledgeBaseHandler: knowledgeBaseHandler,
+		Hdl:                  v7,
+		AdminSetHandler:      v8,
+		KnowledgeBaseHandler: v10,
 	}
 	return module, nil
 }
 
 func InitExamModule(syncProducer event.SyncEventProducer, knowledgeBaseProducer event.KnowledgeBaseEventProducer, intrModule *interactive.Module, memberModule *member.Module, sp session.Provider, aiModule *ai.Module) (*cases.Module, error) {
-	db := testioc.InitDB()
-	caseDAO := cases.InitCaseDAO(db)
+	v := testioc.InitDB()
+	caseDAO := cases.InitCaseDAO(v)
 	ecacheCache := testioc.InitCache()
 	caseCache := cache.NewCaseCache(ecacheCache)
 	caseRepo := repository.NewCaseRepo(caseDAO, caseCache)
@@ -72,34 +74,36 @@ func InitExamModule(syncProducer event.SyncEventProducer, knowledgeBaseProducer 
 	if err != nil {
 		return nil, err
 	}
-	serviceService := service.NewService(caseRepo, interactiveEventProducer, knowledgeBaseProducer, syncProducer)
-	caseSetDAO := dao.NewCaseSetDAO(db)
+	v2 := service.NewService(caseRepo, interactiveEventProducer, knowledgeBaseProducer, syncProducer)
+	caseSetDAO := dao.NewCaseSetDAO(v)
 	caseSetRepository := repository.NewCaseSetRepo(caseSetDAO)
-	caseSetService := service.NewCaseSetService(caseSetRepository, caseRepo, interactiveEventProducer)
-	examineDAO := dao.NewGORMExamineDAO(db)
+	v3 := service.NewCaseSetService(caseSetRepository, caseRepo, interactiveEventProducer)
+	examineDAO := dao.NewGORMExamineDAO(v)
 	examineRepository := repository.NewCachedExamineRepository(examineDAO)
-	llmService := aiModule.Svc
-	examineService := service.NewLLMExamineService(caseRepo, examineRepository, llmService)
-	service2 := intrModule.Svc
-	service3 := memberModule.Svc
-	handler := web.NewHandler(serviceService, examineService, service2, service3, sp)
-	adminCaseSetHandler := web.NewAdminCaseSetHandler(caseSetService)
-	adminCaseHandler := web.NewAdminCaseHandler(serviceService)
-	examineHandler := web.NewExamineHandler(examineService)
-	caseSetHandler := web.NewCaseSetHandler(caseSetService, examineService, service2, sp)
-	repositoryBaseSvc := aiModule.KnowledgeBaseSvc
-	knowledgeBaseService := initKnowledgeBaseSvc(repositoryBaseSvc, caseRepo)
-	knowledgeBaseHandler := web.NewKnowledgeBaseHandler(knowledgeBaseService)
+	v4 := aiModule.Svc
+	v5 := service.NewLLMExamineService(caseRepo, examineRepository, v4)
+	v6 := intrModule.Svc
+	v7 := memberModule.Svc
+	v8 := web.NewHandler(v2, v5, v6, v7, sp)
+	v9 := web.NewAdminCaseSetHandler(v3)
+	client := testioc.InitES()
+	searchSyncService := service.NewCaseSearchSyncService(caseRepo, client)
+	v10 := web.NewAdminCaseHandler(v2, searchSyncService)
+	v11 := web.NewExamineHandler(v5)
+	v12 := web.NewCaseSetHandler(v3, v5, v6, sp)
+	v13 := aiModule.KnowledgeBaseSvc
+	knowledgeBaseService := initKnowledgeBaseSvc(v13, caseRepo)
+	v14 := web.NewKnowledgeBaseHandler(knowledgeBaseService)
 	module := &cases.Module{
-		Svc:                  serviceService,
-		SetSvc:               caseSetService,
-		ExamineSvc:           examineService,
-		Hdl:                  handler,
-		AdminSetHandler:      adminCaseSetHandler,
-		AdminHandler:         adminCaseHandler,
-		ExamineHdl:           examineHandler,
-		CsHdl:                caseSetHandler,
-		KnowledgeBaseHandler: knowledgeBaseHandler,
+		Svc:                  v2,
+		SetSvc:               v3,
+		ExamineSvc:           v5,
+		Hdl:                  v8,
+		AdminSetHandler:      v9,
+		AdminHandler:         v10,
+		ExamineHdl:           v11,
+		CsHdl:                v12,
+		KnowledgeBaseHandler: v14,
 	}
 	return module, nil
 }

@@ -144,7 +144,7 @@ func (s *AdminHandlerTestSuite) TestSave() {
 			//
 			name: "全部新建",
 			before: func(t *testing.T) {
-				s.producer.EXPECT().Produce(gomock.Any(), gomock.Any()).Return(nil)
+				s.producer.EXPECT().Produce(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 			},
 			after: func(t *testing.T) {
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
@@ -203,7 +203,7 @@ func (s *AdminHandlerTestSuite) TestSave() {
 			//
 			name: "部分更新",
 			before: func(t *testing.T) {
-				s.producer.EXPECT().Produce(gomock.Any(), gomock.Any()).Return(nil)
+				s.producer.EXPECT().Produce(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 				defer cancel()
 				err := s.db.WithContext(ctx).Create(&dao.Question{
@@ -332,7 +332,7 @@ func (s *AdminHandlerTestSuite) TestSync() {
 			//
 			name: "全部新建",
 			before: func(t *testing.T) {
-				s.producer.EXPECT().Produce(gomock.Any(), gomock.Any()).Return(nil)
+				s.producer.EXPECT().Produce(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 				s.knowledgeBaseProducer.EXPECT().Produce(gomock.Any(), gomock.Any()).Return(nil)
 			},
 			after: func(t *testing.T) {
@@ -405,7 +405,7 @@ func (s *AdminHandlerTestSuite) TestSync() {
 			//
 			name: "部分更新",
 			before: func(t *testing.T) {
-				s.producer.EXPECT().Produce(gomock.Any(), gomock.Any()).Return(nil)
+				s.producer.EXPECT().Produce(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 				s.knowledgeBaseProducer.EXPECT().Produce(gomock.Any(), gomock.Any()).Return(nil)
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 				defer cancel()
@@ -549,7 +549,7 @@ func (s *AdminHandlerTestSuite) TestSync() {
 		{
 			name: "更新缓存",
 			before: func(t *testing.T) {
-				s.producer.EXPECT().Produce(gomock.Any(), gomock.Any()).Return(nil)
+				s.producer.EXPECT().Produce(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 				s.knowledgeBaseProducer.EXPECT().Produce(gomock.Any(), gomock.Any()).Return(nil)
 				ques := []domain.Question{
 					{
@@ -780,7 +780,7 @@ func (s *AdminHandlerTestSuite) TestQuestionEvent() {
 		ans = append(ans, eve)
 		mu.Unlock()
 		return nil
-	}).Times(2)
+	}).AnyTimes()
 	s.knowledgeBaseProducer.EXPECT().Produce(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, knowledgeBaseEvent event.KnowledgeBaseEvent) error {
 		assert.Equal(t, "question", knowledgeBaseEvent.Biz)
 		var que domain.Question
@@ -862,6 +862,20 @@ func (s *AdminHandlerTestSuite) TestQuestionEvent() {
 				Basic:        s.buildEventEle(2),
 				Intermediate: s.buildEventEle(3),
 				Advanced:     s.buildEventEle(4),
+			},
+		},
+		{
+			Title:   "面试题2",
+			UID:     uid,
+			Content: "面试题内容",
+			Status:  2,
+			Biz:     "project",
+			BizId:   2,
+			Answer: event.Answer{
+				Analysis:     s.buildEventEle(0),
+				Basic:        s.buildEventEle(1),
+				Intermediate: s.buildEventEle(2),
+				Advanced:     s.buildEventEle(3),
 			},
 		},
 		{

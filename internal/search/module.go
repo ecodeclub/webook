@@ -17,8 +17,9 @@ package search
 import "github.com/ecodeclub/webook/internal/search/internal/event"
 
 type Module struct {
-	SearchSvc SearchService
-	SyncSvc   SyncService
-	c         *event.SyncConsumer
-	Hdl       *Handler
+	SearchSvc    SearchService
+	SyncSvc      SyncService
+	C            *event.SyncConsumer
+	Hdl          *Handler
+	AdminHandler *AdminHandler
 }

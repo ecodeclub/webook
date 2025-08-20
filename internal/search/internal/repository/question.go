@@ -16,6 +16,7 @@ package repository
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/ecodeclub/webook/internal/search/internal/domain"
 	"github.com/ecodeclub/webook/internal/search/internal/repository/dao"
@@ -44,26 +45,36 @@ func (q *questionRepository) SearchQuestion(ctx context.Context, offset, limit i
 }
 
 func (q *questionRepository) questionToDomain(que dao.Question) domain.Question {
+	highlightMap := que.EsHighLights
 	return domain.Question{
-		ID:      que.ID,
-		UID:     que.UID,
-		Title:   que.Title,
-		Labels:  que.Labels,
-		Content: que.Content,
-		Status:  que.Status,
+		ID:     que.ID,
+		UID:    que.UID,
+		Biz:    que.Biz,
+		BizID:  que.BizID,
+		Title:  que.Title,
+		Labels: que.Labels,
+		Content: domain.EsVal{
+			Val:           que.Content,
+			HighLightVals: highlightMap["content"],
+		},
+		Status: que.Status,
 		Answer: domain.Answer{
-			Analysis:     q.ansToDomain(que.Answer.Analysis),
-			Basic:        q.ansToDomain(que.Answer.Basic),
-			Intermediate: q.ansToDomain(que.Answer.Intermediate),
-			Advanced:     q.ansToDomain(que.Answer.Advanced),
+			Analysis:     q.ansToDomain(que.Answer.Analysis, highlightMap, "analysis"),
+			Basic:        q.ansToDomain(que.Answer.Basic, highlightMap, "basic"),
+			Intermediate: q.ansToDomain(que.Answer.Intermediate, highlightMap, "intermediate"),
+			Advanced:     q.ansToDomain(que.Answer.Advanced, highlightMap, "advanced"),
 		},
 	}
 }
 
-func (*questionRepository) ansToDomain(ans dao.AnswerElement) domain.AnswerElement {
+func (*questionRepository) ansToDomain(ans dao.AnswerElement, highlightMap map[string][]string, ansType string) domain.AnswerElement {
+	ansType = fmt.Sprintf("answer.%s.content", ansType)
 	return domain.AnswerElement{
-		ID:        ans.ID,
-		Content:   ans.Content,
+		ID: ans.ID,
+		Content: domain.EsVal{
+			Val:           ans.Content,
+			HighLightVals: highlightMap[ansType],
+		},
 		Keywords:  ans.Keywords,
 		Shorthand: ans.Shorthand,
 		Highlight: ans.Highlight,
