@@ -33,6 +33,7 @@ import (
 	"github.com/ecodeclub/webook/internal/material/internal/repository/dao"
 	"github.com/ecodeclub/webook/internal/material/internal/service"
 	"github.com/ecodeclub/webook/internal/material/internal/web"
+	notificationevt "github.com/ecodeclub/webook/internal/notification/event"
 	"github.com/ecodeclub/webook/internal/sms/client"
 	smsmocks "github.com/ecodeclub/webook/internal/sms/client/mocks"
 	"github.com/ecodeclub/webook/internal/test"
@@ -98,7 +99,7 @@ func (s *MaterialModuleTestSuite) TearDownSuite() {
 	s.NoError(err)
 }
 
-func (s *MaterialModuleTestSuite) TestHandler_Submit() {
+func (s *MaterialModuleTestSuite) TestHandler_Save() {
 	t := s.T()
 
 	testCases := []struct {
@@ -111,10 +112,16 @@ func (s *MaterialModuleTestSuite) TestHandler_Submit() {
 		after    func(t *testing.T, req web.SaveMaterialReq)
 	}{
 		{
-			name: "提交素材成功",
+			name: "提交素材成功_发送微信群通知成功",
 			newHandlerFunc: func(t *testing.T, ctrl *gomock.Controller) *web.Handler {
 				t.Helper()
-				return web.NewHandler(s.svc)
+				producer := evtmocks.NewMockWechatRobotEventProducer(ctrl)
+				producer.EXPECT().Produce(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, event notificationevt.WechatRobotEvent) error {
+					assert.NotEmpty(t, event.Robot)
+					assert.NotEmpty(t, event.RawContent)
+					return nil
+				}).Times(1)
+				return web.NewHandler(s.svc, producer)
 			},
 			req: web.SaveMaterialReq{
 				Material: web.Material{
@@ -143,6 +150,32 @@ func (s *MaterialModuleTestSuite) TestHandler_Submit() {
 				assert.NotZero(t, material.Utime)
 			},
 		},
+		{
+			name: "提交素材成功_发送微信群通知失败",
+			newHandlerFunc: func(t *testing.T, ctrl *gomock.Controller) *web.Handler {
+				t.Helper()
+				producer := evtmocks.NewMockWechatRobotEventProducer(ctrl)
+				producer.EXPECT().Produce(gomock.Any(), gomock.Any()).DoAndReturn(func(_ context.Context, _ notificationevt.WechatRobotEvent) error {
+					return errors.New("fake error")
+				}).Times(1)
+				return web.NewHandler(s.svc, producer)
+			},
+			req: web.SaveMaterialReq{
+				Material: web.Material{
+					Title:     fmt.Sprintf("/%d/title", testID),
+					AudioURL:  fmt.Sprintf("/%d/audio", testID),
+					ResumeURL: fmt.Sprintf("/%d/resume", testID),
+					Remark:    "备注内容",
+				},
+			},
+			wantCode: 200,
+			wantResp: test.Result[any]{
+				Msg: "OK",
+			},
+			after: func(t *testing.T, req web.SaveMaterialReq) {
+				t.Helper()
+			},
+		},
 	}
 
 	for _, tc := range testCases {
@@ -163,7 +196,7 @@ func (s *MaterialModuleTestSuite) TestHandler_Submit() {
 	}
 }
 
-func (s *MaterialModuleTestSuite) TestHandler_History() {
+func (s *MaterialModuleTestSuite) TestHandler_List() {
 	t := s.T()
 
 	total := 10
@@ -189,7 +222,7 @@ func (s *MaterialModuleTestSuite) TestHandler_History() {
 	require.NoError(t, err)
 	req.Header.Set("content-type", "application/json")
 	recorder := test.NewJSONResponseRecorder[web.ListMaterialsResp]()
-	server := s.newGinServer(web.NewHandler(s.svc), uid)
+	server := s.newGinServer(web.NewHandler(s.svc, nil), uid)
 	server.ServeHTTP(recorder, req)
 	require.Equal(t, 200, recorder.Code)
 	result := recorder.MustScan()
