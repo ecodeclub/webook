@@ -32,7 +32,11 @@ func InitModule(db *gorm.DB, q mq.MQ, client2 client.Client, userModule *user.Mo
 		return nil, err
 	}
 	adminHandler := web.NewAdminHandler(materialService, userService, memberEventProducer, client2)
-	handler := web.NewHandler(materialService)
+	wechatRobotEventProducer, err := event.NewQYWeChatEventProducer(q)
+	if err != nil {
+		return nil, err
+	}
+	handler := web.NewHandler(materialService, wechatRobotEventProducer)
 	module := &Module{
 		AdminHdl: adminHandler,
 		Hdl:      handler,

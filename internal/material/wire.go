@@ -42,6 +42,7 @@ func InitModule(db *egorm.Component, q mq.MQ, client client.Client, userModule *
 		initDAO,
 		repository.NewMaterialRepository,
 		event.NewMemberEventProducer,
+		event.NewQYWeChatEventProducer,
 		service.NewMaterialService,
 		web.NewHandler,
 		web.NewAdminHandler,
