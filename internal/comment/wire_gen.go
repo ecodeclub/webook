@@ -9,6 +9,8 @@ package comment
 import (
 	"sync"
 
+	"github.com/ecodeclub/mq-api"
+	"github.com/ecodeclub/webook/internal/comment/internal/event"
 	"github.com/ecodeclub/webook/internal/comment/internal/repository"
 	"github.com/ecodeclub/webook/internal/comment/internal/repository/dao"
 	"github.com/ecodeclub/webook/internal/comment/internal/service"
@@ -20,7 +22,7 @@ import (
 
 // Injectors from wire.go:
 
-func InitModule(db *gorm.DB, userModule *user.Module) (*Module, error) {
+func InitModule(db *gorm.DB, q mq.MQ, userModule *user.Module) (*Module, error) {
 	userService := userModule.Svc
 	commentDAO, err := initCommentDAO(db)
 	if err != nil {
@@ -28,7 +30,11 @@ func InitModule(db *gorm.DB, userModule *user.Module) (*Module, error) {
 	}
 	commentRepository := repository.NewCommentRepository(commentDAO)
 	commentService := service.NewCommentService(userService, commentRepository)
-	handler := web.NewHandler(commentService)
+	wechatRobotEventProducer, err := event.NewQYWeChatEventProducer(q)
+	if err != nil {
+		return nil, err
+	}
+	handler := web.NewHandler(commentService, wechatRobotEventProducer)
 	module := &Module{
 		Hdl: handler,
 	}

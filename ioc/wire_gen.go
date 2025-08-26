@@ -144,7 +144,7 @@ func InitApp() (*App, error) {
 	handler17 := aiModule.Hdl
 	reviewModule := review.InitModule(db, interactiveModule, mq, provider, cache)
 	handler18 := reviewModule.Hdl
-	commentModule, err := comment.InitModule(db, userModule)
+	commentModule, err := comment.InitModule(db, mq, userModule)
 	if err != nil {
 		return nil, err
 	}

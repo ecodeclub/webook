@@ -22,19 +22,29 @@ import (
 	"github.com/ecodeclub/ginx"
 	"github.com/ecodeclub/ginx/session"
 	"github.com/ecodeclub/webook/internal/comment/internal/domain"
+	"github.com/ecodeclub/webook/internal/comment/internal/event"
 	"github.com/ecodeclub/webook/internal/comment/internal/service"
+	notificationevt "github.com/ecodeclub/webook/internal/notification/event"
 	"github.com/gin-gonic/gin"
+	"github.com/gotomicro/ego/core/elog"
 )
 
 var _ ginx.Handler = &Handler{}
 
 type Handler struct {
-	svc service.CommentService
+	svc      service.CommentService
+	producer event.WechatRobotEventProducer
+	logger   *elog.Component
 }
 
-func NewHandler(svc service.CommentService) *Handler {
+func NewHandler(
+	svc service.CommentService,
+	producer event.WechatRobotEventProducer,
+) *Handler {
 	return &Handler{
-		svc: svc,
+		svc:      svc,
+		producer: producer,
+		logger:   elog.DefaultLogger.With(elog.FieldComponentName("comment.Handler")),
 	}
 }
 
@@ -57,10 +67,11 @@ func (h *Handler) Create(ctx *ginx.Context, req CreateRequest, sess session.Sess
 	if req.Comment.Content == "" {
 		return systemErrorResult, errors.New("评论内容不能为空")
 	}
+	uid := sess.Claims().Uid
 	id, err := h.svc.Create(ctx.Request.Context(),
 		domain.Comment{
 			User: domain.User{
-				ID: sess.Claims().Uid,
+				ID: uid,
 			},
 			Biz:      req.Comment.Biz,
 			BizID:    req.Comment.BizID,
@@ -70,6 +81,20 @@ func (h *Handler) Create(ctx *ginx.Context, req CreateRequest, sess session.Sess
 		})
 	if err != nil {
 		return systemErrorResult, err
+	}
+	evt := notificationevt.WechatRobotEvent{
+		Robot: "adminRobot",
+		RawContent: fmt.Sprintf("用户%d刚刚对biz=%q,bizID=%d发表了评论：%q",
+			uid,
+			req.Comment.Biz,
+			req.Comment.BizID,
+			req.Comment.Content),
+	}
+	if er := h.producer.Produce(ctx.Request.Context(), evt); er != nil {
+		h.logger.Error("发送企业微信群通知失败",
+			elog.FieldErr(er),
+			elog.Any("event", evt),
+		)
 	}
 	// 返回评论 ID
 	return ginx.Result{
