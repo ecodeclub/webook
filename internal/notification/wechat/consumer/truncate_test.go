@@ -90,6 +90,6 @@ func TestTruncate(t *testing.T) {
 func TestTruncate_Panic(t *testing.T) {
 	// 断言当 limit 为负数时，程序会发生 panic
 	assert.Panics(t, func() {
-		truncate("this will panic", -1)
+		_ = truncate("this will panic", -1)
 	}, "limit为负数应该引起panic")
 }
