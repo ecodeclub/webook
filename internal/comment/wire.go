@@ -19,6 +19,8 @@ package comment
 import (
 	"sync"
 
+	"github.com/ecodeclub/mq-api"
+	"github.com/ecodeclub/webook/internal/comment/internal/event"
 	"github.com/ecodeclub/webook/internal/comment/internal/repository"
 	"github.com/ecodeclub/webook/internal/comment/internal/repository/dao"
 	"github.com/ecodeclub/webook/internal/comment/internal/service"
@@ -30,11 +32,13 @@ import (
 
 func InitModule(
 	db *egorm.Component,
+	q mq.MQ,
 	userModule *user.Module) (*Module, error) {
 	wire.Build(
 		initCommentDAO,
 		repository.NewCommentRepository,
 		service.NewCommentService,
+		event.NewQYWeChatEventProducer,
 		web.NewHandler,
 		wire.FieldsOf(new(*user.Module), "Svc"),
 		wire.Struct(new(Module), "*"),
