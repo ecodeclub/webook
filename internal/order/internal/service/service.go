@@ -42,6 +42,7 @@ type Service interface {
 	FindTimeoutOrders(ctx context.Context, offset, limit int, ctime int64) ([]domain.Order, int64, error)
 	// CloseTimeoutOrders 关闭过期订单 job调用
 	CloseTimeoutOrders(ctx context.Context, orderIDs []int64, ctime int64) error
+	FindOrders(ctx context.Context, offset, limit int) (int64, []domain.Order, error)
 }
 
 func NewService(repo repository.OrderRepository) Service {
@@ -50,6 +51,10 @@ func NewService(repo repository.OrderRepository) Service {
 
 type service struct {
 	repo repository.OrderRepository
+}
+
+func (s *service) FindOrders(ctx context.Context, offset, limit int) (int64, []domain.Order, error) {
+	return s.repo.FindOrders(ctx, offset, limit)
 }
 
 func (s *service) CreateOrder(ctx context.Context, order domain.Order) (domain.Order, error) {
