@@ -228,13 +228,14 @@ func (i *InteractiveTestSuite) TestGetByIds() {
 
 func (i *InteractiveTestSuite) TestCollection_Info() {
 	testcases := []struct {
-		name    string
-		before  func(t *testing.T) int64
-		wantVal []domain.CollectionRecord
-		biz     string
-		offset  int
-		limit   int
-		wantErr error
+		name      string
+		before    func(t *testing.T) int64
+		wantVal   []domain.CollectionRecord
+		wantTotal int
+		biz       string
+		offset    int
+		limit     int
+		wantErr   error
 	}{
 		{
 			name: "收藏记录",
@@ -284,9 +285,10 @@ func (i *InteractiveTestSuite) TestCollection_Info() {
 					Case: 1,
 				},
 			},
-			biz:    "",
-			offset: 0,
-			limit:  10,
+			biz:       "",
+			wantTotal: 4,
+			offset:    0,
+			limit:     10,
 		},
 		{
 			name: "收藏记录分页",
@@ -317,16 +319,18 @@ func (i *InteractiveTestSuite) TestCollection_Info() {
 					Question: 2,
 				},
 			},
-			biz:    repository.QuestionBiz,
-			offset: 0,
-			limit:  2,
+			biz:       repository.QuestionBiz,
+			wantTotal: 1,
+			offset:    0,
+			limit:     2,
 		},
 	}
 	for _, tc := range testcases {
 		i.T().Run(tc.name, func(t *testing.T) {
 			id := tc.before(t)
-			res, err := i.svc.CollectionInfo(context.Background(), uid, id, tc.biz, tc.offset, tc.limit)
+			res, total, err := i.svc.CollectionInfo(context.Background(), uid, id, tc.biz, tc.offset, tc.limit)
 			assert.Equal(t, err, tc.wantErr)
+			assert.Equal(t, tc.wantTotal, total)
 			if err != nil {
 				return
 			}

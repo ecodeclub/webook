@@ -576,8 +576,9 @@ func (i *InteractiveTestSuite) TestCollection_Delete() {
 				require.NoError(t, err)
 				err = i.svc.MoveToCollection(context.Background(), "case", 2, uid, id)
 				require.NoError(t, err)
-				records, err := i.svc.CollectionInfo(context.Background(), uid, id, "case", 0, 10)
+				records, total, err := i.svc.CollectionInfo(context.Background(), uid, id, "case", 0, 10)
 				require.NoError(t, err)
+				assert.Equal(t, 2, total)
 				assert.ElementsMatch(t, []domain.CollectionRecord{
 					{
 						Id:   1,

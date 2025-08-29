@@ -178,8 +178,9 @@ func InitApp() (*App, error) {
 		return nil, err
 	}
 	companyHandler := companyModule.Hdl
-	adminHandler7 := searchModule.AdminHandler
-	adminServer := InitAdminServer(adminHandler, webAdminHandler, adminHandler2, adminQuestionSetHandler, adminCaseHandler, adminCaseSetHandler, adminHandler3, adminHandler4, adminHandler5, knowledgeBaseHandler, webKnowledgeBaseHandler, adminHandler6, companyHandler, adminHandler7)
+	adminHandler7 := orderModule.AdminHandler
+	adminHandler8 := searchModule.AdminHandler
+	adminServer := InitAdminServer(adminHandler, webAdminHandler, adminHandler2, adminQuestionSetHandler, adminCaseHandler, adminCaseSetHandler, adminHandler3, adminHandler4, adminHandler5, knowledgeBaseHandler, webKnowledgeBaseHandler, adminHandler6, companyHandler, adminHandler7, adminHandler8)
 	closeTimeoutOrdersJob := orderModule.CloseTimeoutOrdersJob
 	closeTimeoutLockedCreditsJob := creditModule.CloseTimeoutLockedCreditsJob
 	syncWechatOrderJob := paymentModule.SyncWechatOrderJob

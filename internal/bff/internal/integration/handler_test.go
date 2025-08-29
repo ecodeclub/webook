@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/ecodeclub/ginx"
+
 	"github.com/ecodeclub/ekit/iox"
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/ecodeclub/ginx/session"
@@ -41,7 +43,7 @@ func (c *CollectionHandlerTestSuite) SetupSuite() {
 	queSetSvc := quemocks.NewMockQuestionSetService(ctrl)
 	examSvc := quemocks.NewMockExamineService(ctrl)
 	intrSvc := intrmocks.NewMockService(ctrl)
-	intrSvc.EXPECT().CollectionInfo(gomock.Any(), int64(uid), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, uid int64, id int64, biz string, offset int, limit int) ([]interactive.CollectionRecord, error) {
+	intrSvc.EXPECT().CollectionInfo(gomock.Any(), int64(uid), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, uid int64, id int64, biz string, offset int, limit int) ([]interactive.CollectionRecord, int, error) {
 
 		switch biz {
 		case web.CaseBiz:
@@ -50,21 +52,21 @@ func (c *CollectionHandlerTestSuite) SetupSuite() {
 					Biz:  web.CaseBiz,
 					Case: 1,
 				},
-			}, nil
+			}, 1, nil
 		case web.CaseSetBiz:
 			return []interactive.CollectionRecord{
 				{
 					Biz:     web.CaseSetBiz,
 					CaseSet: 5,
 				},
-			}, nil
+			}, 1, nil
 		case web.QuestionBiz:
 			return []interactive.CollectionRecord{
 				{
 					Biz:      web.QuestionBiz,
 					Question: 2,
 				},
-			}, nil
+			}, 1, nil
 		case web.QuestionSetBiz:
 			return []interactive.CollectionRecord{
 				{
@@ -75,7 +77,7 @@ func (c *CollectionHandlerTestSuite) SetupSuite() {
 					Biz:         web.QuestionSetBiz,
 					QuestionSet: 4,
 				},
-			}, nil
+			}, 2, nil
 		case "":
 			return []interactive.CollectionRecord{
 				{
@@ -98,9 +100,9 @@ func (c *CollectionHandlerTestSuite) SetupSuite() {
 					Biz:     web.CaseSetBiz,
 					CaseSet: 5,
 				},
-			}, nil
+			}, 5, nil
 		default:
-			return nil, errors.New("unknown biz")
+			return nil, 0, errors.New("unknown biz")
 		}
 
 	}).AnyTimes()
@@ -212,7 +214,7 @@ func (c *CollectionHandlerTestSuite) Test_Handler() {
 		req  web.CollectionInfoReq
 
 		wantCode int
-		wantResp []web.CollectionRecord
+		wantResp ginx.DataList[web.CollectionRecord]
 	}{
 		{
 			name: "获取全部收藏夹记录成功",
@@ -223,71 +225,74 @@ func (c *CollectionHandlerTestSuite) Test_Handler() {
 				Limit:  10,
 			},
 			wantCode: http.StatusOK,
-			wantResp: []web.CollectionRecord{
-				{
-					Case: web.Case{
-						ID:    1,
-						Title: "这是案例1",
+			wantResp: ginx.DataList[web.CollectionRecord]{
+				List: []web.CollectionRecord{
+					{
+						Case: web.Case{
+							ID:    1,
+							Title: "这是案例1",
+						},
 					},
-				},
-				{
-					Question: web.Question{
-						ID:            2,
-						Title:         "这是题目2",
-						ExamineResult: 2 % 4,
+					{
+						Question: web.Question{
+							ID:            2,
+							Title:         "这是题目2",
+							ExamineResult: 2 % 4,
+						},
 					},
-				},
-				{
-					QuestionSet: web.QuestionSet{
-						ID:    3,
-						Title: "这是题集3",
-						Questions: []web.Question{
-							{
-								ID:            33,
-								Title:         "这是题目33",
-								ExamineResult: 33 % 4,
+					{
+						QuestionSet: web.QuestionSet{
+							ID:    3,
+							Title: "这是题集3",
+							Questions: []web.Question{
+								{
+									ID:            33,
+									Title:         "这是题目33",
+									ExamineResult: 33 % 4,
+								},
+								{
+									ID:            36,
+									Title:         "这是题目36",
+									ExamineResult: 36 % 4,
+								},
 							},
-							{
-								ID:            36,
-								Title:         "这是题目36",
-								ExamineResult: 36 % 4,
+						},
+					},
+					{
+						QuestionSet: web.QuestionSet{
+							ID:    4,
+							Title: "这是题集4",
+							Questions: []web.Question{
+								{
+									ID:            44,
+									Title:         "这是题目44",
+									ExamineResult: 44 % 4,
+								},
+								{
+									ID:            48,
+									Title:         "这是题目48",
+									ExamineResult: 48 % 4,
+								},
+							},
+						},
+					},
+					{
+						CaseSet: web.CaseSet{
+							ID:    5,
+							Title: "这是案例集5",
+							Cases: []web.Case{
+								{
+									ID:            51,
+									ExamineResult: 1,
+								},
+								{
+									ID: 52,
+								},
 							},
 						},
 					},
 				},
-				{
-					QuestionSet: web.QuestionSet{
-						ID:    4,
-						Title: "这是题集4",
-						Questions: []web.Question{
-							{
-								ID:            44,
-								Title:         "这是题目44",
-								ExamineResult: 44 % 4,
-							},
-							{
-								ID:            48,
-								Title:         "这是题目48",
-								ExamineResult: 48 % 4,
-							},
-						},
-					},
-				},
-				{
-					CaseSet: web.CaseSet{
-						ID:    5,
-						Title: "这是案例集5",
-						Cases: []web.Case{
-							{
-								ID:            51,
-								ExamineResult: 1,
-							},
-							{
-								ID: 52,
-							},
-						},
-					},
-				},
+				Total: 5,
 			},
 		},
 		{
@@ -299,13 +304,16 @@ func (c *CollectionHandlerTestSuite) Test_Handler() {
 				Limit:  10,
 			},
 			wantCode: http.StatusOK,
-			wantResp: []web.CollectionRecord{
-				{
-					Case: web.Case{
-						ID:    1,
-						Title: "这是案例1",
+			wantResp: ginx.DataList[web.CollectionRecord]{
+				List: []web.CollectionRecord{
+					{
+						Case: web.Case{
+							ID:    1,
+							Title: "这是案例1",
+						},
 					},
 				},
+				Total: 1,
 			},
 		},
 		{
@@ -317,22 +325,25 @@ func (c *CollectionHandlerTestSuite) Test_Handler() {
 				Limit:  10,
 			},
 			wantCode: http.StatusOK,
-			wantResp: []web.CollectionRecord{
-				{
-					CaseSet: web.CaseSet{
-						ID:    5,
-						Title: "这是案例集5",
-						Cases: []web.Case{
-							{
-								ID:            51,
-								ExamineResult: 1,
-							},
-							{
-								ID: 52,
+			wantResp: ginx.DataList[web.CollectionRecord]{
+				List: []web.CollectionRecord{
+					{
+						CaseSet: web.CaseSet{
+							ID:    5,
+							Title: "这是案例集5",
+							Cases: []web.Case{
+								{
+									ID:            51,
+									ExamineResult: 1,
+								},
+								{
+									ID: 52,
+								},
 							},
 						},
 					},
 				},
+				Total: 1,
 			},
 		},
 		{
@@ -344,14 +355,17 @@ func (c *CollectionHandlerTestSuite) Test_Handler() {
 				Limit:  10,
 			},
 			wantCode: http.StatusOK,
-			wantResp: []web.CollectionRecord{
-				{
-					Question: web.Question{
-						ID:            2,
-						Title:         "这是题目2",
-						ExamineResult: 2 % 4,
+			wantResp: ginx.DataList[web.CollectionRecord]{
+				List: []web.CollectionRecord{
+					{
+						Question: web.Question{
+							ID:            2,
+							Title:         "这是题目2",
+							ExamineResult: 2 % 4,
+						},
 					},
 				},
+				Total: 1,
 			},
 		},
 		{
@@ -363,43 +377,46 @@ func (c *CollectionHandlerTestSuite) Test_Handler() {
 				Limit:  10,
 			},
 			wantCode: http.StatusOK,
-			wantResp: []web.CollectionRecord{
-				{
-					QuestionSet: web.QuestionSet{
-						ID:    3,
-						Title: "这是题集3",
-						Questions: []web.Question{
-							{
-								ID:            33,
-								Title:         "这是题目33",
-								ExamineResult: 33 % 4,
+			wantResp: ginx.DataList[web.CollectionRecord]{
+				List: []web.CollectionRecord{
+					{
+						QuestionSet: web.QuestionSet{
+							ID:    3,
+							Title: "这是题集3",
+							Questions: []web.Question{
+								{
+									ID:            33,
+									Title:         "这是题目33",
+									ExamineResult: 33 % 4,
+								},
+								{
+									ID:            36,
+									Title:         "这是题目36",
+									ExamineResult: 36 % 4,
+								},
 							},
-							{
-								ID:            36,
-								Title:         "这是题目36",
-								ExamineResult: 36 % 4,
+						},
+					},
+					{
+						QuestionSet: web.QuestionSet{
+							ID:    4,
+							Title: "这是题集4",
+							Questions: []web.Question{
+								{
+									ID:            44,
+									Title:         "这是题目44",
+									ExamineResult: 44 % 4,
+								},
+								{
+									ID:            48,
+									Title:         "这是题目48",
+									ExamineResult: 48 % 4,
+								},
 							},
 						},
 					},
 				},
-				{
-					QuestionSet: web.QuestionSet{
-						ID:    4,
-						Title: "这是题集4",
-						Questions: []web.Question{
-							{
-								ID:            44,
-								Title:         "这是题目44",
-								ExamineResult: 44 % 4,
-							},
-							{
-								ID:            48,
-								Title:         "这是题目48",
-								ExamineResult: 48 % 4,
-							},
-						},
-					},
-				},
+				Total: 2,
 			},
 		},
 	}
@@ -410,7 +427,7 @@ func (c *CollectionHandlerTestSuite) Test_Handler() {
 				"/interactive/collection/records", iox.NewJSONReader(tc.req))
 			require.NoError(t, err)
 			req.Header.Set("content-type", "application/json")
-			recorder := test.NewJSONResponseRecorder[[]web.CollectionRecord]()
+			recorder := test.NewJSONResponseRecorder[ginx.DataList[web.CollectionRecord]]()
 			c.server.ServeHTTP(recorder, req)
 			require.Equal(t, tc.wantCode, recorder.Code)
 			require.Equal(t, tc.wantResp, recorder.MustScan().Data)

@@ -14,6 +14,7 @@
 
 package dao
 
+import "C"
 import (
 	"context"
 	"errors"
@@ -49,6 +50,8 @@ type InteractiveDAO interface {
 	CollectionList(ctx context.Context, uid int64, offset, limit int) ([]Collection, error)
 	// CollectionInfoWithPage 收藏夹下的收藏内容带分页 biz == ""时不作为查询条件
 	CollectionInfoWithPage(ctx context.Context, uid, collectionId int64, biz string, offset, limit int) ([]UserCollectionBiz, error)
+	// CntRecords 收藏夹下的内容，biz = "" 时不作为查询条件
+	CntRecords(ctx context.Context, biz string, cid int64) (int64, error)
 	// 收藏夹下的所有内容
 	CollectionInfo(ctx context.Context, collectionId int64) ([]UserCollectionBiz, error)
 	// 收藏转移
@@ -161,6 +164,18 @@ func (g *GORMInteractiveDAO) CollectionInfo(ctx context.Context, collectionId in
 	records := make([]UserCollectionBiz, 0, 32)
 	err := g.db.WithContext(ctx).Where("cid = ?", collectionId).Find(&records).Error
 	return records, err
+}
+
+func (g *GORMInteractiveDAO) CntRecords(ctx context.Context, biz string, cid int64) (int64, error) {
+	var cnt int64
+	tx := g.db.WithContext(ctx).
+		Model(&UserCollectionBiz{})
+	if biz != "" {
+		tx = tx.Where("biz = ?", biz)
+	}
+	err := tx.
+		Where("cid = ? ", cid).Count(&cnt).Error
+	return cnt, err
 }
 
 func (g *GORMInteractiveDAO) MoveCollection(ctx context.Context, biz string, bizid, uid, collectionId int64) error {

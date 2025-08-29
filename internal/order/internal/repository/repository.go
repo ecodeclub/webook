@@ -18,6 +18,8 @@ import (
 	"context"
 	"fmt"
 
+	"golang.org/x/sync/errgroup"
+
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/ecodeclub/ekit/sqlx"
 	"github.com/ecodeclub/webook/internal/order/internal/domain"
@@ -36,6 +38,8 @@ type OrderRepository interface {
 	FindTimeoutOrders(ctx context.Context, offset, limit int, ctime int64) ([]domain.Order, error)
 	TotalTimeoutOrders(ctx context.Context, ctime int64) (int64, error)
 	CloseTimeoutOrders(ctx context.Context, orderIDs []int64, ctime int64) error
+
+	FindOrders(ctx context.Context, offset, limit int) (int64, []domain.Order, error)
 }
 
 func NewRepository(d dao.OrderDAO) OrderRepository {
@@ -46,6 +50,37 @@ func NewRepository(d dao.OrderDAO) OrderRepository {
 
 type orderRepository struct {
 	dao dao.OrderDAO
+}
+
+func (o *orderRepository) FindOrders(ctx context.Context, offset, limit int) (int64, []domain.Order, error) {
+	var (
+		eg            errgroup.Group
+		orderEntities []dao.Order
+		count         int64
+	)
+	eg.Go(func() error {
+		var err error
+		orderEntities, err = o.dao.FindOrders(ctx, offset, limit)
+		return err
+	})
+	eg.Go(func() error {
+		var err error
+		count, err = o.dao.CountOrders(ctx)
+		return err
+	})
+	if err := eg.Wait(); err != nil {
+		return 0, nil, err
+	}
+	oids := slice.Map(orderEntities, func(idx int, src dao.Order) int64 {
+		return src.Id
+	})
+	itemMap, err := o.dao.FindItemsByOrderIDs(ctx, oids)
+	if err != nil {
+		return 0, nil, err
+	}
+	return count, slice.Map(orderEntities, func(idx int, src dao.Order) domain.Order {
+		return o.toOrderDomain(src, itemMap[src.Id])
+	}), nil
 }
 
 func (o *orderRepository) CreateOrder(ctx context.Context, order domain.Order) (domain.Order, error) {
