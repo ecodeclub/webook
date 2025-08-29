@@ -54,7 +54,8 @@ type InteractiveRepository interface {
 	// 收藏夹列表
 	CollectionList(ctx context.Context, uid int64, offset, limit int) ([]domain.Collection, error)
 	// CollectionInfo 收藏详情带分页 biz == ""时，dao层不作为查询条件
-	CollectionInfo(ctx context.Context, uid, collectionId int64, biz string, offset, limit int) ([]domain.CollectionRecord, error)
+	// 并且返回该 biz 下的总条数
+	CollectionInfo(ctx context.Context, uid, collectionId int64, biz string, offset, limit int) ([]domain.CollectionRecord, int, error)
 	// MoveCollection 转移收藏夹
 	MoveCollection(ctx context.Context, biz string, bizId, uid, collectionId int64) error
 }
@@ -100,14 +101,33 @@ func (i *interactiveRepository) CollectionList(ctx context.Context, uid int64, o
 	return collections, nil
 }
 
-func (i *interactiveRepository) CollectionInfo(ctx context.Context, uid, collectionId int64, biz string, offset, limit int) ([]domain.CollectionRecord, error) {
-	userBizs, err := i.interactiveDao.CollectionInfoWithPage(ctx, uid, collectionId, biz, offset, limit)
+func (i *interactiveRepository) CollectionInfo(ctx context.Context, uid, collectionId int64, biz string, offset, limit int) ([]domain.CollectionRecord, int, error) {
+
+	var (
+		userBizs []dao.UserCollectionBiz
+		total    int64
+	)
+
+	var eg errgroup.Group
+	eg.Go(func() error {
+		var err error
+		userBizs, err = i.interactiveDao.CollectionInfoWithPage(ctx, uid, collectionId, biz, offset, limit)
+		return err
+	})
+
+	eg.Go(func() error {
+		var err error
+		total, err = i.interactiveDao.CntRecords(ctx, biz, collectionId)
+		return err
+	})
+
+	err := eg.Wait()
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	return slice.Map(userBizs, func(_ int, src dao.UserCollectionBiz) domain.CollectionRecord {
 		return i.toCollectionRecord(src)
-	}), nil
+	}), int(total), nil
 }
 
 func (i *interactiveRepository) IncrViewCnt(ctx context.Context, biz string, bizId int64) error {

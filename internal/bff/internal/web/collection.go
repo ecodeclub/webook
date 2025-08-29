@@ -21,7 +21,7 @@ func (h *Handler) CollectionRecords(ctx *ginx.Context, req CollectionInfoReq, se
 	uid := sess.Claims().Uid
 	recordCtx := ctx.Request.Context()
 	// 获取收藏记录
-	records, err := h.intrSvc.CollectionInfo(recordCtx, uid, req.ID, req.Biz, req.Offset, req.Limit)
+	records, total, err := h.intrSvc.CollectionInfo(recordCtx, uid, req.ID, req.Biz, req.Offset, req.Limit)
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -113,6 +113,9 @@ func (h *Handler) CollectionRecords(ctx *ginx.Context, req CollectionInfoReq, se
 		return newCollectionRecord(src, csm, cssmap, qsm, qssmap, queExamResMap, caseExamResMap)
 	})
 	return ginx.Result{
-		Data: res,
+		Data: ginx.DataList[CollectionRecord]{
+			List:  res,
+			Total: total,
+		},
 	}, nil
 }

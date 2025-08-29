@@ -40,7 +40,8 @@ type Service interface {
 	// CollectionList 收藏夹列表
 	CollectionList(ctx context.Context, uid int64, offset, limit int) ([]domain.Collection, error)
 	// CollectionInfo 收藏详情带分页 biz == ""时，dao层不作为查询条件
-	CollectionInfo(ctx context.Context, uid, id int64, biz string, offset, limit int) ([]domain.CollectionRecord, error)
+	// 并且会返回该 biz 的总条数
+	CollectionInfo(ctx context.Context, uid, id int64, biz string, offset, limit int) ([]domain.CollectionRecord, int, error)
 	// MoveToCollection 将收藏内容转移到另一个收藏夹，前一个id是收藏记录的，collectionId收藏夹id
 	MoveToCollection(ctx context.Context, biz string, bizId, uid, collectionId int64) error
 }
@@ -54,7 +55,7 @@ func NewService(repo repository.InteractiveRepository) Service {
 		repo: repo,
 	}
 }
-func (i *interactiveService) CollectionInfo(ctx context.Context, uid, id int64, biz string, offset, limit int) ([]domain.CollectionRecord, error) {
+func (i *interactiveService) CollectionInfo(ctx context.Context, uid, id int64, biz string, offset, limit int) ([]domain.CollectionRecord, int, error) {
 	return i.repo.CollectionInfo(ctx, uid, id, biz, offset, limit)
 }
 
