@@ -1,0 +1,49 @@
+{
+  "mappings": {
+    "properties": {
+      "id": {
+        "type": "long"
+      },
+      "uid": {
+        "type": "long"
+      },
+      "labels": {
+        "type": "keyword"
+      },
+      "title": {
+        "type": "text"
+      },
+      "content": {
+        "type": "text"
+      },
+      "github_repo": {
+        "type": "keyword"
+      },
+      "gitee_repo": {
+        "type": "keyword"
+      },
+      "keywords": {
+        "type": "text"
+      },
+      "shorthand": {
+        "type": "text"
+      },
+      "highlight": {
+        "type": "text"
+      },
+      "guidance": {
+        "type": "text"
+      },
+      "status": {
+        "type": "integer"
+      },
+      "ctime": {
+        "type": "long"
+      },
+      "utime": {
+        "type": "long"
+      }
+    }
+  }
+}
+

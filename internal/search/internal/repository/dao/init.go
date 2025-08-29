@@ -32,6 +32,15 @@ var (
 	skillIndex string
 	//go:embed questionset_index.json
 	questionSetIndex string
+
+	//go:embed case_test_index.json
+	testCaseIndex string
+	//go:embed question_test_index.json
+	testQuestionIndex string
+	//go:embed skill_test_index.json
+	testSkillIndex string
+	//go:embed questionset_test_index.json
+	testQuestionSetIndex string
 )
 
 // InitES 创建索引
@@ -41,8 +50,15 @@ func InitES(client *elastic.Client) error {
 	defer cancel()
 	var eg errgroup.Group
 	eg.Go(func() error {
+		return tryCreateIndex(ctx, client, PubCaseIndexName, caseIndex)
+	})
+	eg.Go(func() error {
 		return tryCreateIndex(ctx, client, CaseIndexName, caseIndex)
 	})
+	eg.Go(func() error {
+		return tryCreateIndex(ctx, client, PubQuestionIndexName, questionIndex)
+	})
+
 	eg.Go(func() error {
 		return tryCreateIndex(ctx, client, QuestionIndexName, questionIndex)
 	})
@@ -51,6 +67,34 @@ func InitES(client *elastic.Client) error {
 	})
 	eg.Go(func() error {
 		return tryCreateIndex(ctx, client, QuestionSetIndexName, questionSetIndex)
+	})
+	return eg.Wait()
+}
+
+// InitEsTest 创建索引测试用
+func InitEsTest(client *elastic.Client) error {
+	const timeout = time.Second * 10
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	var eg errgroup.Group
+	eg.Go(func() error {
+		return tryCreateIndex(ctx, client, PubCaseIndexName, testCaseIndex)
+	})
+	eg.Go(func() error {
+		return tryCreateIndex(ctx, client, CaseIndexName, testCaseIndex)
+	})
+	eg.Go(func() error {
+		return tryCreateIndex(ctx, client, PubQuestionIndexName, testQuestionIndex)
+	})
+
+	eg.Go(func() error {
+		return tryCreateIndex(ctx, client, QuestionIndexName, testQuestionIndex)
+	})
+	eg.Go(func() error {
+		return tryCreateIndex(ctx, client, SkillIndexName, testSkillIndex)
+	})
+	eg.Go(func() error {
+		return tryCreateIndex(ctx, client, QuestionSetIndexName, testQuestionSetIndex)
 	})
 	return eg.Wait()
 }

@@ -1,42 +1,98 @@
 {
   "mappings": {
     "properties": {
-      "id": { "type": "long" },
-      "labels": { "type": "keyword" },
-      "name": { "type": "text" },
-      "desc": { "type": "text" },
+      "id": {
+        "type": "long"
+      },
+      "labels": {
+        "type": "keyword"
+      },
+      "name": {
+        "type": "text"
+      },
+      "desc": {
+        "type": "text",
+        "analyzer": "ik_max_word",
+        "search_analyzer": "ik_smart"
+      },
       "basic": {
         "properties": {
-          "id": { "type": "long" },
-          "desc": { "type": "text" },
-          "ctime": { "type": "long" },
-          "utime": { "type": "long" },
-          "questions": { "type": "long" },
-          "cases": { "type": "long" }
+          "id": {
+            "type": "long"
+          },
+          "desc": {
+            "type": "text",
+            "analyzer": "ik_max_word",
+            "search_analyzer": "ik_smart"
+          },
+          "ctime": {
+            "type": "long"
+          },
+          "utime": {
+            "type": "long"
+          },
+          "questions": {
+            "type": "long"
+          },
+          "cases": {
+            "type": "long"
+          }
         }
       },
       "intermediate": {
         "properties": {
-          "id": { "type": "long" },
-          "desc": { "type": "text" },
-          "ctime": { "type": "long" },
-          "utime": { "type": "long" },
-          "questions": { "type": "long" },
-          "cases": { "type": "long" }
+          "id": {
+            "type": "long"
+          },
+          "desc": {
+            "type": "text",
+            "analyzer": "ik_max_word",
+            "search_analyzer": "ik_smart"
+          },
+          "ctime": {
+            "type": "long"
+          },
+          "utime": {
+            "type": "long"
+          },
+          "questions": {
+            "type": "long"
+          },
+          "cases": {
+            "type": "long"
+          }
         }
       },
       "advanced": {
         "properties": {
-          "id": { "type": "long" },
-          "desc": { "type": "text" },
-          "ctime": { "type": "long" },
-          "utime": { "type": "long" },
-          "questions": { "type": "long" },
-          "cases": { "type": "long" }
+          "id": {
+            "type": "long"
+          },
+          "desc": {
+            "type": "text",
+            "analyzer": "ik_max_word",
+            "search_analyzer": "ik_smart"
+          },
+          "ctime": {
+            "type": "long"
+          },
+          "utime": {
+            "type": "long"
+          },
+          "questions": {
+            "type": "long"
+          },
+          "cases": {
+            "type": "long"
+          }
         }
       },
-      "ctime": { "type": "long" },
-      "utime": { "type": "long" }
+      "ctime": {
+        "type": "long"
+      },
+      "utime": {
+        "type": "long"
+      }
     }
   }
 }

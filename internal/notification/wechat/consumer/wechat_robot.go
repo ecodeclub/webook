@@ -22,10 +22,15 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"unicode/utf8"
 
 	"github.com/ecodeclub/mq-api"
 	"github.com/ecodeclub/webook/internal/notification/event"
 	"github.com/gotomicro/ego/core/elog"
+)
+
+const (
+	ContentLengthLimit = 2048
 )
 
 type Text struct {
@@ -92,7 +97,7 @@ func (c *WechatRobotEventConsumer) Consume(ctx context.Context) error {
 		return errors.New("未知Robot消息")
 	}
 	// 构造消息体
-	data, err := json.Marshal(&WechatRobotMessage{MsgType: "text", Text: Text{Content: evt.RawContent}})
+	data, err := json.Marshal(&WechatRobotMessage{MsgType: "text", Text: Text{Content: truncate(evt.RawContent, ContentLengthLimit)}})
 	if err != nil {
 		return fmt.Errorf("序列化微信Robot消息失败: %w", err)
 	}
@@ -108,4 +113,18 @@ func (c *WechatRobotEventConsumer) Consume(ctx context.Context) error {
 		return fmt.Errorf("微信处理请求失败: %s", http.StatusText(resp.StatusCode))
 	}
 	return nil
+}
+
+func truncate(content string, limit int) string {
+	// 如果原始字符串长度就在限制内，直接返回
+	if len(content) <= limit {
+		return content
+	}
+	// 从限制位置向前寻找最后一个 rune 的起始位置
+	// utf8.RuneStart 会判断一个字节是否是一个UTF-8编码字符的起始字节
+	end := limit
+	for end > 0 && !utf8.RuneStart(content[end]) {
+		end--
+	}
+	return content[:end]
 }

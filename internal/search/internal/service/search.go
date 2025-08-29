@@ -63,6 +63,7 @@ func (s *searchSvc) Search(ctx context.Context, offset, limit int, expr string) 
 	return res, nil
 
 }
+
 func (s *searchSvc) parseExpr(expr string) (string, []domain.QueryMeta, error) {
 	searchParams := strings.SplitN(expr, ":", 3)
 	if len(searchParams) == 3 {

@@ -12,18 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:build wireinject
-
-package startup
+package event
 
 import (
-	"github.com/ecodeclub/webook/internal/comment"
-	testioc "github.com/ecodeclub/webook/internal/test/ioc"
-	"github.com/ecodeclub/webook/internal/user"
-	"github.com/google/wire"
+	"context"
+
+	"github.com/ecodeclub/mq-api"
+	"github.com/ecodeclub/webook/internal/notification/event"
+	"github.com/ecodeclub/webook/internal/pkg/mqx"
 )
 
-func InitModule(userModule *user.Module) (*comment.Module, error) {
-	wire.Build(testioc.BaseSet, comment.InitModule)
-	return new(comment.Module), nil
+//go:generate mockgen -source=./wechat_robot_event_producer.go -package=evtmocks -destination=./mocks/wechat.mock.go -typed WechatRobotEventProducer
+type WechatRobotEventProducer interface {
+	Produce(ctx context.Context, evt event.WechatRobotEvent) error
+}
+
+func NewQYWeChatEventProducer(q mq.MQ) (WechatRobotEventProducer, error) {
+	return mqx.NewGeneralProducer[event.WechatRobotEvent](q, event.WechatRobotEventName)
 }

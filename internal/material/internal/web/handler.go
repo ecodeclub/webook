@@ -21,31 +21,44 @@ import (
 	"github.com/ecodeclub/ginx"
 	"github.com/ecodeclub/ginx/session"
 	"github.com/ecodeclub/webook/internal/material/internal/domain"
+	"github.com/ecodeclub/webook/internal/material/internal/event"
 	"github.com/ecodeclub/webook/internal/material/internal/service"
+	notificationevt "github.com/ecodeclub/webook/internal/notification/event"
 	"github.com/gin-gonic/gin"
+	"github.com/gotomicro/ego/core/elog"
 )
 
 var _ ginx.Handler = &Handler{}
 
 type Handler struct {
-	svc service.MaterialService
+	svc      service.MaterialService
+	producer event.WechatRobotEventProducer
+	logger   *elog.Component
 }
 
-func NewHandler(svc service.MaterialService) *Handler {
-	return &Handler{svc: svc}
+func NewHandler(
+	svc service.MaterialService,
+	producer event.WechatRobotEventProducer,
+) *Handler {
+	return &Handler{
+		svc:      svc,
+		producer: producer,
+		logger:   elog.DefaultLogger.With(elog.FieldComponentName("material.Handler")),
+	}
 }
 
 func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g := server.Group("/material")
-	g.POST("/list", ginx.BS[ListMaterialsReq](h.History))
+	g.POST("/list", ginx.BS[ListMaterialsReq](h.List))
 	g.POST("/save", ginx.BS[SaveMaterialReq](h.Save))
 }
 
 func (h *Handler) PublicRoutes(_ *gin.Engine) {}
 
 func (h *Handler) Save(ctx *ginx.Context, req SaveMaterialReq, sess session.Session) (ginx.Result, error) {
-	_, err := h.svc.Submit(ctx.Request.Context(), domain.Material{
-		Uid:       sess.Claims().Uid,
+	uid := sess.Claims().Uid
+	id, err := h.svc.Submit(ctx.Request.Context(), domain.Material{
+		Uid:       uid,
 		Title:     req.Material.Title,
 		AudioURL:  req.Material.AudioURL,
 		ResumeURL: req.Material.ResumeURL,
@@ -54,10 +67,20 @@ func (h *Handler) Save(ctx *ginx.Context, req SaveMaterialReq, sess session.Sess
 	if err != nil {
 		return systemErrorResult, err
 	}
+	evt := notificationevt.WechatRobotEvent{
+		Robot:      "adminRobot",
+		RawContent: fmt.Sprintf("用户%d刚刚提交了新素材%q（%d）请前往后台查看！", uid, req.Material.Title, id),
+	}
+	if er := h.producer.Produce(ctx.Request.Context(), evt); er != nil {
+		h.logger.Error("发送企业微信群通知失败",
+			elog.FieldErr(er),
+			elog.Any("event", evt),
+		)
+	}
 	return ginx.Result{Msg: "OK"}, nil
 }
 
-func (h *Handler) History(ctx *ginx.Context, req ListMaterialsReq, sess session.Session) (ginx.Result, error) {
+func (h *Handler) List(ctx *ginx.Context, req ListMaterialsReq, sess session.Session) (ginx.Result, error) {
 	materials, total, err := h.svc.List(ctx.Request.Context(), sess.Claims().Uid, req.Offset, req.Limit)
 	if err != nil {
 		return systemErrorResult, fmt.Errorf("获取素材列表失败: %w", err)
