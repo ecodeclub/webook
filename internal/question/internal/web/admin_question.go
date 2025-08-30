@@ -25,12 +25,14 @@ import (
 // AdminHandler 制作库
 type AdminHandler struct {
 	AdminBaseHandler
-	svc service.Service
+	svc               service.Service
+	searchSyncService service.SearchSyncService
 }
 
-func NewAdminHandler(svc service.Service) *AdminHandler {
+func NewAdminHandler(svc service.Service, searchSvc service.SearchSyncService) *AdminHandler {
 	return &AdminHandler{
-		svc: svc,
+		svc:               svc,
+		searchSyncService: searchSvc,
 	}
 }
 
@@ -40,6 +42,12 @@ func (h *AdminHandler) PrivateRoutes(server *gin.Engine) {
 	server.POST("/question/detail", ginx.B[Qid](h.Detail))
 	server.POST("/question/delete", ginx.B[Qid](h.Delete))
 	server.POST("/question/publish", ginx.BS[SaveReq](h.Publish))
+	server.GET("/question/search/syncAll", ginx.W(h.SearchSync))
+}
+
+func (h *AdminHandler) SearchSync(ctx *ginx.Context) (ginx.Result, error) {
+	go h.searchSyncService.SyncAll()
+	return ginx.Result{}, nil
 }
 
 func (h *AdminHandler) Delete(ctx *ginx.Context, qid Qid) (ginx.Result, error) {

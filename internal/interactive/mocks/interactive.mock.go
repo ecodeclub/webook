@@ -80,12 +80,13 @@ func (c *MockServiceCollectToggleCall) DoAndReturn(f func(context.Context, strin
 }
 
 // CollectionInfo mocks base method.
-func (m *MockService) CollectionInfo(ctx context.Context, uid, id int64, biz string, offset, limit int) ([]domain.CollectionRecord, error) {
+func (m *MockService) CollectionInfo(ctx context.Context, uid, id int64, biz string, offset, limit int) ([]domain.CollectionRecord, int, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CollectionInfo", ctx, uid, id, biz, offset, limit)
 	ret0, _ := ret[0].([]domain.CollectionRecord)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	ret1, _ := ret[1].(int)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
 }
 
 // CollectionInfo indicates an expected call of CollectionInfo.
@@ -101,19 +102,19 @@ type MockServiceCollectionInfoCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockServiceCollectionInfoCall) Return(arg0 []domain.CollectionRecord, arg1 error) *MockServiceCollectionInfoCall {
-	c.Call = c.Call.Return(arg0, arg1)
+func (c *MockServiceCollectionInfoCall) Return(arg0 []domain.CollectionRecord, arg1 int, arg2 error) *MockServiceCollectionInfoCall {
+	c.Call = c.Call.Return(arg0, arg1, arg2)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockServiceCollectionInfoCall) Do(f func(context.Context, int64, int64, string, int, int) ([]domain.CollectionRecord, error)) *MockServiceCollectionInfoCall {
+func (c *MockServiceCollectionInfoCall) Do(f func(context.Context, int64, int64, string, int, int) ([]domain.CollectionRecord, int, error)) *MockServiceCollectionInfoCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockServiceCollectionInfoCall) DoAndReturn(f func(context.Context, int64, int64, string, int, int) ([]domain.CollectionRecord, error)) *MockServiceCollectionInfoCall {
+func (c *MockServiceCollectionInfoCall) DoAndReturn(f func(context.Context, int64, int64, string, int, int) ([]domain.CollectionRecord, int, error)) *MockServiceCollectionInfoCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

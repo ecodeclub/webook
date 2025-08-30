@@ -26,6 +26,7 @@ import (
 type CaseEvent struct {
 	Biz   string `json:"biz"`
 	BizID int    `json:"bizID"`
+	Live  bool   `json:"live"`
 	Data  string `json:"data"`
 }
 type Case struct {
@@ -41,6 +42,8 @@ type Case struct {
 	Shorthand    string   `json:"shorthand"`
 	Highlight    string   `json:"highlight"`
 	Guidance     string   `json:"guidance"`
+	Biz          string   `json:"biz"`
+	BizID        int64    `json:"bizId"`
 	Status       uint8    `json:"status"`
 	Ctime        int64    `json:"ctime"`
 	Utime        int64    `json:"utime"`
@@ -69,6 +72,8 @@ func newCase(ca domain.Case) Case {
 		Shorthand:    ca.Shorthand,
 		Highlight:    ca.Highlight,
 		Guidance:     ca.Guidance,
+		Biz:          ca.Biz,
+		BizID:        ca.BizId,
 		Status:       ca.Status.ToUint8(),
 		Ctime:        ca.Ctime.UnixMilli(),
 		Utime:        ca.Utime.UnixMilli(),

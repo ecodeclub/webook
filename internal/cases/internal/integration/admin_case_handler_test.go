@@ -26,6 +26,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/olivere/elastic/v7"
+
+	"github.com/ecodeclub/ginx"
 	"github.com/ecodeclub/webook/internal/member"
 
 	"github.com/ecodeclub/ginx/session"
@@ -56,6 +59,7 @@ import (
 
 type AdminCaseHandlerTestSuite struct {
 	suite.Suite
+	esClient              *elastic.Client
 	server                *egin.Component
 	db                    *egorm.Component
 	rdb                   ecache.Cache
@@ -101,6 +105,7 @@ func (s *AdminCaseHandlerTestSuite) SetupSuite() {
 	require.NoError(s.T(), err)
 	s.dao = dao.NewCaseDao(s.db)
 	s.rdb = testioc.InitCache()
+	s.esClient = testioc.InitES()
 }
 
 func (s *AdminCaseHandlerTestSuite) TestSave() {
@@ -845,6 +850,7 @@ func (s *AdminCaseHandlerTestSuite) TestEvent() {
 			Guidance:   "mysql_guidance",
 			Status:     2,
 			Biz:        "bbb",
+			BizId:      13,
 			Ctime:      time.UnixMilli(123),
 			Utime:      time.UnixMilli(123),
 		}, ca)
@@ -863,6 +869,7 @@ func (s *AdminCaseHandlerTestSuite) TestEvent() {
 			Highlight:  "mysql_highlight",
 			Guidance:   "mysql_guidance",
 			Biz:        "bbb",
+			BizId:      13,
 		},
 	}
 	req2, err := http.NewRequest(http.MethodPost,
@@ -890,6 +897,8 @@ func (s *AdminCaseHandlerTestSuite) TestEvent() {
 		Shorthand:  "mysql_shorthand",
 		Highlight:  "mysql_highlight",
 		Guidance:   "mysql_guidance",
+		Biz:        "bbb",
+		BizID:      13,
 		Status:     2,
 	}, evt)
 	time.Sleep(3 * time.Second)
@@ -930,4 +939,150 @@ func (s *AdminCaseHandlerTestSuite) cacheAssertCaseList(biz string, cases []doma
 	assert.Equal(s.T(), cases, cs)
 	_, err = s.rdb.Delete(context.Background(), key)
 	require.NoError(s.T(), err)
+}
+
+func (s *AdminCaseHandlerTestSuite) TestSyncAll() {
+	// 清理 ES 中的测试数据
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	// 制作库数据
+	for i := 1; i <= 5; i++ {
+		err := s.db.WithContext(ctx).Create(&dao.Case{
+			Id:           int64(i),
+			Uid:          uid,
+			Title:        fmt.Sprintf("制作库案例%d", i),
+			Content:      fmt.Sprintf("制作库内容%d", i),
+			Introduction: fmt.Sprintf("制作库介绍%d", i),
+			Labels: sqlx.JsonColumn[[]string]{
+				Valid: true,
+				Val:   []string{fmt.Sprintf("制作库标签%d", i)},
+			},
+			Status:     domain.UnPublishedStatus.ToUint8(),
+			GithubRepo: fmt.Sprintf("dev-github-%d.com", i),
+			GiteeRepo:  fmt.Sprintf("dev-gitee-%d.com", i),
+			Keywords:   fmt.Sprintf("dev_keywords_%d", i),
+			Shorthand:  fmt.Sprintf("dev_shorthand_%d", i),
+			Highlight:  fmt.Sprintf("dev_highlight_%d", i),
+			Guidance:   fmt.Sprintf("dev_guidance_%d", i),
+			Biz:        "case",
+			BizId:      int64(i),
+		}).Error
+		require.NoError(s.T(), err)
+	}
+
+	// 线上库数据（2条）
+	for i := 6; i <= 7; i++ {
+		err := s.db.WithContext(ctx).Create(&dao.PublishCase{
+			Id:           int64(i),
+			Uid:          uid,
+			Title:        fmt.Sprintf("线上库案例%d", i),
+			Content:      fmt.Sprintf("线上库内容%d", i),
+			Introduction: fmt.Sprintf("线上库介绍%d", i),
+			Labels: sqlx.JsonColumn[[]string]{
+				Valid: true,
+				Val:   []string{fmt.Sprintf("线上库标签%d", i)},
+			},
+			Status:     domain.PublishedStatus.ToUint8(),
+			GithubRepo: fmt.Sprintf("prod-github-%d.com", i),
+			GiteeRepo:  fmt.Sprintf("prod-gitee-%d.com", i),
+			Keywords:   fmt.Sprintf("prod_keywords_%d", i),
+			Shorthand:  fmt.Sprintf("prod_shorthand_%d", i),
+			Highlight:  fmt.Sprintf("prod_highlight_%d", i),
+			Guidance:   fmt.Sprintf("prod_guidance_%d", i),
+			Biz:        "case",
+			BizId:      int64(i),
+		}).Error
+		require.NoError(s.T(), err)
+	}
+
+	// 发送同步请求
+	req, err := http.NewRequest(http.MethodGet, "/cases/search/syncAll", nil)
+	require.NoError(s.T(), err)
+	recorder := test.NewJSONResponseRecorder[ginx.Result]()
+	s.server.ServeHTTP(recorder, req)
+
+	// 验证响应
+	require.Equal(s.T(), 200, recorder.Code)
+	assert.Equal(s.T(), ginx.Result{}, recorder.MustScan().Data)
+
+	// 等待同步完成
+	time.Sleep(4 * time.Second)
+
+	// 验证制作库 ES 数据
+	devSearchResult, err := s.esClient.Search().
+		Index("case_index").
+		Sort("id", true).
+		Query(elastic.NewMatchQuery("title", "制作库案例")).
+		Do(context.Background())
+	require.NoError(s.T(), err)
+	require.Equal(s.T(), int64(5), devSearchResult.TotalHits())
+
+	// 验证制作库数据内容
+	for i := 0; i < 5; i++ {
+		var caseData map[string]interface{}
+		err = json.Unmarshal(devSearchResult.Hits.Hits[i].Source, &caseData)
+		require.NoError(s.T(), err)
+		idx := i + 1
+		assert.Equal(s.T(), fmt.Sprintf("制作库案例%d", idx), caseData["title"])
+		assert.Equal(s.T(), fmt.Sprintf("制作库内容%d", idx), caseData["content"])
+		assert.Equal(s.T(), fmt.Sprintf("制作库介绍%d", idx), caseData["introduction"])
+		assert.Equal(s.T(), []interface{}{fmt.Sprintf("制作库标签%d", idx)}, caseData["labels"])
+		assert.Equal(s.T(), fmt.Sprintf("dev-github-%d.com", idx), caseData["github_repo"])
+		assert.Equal(s.T(), fmt.Sprintf("dev-gitee-%d.com", idx), caseData["gitee_repo"])
+		assert.Equal(s.T(), fmt.Sprintf("dev_keywords_%d", idx), caseData["keywords"])
+		assert.Equal(s.T(), fmt.Sprintf("dev_shorthand_%d", idx), caseData["shorthand"])
+		assert.Equal(s.T(), fmt.Sprintf("dev_highlight_%d", idx), caseData["highlight"])
+		assert.Equal(s.T(), fmt.Sprintf("dev_guidance_%d", idx), caseData["guidance"])
+		assert.Equal(s.T(), "case", caseData["biz"])
+		assert.Equal(s.T(), float64(idx), caseData["bizId"])
+	}
+
+	// 验证线上库 ES 数据
+	prodSearchResult, err := s.esClient.Search().
+		Index("pub_case_index").
+		Sort("id", true).
+		Query(elastic.NewMatchQuery("title", "线上库案例")).
+		Do(context.Background())
+	require.NoError(s.T(), err)
+	require.Equal(s.T(), int64(2), prodSearchResult.TotalHits())
+
+	// 验证线上库数据内容
+	for i := 0; i < 2; i++ {
+		var caseData map[string]interface{}
+		err = json.Unmarshal(prodSearchResult.Hits.Hits[i].Source, &caseData)
+		require.NoError(s.T(), err)
+		idx := i + 6
+		assert.Equal(s.T(), fmt.Sprintf("线上库案例%d", idx), caseData["title"])
+		assert.Equal(s.T(), fmt.Sprintf("线上库内容%d", idx), caseData["content"])
+		assert.Equal(s.T(), fmt.Sprintf("线上库介绍%d", idx), caseData["introduction"])
+		assert.Equal(s.T(), []interface{}{fmt.Sprintf("线上库标签%d", idx)}, caseData["labels"])
+		assert.Equal(s.T(), fmt.Sprintf("prod-github-%d.com", idx), caseData["github_repo"])
+		assert.Equal(s.T(), fmt.Sprintf("prod-gitee-%d.com", idx), caseData["gitee_repo"])
+		assert.Equal(s.T(), fmt.Sprintf("prod_keywords_%d", idx), caseData["keywords"])
+		assert.Equal(s.T(), fmt.Sprintf("prod_shorthand_%d", idx), caseData["shorthand"])
+		assert.Equal(s.T(), fmt.Sprintf("prod_highlight_%d", idx), caseData["highlight"])
+		assert.Equal(s.T(), fmt.Sprintf("prod_guidance_%d", idx), caseData["guidance"])
+		assert.Equal(s.T(), "case", caseData["biz"])
+		assert.Equal(s.T(), float64(idx), caseData["bizId"])
+	}
+
+	// 清理测试数据
+	err = s.db.Exec("TRUNCATE TABLE `cases`").Error
+	require.NoError(s.T(), err)
+	err = s.db.Exec("TRUNCATE TABLE `publish_cases`").Error
+	require.NoError(s.T(), err)
+	// 删除制作库索引中的 case biz 文档
+	_, err = s.esClient.DeleteByQuery("case_index").
+		Query(elastic.NewTermQuery("biz", "case")).
+		Do(ctx)
+	require.NoError(s.T(), err)
+
+	// 删除线上库索引中的 case biz 文档
+	_, err = s.esClient.DeleteByQuery("pub_case_index").
+		Query(elastic.NewTermQuery("biz", "case")).
+		Do(ctx)
+	require.NoError(s.T(), err)
+
+	// 先插入制作库测试数据（5条）
 }

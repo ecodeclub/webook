@@ -46,22 +46,25 @@ func (s *skillRepo) SearchSkill(ctx context.Context, offset, limit int, queryMet
 
 func (sk *skillRepo) toSkillDomain(s dao.Skill) domain.Skill {
 	return domain.Skill{
-		ID:           s.ID,
-		Labels:       s.Labels,
-		Name:         s.Name,
-		Desc:         s.Desc,
-		Basic:        sk.toSkillLevelDomain(s.Basic),
-		Intermediate: sk.toSkillLevelDomain(s.Intermediate),
-		Advanced:     sk.toSkillLevelDomain(s.Advanced),
+		ID:     s.ID,
+		Labels: s.Labels,
+		Name:   s.Name,
+		Desc: domain.EsVal{
+			Val:           s.Desc,
+			HighLightVals: s.EsHighLights["desc"],
+		},
+		Basic:        sk.toSkillLevelDomain(s.Basic, s.EsHighLights, "basic.desc"),
+		Intermediate: sk.toSkillLevelDomain(s.Intermediate, s.EsHighLights, "intermediate.desc"),
+		Advanced:     sk.toSkillLevelDomain(s.Advanced, s.EsHighLights, "advanced.desc"),
 		Ctime:        time.UnixMilli(s.Ctime),
 		Utime:        time.UnixMilli(s.Utime),
 	}
 }
 
-func (s *skillRepo) toSkillLevelDomain(sk dao.SkillLevel) domain.SkillLevel {
+func (s *skillRepo) toSkillLevelDomain(sk dao.SkillLevel, esHighlights map[string][]string, typ string) domain.SkillLevel {
 	return domain.SkillLevel{
 		ID:        sk.ID,
-		Desc:      sk.Desc,
+		Desc:      domain.EsVal{Val: sk.Desc, HighLightVals: esHighlights[typ]},
 		Ctime:     time.UnixMilli(sk.Ctime),
 		Utime:     time.UnixMilli(sk.Utime),
 		Questions: sk.Questions,

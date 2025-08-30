@@ -26,10 +26,18 @@ import (
 	"github.com/google/wire"
 )
 
-func InitHandler(pm *payment.Module, ppm *product.Module, cm *credit.Module) (*web.Handler, error) {
+type Module struct {
+	Handler      *web.Handler
+	AdminHandler *web.AdminHandler
+}
+
+func InitModule(pm *payment.Module, ppm *product.Module, cm *credit.Module) (*Module, error) {
 	wire.Build(testioc.BaseSet,
 		order.InitService,
 		order.InitHandler,
+		web.NewAdminHandler,
+		wire.Struct(new(Module), "*"),
 	)
-	return new(web.Handler), nil
+
+	return new(Module), nil
 }

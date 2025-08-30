@@ -24,21 +24,22 @@ import (
 )
 
 const (
+	PubQuestionIndexName = "pub_question_index"
 	QuestionIndexName    = "question_index"
-	questionTitleBoost   = 11
-	questionLabelBoost   = 10
-	questionContentBoost = 2
 )
 
 type Question struct {
-	ID      int64    `json:"id"`
-	UID     int64    `json:"uid"`
-	Title   string   `json:"title"`
-	Labels  []string `json:"labels"`
-	Content string   `json:"content"`
-	Status  uint8    `json:"status"`
-	Answer  Answer   `json:"answer"`
-	Utime   int64    `json:"utime"`
+	ID           int64               `json:"id"`
+	UID          int64               `json:"uid"`
+	Biz          string              `json:"biz"`
+	BizID        int64               `json:"biz_id"`
+	Title        string              `json:"title"`
+	Labels       []string            `json:"labels"`
+	Content      string              `json:"content"`
+	Status       uint8               `json:"status"`
+	Answer       Answer              `json:"answer"`
+	Utime        int64               `json:"utime"`
+	EsHighLights map[string][]string `json:"-"`
 }
 type Answer struct {
 	Analysis     AnswerElement `json:"analysis"`
@@ -57,96 +58,46 @@ type AnswerElement struct {
 }
 
 type questionElasticDAO struct {
-	client *elastic.Client
-	metas  map[string]Col
+	client  *elastic.Client
+	metas   map[string]FieldConfig
+	index   string
+	builder searchBuilder
 }
 
-func NewQuestionDAO(client *elastic.Client) QuestionDAO {
+func NewQuestionElasticDAO(esClient *elastic.Client, index string, metas map[string]FieldConfig) QuestionDAO {
 	return &questionElasticDAO{
-		client: client,
-		metas: map[string]Col{
-			"title": {
-				Name:  "title",
-				Boost: questionTitleBoost,
-			},
-			"labels": {
-				Name:   "labels",
-				Boost:  questionLabelBoost,
-				IsTerm: true,
-			},
-			"content": {
-				Name:  "content",
-				Boost: questionContentBoost,
-			},
-			"answer.analysis.keywords": {
-				Name: "answer.analysis.keywords",
-			},
-			"answer.analysis.shorthand": {
-				Name: "answer.analysis.shorthand",
-			},
-			"answer.analysis.highlight": {
-				Name: "answer.analysis.highlight",
-			},
-			"answer.analysis.guidance": {
-				Name: "answer.analysis.guidance",
-			},
-			"answer.basic.keywords": {
-				Name: "answer.basic.keywords",
-			},
-			"answer.basic.shorthand": {
-				Name: "answer.basic.shorthand",
-			},
-			"answer.basic.highlight": {
-				Name: "answer.basic.highlight",
-			},
-			"answer.basic.guidance": {
-				Name: "answer.basic.guidance",
-			},
-			"answer.intermediate.keywords": {
-				Name: "answer.intermediate.keywords",
-			},
-			"answer.intermediate.shorthand": {
-				Name: "answer.intermediate.shorthand",
-			},
-			"answer.intermediate.highlight": {
-				Name: "answer.intermediate.highlight",
-			},
-			"answer.intermediate.guidance": {
-				Name: "answer.intermediate.guidance",
-			},
-			"answer.advanced.keywords": {
-				Name: "answer.advanced.keywords",
-			},
-			"answer.advanced.shorthand": {
-				Name: "answer.advanced.shorthand",
-			},
-			"answer.advanced.highlight": {
-				Name: "answer.advanced.highlight",
-			},
-			"answer.advanced.guidance": {
-				Name: "answer.advanced.guidance",
-			},
-		},
+		client: esClient,
+		index:  index,
+		metas:  metas,
 	}
 }
 
 func (q *questionElasticDAO) SearchQuestion(ctx context.Context, offset, limit int, queryMetas []domain.QueryMeta) ([]Question, error) {
+	cols, highlights := q.builder.build(q.metas, queryMetas)
 	query := elastic.NewBoolQuery().Must(
-		elastic.NewBoolQuery().Should(buildCols(q.metas, queryMetas)...),
-		elastic.NewTermQuery("status", 2))
-	resp, err := q.client.Search(QuestionIndexName).
+		elastic.NewBoolQuery().Should(cols...))
+	builder := q.client.Search(q.index).
 		From(offset).
-		Size(limit).Query(query).Do(ctx)
+		Size(limit).
+		Query(query)
+	if len(highlights) > 0 {
+		builder = builder.Highlight(elastic.NewHighlight().Fields(highlights...))
+	}
+	resp, err := builder.Do(ctx)
 	if err != nil {
 		return nil, err
 	}
 	res := make([]Question, 0, len(resp.Hits.Hits))
 	for _, hit := range resp.Hits.Hits {
-		var ele Question
+		var (
+			ele Question
+		)
 		err = json.Unmarshal(hit.Source, &ele)
 		if err != nil {
 			return nil, err
 		}
+		ele.EsHighLights = getEsHighLights(hit.Highlight)
+
 		res = append(res, ele)
 	}
 	return res, nil
