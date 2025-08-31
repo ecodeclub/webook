@@ -24,8 +24,10 @@ import (
 
 func InitES() *elastic.Client {
 	type Config struct {
-		Url   string `yaml:"url"`
-		Sniff bool   `yaml:"sniff"`
+		Url      string `yaml:"url"`
+		Sniff    bool   `yaml:"sniff"`
+		Username string `yaml:"username"`
+		Password string `yaml:"password"`
 	}
 	var cfg Config
 	err := econf.UnmarshalKey("es", &cfg)
@@ -37,6 +39,7 @@ func InitES() *elastic.Client {
 		elastic.SetURL(cfg.Url),
 		elastic.SetSniff(cfg.Sniff),
 		elastic.SetHealthcheckTimeoutStartup(timeout),
+		elastic.SetBasicAuth(cfg.Username, cfg.Password),
 	}
 	client, err := elastic.NewClient(opts...)
 	if err != nil {
