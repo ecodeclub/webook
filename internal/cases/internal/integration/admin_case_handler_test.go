@@ -1084,5 +1084,138 @@ func (s *AdminCaseHandlerTestSuite) TestSyncAll() {
 		Do(ctx)
 	require.NoError(s.T(), err)
 
-	// 先插入制作库测试数据（5条）
+}
+
+func (s *AdminCaseHandlerTestSuite) TestSyncAllTemplate() {
+	// 清理 ES 中的测试数据
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	// 创建一条包含HTML内容的案例数据
+	htmlCase := dao.Case{
+		Id:           1,
+		Uid:          uid,
+		Title:        "HTML测试案例",
+		Content:      "<p>这是<strong>HTML内容</strong></p><ul><li>列表项1</li><li>列表项2</li></ul>",
+		Introduction: "<p>这是<em>HTML介绍</em></p><a href=\"https://example.com\">链接</a>",
+		Labels: sqlx.JsonColumn[[]string]{
+			Valid: true,
+			Val:   []string{"HTML测试"},
+		},
+		Status:     domain.UnPublishedStatus.ToUint8(),
+		GithubRepo: "github.com/test",
+		GiteeRepo:  "gitee.com/test",
+		Keywords:   "关键词",
+		Shorthand:  "简写",
+		Highlight:  "高亮",
+		Guidance:   "指导",
+		Biz:        "html_test_case",
+		BizId:      100,
+	}
+	err := s.db.WithContext(ctx).Create(&htmlCase).Error
+	require.NoError(s.T(), err)
+
+	// 创建一条包含HTML内容的线上案例数据
+	htmlPubCase := dao.PublishCase{
+		Id:           2,
+		Uid:          uid,
+		Title:        "HTML测试线上案例",
+		Content:      "<p>这是线上<strong>HTML内容</strong></p><ul><li>线上列表项1</li><li>线上列表项2</li></ul>",
+		Introduction: "<p>这是线上<em>HTML介绍</em></p><a href=\"https://example.com\">线上链接</a>",
+		Labels: sqlx.JsonColumn[[]string]{
+			Valid: true,
+			Val:   []string{"HTML线上测试"},
+		},
+		Status:     domain.PublishedStatus.ToUint8(),
+		GithubRepo: "github.com/test/pub",
+		GiteeRepo:  "gitee.com/test/pub",
+		Keywords:   "线上关键词",
+		Shorthand:  "线上简写",
+		Highlight:  "线上高亮",
+		Guidance:   "线上指导",
+		Biz:        "html_test_case",
+		BizId:      200,
+	}
+	err = s.db.WithContext(ctx).Create(&htmlPubCase).Error
+	require.NoError(s.T(), err)
+
+	// 发送同步请求
+	req, err := http.NewRequest(http.MethodGet, "/cases/search/syncAll", nil)
+	require.NoError(s.T(), err)
+	recorder := test.NewJSONResponseRecorder[ginx.Result]()
+	s.server.ServeHTTP(recorder, req)
+
+	// 验证响应
+	require.Equal(s.T(), 200, recorder.Code)
+	assert.Equal(s.T(), ginx.Result{}, recorder.MustScan().Data)
+
+	// 等待同步完成
+	time.Sleep(4 * time.Second)
+
+	// 验证制作库 ES 数据
+	devSearchResult, err := s.esClient.Search().
+		Index("case_index").
+		Query(elastic.NewTermQuery("id", 1)).
+		Do(context.Background())
+	require.NoError(s.T(), err)
+	require.Equal(s.T(), int64(1), devSearchResult.TotalHits())
+
+	// 验证HTML内容已被转换为纯文本
+	var devCaseData map[string]interface{}
+	err = json.Unmarshal(devSearchResult.Hits.Hits[0].Source, &devCaseData)
+	require.NoError(s.T(), err)
+
+	// 验证内容已被转换为纯文本
+	assert.Equal(s.T(), "这是HTML内容\n\n• 列表项1\n• 列表项2", devCaseData["content"])
+
+	// 验证介绍已被转换为纯文本（链接应被移除）
+	assert.Equal(s.T(), "这是HTML介绍", devCaseData["introduction"])
+
+	// 验证其他字段保持不变
+	assert.Equal(s.T(), "关键词", devCaseData["keywords"])
+	assert.Equal(s.T(), "简写", devCaseData["shorthand"])
+	assert.Equal(s.T(), "高亮", devCaseData["highlight"])
+	assert.Equal(s.T(), "指导", devCaseData["guidance"])
+
+	// 验证线上库 ES 数据
+	prodSearchResult, err := s.esClient.Search().
+		Index("pub_case_index").
+		Query(elastic.NewTermQuery("id", 2)).
+		Do(context.Background())
+	require.NoError(s.T(), err)
+	require.Equal(s.T(), int64(1), prodSearchResult.TotalHits())
+
+	// 验证HTML内容已被转换为纯文本
+	var prodCaseData map[string]interface{}
+	err = json.Unmarshal(prodSearchResult.Hits.Hits[0].Source, &prodCaseData)
+	require.NoError(s.T(), err)
+
+	// 验证内容已被转换为纯文本
+	assert.Equal(s.T(), "这是线上HTML内容\n\n• 线上列表项1\n• 线上列表项2", prodCaseData["content"])
+
+	// 验证介绍已被转换为纯文本（链接应被移除）
+	assert.Equal(s.T(), "这是线上HTML介绍", prodCaseData["introduction"])
+
+	// 验证其他字段保持不变
+	assert.Equal(s.T(), "线上关键词", prodCaseData["keywords"])
+	assert.Equal(s.T(), "线上简写", prodCaseData["shorthand"])
+	assert.Equal(s.T(), "线上高亮", prodCaseData["highlight"])
+	assert.Equal(s.T(), "线上指导", prodCaseData["guidance"])
+
+	// 清理测试数据
+	err = s.db.Exec("TRUNCATE TABLE `cases`").Error
+	require.NoError(s.T(), err)
+	err = s.db.Exec("TRUNCATE TABLE `publish_cases`").Error
+	require.NoError(s.T(), err)
+
+	// 删除ES索引中的测试数据
+	_, err = s.esClient.DeleteByQuery("case_index").
+		Query(elastic.NewTermQuery("biz", "html_test_case")).
+		Do(ctx)
+	require.NoError(s.T(), err)
+
+	_, err = s.esClient.DeleteByQuery("pub_case_index").
+		Query(elastic.NewTermQuery("biz", "html_test_case")).
+		Do(ctx)
+	require.NoError(s.T(), err)
 }
