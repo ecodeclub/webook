@@ -56,9 +56,14 @@ func (s *SearchSyncTestSuite) SetupSuite() {
 
 func (s *SearchSyncTestSuite) TearDownSuite() {
 	// Clean up elasticsearch indices
-	_, err := s.client.DeleteIndex("question_index").Do(context.Background())
+	query := elastic.NewTermQuery("biz", "test_question")
+	_, err := s.client.DeleteByQuery("question_index").
+		Query(query).
+		Do(context.Background())
 	require.NoError(s.T(), err)
-	_, err = s.client.DeleteIndex("pub_question_index").Do(context.Background())
+	_, err = s.client.DeleteByQuery("pub_question_index").
+		Query(query).
+		Do(context.Background())
 	require.NoError(s.T(), err)
 	err = s.db.WithContext(s.T().Context()).Where("biz = ?", "test").Delete(&dao.Question{}).Error
 	require.NoError(s.T(), err)
@@ -75,7 +80,7 @@ func (s *SearchSyncTestSuite) TestSyncAll() {
 			Uid:     456,
 			Title:   "Production Question 1",
 			Content: "Production Content 1",
-			Biz:     "test",
+			Biz:     "test_question",
 			BizId:   1,
 			Status:  domain.UnPublishedStatus,
 			Answer: domain.Answer{
@@ -117,7 +122,7 @@ func (s *SearchSyncTestSuite) TestSyncAll() {
 			Uid:     456,
 			Title:   "Production Question 2",
 			Content: "Production Content 2",
-			Biz:     "test",
+			Biz:     "test_question",
 			BizId:   2,
 			Status:  domain.UnPublishedStatus,
 			Answer: domain.Answer{
@@ -159,7 +164,7 @@ func (s *SearchSyncTestSuite) TestSyncAll() {
 			Uid:     456,
 			Title:   "Production Question 3",
 			Content: "Production Content 3",
-			Biz:     "test",
+			Biz:     "test_question",
 			BizId:   3,
 			Status:  domain.UnPublishedStatus,
 			Answer: domain.Answer{
@@ -205,7 +210,7 @@ func (s *SearchSyncTestSuite) TestSyncAll() {
 			Uid:     456,
 			Title:   "Published Question 1",
 			Content: "Published Content 1",
-			Biz:     "test",
+			Biz:     "test_question",
 			BizId:   4,
 			Status:  domain.PublishedStatus,
 			Answer: domain.Answer{
@@ -247,7 +252,7 @@ func (s *SearchSyncTestSuite) TestSyncAll() {
 			Uid:     456,
 			Title:   "Published Question 2",
 			Content: "Published Content 2",
-			Biz:     "test",
+			Biz:     "test_question",
 			BizId:   5,
 			Status:  domain.PublishedStatus,
 			Answer: domain.Answer{
@@ -400,6 +405,101 @@ func (s *SearchSyncTestSuite) TestSyncAll() {
 		assert.Equal(s.T(), q.Answer.Advanced.Guidance, esQuestion.Answer.Advanced.Guidance)
 	}
 
+}
+
+// 测试html截取
+func (s *SearchSyncTestSuite) TestSyncHtml() {
+	ctx := context.Background()
+
+	// 创建带HTML内容的问题
+	htmlQuestion := domain.Question{
+		Uid:     456,
+		Title:   "HTML Question",
+		Content: "<p>这是一个<strong>HTML</strong>内容</p><ul><li>列表项1</li><li>列表项2</li></ul>",
+		Biz:     "test_question",
+		BizId:   100,
+		Status:  domain.PublishedStatus,
+		Answer: domain.Answer{
+			Analysis: domain.AnswerElement{
+				Id:        100,
+				Content:   "<p>这是<a href='https://example.com'>分析</a>内容</p>",
+				Keywords:  "关键词",
+				Shorthand: "简写",
+				Highlight: "高亮",
+				Guidance:  "指导",
+			},
+			Basic: domain.AnswerElement{
+				Id:        101,
+				Content:   "<p>这是<em>基础</em>内容</p>",
+				Keywords:  "基础关键词",
+				Shorthand: "基础简写",
+				Highlight: "基础高亮",
+				Guidance:  "基础指导",
+			},
+			Intermediate: domain.AnswerElement{
+				Id:        102,
+				Content:   "<blockquote>这是中级内容</blockquote>",
+				Keywords:  "中级关键词",
+				Shorthand: "中级简写",
+				Highlight: "中级高亮",
+				Guidance:  "中级指导",
+			},
+			Advanced: domain.AnswerElement{
+				Id:        103,
+				Content:   "<h3>这是高级内容</h3><p>详细说明</p>",
+				Keywords:  "高级关键词",
+				Shorthand: "高级简写",
+				Highlight: "高级高亮",
+				Guidance:  "高级指导",
+			},
+		},
+	}
+
+	// 保存并同步到线上库
+	id, err := s.repo.Sync(ctx, &htmlQuestion)
+	require.NoError(s.T(), err)
+	htmlQuestion.Id = id
+
+	// 运行同步
+	s.svc.SyncAll()
+
+	// 等待同步完成
+	time.Sleep(3 * time.Second)
+
+	// 验证ES中的数据
+	res, err := s.client.Get().
+		Index("pub_question_index").
+		Id(fmt.Sprintf("%d", htmlQuestion.Id)).
+		Do(ctx)
+	require.NoError(s.T(), err)
+	assert.True(s.T(), res.Found)
+
+	// 解析ES返回的数据
+	var esQuestion event.Question
+	err = json.Unmarshal([]byte(res.Source), &esQuestion)
+	require.NoError(s.T(), err)
+
+	// 验证内容已被转换为纯文本（HTML标签被去除）
+	assert.Equal(s.T(), "这是一个HTML内容\n\n• 列表项1\n• 列表项2", esQuestion.Content)
+
+	// 验证答案内容已被转换为纯文本
+	assert.Equal(s.T(), "这是内容", esQuestion.Answer.Analysis.Content)
+	assert.Equal(s.T(), "这是基础内容", esQuestion.Answer.Basic.Content)
+	assert.Equal(s.T(), "这是中级内容", esQuestion.Answer.Intermediate.Content)
+	assert.Equal(s.T(), "这是高级内容 详细说明", esQuestion.Answer.Advanced.Content)
+
+	// 验证其他字段保持不变
+	assert.Equal(s.T(), htmlQuestion.Id, esQuestion.ID)
+	assert.Equal(s.T(), htmlQuestion.Title, esQuestion.Title)
+	assert.Equal(s.T(), htmlQuestion.Biz, esQuestion.Biz)
+	assert.Equal(s.T(), htmlQuestion.BizId, esQuestion.BizId)
+	assert.Equal(s.T(), htmlQuestion.Status.ToUint8(), esQuestion.Status)
+
+	// 验证答案的其他字段保持不变
+	assert.Equal(s.T(), htmlQuestion.Answer.Analysis.Keywords, esQuestion.Answer.Analysis.Keywords)
+	assert.Equal(s.T(), htmlQuestion.Answer.Analysis.Shorthand, esQuestion.Answer.Analysis.Shorthand)
+	assert.Equal(s.T(), htmlQuestion.Answer.Analysis.Highlight, esQuestion.Answer.Analysis.Highlight)
+	assert.Equal(s.T(), htmlQuestion.Answer.Analysis.Guidance, esQuestion.Answer.Analysis.Guidance)
 }
 
 func TestSearchSync(t *testing.T) {

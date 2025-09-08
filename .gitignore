@@ -44,3 +44,4 @@ local_test.go
 .DS_Store
 *.jsonl
 local/
+.script/es

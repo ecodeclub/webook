@@ -18,6 +18,8 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/ecodeclub/webook/internal/pkg/html_truncate"
+
 	"github.com/ecodeclub/webook/internal/ai"
 
 	"github.com/ecodeclub/webook/internal/cases/internal/domain"
@@ -62,10 +64,10 @@ func newCase(ca domain.Case) Case {
 	return Case{
 		Id:           ca.Id,
 		Uid:          ca.Uid,
-		Introduction: ca.Introduction,
+		Introduction: html_truncate.StripHTML(ca.Introduction),
 		Labels:       ca.Labels,
 		Title:        ca.Title,
-		Content:      ca.Content,
+		Content:      html_truncate.StripHTML(ca.Content),
 		GithubRepo:   ca.GithubRepo,
 		GiteeRepo:    ca.GiteeRepo,
 		Keywords:     ca.Keywords,
