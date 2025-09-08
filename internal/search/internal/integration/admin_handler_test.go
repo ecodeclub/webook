@@ -80,6 +80,7 @@ func (s *AdminHandlerTestSuite) SetupSuite() {
 	if err != nil {
 		panic(err)
 	}
+	time.Sleep(1 * time.Second)
 	s.producer = p
 }
 

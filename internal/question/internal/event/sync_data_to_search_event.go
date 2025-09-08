@@ -17,6 +17,8 @@ package event
 import (
 	"encoding/json"
 
+	"github.com/ecodeclub/webook/internal/pkg/html_truncate"
+
 	"github.com/ecodeclub/webook/internal/question/internal/domain"
 )
 
@@ -109,7 +111,7 @@ func newQuestion(q domain.Question) Question {
 		UID:     q.Uid,
 		Title:   q.Title,
 		Labels:  q.Labels,
-		Content: q.Content,
+		Content: html_truncate.StripHTML(q.Content),
 		Biz:     q.Biz,
 		BizId:   q.BizId,
 		Status:  q.Status.ToUint8(),
@@ -126,7 +128,7 @@ func newQuestion(q domain.Question) Question {
 func newAnswerElement(ele domain.AnswerElement) AnswerElement {
 	return AnswerElement{
 		ID:        ele.Id,
-		Content:   ele.Content,
+		Content:   html_truncate.StripHTML(ele.Content),
 		Keywords:  ele.Keywords,
 		Shorthand: ele.Shorthand,
 		Highlight: ele.Highlight,

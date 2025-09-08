@@ -69,7 +69,6 @@ func (s *caseSearchSyncService) caseSync(ctx context.Context) error {
 				BodyString(evt.Data).
 				Do(ctx)
 			if err != nil {
-
 				return err
 			}
 		}
