@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/ecodeclub/webook/internal/company"
+
 	"github.com/ecodeclub/ekit/iox"
 	"github.com/ecodeclub/ginx/session"
 	"github.com/ecodeclub/webook/internal/company/internal/integration/startup"
@@ -26,7 +28,10 @@ import (
 type CompanyTestSuite struct {
 	suite.Suite
 	server *egin.Component
-	db     *egorm.Component
+	// c端company
+	cServer *egin.Component
+	db      *egorm.Component
+	svc     company.Service
 }
 
 func (c *CompanyTestSuite) SetupSuite() {
@@ -34,13 +39,22 @@ func (c *CompanyTestSuite) SetupSuite() {
 	require.NoError(c.T(), err)
 	econf.Set("server", map[string]any{"contextTimeout": "1s"})
 	server := egin.Load("server").Build()
-	handler := module.Hdl
+	econf.Set("cServer", map[string]any{"contextTimeout": "1s"})
+	cServer := egin.Load("cServer").Build()
+	adminHdl := module.AdminHdl
+	hdl := module.Hdl
 	server.Use(func(ctx *gin.Context) {
 		ctx.Set("_session", session.NewMemorySession(session.Claims{Uid: 123}))
 	})
-	handler.PrivateRoutes(server.Engine)
+	adminHdl.PrivateRoutes(server.Engine)
+	cServer.Use(func(ctx *gin.Context) {
+		ctx.Set("_session", session.NewMemorySession(session.Claims{Uid: 123}))
+	})
+	hdl.PrivateRoutes(cServer.Engine)
 	server.Use(middleware.NewCheckMembershipMiddlewareBuilder(nil).Build())
 	c.server = server
+	c.cServer = cServer
+	c.svc = module.Svc
 	c.db = testioc.InitDB()
 }
 
@@ -241,6 +255,236 @@ func (c *CompanyTestSuite) Test_Delete() {
 			require.Equal(t, tc.wantCode, recorder.Code)
 			if tc.after != nil {
 				tc.after(t, id)
+			}
+		})
+	}
+}
+
+func (c *CompanyTestSuite) Test_CList() {
+	testcases := []struct {
+		name     string
+		before   func(t *testing.T)
+		req      web.Page
+		wantCode int
+		verify   func(t *testing.T, resp web.ListCompanyResp)
+	}{
+		{
+			name: "C端列出公司",
+			before: func(t *testing.T) {
+				companies := []comdao.Company{
+					{Id: 101, Name: "公司A", Ctime: 123, Utime: 123},
+					{Id: 102, Name: "公司B", Ctime: 123, Utime: 123},
+					{Id: 103, Name: "公司C", Ctime: 123, Utime: 123},
+				}
+				for _, company := range companies {
+					err := c.db.WithContext(context.Background()).Create(&company).Error
+					require.NoError(t, err)
+				}
+			},
+			req:      web.Page{Offset: 0, Limit: 10},
+			wantCode: 200,
+			verify: func(t *testing.T, resp web.ListCompanyResp) {
+				require.GreaterOrEqual(t, len(resp.List), 3)
+
+				// 验证返回的数据中包含我们创建的公司
+				companyNames := make(map[string]bool)
+				for _, company := range resp.List {
+					companyNames[company.Name] = true
+				}
+
+				require.True(t, companyNames["公司A"], "返回结果应包含'公司A'")
+				require.True(t, companyNames["公司B"], "返回结果应包含'公司B'")
+				require.True(t, companyNames["公司C"], "返回结果应包含'公司C'")
+			},
+		},
+	}
+	for _, tc := range testcases {
+		c.T().Run(tc.name, func(t *testing.T) {
+			if tc.before != nil {
+				tc.before(t)
+			}
+			req, err := http.NewRequest(http.MethodPost, "/companies/list", iox.NewJSONReader(tc.req))
+			require.NoError(t, err)
+			req.Header.Set("content-type", "application/json")
+			recorder := test.NewJSONResponseRecorder[web.ListCompanyResp]()
+			c.cServer.ServeHTTP(recorder, req)
+			require.Equal(t, tc.wantCode, recorder.Code)
+
+			result := recorder.MustScan()
+			if tc.verify != nil {
+				tc.verify(t, result.Data)
+			}
+		})
+	}
+}
+
+func (c *CompanyTestSuite) Test_CDetail() {
+	testcases := []struct {
+		name     string
+		before   func(t *testing.T) int64
+		req      web.IdReq
+		wantCode int
+		verify   func(t *testing.T, resp web.CompanyVO, id int64)
+	}{
+		{
+			name: "C端查询详情_存在",
+			before: func(t *testing.T) int64 {
+				company := comdao.Company{
+					Id:    20,
+					Name:  "C端详情公司",
+					Ctime: 1000,
+					Utime: 2000,
+				}
+				err := c.db.WithContext(context.Background()).Create(&company).Error
+				require.NoError(t, err)
+				return 20
+			},
+			req:      web.IdReq{},
+			wantCode: 200,
+			verify: func(t *testing.T, resp web.CompanyVO, id int64) {
+				// 验证返回的数据是否正确
+				require.Equal(t, id, resp.ID)
+				require.Equal(t, "C端详情公司", resp.Name)
+
+				// 可以验证更多字段，如创建时间等
+				require.NotZero(t, resp.Ctime)
+
+				// 验证数据库中的数据
+				var company comdao.Company
+				err := c.db.WithContext(context.Background()).Where("id = ?", id).First(&company).Error
+				require.NoError(t, err)
+				require.Equal(t, "C端详情公司", company.Name)
+			},
+		},
+	}
+	for _, tc := range testcases {
+		c.T().Run(tc.name, func(t *testing.T) {
+			id := int64(0)
+			if tc.before != nil {
+				id = tc.before(t)
+			}
+			req, err := http.NewRequest(http.MethodPost, "/companies/detail", iox.NewJSONReader(web.IdReq{Id: id}))
+			require.NoError(t, err)
+			req.Header.Set("content-type", "application/json")
+			recorder := test.NewJSONResponseRecorder[web.CompanyVO]()
+			c.cServer.ServeHTTP(recorder, req)
+			require.Equal(t, tc.wantCode, recorder.Code)
+
+			result := recorder.MustScan()
+			if tc.verify != nil {
+				tc.verify(t, result.Data, id)
+			}
+		})
+	}
+}
+
+func (c *CompanyTestSuite) Test_GetCompaniesByIds() {
+	testcases := []struct {
+		name    string
+		before  func(t *testing.T) []int64
+		ids     []int64
+		wantErr error
+		verify  func(t *testing.T, companies map[int64]company.Company)
+	}{
+		{
+			name: "通过多个ID获取公司",
+			before: func(t *testing.T) []int64 {
+				companies := []comdao.Company{
+					{Id: 201, Name: "公司X", Ctime: 123, Utime: 123},
+					{Id: 202, Name: "公司Y", Ctime: 123, Utime: 123},
+					{Id: 203, Name: "公司Z", Ctime: 123, Utime: 123},
+				}
+				for _, company := range companies {
+					err := c.db.WithContext(context.Background()).Create(&company).Error
+					require.NoError(t, err)
+				}
+				return []int64{201, 202, 203}
+			},
+			ids:     []int64{201, 202, 203},
+			wantErr: nil,
+			verify: func(t *testing.T, companies map[int64]company.Company) {
+				require.Equal(t, 3, len(companies), "应返回3个公司")
+
+				// 验证每个公司的数据
+				c1, ok := companies[201]
+				require.True(t, ok, "应包含ID为201的公司")
+				require.Equal(t, "公司X", c1.Name)
+
+				c2, ok := companies[202]
+				require.True(t, ok, "应包含ID为202的公司")
+				require.Equal(t, "公司Y", c2.Name)
+
+				c3, ok := companies[203]
+				require.True(t, ok, "应包含ID为203的公司")
+				require.Equal(t, "公司Z", c3.Name)
+			},
+		},
+		{
+			name: "部分ID不存在",
+			before: func(t *testing.T) []int64 {
+				companies := []comdao.Company{
+					{Id: 301, Name: "公司甲", Ctime: 123, Utime: 123},
+					{Id: 302, Name: "公司乙", Ctime: 123, Utime: 123},
+				}
+				for _, company := range companies {
+					err := c.db.WithContext(context.Background()).Create(&company).Error
+					require.NoError(t, err)
+				}
+				return []int64{301, 302}
+			},
+			ids:     []int64{301, 302, 999},
+			wantErr: nil,
+			verify: func(t *testing.T, companies map[int64]company.Company) {
+				require.Equal(t, 2, len(companies), "应只返回存在的公司")
+
+				// 验证返回的公司ID
+				_, ok301 := companies[301]
+				require.True(t, ok301, "应包含ID为301的公司")
+
+				_, ok302 := companies[302]
+				require.True(t, ok302, "应包含ID为302的公司")
+
+				_, ok999 := companies[999]
+				require.False(t, ok999, "不应包含不存在的ID为999的公司")
+
+				// 验证公司名称
+				require.Equal(t, "公司甲", companies[301].Name)
+				require.Equal(t, "公司乙", companies[302].Name)
+			},
+		},
+		{
+			name:    "空ID列表",
+			before:  func(t *testing.T) []int64 { return []int64{} },
+			ids:     []int64{},
+			wantErr: nil,
+			verify: func(t *testing.T, companies map[int64]company.Company) {
+				require.Equal(t, 0, len(companies), "空ID列表应返回空结果")
+			},
+		},
+	}
+
+	for _, tc := range testcases {
+		c.T().Run(tc.name, func(t *testing.T) {
+			// 准备测试数据
+			if tc.before != nil {
+				tc.before(t)
+			}
+
+			// 调用服务方法
+			ctx := context.Background()
+			companies, err := c.svc.GetByIds(ctx, tc.ids)
+
+			// 验证错误
+			if tc.wantErr != nil {
+				require.ErrorIs(t, err, tc.wantErr)
+				return
+			} else {
+				require.NoError(t, err)
+			}
+
+			// 验证结果
+			if tc.verify != nil {
+				tc.verify(t, companies)
 			}
 		})
 	}
