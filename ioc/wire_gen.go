@@ -142,7 +142,11 @@ func InitApp() (*App, error) {
 	v25 := resumeModule.PrjHdl
 	v26 := resumeModule.AnalysisHandler
 	v27 := aiModule.Hdl
-	reviewModule := review.InitModule(v, interactiveModule, mq, provider, cache)
+	companyModule, err := company.InitModule(v)
+	if err != nil {
+		return nil, err
+	}
+	reviewModule := review.InitModule(v, interactiveModule, companyModule, mq, provider, cache)
 	v28 := reviewModule.Hdl
 	commentModule, err := comment.InitModule(v, mq, userModule)
 	if err != nil {
@@ -160,45 +164,42 @@ func InitApp() (*App, error) {
 	}
 	v31 := interviewModule.JourneyHdl
 	v32 := interviewModule.OfferHdl
-	component := initGinxServer(provider, checkMembershipMiddlewareBuilder, localActiveLimit, checkPermissionMiddlewareBuilder, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13, v14, v15, v16, v17, v18, v19, v20, v21, v22, v23, v24, v25, v26, v27, v28, v29, v30, v31, v32)
-	v33 := projectModule.AdminHdl
-	v34 := roadmapModule.AdminHdl
-	v35 := baguwenModule.AdminHdl
-	v36 := baguwenModule.AdminSetHdl
-	v37 := casesModule.AdminHandler
-	v38 := casesModule.AdminSetHandler
-	v39 := marketingModule.AdminHdl
-	v40 := aiModule.AdminHandler
-	v41 := reviewModule.AdminHdl
-	v42 := casesModule.KnowledgeBaseHandler
-	v43 := baguwenModule.KnowledgeBaseHdl
-	v44 := materialModule.AdminHdl
-	companyModule, err := company.InitModule(v)
-	if err != nil {
-		return nil, err
-	}
-	v45 := companyModule.Hdl
-	v46 := orderModule.AdminHandler
-	v47 := searchModule.AdminHandler
-	adminServer := InitAdminServer(v33, v34, v35, v36, v37, v38, v39, v40, v41, v42, v43, v44, v45, v46, v47)
-	v48 := orderModule.CloseTimeoutOrdersJob
-	v49 := creditModule.CloseTimeoutLockedCreditsJob
-	v50 := paymentModule.SyncWechatOrderJob
+	v33 := companyModule.Hdl
+	component := initGinxServer(provider, checkMembershipMiddlewareBuilder, localActiveLimit, checkPermissionMiddlewareBuilder, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13, v14, v15, v16, v17, v18, v19, v20, v21, v22, v23, v24, v25, v26, v27, v28, v29, v30, v31, v32, v33)
+	v34 := projectModule.AdminHdl
+	v35 := roadmapModule.AdminHdl
+	v36 := baguwenModule.AdminHdl
+	v37 := baguwenModule.AdminSetHdl
+	v38 := casesModule.AdminHandler
+	v39 := casesModule.AdminSetHandler
+	v40 := marketingModule.AdminHdl
+	v41 := aiModule.AdminHandler
+	v42 := reviewModule.AdminHdl
+	v43 := casesModule.KnowledgeBaseHandler
+	v44 := baguwenModule.KnowledgeBaseHdl
+	v45 := materialModule.AdminHdl
+	v46 := companyModule.AdminHdl
+	v47 := orderModule.AdminHandler
+	v48 := searchModule.AdminHandler
+	adminServer := InitAdminServer(v34, v35, v36, v37, v38, v39, v40, v41, v42, v43, v44, v45, v46, v47, v48)
+	v49 := orderModule.CloseTimeoutOrdersJob
+	v50 := creditModule.CloseTimeoutLockedCreditsJob
+	v51 := paymentModule.SyncWechatOrderJob
 	reconModule, err := recon.InitModule(orderModule, paymentModule, creditModule)
 	if err != nil {
 		return nil, err
 	}
-	v51 := reconModule.SyncPaymentAndOrderJob
-	v52 := initCronJobs(v48, v49, v50, v51)
-	v53 := baguwenModule.KnowledgeJobStarter
-	v54 := initJobs(v53)
-	v55 := initMQConsumers(mq)
+	v52 := reconModule.SyncPaymentAndOrderJob
+	v53 := initCronJobs(v49, v50, v51, v52)
+	v54 := baguwenModule.KnowledgeJobStarter
+	v55 := initJobs(v54)
+	v56 := initMQConsumers(mq)
 	app := &App{
 		Web:       component,
 		Admin:     adminServer,
-		Crons:     v52,
-		Jobs:      v54,
-		Consumers: v55,
+		Crons:     v53,
+		Jobs:      v55,
+		Consumers: v56,
 	}
 	return app, nil
 }

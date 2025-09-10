@@ -1,16 +1,20 @@
 package company
 
 import (
+	"github.com/ecodeclub/webook/internal/company/internal/domain"
 	"github.com/ecodeclub/webook/internal/company/internal/service"
 	"github.com/ecodeclub/webook/internal/company/internal/web"
 )
 
 type (
-	Handler = web.CompanyHandler
-	Service = service.CompanyService
+	AdminHandler = web.CompanyHandler
+	Handler      = web.Handler
+	Service      = service.CompanyService
+	Company      = domain.Company
 )
 
 type Module struct {
-	Hdl *Handler
-	Svc Service
+	AdminHdl *AdminHandler
+	Hdl      *Handler
+	Svc      Service
 }

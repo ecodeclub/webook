@@ -12,9 +12,14 @@ type Review struct {
 	JDAnalysis       string
 	Questions        string
 	QuestionAnalysis string
+	Company          Company
 	Resume           string
 	Status           ReviewStatus
 	Utime            int64
+}
+type Company struct {
+	ID   int64
+	Name string
 }
 type ReviewStatus uint8
 

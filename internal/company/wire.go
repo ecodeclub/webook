@@ -16,6 +16,7 @@ import (
 var HandlerSet = wire.NewSet(
 	InitService,
 	web.NewCompanyHandler,
+	web.NewHandler,
 )
 
 func InitModule(db *egorm.Component) (*Module, error) {

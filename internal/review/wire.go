@@ -6,6 +6,7 @@ import (
 	"github.com/ecodeclub/ecache"
 	"github.com/ecodeclub/ginx/session"
 	"github.com/ecodeclub/mq-api"
+	"github.com/ecodeclub/webook/internal/company"
 	"github.com/ecodeclub/webook/internal/interactive"
 	"github.com/ecodeclub/webook/internal/review/internal/event"
 	"github.com/ecodeclub/webook/internal/review/internal/repository"
@@ -19,6 +20,7 @@ import (
 
 func InitModule(db *egorm.Component,
 	interSvc *interactive.Module,
+	companyModule *company.Module,
 	q mq.MQ,
 	sp session.Provider,
 	ec ecache.Cache,
@@ -32,6 +34,7 @@ func InitModule(db *egorm.Component,
 		web.NewHandler,
 		web.NewAdminHandler,
 		wire.FieldsOf(new(*interactive.Module), "Svc"),
+		wire.FieldsOf(new(*company.Module), "Svc"),
 		wire.Struct(new(Module), "*"),
 	)
 	return new(Module)

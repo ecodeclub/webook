@@ -59,7 +59,7 @@ func InitAdminServer(prj *project.AdminHandler,
 	caseKnowledgeBaseHdl *cases.KnowledgeBaseHandler,
 	queKnowledgeBaseHdl *baguwen.KnowledgeBaseHandler,
 	materialAdminHdl *material.AdminHandler,
-	companyHdl *company.Handler,
+	companyHdl *company.AdminHandler,
 	orderHdl *order.AdminHandler,
 	searchHdl *search.AdminHandler,
 ) AdminServer {

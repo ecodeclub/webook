@@ -36,6 +36,6 @@ func InitService() service.Service {
 
 func InitHandler() (*web.Handler, error) {
 	wire.Build(testioc.BaseSet, product.InitModule,
-		wire.FieldsOf(new(*product.Module), "Hdl"))
+		wire.FieldsOf(new(*product.Module), "AdminHdl"))
 	return new(web.Handler), nil
 }

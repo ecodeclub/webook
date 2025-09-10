@@ -18,6 +18,8 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/ecodeclub/webook/internal/company"
+
 	"github.com/ecodeclub/webook/internal/comment"
 	"github.com/ecodeclub/webook/internal/interview"
 	"github.com/ecodeclub/webook/internal/material"
@@ -98,6 +100,7 @@ func initGinxServer(sp session.Provider,
 	materialHdl *material.Handler,
 	journeyHdl *interview.JourneyHandler,
 	offerHdl *interview.OfferHandler,
+	companyHdl *company.Handler,
 ) *egin.Component {
 	session.SetDefaultProvider(sp)
 	res := egin.Load("web").Build()
@@ -161,6 +164,7 @@ func initGinxServer(sp session.Provider,
 	csHdl.PrivateRoutes(res.Engine)
 	materialHdl.PrivateRoutes(res.Engine)
 	journeyHdl.PrivateRoutes(res.Engine)
+	companyHdl.PrivateRoutes(res.Engine)
 
 	// 权限校验
 

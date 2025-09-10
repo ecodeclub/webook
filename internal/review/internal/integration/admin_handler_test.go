@@ -23,6 +23,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ecodeclub/webook/internal/company"
+	companymocks "github.com/ecodeclub/webook/internal/company/mocks"
+
 	"github.com/ecodeclub/ecache"
 
 	"github.com/ecodeclub/ekit/iox"
@@ -75,9 +78,30 @@ func (s *AdminHandlerTestSuite) SetupSuite() {
 		}
 		return res, nil
 	}).AnyTimes()
+	companySvc := companymocks.NewMockCompanyService(ctrl)
+	companySvc.EXPECT().GetByIds(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, ids []int64) (map[int64]company.Company, error) {
+		companies := make(map[int64]company.Company, len(ids))
+		for _, id := range ids {
+			companies[id] = company.Company{
+				ID:   id,
+				Name: fmt.Sprintf("company-%d", id),
+			}
+		}
+		return companies, nil
+	}).AnyTimes()
+	companySvc.EXPECT().GetById(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, id int64) (company.Company, error) {
+		return company.Company{
+			ID:   id,
+			Name: fmt.Sprintf("company-%d", id),
+		}, nil
+	}).AnyTimes()
 	mou := startup.InitModule(db, &interactive.Module{
 		Svc: svc,
-	}, testmq, rdb, session.DefaultProvider())
+	},
+		&company.Module{
+			Svc: companySvc,
+		},
+		testmq, rdb, session.DefaultProvider())
 	econf.Set("server", map[string]any{"contextTimeout": "1s"})
 	server := egin.Load("server").Build()
 	server.Use(func(ctx *gin.Context) {
@@ -129,6 +153,7 @@ func (s *AdminHandlerTestSuite) TestSave() {
 					Questions:        "面试问题",
 					QuestionAnalysis: "问题分析",
 					Resume:           "简历内容",
+					Cid:              1,
 					Status:           domain.UnPublishedStatus.ToUint8(), // 未发布状态
 				}, review)
 			},
@@ -142,6 +167,9 @@ func (s *AdminHandlerTestSuite) TestSave() {
 					Questions:        "面试问题",
 					QuestionAnalysis: "问题分析",
 					Resume:           "简历内容",
+					Company: web.Company{
+						ID: 1,
+					},
 				},
 			},
 			wantCode: 200,
@@ -163,6 +191,7 @@ func (s *AdminHandlerTestSuite) TestSave() {
 						Valid: true,
 						Val:   []string{"旧MySQL"},
 					},
+					Cid:              1,
 					JD:               "旧的JD",
 					JDAnalysis:       "旧的分析",
 					Questions:        "旧的问题",
@@ -187,6 +216,7 @@ func (s *AdminHandlerTestSuite) TestSave() {
 						Val:   []string{"新MySQL"},
 					},
 					JD:               "新的JD",
+					Cid:              2,
 					JDAnalysis:       "新的分析",
 					Questions:        "新的问题",
 					QuestionAnalysis: "新的分析",
@@ -205,6 +235,9 @@ func (s *AdminHandlerTestSuite) TestSave() {
 					Questions:        "新的问题",
 					QuestionAnalysis: "新的分析",
 					Resume:           "新的简历",
+					Company: web.Company{
+						ID: 2,
+					},
 				},
 			},
 			wantCode: 200,
@@ -256,6 +289,7 @@ func (s *AdminHandlerTestSuite) TestPublish() {
 						Valid: true,
 						Val:   []string{"MySQL"},
 					},
+					Cid:              11,
 					Uid:              uid,
 					JD:               "测试JD",
 					JDAnalysis:       "JD分析",
@@ -271,11 +305,14 @@ func (s *AdminHandlerTestSuite) TestPublish() {
 				require.NoError(t, err)
 				assertReview(t, wantReview, dao.Review(pubReview))
 				s.assertCachedReview(t, domain.Review{
-					ID:               1,
-					Title:            "标题",
-					Desc:             "简介",
-					Labels:           []string{"MySQL"},
-					Uid:              uid,
+					ID:     1,
+					Title:  "标题",
+					Desc:   "简介",
+					Labels: []string{"MySQL"},
+					Uid:    uid,
+					Company: domain.Company{
+						ID: 11,
+					},
 					JD:               "测试JD",
 					JDAnalysis:       "JD分析",
 					Questions:        "面试问题",
@@ -294,6 +331,9 @@ func (s *AdminHandlerTestSuite) TestPublish() {
 					Questions:        "面试问题",
 					QuestionAnalysis: "问题分析",
 					Resume:           "简历内容",
+					Company: web.Company{
+						ID: 11,
+					},
 				},
 			},
 			wantCode: 200,
@@ -312,6 +352,7 @@ func (s *AdminHandlerTestSuite) TestPublish() {
 					Uid:   uid,
 					Title: "旧的标题",
 					Desc:  "旧的简介",
+					Cid:   21,
 					Labels: sqlx.JsonColumn[[]string]{
 						Valid: true,
 						Val:   []string{"旧MySQL"},
@@ -344,6 +385,7 @@ func (s *AdminHandlerTestSuite) TestPublish() {
 						Valid: true,
 						Val:   []string{"新MySQL"},
 					},
+					Cid:              22,
 					JD:               "新的JD",
 					JDAnalysis:       "新的分析",
 					Questions:        "新的问题",
@@ -358,10 +400,13 @@ func (s *AdminHandlerTestSuite) TestPublish() {
 				require.NoError(t, err)
 				assertReview(t, dao.Review(wantReview), dao.Review(pubReview))
 				s.assertCachedReview(t, domain.Review{
-					ID:               2,
-					Uid:              uid,
-					Title:            "新的标题",
-					Desc:             "新的简介",
+					ID:    2,
+					Uid:   uid,
+					Title: "新的标题",
+					Desc:  "新的简介",
+					Company: domain.Company{
+						ID: 22,
+					},
 					Labels:           []string{"新MySQL"},
 					JD:               "新的JD",
 					JDAnalysis:       "新的分析",
@@ -381,7 +426,10 @@ func (s *AdminHandlerTestSuite) TestPublish() {
 					JDAnalysis:       "新的分析",
 					Questions:        "新的问题",
 					QuestionAnalysis: "新的分析",
-					Resume:           "新的简历",
+					Company: web.Company{
+						ID: 22,
+					},
+					Resume: "新的简历",
 				},
 			},
 			wantCode: 200,
@@ -404,6 +452,7 @@ func (s *AdminHandlerTestSuite) TestPublish() {
 						Valid: true,
 						Val:   []string{"旧MySQL"},
 					},
+					Cid:              23,
 					JD:               "旧的JD",
 					JDAnalysis:       "旧的分析",
 					Questions:        "旧的问题",
@@ -431,6 +480,7 @@ func (s *AdminHandlerTestSuite) TestPublish() {
 						Valid: true,
 						Val:   []string{"最新MySQL"},
 					},
+					Cid:              23,
 					JD:               "最新JD",
 					JDAnalysis:       "最新分析",
 					Questions:        "最新问题",
@@ -450,13 +500,16 @@ func (s *AdminHandlerTestSuite) TestPublish() {
 				assertReview(t, dao.Review(wantReview), dao.Review(pubReview))
 
 				s.assertCachedReview(t, domain.Review{
-					ID:               3,
-					Uid:              uid,
-					Title:            "最新标题",
-					Desc:             "最新简介",
-					Labels:           []string{"最新MySQL"},
-					JD:               "最新JD",
-					JDAnalysis:       "最新分析",
+					ID:         3,
+					Uid:        uid,
+					Title:      "最新标题",
+					Desc:       "最新简介",
+					Labels:     []string{"最新MySQL"},
+					JD:         "最新JD",
+					JDAnalysis: "最新分析",
+					Company: domain.Company{
+						ID: 23,
+					},
 					Questions:        "最新问题",
 					QuestionAnalysis: "最新分析",
 					Resume:           "最新简历",
@@ -465,11 +518,14 @@ func (s *AdminHandlerTestSuite) TestPublish() {
 			},
 			req: web.ReviewSaveReq{
 				Review: web.Review{
-					ID:               3,
-					Title:            "最新标题",
-					Desc:             "最新简介",
-					Labels:           []string{"最新MySQL"},
-					JD:               "最新JD",
+					ID:     3,
+					Title:  "最新标题",
+					Desc:   "最新简介",
+					Labels: []string{"最新MySQL"},
+					JD:     "最新JD",
+					Company: web.Company{
+						ID: 23,
+					},
 					JDAnalysis:       "最新分析",
 					Questions:        "最新问题",
 					QuestionAnalysis: "最新分析",
@@ -532,6 +588,7 @@ func (s *AdminHandlerTestSuite) TestDetail() {
 					Uid:   uid,
 					Title: "测试标题",
 					Desc:  "测试描述",
+					Cid:   2,
 					Labels: sqlx.JsonColumn[[]string]{
 						Valid: true,
 						Val:   []string{"测试标签"},
@@ -558,6 +615,10 @@ func (s *AdminHandlerTestSuite) TestDetail() {
 					Desc:  "测试描述",
 					Labels: []string{
 						"测试标签",
+					},
+					Company: web.Company{
+						ID:   2,
+						Name: fmt.Sprintf("company-%d", 2),
 					},
 					JD:               "测试JD",
 					JDAnalysis:       "JD分析",
@@ -632,6 +693,7 @@ func (s *AdminHandlerTestSuite) TestList() {
 				Valid: true,
 				Val:   []string{fmt.Sprintf("标签 %d", idx)},
 			},
+			Cid:              int64(idx + 1),
 			JD:               fmt.Sprintf("这是JD %d", idx),
 			JDAnalysis:       fmt.Sprintf("这是JD分析 %d", idx),
 			Questions:        fmt.Sprintf("这是面试问题 %d", idx),
@@ -661,7 +723,11 @@ func (s *AdminHandlerTestSuite) TestList() {
 					Total: 100,
 					List: []web.Review{
 						{
-							ID:               100,
+							ID: 100,
+							Company: web.Company{
+								ID:   100,
+								Name: fmt.Sprintf("company-%d", 100),
+							},
 							Title:            "标题 99",
 							Desc:             "描述 99",
 							Labels:           []string{"标签 99"},
@@ -674,7 +740,11 @@ func (s *AdminHandlerTestSuite) TestList() {
 							Utime:            123,
 						},
 						{
-							ID:               99,
+							ID: 99,
+							Company: web.Company{
+								ID:   99,
+								Name: fmt.Sprintf("company-%d", 99),
+							},
 							Title:            "标题 98",
 							Desc:             "描述 98",
 							Labels:           []string{"标签 98"},
@@ -702,7 +772,11 @@ func (s *AdminHandlerTestSuite) TestList() {
 					Total: 100,
 					List: []web.Review{
 						{
-							ID:               1,
+							ID: 1,
+							Company: web.Company{
+								ID:   1,
+								Name: fmt.Sprintf("company-%d", 1),
+							},
 							Title:            "标题 0",
 							Desc:             "描述 0",
 							Labels:           []string{"标签 0"},

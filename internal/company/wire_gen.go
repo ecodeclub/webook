@@ -22,9 +22,11 @@ import (
 func InitModule(db *egorm.Component) (*Module, error) {
 	companyService := InitService(db)
 	v := web.NewCompanyHandler(companyService)
+	v2 := web.NewHandler(companyService)
 	module := &Module{
-		Hdl: v,
-		Svc: companyService,
+		AdminHdl: v,
+		Hdl:      v2,
+		Svc:      companyService,
 	}
 	return module, nil
 }
@@ -39,7 +41,7 @@ func InitService(db *egorm.Component) Service {
 // wire.go:
 
 var HandlerSet = wire.NewSet(
-	InitService, web.NewCompanyHandler,
+	InitService, web.NewCompanyHandler, web.NewHandler,
 )
 
 var once = &sync.Once{}

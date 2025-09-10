@@ -15,6 +15,7 @@ type Review struct {
 	QuestionAnalysis string                    `gorm:"column:question_analysis;type:text"`
 	Resume           string                    `gorm:"column:resume;type:text"`
 	Status           uint8                     `gorm:"type:tinyint(3);comment:0-未知 1-未发表 2-已发表"`
+	Cid              int64                     `gorm:"column:cid"`
 	Ctime            int64                     `gorm:"column:ctime"`
 	Utime            int64                     `gorm:"column:utime"`
 }
