@@ -9,6 +9,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ecodeclub/webook/internal/company"
+	companymocks "github.com/ecodeclub/webook/internal/company/mocks"
+
 	"github.com/ecodeclub/ecache"
 
 	"github.com/ecodeclub/ekit/sqlx"
@@ -75,9 +78,32 @@ func (s *TestSuite) SetupSuite() {
 	svc.EXPECT().Get(gomock.Any(), "review", gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, biz string, id, uid int64) (interactive.Interactive, error) {
 		return mockInteractive(biz, id), nil
 	}).AnyTimes()
+
+	companySvc := companymocks.NewMockCompanyService(ctrl)
+	companySvc.EXPECT().GetByIds(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, ids []int64) (map[int64]company.Company, error) {
+		companies := make(map[int64]company.Company, len(ids))
+		for _, id := range ids {
+			companies[id] = company.Company{
+				ID:   id,
+				Name: fmt.Sprintf("company-%d", id),
+			}
+		}
+		return companies, nil
+	}).AnyTimes()
+	companySvc.EXPECT().GetById(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, id int64) (company.Company, error) {
+		return company.Company{
+			ID:   id,
+			Name: fmt.Sprintf("company-%d", id),
+		}, nil
+	}).AnyTimes()
+
 	mou := startup.InitModule(db, &interactive.Module{
 		Svc: svc,
-	}, testmq, rdb, session.DefaultProvider())
+	},
+		&company.Module{
+			Svc: companySvc,
+		},
+		testmq, rdb, session.DefaultProvider())
 	econf.Set("server", map[string]any{"contextTimeout": "1s"})
 	server := egin.Load("server").Build()
 	server.Use(func(ctx *gin.Context) {
@@ -119,6 +145,7 @@ func (s *TestSuite) TestPubList() {
 				Valid: true,
 				Val:   []string{fmt.Sprintf("标签 %d", idx)},
 			},
+			Cid:              int64(idx),
 			JD:               fmt.Sprintf("这是JD %d", idx),
 			JDAnalysis:       fmt.Sprintf("这是JD分析 %d", idx),
 			Questions:        fmt.Sprintf("这是面试问题 %d", idx),
@@ -159,9 +186,13 @@ func (s *TestSuite) TestPubList() {
 					Total: 0, // 只有50条已发布的记录
 					List: []web.Review{
 						{
-							ID:               100,
-							Title:            "标题 100",
-							Desc:             "描述 100",
+							ID:    100,
+							Title: "标题 100",
+							Desc:  "描述 100",
+							Company: web.Company{
+								ID:   100,
+								Name: fmt.Sprintf("company-%d", 100),
+							},
 							Labels:           []string{"标签 100"},
 							JD:               "这是JD 100",
 							JDAnalysis:       "这是JD分析 100",
@@ -179,7 +210,11 @@ func (s *TestSuite) TestPubList() {
 							},
 						},
 						{
-							ID:               98,
+							ID: 98,
+							Company: web.Company{
+								ID:   98,
+								Name: fmt.Sprintf("company-%d", 98),
+							},
 							Title:            "标题 98",
 							Desc:             "描述 98",
 							Labels:           []string{"标签 98"},
@@ -214,8 +249,12 @@ func (s *TestSuite) TestPubList() {
 					Total: 0,
 					List: []web.Review{
 						{
-							ID:               4,
-							Title:            "标题 4",
+							ID:    4,
+							Title: "标题 4",
+							Company: web.Company{
+								ID:   4,
+								Name: fmt.Sprintf("company-%d", 4),
+							},
 							Desc:             "描述 4",
 							Labels:           []string{"标签 4"},
 							JD:               "这是JD 4",
@@ -234,7 +273,11 @@ func (s *TestSuite) TestPubList() {
 							},
 						},
 						{
-							ID:               2,
+							ID: 2,
+							Company: web.Company{
+								ID:   2,
+								Name: fmt.Sprintf("company-%d", 2),
+							},
 							Title:            "标题 2",
 							Desc:             "描述 2",
 							Labels:           []string{"标签 2"},
@@ -291,6 +334,7 @@ func (s *TestSuite) TestPubDetail() {
 				// 创建原始记录
 				review := dao.Review{
 					ID:    1,
+					Cid:   111,
 					Uid:   uid,
 					Title: "已发布的标题",
 					Desc:  "已发布的描述",
@@ -314,8 +358,11 @@ func (s *TestSuite) TestPubDetail() {
 			},
 			after: func(t *testing.T) {
 				s.assertCachedReview(t, domain.Review{
-					ID:               1,
-					Uid:              uid,
+					ID:  1,
+					Uid: uid,
+					Company: domain.Company{
+						ID: 111,
+					},
 					Title:            "已发布的标题",
 					Desc:             "已发布的描述",
 					Labels:           []string{"已发布的标签"},
@@ -333,9 +380,13 @@ func (s *TestSuite) TestPubDetail() {
 			wantCode: 200,
 			wantResp: test.Result[web.Review]{
 				Data: web.Review{
-					ID:               1,
-					Title:            "已发布的标题",
-					Desc:             "已发布的描述",
+					ID:    1,
+					Title: "已发布的标题",
+					Desc:  "已发布的描述",
+					Company: web.Company{
+						ID:   111,
+						Name: fmt.Sprintf("company-%d", 111),
+					},
 					Labels:           []string{"已发布的标签"},
 					JD:               "已发布的JD",
 					JDAnalysis:       "已发布的JD分析",
@@ -359,8 +410,11 @@ func (s *TestSuite) TestPubDetail() {
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 				defer cancel()
 				re := domain.Review{
-					ID:               1,
-					Uid:              uid,
+					ID:  1,
+					Uid: uid,
+					Company: domain.Company{
+						ID: 111,
+					},
 					Title:            "已发布的标题",
 					Desc:             "已发布的描述",
 					Labels:           []string{"已发布的标签"},
@@ -379,7 +433,10 @@ func (s *TestSuite) TestPubDetail() {
 			},
 			after: func(t *testing.T) {
 				s.assertCachedReview(t, domain.Review{
-					ID:               1,
+					ID: 1,
+					Company: domain.Company{
+						ID: 111,
+					},
 					Uid:              uid,
 					Title:            "已发布的标题",
 					Desc:             "已发布的描述",
@@ -398,8 +455,12 @@ func (s *TestSuite) TestPubDetail() {
 			wantCode: 200,
 			wantResp: test.Result[web.Review]{
 				Data: web.Review{
-					ID:               1,
-					Title:            "已发布的标题",
+					ID:    1,
+					Title: "已发布的标题",
+					Company: web.Company{
+						ID:   111,
+						Name: fmt.Sprintf("company-%d", 111),
+					},
 					Desc:             "已发布的描述",
 					Labels:           []string{"已发布的标签"},
 					JD:               "已发布的JD",

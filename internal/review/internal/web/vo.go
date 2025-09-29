@@ -1,6 +1,7 @@
 package web
 
 import (
+	"github.com/ecodeclub/webook/internal/company"
 	"github.com/ecodeclub/webook/internal/interactive"
 	"github.com/ecodeclub/webook/internal/review/internal/domain"
 )
@@ -22,6 +23,11 @@ type Review struct {
 	Status           uint8       `json:"status,omitempty"`
 	Utime            int64       `json:"utime,omitempty"`
 	Interactive      Interactive `json:"interactive,omitempty"`
+	Company          Company     `json:"company,omitempty"`
+}
+type Company struct {
+	ID   int64  `json:"id,omitempty"`
+	Name string `json:"name,omitempty"`
 }
 type Interactive struct {
 	CollectCnt int  `json:"collectCnt"`
@@ -35,9 +41,20 @@ type ReviewListResp struct {
 	List  []Review `json:"list"`
 }
 
-func newReviewWithInteractive(re domain.Review, intr interactive.Interactive) Review {
-	review := newReview(re)
+func newCompleteReview(re domain.Review,
+	intr interactive.Interactive,
+	company company.Company,
+) Review {
+	review := newReviewWithCompany(re, company)
 	review.Interactive = newInteractive(intr)
+	return review
+}
+func newReviewWithCompany(re domain.Review, company company.Company) Review {
+	review := newReview(re)
+	review.Company = Company{
+		ID:   company.ID,
+		Name: company.Name,
+	}
 	return review
 }
 
@@ -70,6 +87,9 @@ func (r Review) toDomain() domain.Review {
 		Resume:           r.Resume,
 		Status:           domain.ReviewStatus(r.Status),
 		Utime:            r.Utime,
+		Company: domain.Company{
+			ID: r.Company.ID,
+		},
 	}
 }
 

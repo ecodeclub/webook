@@ -6,6 +6,7 @@ import (
 	"github.com/ecodeclub/ecache"
 	"github.com/ecodeclub/ginx/session"
 	"github.com/ecodeclub/mq-api"
+	"github.com/ecodeclub/webook/internal/company"
 	"github.com/ecodeclub/webook/internal/interactive"
 	"github.com/ecodeclub/webook/internal/review"
 	"github.com/ecodeclub/webook/internal/review/internal/event"
@@ -18,7 +19,9 @@ import (
 	"github.com/google/wire"
 )
 
-func InitModule(db *egorm.Component, interSvc *interactive.Module, q mq.MQ, ec ecache.Cache, sp session.Provider) *review.Module {
+func InitModule(db *egorm.Component, interSvc *interactive.Module,
+	companySvc *company.Module,
+	q mq.MQ, ec ecache.Cache, sp session.Provider) *review.Module {
 	wire.Build(
 		initReviewDao,
 		initIntrProducer,
@@ -28,6 +31,7 @@ func InitModule(db *egorm.Component, interSvc *interactive.Module, q mq.MQ, ec e
 		web.NewHandler,
 		web.NewAdminHandler,
 		wire.Struct(new(review.Module), "*"),
+		wire.FieldsOf(new(*company.Module), "Svc"),
 		wire.FieldsOf(new(*interactive.Module), "Svc"),
 	)
 	return new(review.Module)

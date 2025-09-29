@@ -113,7 +113,7 @@ func initSyncConsumer(svc service.SyncService, q mq.MQ) *event.SyncConsumer {
 
 func InitHandler(caModule *cases.Module) (*web.Handler, error) {
 	wire.Build(testioc.BaseSet, InitModule,
-		wire.FieldsOf(new(*baguwen.Module), "Hdl"))
+		wire.FieldsOf(new(*baguwen.Module), "AdminHdl"))
 	return new(web.Handler), nil
 }
 

@@ -114,6 +114,7 @@ func toDaoReview(review domain.Review) dao.Review {
 		Desc:             review.Desc,
 		Labels:           sqlx.JsonColumn[[]string]{Val: review.Labels, Valid: len(review.Labels) != 0},
 		JD:               review.JD,
+		Cid:              review.Company.ID,
 		JDAnalysis:       review.JDAnalysis,
 		Questions:        review.Questions,
 		QuestionAnalysis: review.QuestionAnalysis,
@@ -135,7 +136,10 @@ func toDomainReview(review dao.Review) domain.Review {
 		Questions:        review.Questions,
 		QuestionAnalysis: review.QuestionAnalysis,
 		Resume:           review.Resume,
-		Status:           domain.ReviewStatus(review.Status),
-		Utime:            review.Utime,
+		Company: domain.Company{
+			ID: review.Cid,
+		},
+		Status: domain.ReviewStatus(review.Status),
+		Utime:  review.Utime,
 	}
 }
