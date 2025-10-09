@@ -21,6 +21,7 @@ import (
 	"github.com/ecodeclub/ekit/retry"
 	"github.com/ecodeclub/mq-api"
 	"github.com/ecodeclub/mq-api/kafka"
+	"github.com/ecodeclub/webook/internal/pkg/mqx"
 	"github.com/gotomicro/ego/core/econf"
 )
 
@@ -66,5 +67,6 @@ func initMQ() (mq.MQ, error) {
 	if err != nil {
 		return nil, err
 	}
-	return qq, nil
+	traceqq := mqx.NewTraceMq(qq)
+	return traceqq, nil
 }
