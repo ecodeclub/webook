@@ -1,3 +1,17 @@
+// Copyright 2023 ecodeclub
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package repository
 
 import (
@@ -108,34 +122,30 @@ func (r *reviewRepo) PubInfo(ctx context.Context, id int64) (domain.Review, erro
 // 将 domain.Review 转换为 dao.Review
 func toDaoReview(review domain.Review) dao.Review {
 	return dao.Review{
-		ID:               review.ID,
-		Uid:              review.Uid,
-		Title:            review.Title,
-		Desc:             review.Desc,
-		Labels:           sqlx.JsonColumn[[]string]{Val: review.Labels, Valid: len(review.Labels) != 0},
-		JD:               review.JD,
-		Cid:              review.Company.ID,
-		JDAnalysis:       review.JDAnalysis,
-		Questions:        review.Questions,
-		QuestionAnalysis: review.QuestionAnalysis,
-		Status:           review.Status.ToUint8(),
-		Resume:           review.Resume,
+		ID:      review.ID,
+		Uid:     review.Uid,
+		Title:   review.Title,
+		Desc:    review.Desc,
+		Labels:  sqlx.JsonColumn[[]string]{Val: review.Labels, Valid: len(review.Labels) != 0},
+		JD:      review.JD,
+		Content: review.Content,
+		Resume:  review.Resume,
+		Status:  review.Status.ToUint8(),
+		Cid:     review.Company.ID,
 	}
 }
 
 // 将 dao.Review 转换为 domain.Review
 func toDomainReview(review dao.Review) domain.Review {
 	return domain.Review{
-		ID:               review.ID,
-		Uid:              review.Uid,
-		JD:               review.JD,
-		Title:            review.Title,
-		Desc:             review.Desc,
-		Labels:           review.Labels.Val,
-		JDAnalysis:       review.JDAnalysis,
-		Questions:        review.Questions,
-		QuestionAnalysis: review.QuestionAnalysis,
-		Resume:           review.Resume,
+		ID:      review.ID,
+		Uid:     review.Uid,
+		JD:      review.JD,
+		Title:   review.Title,
+		Desc:    review.Desc,
+		Labels:  review.Labels.Val,
+		Content: review.Content,
+		Resume:  review.Resume,
 		Company: domain.Company{
 			ID: review.Cid,
 		},
