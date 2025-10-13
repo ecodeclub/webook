@@ -28,7 +28,7 @@ import (
 
 // Injectors from wire.go:
 
-func InitModule(db *egorm.Component, intrModule *interactive.Module, aiModule *ai.Module, esClient *elastic.Client, memberModule *member.Module, sp session.Provider, redisCache ecache.Cache, q mq.MQ) (*Module, error) {
+func InitModule(db *gorm.DB, intrModule *interactive.Module, aiModule *ai.Module, esClient *elastic.Client, memberModule *member.Module, sp session.Provider, redisCache ecache.Cache, q mq.MQ) (*Module, error) {
 	caseDAO := InitCaseDAO(db)
 	caseCache := cache.NewCaseCache(redisCache)
 	caseRepo := repository.NewCaseRepo(caseDAO, caseCache)
@@ -41,35 +41,35 @@ func InitModule(db *egorm.Component, intrModule *interactive.Module, aiModule *a
 	if err != nil {
 		return nil, err
 	}
-	v := service.NewService(caseRepo, interactiveEventProducer, knowledgeBaseEventProducer, syncEventProducer)
+	serviceService := service.NewService(caseRepo, interactiveEventProducer, knowledgeBaseEventProducer, syncEventProducer)
 	caseSetDAO := dao.NewCaseSetDAO(db)
 	caseSetRepository := repository.NewCaseSetRepo(caseSetDAO)
-	v2 := service.NewCaseSetService(caseSetRepository, caseRepo, interactiveEventProducer)
+	caseSetService := service.NewCaseSetService(caseSetRepository, caseRepo, interactiveEventProducer)
 	examineDAO := dao.NewGORMExamineDAO(db)
 	examineRepository := repository.NewCachedExamineRepository(examineDAO)
-	v3 := aiModule.Svc
-	v4 := service.NewLLMExamineService(caseRepo, examineRepository, v3)
-	v5 := intrModule.Svc
-	v6 := memberModule.Svc
-	v7 := web.NewHandler(v, v4, v5, v6, sp)
-	v8 := web.NewAdminCaseSetHandler(v2)
+	llmService := aiModule.Svc
+	examineService := service.NewLLMExamineService(caseRepo, examineRepository, llmService)
+	service2 := intrModule.Svc
+	service3 := memberModule.Svc
+	handler := web.NewHandler(serviceService, examineService, service2, service3, sp)
+	adminCaseSetHandler := web.NewAdminCaseSetHandler(caseSetService)
 	searchSyncService := service.NewCaseSearchSyncService(caseRepo, esClient)
-	v9 := web.NewAdminCaseHandler(v, searchSyncService)
-	v10 := web.NewExamineHandler(v4)
-	v11 := web.NewCaseSetHandler(v2, v4, v5, sp)
-	v12 := aiModule.KnowledgeBaseSvc
-	knowledgeBaseService := InitKnowledgeBaseSvc(v12, caseRepo)
-	v13 := web.NewKnowledgeBaseHandler(knowledgeBaseService)
+	adminCaseHandler := web.NewAdminCaseHandler(serviceService, searchSyncService)
+	examineHandler := web.NewExamineHandler(examineService)
+	caseSetHandler := web.NewCaseSetHandler(caseSetService, examineService, service2, sp)
+	repositoryBaseSvc := aiModule.KnowledgeBaseSvc
+	knowledgeBaseService := InitKnowledgeBaseSvc(repositoryBaseSvc, caseRepo)
+	knowledgeBaseHandler := web.NewKnowledgeBaseHandler(knowledgeBaseService)
 	module := &Module{
-		Svc:                  v,
-		SetSvc:               v2,
-		ExamineSvc:           v4,
-		Hdl:                  v7,
-		AdminSetHandler:      v8,
-		AdminHandler:         v9,
-		ExamineHdl:           v10,
-		CsHdl:                v11,
-		KnowledgeBaseHandler: v13,
+		Svc:                  serviceService,
+		SetSvc:               caseSetService,
+		ExamineSvc:           examineService,
+		Hdl:                  handler,
+		AdminSetHandler:      adminCaseSetHandler,
+		AdminHandler:         adminCaseHandler,
+		ExamineHdl:           examineHandler,
+		CsHdl:                caseSetHandler,
+		KnowledgeBaseHandler: knowledgeBaseHandler,
 	}
 	return module, nil
 }

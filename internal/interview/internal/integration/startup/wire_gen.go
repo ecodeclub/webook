@@ -10,6 +10,7 @@ import (
 	"github.com/ecodeclub/webook/internal/interview/internal/repository"
 	"github.com/ecodeclub/webook/internal/interview/internal/repository/dao"
 	"github.com/ecodeclub/webook/internal/interview/internal/service"
+	"github.com/ecodeclub/webook/internal/interview/internal/web"
 	"gorm.io/gorm"
 )
 
@@ -29,4 +30,5 @@ func InitModule(db *gorm.DB) *Module {
 
 type Module struct {
 	JourneySvc service.InterviewService
+	OfferHdl   web.OfferHandler
 }

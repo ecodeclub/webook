@@ -29,8 +29,8 @@ import (
 // Injectors from wire.go:
 
 func InitModule(p event.SyncDataToSearchEventProducer, knowledgeBaseP event.KnowledgeBaseEventProducer, intrModule *interactive.Module, permModule *permission.Module, aiModule *ai.Module, sp session.Provider, memberModule *member.Module) (*baguwen.Module, error) {
-	v := testioc.InitDB()
-	questionDAO := baguwen.InitQuestionDAO(v)
+	db := testioc.InitDB()
+	questionDAO := baguwen.InitQuestionDAO(db)
 	ecacheCache := testioc.InitCache()
 	questionCache := cache.NewQuestionECache(ecacheCache)
 	repositoryRepository := repository.NewCacheRepository(questionDAO, questionCache)
@@ -39,39 +39,39 @@ func InitModule(p event.SyncDataToSearchEventProducer, knowledgeBaseP event.Know
 	if err != nil {
 		return nil, err
 	}
-	v2 := service.NewService(repositoryRepository, p, interactiveEventProducer, knowledgeBaseP)
-	questionSetDAO := baguwen.InitQuestionSetDAO(v)
+	serviceService := service.NewService(repositoryRepository, p, interactiveEventProducer, knowledgeBaseP)
+	questionSetDAO := baguwen.InitQuestionSetDAO(db)
 	questionSetRepository := repository.NewQuestionSetRepository(questionSetDAO)
-	v3 := service.NewQuestionSetService(questionSetRepository, repositoryRepository, interactiveEventProducer, p)
-	examineDAO := dao.NewGORMExamineDAO(v)
+	questionSetService := service.NewQuestionSetService(questionSetRepository, repositoryRepository, interactiveEventProducer, p)
+	examineDAO := dao.NewGORMExamineDAO(db)
 	examineRepository := repository.NewCachedExamineRepository(examineDAO)
-	v4 := aiModule.Svc
-	v5 := service.NewLLMExamineService(repositoryRepository, examineRepository, v4)
+	llmService := aiModule.Svc
+	examineService := service.NewLLMExamineService(repositoryRepository, examineRepository, llmService)
 	client := testioc.InitES()
 	searchSyncService := service.NewSearchSyncService(repositoryRepository, client)
-	v6 := web.NewAdminHandler(v2, searchSyncService)
-	v7 := web.NewAdminQuestionSetHandler(v3)
-	v8 := intrModule.Svc
-	v9 := permModule.Svc
-	v10 := memberModule.Svc
-	v11 := web.NewHandler(v8, v5, v9, v2, sp, v10)
-	v12 := web.NewQuestionSetHandler(v3, v5, v8, sp)
-	v13 := web.NewExamineHandler(v5)
-	v14 := initKnowledgeJobStarter(v2)
-	v15 := aiModule.KnowledgeBaseSvc
-	questionKnowledgeBase := initKnowledgeBaseSvc(v15, repositoryRepository)
-	v16 := web.NewKnowledgeBaseHandler(questionKnowledgeBase)
+	adminHandler := web.NewAdminHandler(serviceService, searchSyncService)
+	adminQuestionSetHandler := web.NewAdminQuestionSetHandler(questionSetService)
+	service2 := intrModule.Svc
+	service3 := permModule.Svc
+	service4 := memberModule.Svc
+	handler := web.NewHandler(service2, examineService, service3, serviceService, sp, service4)
+	questionSetHandler := web.NewQuestionSetHandler(questionSetService, examineService, service2, sp)
+	examineHandler := web.NewExamineHandler(examineService)
+	knowledgeJobStarter := initKnowledgeJobStarter(serviceService)
+	repositoryBaseSvc := aiModule.KnowledgeBaseSvc
+	questionKnowledgeBase := initKnowledgeBaseSvc(repositoryBaseSvc, repositoryRepository)
+	knowledgeBaseHandler := web.NewKnowledgeBaseHandler(questionKnowledgeBase)
 	module := &baguwen.Module{
-		Svc:                 v2,
-		SetSvc:              v3,
-		ExamSvc:             v5,
-		AdminHdl:            v6,
-		AdminSetHdl:         v7,
-		Hdl:                 v11,
-		QsHdl:               v12,
-		ExamineHdl:          v13,
-		KnowledgeJobStarter: v14,
-		KnowledgeBaseHdl:    v16,
+		Svc:                 serviceService,
+		SetSvc:              questionSetService,
+		ExamSvc:             examineService,
+		AdminHdl:            adminHandler,
+		AdminSetHdl:         adminQuestionSetHandler,
+		Hdl:                 handler,
+		QsHdl:               questionSetHandler,
+		ExamineHdl:          examineHandler,
+		KnowledgeJobStarter: knowledgeJobStarter,
+		KnowledgeBaseHdl:    knowledgeBaseHandler,
 	}
 	return module, nil
 }
