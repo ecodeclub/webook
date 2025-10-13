@@ -145,6 +145,7 @@ func initGinxServer(sp session.Provider,
 	csHdl.PublicRoutes(res.Engine)
 	prjHdl.PublicRoutes(res.Engine)
 	reviewHdl.PublicRoutes(res.Engine)
+	pHdl.PublicRoutes(res.Engine)
 
 	// 登录校验
 	res.Use(session.CheckLoginMiddleware())
