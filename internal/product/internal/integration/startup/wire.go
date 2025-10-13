@@ -24,11 +24,6 @@ import (
 	"github.com/google/wire"
 )
 
-//func InitHandler() (*web.Handler, error) {
-//	wire.Build(testioc.BaseSet, product.InitHandler)
-//	return new(web.Handler), nil
-//}
-
 func InitService() service.Service {
 	wire.Build(testioc.BaseSet, product.InitService)
 	return nil

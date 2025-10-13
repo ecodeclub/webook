@@ -23,6 +23,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+var _ ginx.Handler = &Handler{}
+
 type Handler struct {
 	svc service.Service
 }
@@ -31,12 +33,16 @@ func NewHandler(svc service.Service) *Handler {
 	return &Handler{svc: svc}
 }
 
-func (h *Handler) PrivateRoutes(server *gin.Engine) {
+func (h *Handler) PublicRoutes(server *gin.Engine) {
 	g := server.Group("/product")
 	g.POST("/spu/detail", ginx.BS[SNReq](h.RetrieveSPUDetail))
 	g.POST("/sku/detail", ginx.BS[SNReq](h.RetrieveSKUDetail))
-	g.POST("/save", ginx.BS[SPUSaveReq](h.SaveProduct))
 	g.POST("/spu/list", ginx.BS[SPUListReq](h.SPUList))
+}
+
+func (h *Handler) PrivateRoutes(server *gin.Engine) {
+	g := server.Group("/product")
+	g.POST("/save", ginx.BS[SPUSaveReq](h.SaveProduct))
 }
 
 func (h *Handler) RetrieveSPUDetail(ctx *ginx.Context, req SNReq, _ session.Session) (ginx.Result, error) {
