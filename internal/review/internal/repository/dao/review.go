@@ -1,3 +1,17 @@
+// Copyright 2023 ecodeclub
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package dao
 
 import (
@@ -12,7 +26,7 @@ import (
 )
 
 type ReviewDAO interface {
-	// Create 创建一条面试评测记录
+	// Save 创建或更新一条面试评测记录
 	Save(ctx context.Context, review Review) (int64, error)
 
 	// Get 根据ID获取面试评测记录
@@ -131,9 +145,7 @@ func (r *reviewDao) GetPublishReview(ctx context.Context, reviewId int64) (Publi
 func (r *reviewDao) getUpdateCols() []string {
 	return []string{
 		"jd",
-		"jd_analysis",
-		"questions",
-		"question_analysis",
+		"content",
 		"resume",
 		"utime",
 		"status",

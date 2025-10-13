@@ -1,3 +1,17 @@
+// Copyright 2023 ecodeclub
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package web
 
 import (
@@ -11,19 +25,17 @@ type ReviewSaveReq struct {
 }
 
 type Review struct {
-	ID               int64       `json:"id,omitempty"`
-	Title            string      `json:"title,omitempty"`
-	Desc             string      `json:"desc,omitempty"`
-	Labels           []string    `json:"labels,omitempty"`
-	JD               string      `json:"jd,omitempty"`
-	JDAnalysis       string      `json:"jd_analysis,omitempty"`
-	Questions        string      `json:"questions,omitempty"`
-	QuestionAnalysis string      `json:"question_analysis,omitempty"`
-	Resume           string      `json:"resume,omitempty"`
-	Status           uint8       `json:"status,omitempty"`
-	Utime            int64       `json:"utime,omitempty"`
-	Interactive      Interactive `json:"interactive,omitempty"`
-	Company          Company     `json:"company,omitempty"`
+	ID          int64       `json:"id,omitempty"`
+	Title       string      `json:"title,omitempty"`
+	Desc        string      `json:"desc,omitempty"`
+	Labels      []string    `json:"labels,omitempty"`
+	JD          string      `json:"jd,omitempty"`
+	Content     string      `json:"content,omitempty"`
+	Resume      string      `json:"resume,omitempty"`
+	Status      uint8       `json:"status,omitempty"`
+	Utime       int64       `json:"utime,omitempty"`
+	Interactive Interactive `json:"interactive,omitempty"`
+	Company     Company     `json:"company,omitempty"`
 }
 type Company struct {
 	ID   int64  `json:"id,omitempty"`
@@ -60,33 +72,29 @@ func newReviewWithCompany(re domain.Review, company company.Company) Review {
 
 func newReview(re domain.Review) Review {
 	return Review{
-		ID:               re.ID,
-		JD:               re.JD,
-		Title:            re.Title,
-		Desc:             re.Desc,
-		Labels:           re.Labels,
-		JDAnalysis:       re.JDAnalysis,
-		Questions:        re.Questions,
-		QuestionAnalysis: re.QuestionAnalysis,
-		Resume:           re.Resume,
-		Status:           re.Status.ToUint8(),
-		Utime:            re.Utime,
+		ID:      re.ID,
+		JD:      re.JD,
+		Title:   re.Title,
+		Desc:    re.Desc,
+		Labels:  re.Labels,
+		Content: re.Content,
+		Resume:  re.Resume,
+		Status:  re.Status.ToUint8(),
+		Utime:   re.Utime,
 	}
 }
 
 func (r Review) toDomain() domain.Review {
 	return domain.Review{
-		ID:               r.ID,
-		Title:            r.Title,
-		Desc:             r.Desc,
-		Labels:           r.Labels,
-		JD:               r.JD,
-		JDAnalysis:       r.JDAnalysis,
-		Questions:        r.Questions,
-		QuestionAnalysis: r.QuestionAnalysis,
-		Resume:           r.Resume,
-		Status:           domain.ReviewStatus(r.Status),
-		Utime:            r.Utime,
+		ID:      r.ID,
+		Title:   r.Title,
+		Desc:    r.Desc,
+		Labels:  r.Labels,
+		JD:      r.JD,
+		Content: r.Content,
+		Resume:  r.Resume,
+		Status:  domain.ReviewStatus(r.Status),
+		Utime:   r.Utime,
 		Company: domain.Company{
 			ID: r.Company.ID,
 		},
