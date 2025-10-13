@@ -23,39 +23,38 @@ import (
 	"github.com/ecodeclub/webook/internal/payment"
 	"github.com/ecodeclub/webook/internal/pkg/sequencenumber"
 	"github.com/ecodeclub/webook/internal/product"
-	"github.com/ego-component/egorm"
 	"gorm.io/gorm"
 )
 
 // Injectors from wire.go:
 
-func InitModule(db *egorm.Component, cache ecache.Cache, q mq.MQ, pm *payment.Module, ppm *product.Module, cm *credit.Module) (*Module, error) {
+func InitModule(db *gorm.DB, cache ecache.Cache, q mq.MQ, pm *payment.Module, ppm *product.Module, cm *credit.Module) (*Module, error) {
 	service := InitService(db)
-	v := InitHandler(cache, service, pm, ppm, cm)
-	v2 := web.NewAdminHandler(service)
+	handler := InitHandler(cache, service, pm, ppm, cm)
+	adminHandler := web.NewAdminHandler(service)
 	orderEventProducer, err := event.NewOrderEventProducer(q)
 	if err != nil {
 		return nil, err
 	}
 	paymentConsumer := initCompleteOrderConsumer(service, orderEventProducer, q)
-	v3 := initCloseExpiredOrdersJob(service)
+	closeTimeoutOrdersJob := initCloseExpiredOrdersJob(service)
 	module := &Module{
-		Hdl:                   v,
-		AdminHandler:          v2,
+		Hdl:                   handler,
+		AdminHandler:          adminHandler,
 		c:                     paymentConsumer,
 		Svc:                   service,
-		CloseTimeoutOrdersJob: v3,
+		CloseTimeoutOrdersJob: closeTimeoutOrdersJob,
 	}
 	return module, nil
 }
 
-func InitHandler(cache ecache.Cache, svc2 service.Service, pm *payment.Module, ppm *product.Module, cm *credit.Module) *Handler {
-	v := pm.Svc
-	v2 := ppm.Svc
-	v3 := cm.Svc
+func InitHandler(cache ecache.Cache, svc2 service.Service, pm *payment.Module, ppm *product.Module, cm *credit.Module) *web.Handler {
+	serviceService := pm.Svc
+	service2 := ppm.Svc
+	service3 := cm.Svc
 	generator := sequencenumber.NewGenerator()
-	v4 := web.NewHandler(svc2, v, v2, v3, generator, cache)
-	return v4
+	handler := web.NewHandler(svc2, serviceService, service2, service3, generator, cache)
+	return handler
 }
 
 // wire.go:

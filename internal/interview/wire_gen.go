@@ -16,22 +16,21 @@ import (
 	"github.com/ecodeclub/webook/internal/interview/internal/service"
 	"github.com/ecodeclub/webook/internal/interview/internal/web"
 	"github.com/ecodeclub/webook/internal/pkg/pdf"
-	"github.com/ego-component/egorm"
 	"github.com/gotomicro/ego/core/econf"
 	"gorm.io/gorm"
 )
 
 // Injectors from wire.go:
 
-func InitModule(db *egorm.Component) (*Module, error) {
+func InitModule(db *gorm.DB) (*Module, error) {
 	interviewDAO := initDAO(db)
 	interviewRepository := repository.NewInterviewRepository(interviewDAO)
 	interviewService := service.NewInterviewService(interviewRepository)
-	v := web.NewInterviewJourneyHandler(interviewService)
-	v2 := initOfferHdl()
+	interviewJourneyHandler := web.NewInterviewJourneyHandler(interviewService)
+	offerHandler := initOfferHdl()
 	module := &Module{
-		JourneyHdl: v,
-		OfferHdl:   v2,
+		JourneyHdl: interviewJourneyHandler,
+		OfferHdl:   offerHandler,
 	}
 	return module, nil
 }

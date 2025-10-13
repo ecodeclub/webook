@@ -44,3 +44,7 @@ services:
       - "ES_JAVA_OPTS=-Xms84m -Xmx512m"
     ports:
       - "9200:9200"
+  zipkin:
+    image: openzipkin/zipkin-slim:latest
+    ports:
+      - '9411:9411'

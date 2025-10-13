@@ -35,7 +35,7 @@ func InitModule(db *egorm.Component) *Module {
 		dao.NewGORMInterviewDAO,
 		repository.NewInterviewRepository,
 		service.NewInterviewService,
-		wire.Struct(new(Module), "*"),
+		wire.Struct(new(Module), "JourneySvc"),
 	)
 	return nil
 }

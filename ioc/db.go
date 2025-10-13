@@ -19,6 +19,8 @@ import (
 	"database/sql"
 	"time"
 
+	"github.com/ecodeclub/webook/internal/pkg/database"
+
 	"github.com/ecodeclub/ekit/retry"
 	"github.com/ego-component/egorm"
 	"github.com/gotomicro/ego/core/econf"
@@ -26,7 +28,12 @@ import (
 
 func InitDB() *egorm.Component {
 	WaitForDBSetup(econf.GetString("mysql.dsn"))
-	return egorm.Load("mysql").Build()
+	db := egorm.Load("mysql").Build()
+	err := database.NewGormTracingPlugin().Initialize(db)
+	if err != nil {
+		panic(err)
+	}
+	return db
 }
 
 func WaitForDBSetup(dsn string) {

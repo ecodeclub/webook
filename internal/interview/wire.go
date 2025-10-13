@@ -79,7 +79,7 @@ func initPDFConverter() pdf.Converter {
 	if err != nil {
 		panic(err)
 	}
-	return pdf.NewRemotePDFConverter(c.Endpoint)
+	return pdf.NewChromeDPConverter(c.Endpoint)
 }
 
 func initEmailClient() email.Service {

@@ -16,13 +16,13 @@ import (
 	"github.com/ecodeclub/webook/internal/user/internal/repository"
 	"github.com/ecodeclub/webook/internal/user/internal/repository/cache"
 	"github.com/ecodeclub/webook/internal/user/internal/service"
-	"github.com/ego-component/egorm"
 	"github.com/google/wire"
+	"gorm.io/gorm"
 )
 
 // Injectors from wire.go:
 
-func InitModule(db *egorm.Component, cache2 ecache.Cache, q mq.MQ, creators []string, memberSvc *member.Module, sp session.Provider, permissionSvc *permission.Module, smsClient client.Client) *Module {
+func InitModule(db *gorm.DB, cache2 ecache.Cache, q mq.MQ, creators []string, memberSvc *member.Module, sp session.Provider, permissionSvc *permission.Module, smsClient client.Client) *Module {
 	userWechatWebOAuth2Service := initWechatWebOAuthService(cache2)
 	userWechatMiniOAuth2Service := initWechatMiniOAuthService()
 	userDAO := initDAO(db)
@@ -30,14 +30,14 @@ func InitModule(db *egorm.Component, cache2 ecache.Cache, q mq.MQ, creators []st
 	userRepository := repository.NewCachedUserRepository(userDAO, userCache)
 	registrationEventProducer := initRegistrationEventProducer(q)
 	userService := service.NewUserService(userRepository, registrationEventProducer)
-	v := memberSvc.Svc
+	serviceService := memberSvc.Svc
 	verificationCodeCache := cache.NewVerificationCodeCache(cache2)
 	verificationCodeRepo := repository.NewVerificationCodeRepository(verificationCodeCache)
 	verificationCodeSvc := initVerificationCodeSvc(smsClient, verificationCodeRepo)
-	v2 := permissionSvc.Svc
-	v3 := iniHandler(userWechatWebOAuth2Service, userWechatMiniOAuth2Service, userService, v, sp, verificationCodeSvc, v2, creators)
+	service2 := permissionSvc.Svc
+	handler := iniHandler(userWechatWebOAuth2Service, userWechatMiniOAuth2Service, userService, serviceService, sp, verificationCodeSvc, service2, creators)
 	module := &Module{
-		Hdl: v3,
+		Hdl: handler,
 		Svc: userService,
 	}
 	return module
