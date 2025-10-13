@@ -20,23 +20,24 @@ import (
 	"github.com/ecodeclub/webook/internal/review/internal/service"
 	"github.com/ecodeclub/webook/internal/review/internal/web"
 	"github.com/ego-component/egorm"
+	"gorm.io/gorm"
 )
 
 // Injectors from wire.go:
 
-func InitModule(db *egorm.Component, interSvc *interactive.Module, companySvc *company.Module, q mq.MQ, ec ecache.Cache, sp session.Provider) *review.Module {
+func InitModule(db *gorm.DB, interSvc *interactive.Module, companySvc *company.Module, q mq.MQ, ec ecache.Cache, sp session.Provider) *review.Module {
 	reviewDAO := initReviewDao(db)
 	reviewCache := cache.NewReviewCache(ec)
 	reviewRepo := repository.NewReviewRepo(reviewDAO, reviewCache)
 	interactiveEventProducer := initIntrProducer(q)
 	reviewSvc := service.NewReviewSvc(reviewRepo, interactiveEventProducer)
-	v := interSvc.Svc
-	v2 := companySvc.Svc
-	v3 := web.NewHandler(reviewSvc, v, v2, sp)
-	v4 := web.NewAdminHandler(reviewSvc, v2)
+	serviceService := interSvc.Svc
+	companyService := companySvc.Svc
+	handler := web.NewHandler(reviewSvc, serviceService, companyService, sp)
+	adminHandler := web.NewAdminHandler(reviewSvc, companyService)
 	module := &review.Module{
-		Hdl:      v3,
-		AdminHdl: v4,
+		Hdl:      handler,
+		AdminHdl: adminHandler,
 	}
 	return module
 }
