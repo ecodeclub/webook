@@ -15,30 +15,44 @@ import (
 	"github.com/ecodeclub/webook/internal/label/internal/web"
 	"github.com/ego-component/egorm"
 	"github.com/google/wire"
-	"gorm.io/gorm"
 )
 
 // Injectors from wire.go:
 
-func InitHandler(db *gorm.DB) *web.Handler {
+func InitModule(db *egorm.Component) *Module {
 	labelDAO := InitTablesOnce(db)
 	labelRepository := repository.NewCachedLabelRepository(labelDAO)
 	serviceService := service.NewService(labelRepository)
-	handler := web.NewHandler(serviceService)
-	return handler
+	v := web.NewAdminHandler(serviceService)
+	v2 := web.NewHandler(serviceService)
+	module := &Module{
+		AdminHandler: v,
+		Handler:      v2,
+	}
+	return module
 }
 
 // wire.go:
 
-var HandlerSet = wire.NewSet(repository.NewCachedLabelRepository, InitTablesOnce, service.NewService, web.NewHandler)
+type Module struct {
+	AdminHandler *AdminHandler
+	Handler      *Handler
+}
+
+var ModuleSet = wire.NewSet(repository.NewCachedLabelRepository, InitTablesOnce, service.NewService, web.NewHandler, web.NewAdminHandler)
 
 var once = &sync.Once{}
 
 func InitTablesOnce(db *egorm.Component) dao.LabelDAO {
 	once.Do(func() {
-		dao.InitTables(db)
+		err := dao.InitTables(db)
+		if err != nil {
+			panic(err)
+		}
 	})
 	return dao.NewLabelGORMDAO(db)
 }
+
+type AdminHandler = web.AdminHandler
 
 type Handler = web.Handler

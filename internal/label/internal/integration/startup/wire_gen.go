@@ -8,14 +8,13 @@ package startup
 
 import (
 	"github.com/ecodeclub/webook/internal/label"
-	"github.com/ecodeclub/webook/internal/label/internal/web"
 	testioc "github.com/ecodeclub/webook/internal/test/ioc"
 )
 
 // Injectors from wire.go:
 
-func InitHandler() (*web.Handler, error) {
-	db := testioc.InitDB()
-	handler := label.InitHandler(db)
-	return handler, nil
+func InitModule() (*label.Module, error) {
+	v := testioc.InitDB()
+	module := label.InitModule(v)
+	return module, nil
 }
