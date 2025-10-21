@@ -24,7 +24,7 @@ import (
 var ErrRecordNotFound = gorm.ErrRecordNotFound
 
 type RoadmapDAO interface {
-	GetEdgesByRid(ctx context.Context, rid int64) ([]Edge, error)
+	GetEdgesByRid(ctx context.Context, rid int64) (map[int64]Node, []EdgeV1, error)
 	GetByBiz(ctx context.Context, biz string, bizId int64) (Roadmap, error)
 }
 
@@ -42,10 +42,33 @@ func (dao *GORMRoadmapDAO) GetByBiz(ctx context.Context, biz string, bizId int64
 	return r, err
 }
 
-func (dao *GORMRoadmapDAO) GetEdgesByRid(ctx context.Context, rid int64) ([]Edge, error) {
-	var res []Edge
-	err := dao.db.WithContext(ctx).Where("rid = ?", rid).Find(&res).Error
-	return res, err
+func (dao *GORMRoadmapDAO) GetEdgesByRid(ctx context.Context, rid int64) (map[int64]Node, []EdgeV1, error) {
+	var edges []EdgeV1
+	err := dao.db.WithContext(ctx).Where("rid = ?", rid).
+		Order("id desc").
+		Find(&edges).Error
+	if err != nil {
+		return nil, nil, err
+	}
+
+	nodeIds := make(map[int64]struct{})
+	for _, edge := range edges {
+		nodeIds[edge.SrcNode] = struct{}{}
+		nodeIds[edge.DstNode] = struct{}{}
+	}
+
+	var nodes []Node
+	err = dao.db.WithContext(ctx).Where("id IN ?", keys(nodeIds)).
+		Order("id desc").
+		Find(&nodes).Error
+	if err != nil {
+		return nil, nil, err
+	}
+	nodeMap := make(map[int64]Node, len(nodes))
+	for _, node := range nodes {
+		nodeMap[node.Id] = node
+	}
+	return nodeMap, edges, nil
 }
 
 func NewGORMRoadmapDAO(db *egorm.Component) RoadmapDAO {

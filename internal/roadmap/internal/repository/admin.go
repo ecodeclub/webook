@@ -16,6 +16,10 @@ package repository
 
 import (
 	"context"
+	"fmt"
+	"time"
+
+	"github.com/gotomicro/ego/core/elog"
 
 	"github.com/ecodeclub/ekit/sqlx"
 
@@ -29,8 +33,16 @@ type AdminRepository interface {
 	Save(ctx context.Context, r domain.Roadmap) (int64, error)
 	List(ctx context.Context, offset int, limit int) ([]domain.Roadmap, error)
 	GetById(ctx context.Context, id int64) (domain.Roadmap, error)
+
 	AddEdge(ctx context.Context, rid int64, edge domain.Edge) error
 	DeleteEdge(ctx context.Context, id int64) error
+	SanitizeData()
+
+	SaveNode(ctx context.Context, node domain.Node) (int64, error)
+	DeleteNode(ctx context.Context, id int64) error
+	NodeList(ctx context.Context, rid int64) ([]domain.Node, error)
+	SaveEdgeV1(ctx context.Context, rid int64, edge domain.Edge) error
+	DeleteEdgeV1(ctx context.Context, id int64) error
 }
 
 var _ AdminRepository = &CachedAdminRepository{}
@@ -38,7 +50,132 @@ var _ AdminRepository = &CachedAdminRepository{}
 // CachedAdminRepository 虽然还没缓存，但是将来肯定要有缓存的
 type CachedAdminRepository struct {
 	converter
-	dao dao.AdminDAO
+	dao    dao.AdminDAO
+	logger *elog.Component
+}
+
+func (repo *CachedAdminRepository) SanitizeData() {
+	go repo.sanitizeData()
+}
+
+func (repo *CachedAdminRepository) sanitizeData() {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	roadMaps, err := repo.dao.AllRoadmap(ctx)
+	cancel()
+	if err != nil {
+		repo.logger.Error("获取路线图失败", elog.FieldErr(err))
+	}
+	for _, roadMap := range roadMaps {
+		// 开始清洗每个路线图
+		rctx, rcancel := context.WithTimeout(context.Background(), 100000*time.Second)
+		err = repo.sanitizeRoadmap(rctx, roadMap.Id)
+		rcancel()
+		if err == nil {
+			repo.logger.Info(fmt.Sprintf("清洗路线图 %d成功", roadMap.Id))
+		} else {
+			repo.logger.Error(fmt.Sprintf("清洗路线图 %d失败", roadMap.Id), elog.FieldErr(err))
+		}
+	}
+}
+
+func (repo *CachedAdminRepository) sanitizeRoadmap(ctx context.Context, rid int64) error {
+	edges, err := repo.dao.GetEdgesByRid(ctx, rid)
+	if err != nil {
+		return err
+	}
+	// 获取node
+	nodeMap := make(map[string]dao.Node, len(edges)*2)
+	for _, edge := range edges {
+		dstkey := repo.getkey(edge.DstBiz, edge.DstId)
+		if _, ok := nodeMap[dstkey]; !ok {
+			nodeMap[dstkey] = dao.Node{
+				Biz:   edge.DstBiz,
+				Rid:   rid,
+				RefId: edge.DstId,
+			}
+		}
+		srckey := repo.getkey(edge.SrcBiz, edge.SrcId)
+		if _, ok := nodeMap[srckey]; !ok {
+			nodeMap[srckey] = dao.Node{
+				Biz:   edge.SrcBiz,
+				Rid:   rid,
+				RefId: edge.SrcId,
+			}
+		}
+	}
+	nodes, err := repo.dao.CreateNodes(ctx, repo.getValues(nodeMap))
+	if err != nil {
+		return err
+	}
+	nodeMap = make(map[string]dao.Node, len(edges)*2)
+	for _, node := range nodes {
+		key := repo.getkey(node.Biz, node.RefId)
+		nodeMap[key] = node
+	}
+
+	// 获取edgev1
+	edgev1List := make([]dao.EdgeV1, 0, len(edges))
+	for _, edge := range edges {
+		srckey := repo.getkey(edge.SrcBiz, edge.SrcId)
+		dstkey := repo.getkey(edge.DstBiz, edge.DstId)
+		srcNode := nodeMap[srckey]
+		dstNode := nodeMap[dstkey]
+		edgev1List = append(edgev1List, dao.EdgeV1{
+			Rid:     rid,
+			SrcNode: srcNode.Id,
+			DstNode: dstNode.Id,
+		})
+	}
+	return repo.dao.CreateEdgeV1s(ctx, edgev1List)
+}
+func (repo *CachedAdminRepository) getkey(biz string, id int64) string {
+	return fmt.Sprintf("%s_%d", biz, id)
+}
+
+func (repo *CachedAdminRepository) getValues(nodeMap map[string]dao.Node) []dao.Node {
+	nodes := make([]dao.Node, 0, len(nodeMap))
+	for _, v := range nodeMap {
+		nodes = append(nodes, v)
+	}
+	return nodes
+}
+
+func (repo *CachedAdminRepository) SaveNode(ctx context.Context, node domain.Node) (int64, error) {
+	return repo.dao.SaveNode(ctx, repo.toEntityNode(node))
+}
+
+func (repo *CachedAdminRepository) DeleteNode(ctx context.Context, id int64) error {
+	return repo.dao.DeleteNode(ctx, id)
+}
+
+func (repo *CachedAdminRepository) NodeList(ctx context.Context, rid int64) ([]domain.Node, error) {
+	nodes, err := repo.dao.NodeList(ctx, rid)
+	if err != nil {
+		return nil, err
+	}
+	return slice.Map(nodes, func(idx int, src dao.Node) domain.Node {
+		return domain.Node{
+			ID:    src.Id,
+			Biz:   domain.Biz{Biz: src.Biz, BizId: src.RefId},
+			Rid:   src.Rid,
+			Attrs: src.Attrs,
+		}
+	}), nil
+}
+
+func (repo *CachedAdminRepository) SaveEdgeV1(ctx context.Context, rid int64, edge domain.Edge) error {
+	return repo.dao.SaveEdgeV1(ctx, dao.EdgeV1{
+		Id:      edge.Id,
+		Rid:     rid,
+		SrcNode: edge.Src.ID,
+		DstNode: edge.Dst.ID,
+		Type:    edge.Type,
+		Attrs:   edge.Attrs,
+	})
+}
+
+func (repo *CachedAdminRepository) DeleteEdgeV1(ctx context.Context, id int64) error {
+	return repo.dao.DeleteEdge(ctx, id)
 }
 
 func (repo *CachedAdminRepository) DeleteEdge(ctx context.Context, id int64) error {
@@ -57,9 +194,10 @@ func (repo *CachedAdminRepository) AddEdge(ctx context.Context, rid int64, edge 
 
 func (repo *CachedAdminRepository) GetById(ctx context.Context, id int64) (domain.Roadmap, error) {
 	var (
-		eg    errgroup.Group
-		r     dao.Roadmap
-		edges []dao.Edge
+		eg      errgroup.Group
+		r       dao.Roadmap
+		edges   []dao.EdgeV1
+		nodeMap map[int64]dao.Node
 	)
 	eg.Go(func() error {
 		var err error
@@ -69,7 +207,7 @@ func (repo *CachedAdminRepository) GetById(ctx context.Context, id int64) (domai
 
 	eg.Go(func() error {
 		var err error
-		edges, err = repo.dao.GetEdgesByRid(ctx, id)
+		nodeMap, edges, err = repo.dao.GetEdgesByRidV1(ctx, id)
 		return err
 	})
 	err := eg.Wait()
@@ -77,7 +215,7 @@ func (repo *CachedAdminRepository) GetById(ctx context.Context, id int64) (domai
 		return domain.Roadmap{}, err
 	}
 	res := repo.toDomain(r)
-	res.Edges = repo.edgesToDomain(edges)
+	res.Edges = repo.edgesToDomain(edges, nodeMap)
 	return res, nil
 }
 
@@ -101,8 +239,19 @@ func (repo *CachedAdminRepository) toEntity(r domain.Roadmap) dao.Roadmap {
 	}
 }
 
+func (repo *CachedAdminRepository) toEntityNode(node domain.Node) dao.Node {
+	return dao.Node{
+		Id:    node.ID,
+		Biz:   node.Biz.Biz,
+		Rid:   node.Rid,
+		RefId: node.Biz.BizId,
+		Attrs: node.Attrs,
+	}
+}
+
 func NewCachedAdminRepository(dao dao.AdminDAO) AdminRepository {
 	return &CachedAdminRepository{
-		dao: dao,
+		dao:    dao,
+		logger: elog.DefaultLogger,
 	}
 }

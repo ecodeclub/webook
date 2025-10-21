@@ -10,9 +10,11 @@ import (
 	"sync"
 
 	baguwen "github.com/ecodeclub/webook/internal/question"
+	"github.com/ecodeclub/webook/internal/roadmap/internal/domain"
 	"github.com/ecodeclub/webook/internal/roadmap/internal/repository"
 	"github.com/ecodeclub/webook/internal/roadmap/internal/repository/dao"
 	"github.com/ecodeclub/webook/internal/roadmap/internal/service"
+	"github.com/ecodeclub/webook/internal/roadmap/internal/service/biz"
 	"github.com/ecodeclub/webook/internal/roadmap/internal/web"
 	"github.com/ego-component/egorm"
 	"gorm.io/gorm"
@@ -26,7 +28,7 @@ func InitModule(db *gorm.DB, queModule *baguwen.Module) *Module {
 	adminService := service.NewAdminService(adminRepository)
 	serviceService := queModule.Svc
 	questionSetService := queModule.SetSvc
-	bizService := service.NewConcurrentBizService(serviceService, questionSetService)
+	bizService := NewConcurrentBizService(serviceService, questionSetService)
 	adminHandler := web.NewAdminHandler(adminService, bizService)
 	roadmapDAO := dao.NewGORMRoadmapDAO(db)
 	repositoryRepository := repository.NewCachedRepository(roadmapDAO)
@@ -55,4 +57,8 @@ func initAdminDAO(db *egorm.Component) dao.AdminDAO {
 		adminDAO = dao.NewGORMAdminDAO(db)
 	})
 	return adminDAO
+}
+
+func NewConcurrentBizService(questionSvc baguwen.Service, questionSetSvc baguwen.QuestionSetService) biz.Service {
+	return biz.NewConcurrentBizService(map[string]biz.Strategy{domain.BizQuestion: biz.NewQuestionStrategy(questionSvc), domain.BizQuestionSet: biz.NewQuestionSetStrategy(questionSetSvc)})
 }
