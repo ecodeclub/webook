@@ -21,7 +21,7 @@ services:
     networks:
       default:
   kafka:
-    image: 'bitnami/kafka:3.6.0'
+    image: 'bitnamilegacy/kafka:3.6.0'
     ports:
       - '9092:9092'
       - '9094:9094'
@@ -37,10 +37,14 @@ services:
     networks:
       default:
   elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:7.13.0
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.17.29
     environment:
       - discovery.type=single-node
       - "xpack.security.enabled=false"
       - "ES_JAVA_OPTS=-Xms84m -Xmx512m"
     ports:
       - "9200:9200"
+  zipkin:
+    image: openzipkin/zipkin-slim:latest
+    ports:
+      - '9411:9411'

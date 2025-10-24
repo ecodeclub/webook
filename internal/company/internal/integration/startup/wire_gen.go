@@ -14,8 +14,8 @@ import (
 // Injectors from wire.go:
 
 func InitModule() (*company.Module, error) {
-	v := testioc.InitDB()
-	module, err := company.InitModule(v)
+	db := testioc.InitDB()
+	module, err := company.InitModule(db)
 	if err != nil {
 		return nil, err
 	}

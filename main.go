@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 
+	"go.opentelemetry.io/otel/sdk/trace"
+
 	"github.com/ecodeclub/webook/ioc"
 	"github.com/gotomicro/ego"
 	"github.com/gotomicro/ego/core/elog"
@@ -16,6 +18,14 @@ import (
 func main() {
 	// 先触发初始化
 	egoApp := ego.New()
+	// 初始化
+	tp := ioc.InitZipkinTracer()
+	defer func(tp *trace.TracerProvider) {
+		err := tp.Shutdown(context.Background())
+		if err != nil {
+			elog.Error("Shutdown zipkinTracer", elog.FieldErr(err))
+		}
+	}(tp)
 	app, err := ioc.InitApp()
 	if err != nil {
 		panic(err)

@@ -15,31 +15,34 @@ import (
 	"github.com/ecodeclub/webook/internal/company/internal/web"
 	"github.com/ego-component/egorm"
 	"github.com/google/wire"
+	"gorm.io/gorm"
 )
 
 // Injectors from wire.go:
 
-func InitModule(db *egorm.Component) (*Module, error) {
+func InitModule(db *gorm.DB) (*Module, error) {
 	companyService := InitService(db)
-	v := web.NewCompanyHandler(companyService)
+	companyHandler := web.NewCompanyHandler(companyService)
+	handler := web.NewHandler(companyService)
 	module := &Module{
-		Hdl: v,
-		Svc: companyService,
+		AdminHdl: companyHandler,
+		Hdl:      handler,
+		Svc:      companyService,
 	}
 	return module, nil
 }
 
-func InitService(db *egorm.Component) Service {
+func InitService(db *gorm.DB) service.CompanyService {
 	companyDAO := InitTablesOnce(db)
 	companyRepository := repository.NewCompanyRepository(companyDAO)
-	v := service.NewCompanyService(companyRepository)
-	return v
+	companyService := service.NewCompanyService(companyRepository)
+	return companyService
 }
 
 // wire.go:
 
 var HandlerSet = wire.NewSet(
-	InitService, web.NewCompanyHandler,
+	InitService, web.NewCompanyHandler, web.NewHandler,
 )
 
 var once = &sync.Once{}

@@ -1,16 +1,16 @@
 <component name="ProjectRunConfigurationManager">
-  <configuration default="false" name="webook" type="GoApplicationRunConfiguration" factoryName="Go Application">
-    <module name="webook" />
-    <working_directory value="$PROJECT_DIR$" />
-    <go_parameters value="--tags=mock" />
-    <parameters value="--config=config/local.yaml" />
-    <envs>
-      <env name="EGO_DEBUG" value="true" />
-    </envs>
-    <kind value="PACKAGE" />
-    <package value="github.com/ecodeclub/webook" />
-    <directory value="$PROJECT_DIR$" />
-    <filePath value="$PROJECT_DIR$/main.go" />
-    <method v="2" />
-  </configuration>
+    <configuration default="false" name="webook" type="GoApplicationRunConfiguration" factoryName="Go Application">
+        <module name="webook" />
+        <working_directory value="$PROJECT_DIR$" />
+        <go_parameters value="--tags=mock" />
+        <parameters value="--config=config/local.yaml" />
+        <envs>
+            <env name="EGO_DEBUG" value="true" />
+        </envs>
+        <kind value="PACKAGE" />
+        <package value="github.com/ecodeclub/webook" />
+        <directory value="$PROJECT_DIR$" />
+        <filePath value="$PROJECT_DIR$/main.go" />
+        <method v="2" />
+    </configuration>
 </component>

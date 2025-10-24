@@ -67,6 +67,7 @@ func (s *ProductModuleTestSuite) SetupSuite() {
 			Uid: uid,
 		}))
 	})
+	handler.PublicRoutes(server.Engine)
 	handler.PrivateRoutes(server.Engine)
 
 	s.server = server

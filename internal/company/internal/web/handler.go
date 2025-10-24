@@ -12,7 +12,11 @@ type Handler struct {
 	svc service.CompanyService
 }
 
-func (h *Handler) PublicRoutes(server *gin.Engine) {
+func NewHandler(svc service.CompanyService) *Handler {
+	return &Handler{svc: svc}
+}
+
+func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g := server.Group("/companies")
 	g.POST("/detail", ginx.B[IdReq](h.GetById))
 	g.POST("/list", ginx.B[Page](h.List))

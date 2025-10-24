@@ -24,35 +24,35 @@ import (
 
 // Injectors from wire.go:
 
-func InitHandler(weSvc wechatWebOAuth2Service, weMiniSvc wechatMiniOAuth2Service, mem *member.Module, perm *permission.Module, sp session.Provider, creators []string) *user.Handler {
-	v := testioc.InitDB()
-	userDAO := dao.NewGORMUserDAO(v)
+func InitHandler(weSvc wechatWebOAuth2Service, weMiniSvc wechatMiniOAuth2Service, mem *member.Module, perm *permission.Module, sp session.Provider, creators []string) *web.Handler {
+	db := testioc.InitDB()
+	userDAO := dao.NewGORMUserDAO(db)
 	ecacheCache := testioc.InitCache()
 	userCache := cache.NewUserECache(ecacheCache)
 	userRepository := repository.NewCachedUserRepository(userDAO, userCache)
 	mq := testioc.InitMQ()
 	registrationEventProducer := initRegistrationEventProducer(mq)
 	userService := service.NewUserService(userRepository, registrationEventProducer)
-	v2 := mem.Svc
-	v3 := perm.Svc
+	serviceService := mem.Svc
+	service2 := perm.Svc
 	verificationCodeCache := cache.NewVerificationCodeCache(ecacheCache)
 	verificationCodeRepo := repository.NewVerificationCodeRepository(verificationCodeCache)
 	verificationCodeSvc := initVerificationCodeSvc(verificationCodeRepo)
-	v4 := iniHandler(weSvc, weMiniSvc, userService, v2, v3, sp, verificationCodeSvc, creators)
-	return v4
+	handler := iniHandler(weSvc, weMiniSvc, userService, serviceService, service2, sp, verificationCodeSvc, creators)
+	return handler
 }
 
 func InitModule() *user.Module {
-	v := testioc.InitDB()
-	userDAO := dao.NewGORMUserDAO(v)
+	db := testioc.InitDB()
+	userDAO := dao.NewGORMUserDAO(db)
 	ecacheCache := testioc.InitCache()
 	userCache := cache.NewUserECache(ecacheCache)
 	userRepository := repository.NewCachedUserRepository(userDAO, userCache)
 	mq := testioc.InitMQ()
 	registrationEventProducer := initRegistrationEventProducer(mq)
-	v2 := service.NewUserService(userRepository, registrationEventProducer)
+	userService := service.NewUserService(userRepository, registrationEventProducer)
 	module := &user.Module{
-		Svc: v2,
+		Svc: userService,
 	}
 	return module
 }

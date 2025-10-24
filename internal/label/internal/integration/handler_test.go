@@ -40,21 +40,27 @@ import (
 
 type HandlerTestSuite struct {
 	suite.Suite
-	server *egin.Component
-	db     *egorm.Component
-	rdb    ecache.Cache
-	dao    dao.LabelDAO
+	server  *egin.Component
+	cServer *egin.Component
+	db      *egorm.Component
+	rdb     ecache.Cache
+	dao     dao.LabelDAO
 }
 
 func (s *HandlerTestSuite) SetupSuite() {
-	handler, err := startup.InitHandler()
+	module, err := startup.InitModule()
 	require.NoError(s.T(), err)
 
 	econf.Set("server", map[string]any{"contextTimeout": "1s"})
 	server := egin.Load("server").Build()
-	handler.PrivateRoutes(server.Engine)
 
+	econf.Set("cServer", map[string]any{"contextTimeout": "1s"})
+	cServer := egin.Load("cServer").Build()
+
+	module.AdminHandler.PrivateRoutes(server.Engine)
+	module.Handler.PublicRoutes(cServer.Engine)
 	s.server = server
+	s.cServer = cServer
 	s.db = testioc.InitDB()
 	err = dao.InitTables(s.db)
 	require.NoError(s.T(), err)
@@ -158,6 +164,49 @@ func (s *HandlerTestSuite) TestCreate() {
 			require.Equal(t, tc.wantCode, recorder.Code)
 			assert.Equal(t, tc.wantResp, recorder.MustScan())
 			tc.after(t)
+		})
+	}
+}
+
+func (s *HandlerTestSuite) TestCSystemLabels() {
+	testCases := []struct {
+		name   string
+		before func(t *testing.T)
+
+		wantCode int
+		wantResp test.Result[[]web.Label]
+	}{
+		{
+			name: "查找成功",
+			before: func(t *testing.T) {
+				err := s.db.Create([]dao.Label{
+					{Id: 1, Name: "test", Uid: -1},
+					{Id: 2, Name: "non-system", Uid: 123},
+					{Id: 3, Name: "test-1", Uid: -1},
+				}).Error
+				require.NoError(t, err)
+			},
+			wantCode: 200,
+			wantResp: test.Result[[]web.Label]{
+				Data: []web.Label{
+					{Id: 3, Name: "test-1"},
+					{Id: 1, Name: "test"},
+				},
+			},
+		},
+	}
+	for _, tc := range testCases {
+		tc := tc
+		s.T().Run(tc.name, func(t *testing.T) {
+			tc.before(t)
+			req, err := http.NewRequest(http.MethodGet,
+				"/label/system", nil)
+			req.Header.Set("content-type", "application/json")
+			require.NoError(t, err)
+			recorder := test.NewJSONResponseRecorder[[]web.Label]()
+			s.cServer.ServeHTTP(recorder, req)
+			require.Equal(t, tc.wantCode, recorder.Code)
+			assert.Equal(t, tc.wantResp, recorder.MustScan())
 		})
 	}
 }

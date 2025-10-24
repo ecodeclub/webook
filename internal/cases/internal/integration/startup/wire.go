@@ -60,7 +60,7 @@ func InitModule(
 		wire.FieldsOf(new(*interactive.Module), "Svc"),
 		wire.FieldsOf(new(*member.Module), "Svc"),
 		wire.FieldsOf(new(*ai.Module), "Svc", "KnowledgeBaseSvc"),
-		wire.Struct(new(cases.Module), "AdminHandler", "ExamineSvc", "Svc", "Hdl", "AdminSetHandler", "KnowledgeBaseHandler"),
+		wire.Struct(new(cases.Module), "AdminHandler", "ExamineSvc", "Hdl", "Svc", "AdminSetHandler", "KnowledgeBaseHandler"),
 	)
 	return new(cases.Module), nil
 }

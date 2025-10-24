@@ -10,6 +10,7 @@ import (
 	"github.com/ecodeclub/ecache"
 	"github.com/ecodeclub/ginx/session"
 	"github.com/ecodeclub/mq-api"
+	"github.com/ecodeclub/webook/internal/company"
 	"github.com/ecodeclub/webook/internal/interactive"
 	"github.com/ecodeclub/webook/internal/review/internal/event"
 	"github.com/ecodeclub/webook/internal/review/internal/repository"
@@ -23,15 +24,16 @@ import (
 
 // Injectors from wire.go:
 
-func InitModule(db *gorm.DB, interSvc *interactive.Module, q mq.MQ, sp session.Provider, ec ecache.Cache) *Module {
+func InitModule(db *gorm.DB, interSvc *interactive.Module, companyModule *company.Module, q mq.MQ, sp session.Provider, ec ecache.Cache) *Module {
 	reviewDAO := initReviewDao(db)
 	reviewCache := cache.NewReviewCache(ec)
 	reviewRepo := repository.NewReviewRepo(reviewDAO, reviewCache)
 	interactiveEventProducer := initIntrProducer(q)
 	reviewSvc := service.NewReviewSvc(reviewRepo, interactiveEventProducer)
 	serviceService := interSvc.Svc
-	handler := web.NewHandler(reviewSvc, serviceService, sp)
-	adminHandler := web.NewAdminHandler(reviewSvc)
+	companyService := companyModule.Svc
+	handler := web.NewHandler(reviewSvc, serviceService, companyService, sp)
+	adminHandler := web.NewAdminHandler(reviewSvc, companyService)
 	module := &Module{
 		Hdl:      handler,
 		AdminHdl: adminHandler,

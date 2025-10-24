@@ -63,7 +63,8 @@ func InitApp() (*App, error) {
 			"ExamineHdl", "Hdl", "QsHdl", "KnowledgeBaseHdl"),
 		InitUserModule,
 		wire.FieldsOf(new(*user.Module), "Hdl"),
-		label.InitHandler,
+		label.InitModule,
+		wire.FieldsOf(new(*label.Module), "AdminHandler", "Handler"),
 		cases.InitModule,
 		wire.FieldsOf(new(*cases.Module),
 			"CsHdl", "Hdl", "ExamineHdl", "AdminHandler", "AdminSetHandler", "KnowledgeBaseHandler"),
@@ -110,7 +111,7 @@ func InitApp() (*App, error) {
 		interview.InitModule,
 		wire.FieldsOf(new(*interview.Module), "JourneyHdl", "OfferHdl"),
 		company.InitModule,
-		wire.FieldsOf(new(*company.Module), "Hdl"),
+		wire.FieldsOf(new(*company.Module), "Hdl", "AdminHdl"),
 
 		initLocalActiveLimiterBuilder,
 		initCronJobs,

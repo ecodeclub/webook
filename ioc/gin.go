@@ -18,6 +18,8 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/ecodeclub/webook/internal/company"
+
 	"github.com/ecodeclub/webook/internal/comment"
 	"github.com/ecodeclub/webook/internal/interview"
 	"github.com/ecodeclub/webook/internal/material"
@@ -98,6 +100,7 @@ func initGinxServer(sp session.Provider,
 	materialHdl *material.Handler,
 	journeyHdl *interview.JourneyHandler,
 	offerHdl *interview.OfferHandler,
+	companyHdl *company.Handler,
 ) *egin.Component {
 	session.SetDefaultProvider(sp)
 	res := egin.Load("web").Build()
@@ -131,7 +134,6 @@ func initGinxServer(sp session.Provider,
 	// 虽然理论上可以用 plugin 机制，但是 plugin 机制比较容易遇到不兼容的问题
 	// 实在不想处理，暂时取消，因为在 server 端渲染的情况下，没有特别大的意义了
 	// res.Use(nonsense.NonSenseV1)
-
 	res.Use(localActiveLimiterMiddleware.Build())
 	user.PublicRoutes(res.Engine)
 	qh.PublicRoutes(res.Engine)
@@ -142,11 +144,11 @@ func initGinxServer(sp session.Provider,
 	csHdl.PublicRoutes(res.Engine)
 	prjHdl.PublicRoutes(res.Engine)
 	reviewHdl.PublicRoutes(res.Engine)
+	lhdl.PublicRoutes(res.Engine)
 
 	// 登录校验
 	res.Use(session.CheckLoginMiddleware())
 	user.PrivateRoutes(res.Engine)
-	lhdl.PrivateRoutes(res.Engine)
 	cosHdl.PrivateRoutes(res.Engine)
 	pHdl.PrivateRoutes(res.Engine)
 	orderHdl.PrivateRoutes(res.Engine)
@@ -161,6 +163,7 @@ func initGinxServer(sp session.Provider,
 	csHdl.PrivateRoutes(res.Engine)
 	materialHdl.PrivateRoutes(res.Engine)
 	journeyHdl.PrivateRoutes(res.Engine)
+	companyHdl.PrivateRoutes(res.Engine)
 
 	// 权限校验
 

@@ -23,6 +23,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ecodeclub/webook/internal/company"
+	companymocks "github.com/ecodeclub/webook/internal/company/mocks"
+
 	"github.com/ecodeclub/ecache"
 
 	"github.com/ecodeclub/ekit/iox"
@@ -75,9 +78,30 @@ func (s *AdminHandlerTestSuite) SetupSuite() {
 		}
 		return res, nil
 	}).AnyTimes()
+	companySvc := companymocks.NewMockCompanyService(ctrl)
+	companySvc.EXPECT().GetByIds(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, ids []int64) (map[int64]company.Company, error) {
+		companies := make(map[int64]company.Company, len(ids))
+		for _, id := range ids {
+			companies[id] = company.Company{
+				ID:   id,
+				Name: fmt.Sprintf("company-%d", id),
+			}
+		}
+		return companies, nil
+	}).AnyTimes()
+	companySvc.EXPECT().GetById(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, id int64) (company.Company, error) {
+		return company.Company{
+			ID:   id,
+			Name: fmt.Sprintf("company-%d", id),
+		}, nil
+	}).AnyTimes()
 	mou := startup.InitModule(db, &interactive.Module{
 		Svc: svc,
-	}, testmq, rdb, session.DefaultProvider())
+	},
+		&company.Module{
+			Svc: companySvc,
+		},
+		testmq, rdb, session.DefaultProvider())
 	econf.Set("server", map[string]any{"contextTimeout": "1s"})
 	server := egin.Load("server").Build()
 	server.Use(func(ctx *gin.Context) {
@@ -124,24 +148,24 @@ func (s *AdminHandlerTestSuite) TestSave() {
 						Valid: true,
 						Val:   []string{"MySQL"},
 					},
-					JD:               "测试JD",
-					JDAnalysis:       "JD分析",
-					Questions:        "面试问题",
-					QuestionAnalysis: "问题分析",
-					Resume:           "简历内容",
-					Status:           domain.UnPublishedStatus.ToUint8(), // 未发布状态
+					JD:      "测试JD",
+					Content: "# JD分析\n# 面试问题\n# 问题分析\n",
+					Resume:  "简历内容",
+					Cid:     1,
+					Status:  domain.UnPublishedStatus.ToUint8(), // 未发布状态
 				}, review)
 			},
 			req: web.ReviewSaveReq{
 				Review: web.Review{
-					Title:            "标题",
-					Desc:             "简介",
-					Labels:           []string{"MySQL"},
-					JD:               "测试JD",
-					JDAnalysis:       "JD分析",
-					Questions:        "面试问题",
-					QuestionAnalysis: "问题分析",
-					Resume:           "简历内容",
+					Title:   "标题",
+					Desc:    "简介",
+					Labels:  []string{"MySQL"},
+					JD:      "测试JD",
+					Content: "# JD分析\n# 面试问题\n# 问题分析\n",
+					Resume:  "简历内容",
+					Company: web.Company{
+						ID: 1,
+					},
 				},
 			},
 			wantCode: 200,
@@ -163,12 +187,11 @@ func (s *AdminHandlerTestSuite) TestSave() {
 						Valid: true,
 						Val:   []string{"旧MySQL"},
 					},
-					JD:               "旧的JD",
-					JDAnalysis:       "旧的分析",
-					Questions:        "旧的问题",
-					QuestionAnalysis: "旧的分析",
-					Resume:           "旧的简历",
-					Status:           domain.UnPublishedStatus.ToUint8(),
+					Cid:     1,
+					JD:      "旧的JD",
+					Content: "# 旧的JD分析\n# 旧的面试问题\n# 旧的问题分析\n",
+					Resume:  "旧的简历",
+					Status:  domain.UnPublishedStatus.ToUint8(),
 				})
 				require.NoError(t, err)
 			},
@@ -186,25 +209,25 @@ func (s *AdminHandlerTestSuite) TestSave() {
 						Valid: true,
 						Val:   []string{"新MySQL"},
 					},
-					JD:               "新的JD",
-					JDAnalysis:       "新的分析",
-					Questions:        "新的问题",
-					QuestionAnalysis: "新的分析",
-					Resume:           "新的简历",
-					Status:           domain.UnPublishedStatus.ToUint8(),
+					JD:      "新的JD",
+					Cid:     2,
+					Content: "# 新的JD分析\n# 新的面试问题\n# 新的问题分析\n",
+					Resume:  "新的简历",
+					Status:  domain.UnPublishedStatus.ToUint8(),
 				}, review)
 			},
 			req: web.ReviewSaveReq{
 				Review: web.Review{
-					ID:               2,
-					Title:            "新的标题",
-					Desc:             "新的简介",
-					Labels:           []string{"新MySQL"},
-					JD:               "新的JD",
-					JDAnalysis:       "新的分析",
-					Questions:        "新的问题",
-					QuestionAnalysis: "新的分析",
-					Resume:           "新的简历",
+					ID:      2,
+					Title:   "新的标题",
+					Desc:    "新的简介",
+					Labels:  []string{"新MySQL"},
+					JD:      "新的JD",
+					Content: "# 新的JD分析\n# 新的面试问题\n# 新的问题分析\n",
+					Resume:  "新的简历",
+					Company: web.Company{
+						ID: 2,
+					},
 				},
 			},
 			wantCode: 200,
@@ -256,13 +279,12 @@ func (s *AdminHandlerTestSuite) TestPublish() {
 						Valid: true,
 						Val:   []string{"MySQL"},
 					},
-					Uid:              uid,
-					JD:               "测试JD",
-					JDAnalysis:       "JD分析",
-					Questions:        "面试问题",
-					QuestionAnalysis: "问题分析",
-					Resume:           "简历内容",
-					Status:           domain.PublishedStatus.ToUint8(), // 已发布状态
+					Cid:     11,
+					Uid:     uid,
+					JD:      "测试JD",
+					Content: "# JD分析\n# 面试问题\n# 问题分析\n",
+					Resume:  "简历内容",
+					Status:  domain.PublishedStatus.ToUint8(), // 已发布状态
 				}
 				assertReview(t, wantReview, review)
 
@@ -271,29 +293,31 @@ func (s *AdminHandlerTestSuite) TestPublish() {
 				require.NoError(t, err)
 				assertReview(t, wantReview, dao.Review(pubReview))
 				s.assertCachedReview(t, domain.Review{
-					ID:               1,
-					Title:            "标题",
-					Desc:             "简介",
-					Labels:           []string{"MySQL"},
-					Uid:              uid,
-					JD:               "测试JD",
-					JDAnalysis:       "JD分析",
-					Questions:        "面试问题",
-					QuestionAnalysis: "问题分析",
-					Resume:           "简历内容",
-					Status:           domain.PublishedStatus,
+					ID:     1,
+					Title:  "标题",
+					Desc:   "简介",
+					Labels: []string{"MySQL"},
+					Uid:    uid,
+					Company: domain.Company{
+						ID: 11,
+					},
+					JD:      "测试JD",
+					Content: "# JD分析\n# 面试问题\n# 问题分析\n",
+					Resume:  "简历内容",
+					Status:  domain.PublishedStatus,
 				})
 			},
 			req: web.ReviewSaveReq{
 				Review: web.Review{
-					Title:            "标题",
-					Desc:             "简介",
-					Labels:           []string{"MySQL"},
-					JD:               "测试JD",
-					JDAnalysis:       "JD分析",
-					Questions:        "面试问题",
-					QuestionAnalysis: "问题分析",
-					Resume:           "简历内容",
+					Title:   "标题",
+					Desc:    "简介",
+					Labels:  []string{"MySQL"},
+					JD:      "测试JD",
+					Content: "# JD分析\n# 面试问题\n# 问题分析\n",
+					Resume:  "简历内容",
+					Company: web.Company{
+						ID: 11,
+					},
 				},
 			},
 			wantCode: 200,
@@ -312,18 +336,17 @@ func (s *AdminHandlerTestSuite) TestPublish() {
 					Uid:   uid,
 					Title: "旧的标题",
 					Desc:  "旧的简介",
+					Cid:   21,
 					Labels: sqlx.JsonColumn[[]string]{
 						Valid: true,
 						Val:   []string{"旧MySQL"},
 					},
-					JD:               "旧的JD",
-					JDAnalysis:       "旧的分析",
-					Questions:        "旧的问题",
-					QuestionAnalysis: "旧的分析",
-					Resume:           "旧的简历",
-					Status:           1,
-					Ctime:            123,
-					Utime:            234,
+					JD:      "旧的JD",
+					Content: "# 旧的JD分析\n# 旧的面试问题\n# 旧的问题分析\n",
+					Resume:  "旧的简历",
+					Status:  1,
+					Ctime:   123,
+					Utime:   234,
 				})
 				require.NoError(t, err)
 			},
@@ -344,12 +367,11 @@ func (s *AdminHandlerTestSuite) TestPublish() {
 						Valid: true,
 						Val:   []string{"新MySQL"},
 					},
-					JD:               "新的JD",
-					JDAnalysis:       "新的分析",
-					Questions:        "新的问题",
-					QuestionAnalysis: "新的分析",
-					Resume:           "新的简历",
-					Status:           2, // 已发布状态
+					Cid:     22,
+					JD:      "新的JD",
+					Content: "# 新的JD分析\n# 新的面试问题\n# 新的问题分析\n",
+					Resume:  "新的简历",
+					Status:  2, // 已发布状态
 				}
 				assertReview(t, wantReview, review)
 
@@ -358,30 +380,32 @@ func (s *AdminHandlerTestSuite) TestPublish() {
 				require.NoError(t, err)
 				assertReview(t, dao.Review(wantReview), dao.Review(pubReview))
 				s.assertCachedReview(t, domain.Review{
-					ID:               2,
-					Uid:              uid,
-					Title:            "新的标题",
-					Desc:             "新的简介",
-					Labels:           []string{"新MySQL"},
-					JD:               "新的JD",
-					JDAnalysis:       "新的分析",
-					Questions:        "新的问题",
-					QuestionAnalysis: "新的分析",
-					Resume:           "新的简历",
-					Status:           2, // 已发布状态
+					ID:    2,
+					Uid:   uid,
+					Title: "新的标题",
+					Desc:  "新的简介",
+					Company: domain.Company{
+						ID: 22,
+					},
+					Labels:  []string{"新MySQL"},
+					JD:      "新的JD",
+					Content: "# 新的JD分析\n# 新的面试问题\n# 新的问题分析\n",
+					Resume:  "新的简历",
+					Status:  2, // 已发布状态
 				})
 			},
 			req: web.ReviewSaveReq{
 				Review: web.Review{
-					ID:               2,
-					Title:            "新的标题",
-					Desc:             "新的简介",
-					Labels:           []string{"新MySQL"},
-					JD:               "新的JD",
-					JDAnalysis:       "新的分析",
-					Questions:        "新的问题",
-					QuestionAnalysis: "新的分析",
-					Resume:           "新的简历",
+					ID:      2,
+					Title:   "新的标题",
+					Desc:    "新的简介",
+					Labels:  []string{"新MySQL"},
+					JD:      "新的JD",
+					Content: "# 新的JD分析\n# 新的面试问题\n# 新的问题分析\n",
+					Company: web.Company{
+						ID: 22,
+					},
+					Resume: "新的简历",
 				},
 			},
 			wantCode: 200,
@@ -404,12 +428,11 @@ func (s *AdminHandlerTestSuite) TestPublish() {
 						Valid: true,
 						Val:   []string{"旧MySQL"},
 					},
-					JD:               "旧的JD",
-					JDAnalysis:       "旧的分析",
-					Questions:        "旧的问题",
-					QuestionAnalysis: "旧的分析",
-					Resume:           "旧的简历",
-					Status:           domain.UnPublishedStatus.ToUint8(),
+					Cid:     23,
+					JD:      "旧的JD",
+					Content: "# 旧的JD分析\n# 旧的面试问题\n# 旧的问题分析\n",
+					Resume:  "旧的简历",
+					Status:  domain.UnPublishedStatus.ToUint8(),
 				}
 				_, err := s.reviewDao.Save(ctx, oldReview)
 				require.NoError(t, err)
@@ -431,12 +454,11 @@ func (s *AdminHandlerTestSuite) TestPublish() {
 						Valid: true,
 						Val:   []string{"最新MySQL"},
 					},
-					JD:               "最新JD",
-					JDAnalysis:       "最新分析",
-					Questions:        "最新问题",
-					QuestionAnalysis: "最新分析",
-					Resume:           "最新简历",
-					Status:           domain.PublishedStatus.ToUint8(),
+					Cid:     23,
+					JD:      "最新JD",
+					Content: "# 最新JD分析\n# 最新面试问题\n# 最新问题分析\n",
+					Resume:  "最新简历",
+					Status:  domain.PublishedStatus.ToUint8(),
 				}
 
 				// 检查原始表
@@ -450,30 +472,32 @@ func (s *AdminHandlerTestSuite) TestPublish() {
 				assertReview(t, dao.Review(wantReview), dao.Review(pubReview))
 
 				s.assertCachedReview(t, domain.Review{
-					ID:               3,
-					Uid:              uid,
-					Title:            "最新标题",
-					Desc:             "最新简介",
-					Labels:           []string{"最新MySQL"},
-					JD:               "最新JD",
-					JDAnalysis:       "最新分析",
-					Questions:        "最新问题",
-					QuestionAnalysis: "最新分析",
-					Resume:           "最新简历",
-					Status:           domain.PublishedStatus,
+					ID:     3,
+					Uid:    uid,
+					Title:  "最新标题",
+					Desc:   "最新简介",
+					Labels: []string{"最新MySQL"},
+					JD:     "最新JD",
+					Company: domain.Company{
+						ID: 23,
+					},
+					Content: "# 最新JD分析\n# 最新面试问题\n# 最新问题分析\n",
+					Resume:  "最新简历",
+					Status:  domain.PublishedStatus,
 				})
 			},
 			req: web.ReviewSaveReq{
 				Review: web.Review{
-					ID:               3,
-					Title:            "最新标题",
-					Desc:             "最新简介",
-					Labels:           []string{"最新MySQL"},
-					JD:               "最新JD",
-					JDAnalysis:       "最新分析",
-					Questions:        "最新问题",
-					QuestionAnalysis: "最新分析",
-					Resume:           "最新简历",
+					ID:     3,
+					Title:  "最新标题",
+					Desc:   "最新简介",
+					Labels: []string{"最新MySQL"},
+					JD:     "最新JD",
+					Company: web.Company{
+						ID: 23,
+					},
+					Content: "# 最新JD分析\n# 最新面试问题\n# 最新问题分析\n",
+					Resume:  "最新简历",
 				},
 			},
 			wantCode: 200,
@@ -532,16 +556,15 @@ func (s *AdminHandlerTestSuite) TestDetail() {
 					Uid:   uid,
 					Title: "测试标题",
 					Desc:  "测试描述",
+					Cid:   2,
 					Labels: sqlx.JsonColumn[[]string]{
 						Valid: true,
 						Val:   []string{"测试标签"},
 					},
-					JD:               "测试JD",
-					JDAnalysis:       "JD分析",
-					Questions:        "面试问题",
-					QuestionAnalysis: "问题分析",
-					Resume:           "简历内容",
-					Status:           domain.UnPublishedStatus.ToUint8(),
+					JD:      "测试JD",
+					Content: "# JD分析\n# 面试问题\n# 问题分析\n",
+					Resume:  "简历内容",
+					Status:  domain.UnPublishedStatus.ToUint8(),
 				})
 				require.NoError(t, err)
 			},
@@ -559,12 +582,14 @@ func (s *AdminHandlerTestSuite) TestDetail() {
 					Labels: []string{
 						"测试标签",
 					},
-					JD:               "测试JD",
-					JDAnalysis:       "JD分析",
-					Questions:        "面试问题",
-					QuestionAnalysis: "问题分析",
-					Resume:           "简历内容",
-					Status:           domain.UnPublishedStatus.ToUint8(),
+					Company: web.Company{
+						ID:   2,
+						Name: fmt.Sprintf("company-%d", 2),
+					},
+					JD:      "测试JD",
+					Content: "# JD分析\n# 面试问题\n# 问题分析\n",
+					Resume:  "简历内容",
+					Status:  domain.UnPublishedStatus.ToUint8(),
 				},
 			},
 		},
@@ -632,13 +657,12 @@ func (s *AdminHandlerTestSuite) TestList() {
 				Valid: true,
 				Val:   []string{fmt.Sprintf("标签 %d", idx)},
 			},
-			JD:               fmt.Sprintf("这是JD %d", idx),
-			JDAnalysis:       fmt.Sprintf("这是JD分析 %d", idx),
-			Questions:        fmt.Sprintf("这是面试问题 %d", idx),
-			QuestionAnalysis: fmt.Sprintf("这是问题分析 %d", idx),
-			Resume:           fmt.Sprintf("这是简历 %d", idx),
-			Status:           domain.UnPublishedStatus.ToUint8(),
-			Utime:            123,
+			Cid:     int64(idx + 1),
+			JD:      fmt.Sprintf("这是JD %d", idx),
+			Content: fmt.Sprintf("# JD分析\n这是JD分析 %d\n# 面试问题\n这是面试问题 %d\n# 问题分析\n这是问题分析 %d\n", idx, idx, idx),
+			Resume:  fmt.Sprintf("这是简历 %d", idx),
+			Status:  domain.UnPublishedStatus.ToUint8(),
+			Utime:   123,
 		})
 	}
 	err := s.db.Create(&data).Error
@@ -661,30 +685,34 @@ func (s *AdminHandlerTestSuite) TestList() {
 					Total: 100,
 					List: []web.Review{
 						{
-							ID:               100,
-							Title:            "标题 99",
-							Desc:             "描述 99",
-							Labels:           []string{"标签 99"},
-							JD:               "这是JD 99",
-							JDAnalysis:       "这是JD分析 99",
-							Questions:        "这是面试问题 99",
-							QuestionAnalysis: "这是问题分析 99",
-							Resume:           "这是简历 99",
-							Status:           domain.UnPublishedStatus.ToUint8(),
-							Utime:            123,
+							ID: 100,
+							Company: web.Company{
+								ID:   100,
+								Name: fmt.Sprintf("company-%d", 100),
+							},
+							Title:   "标题 99",
+							Desc:    "描述 99",
+							Labels:  []string{"标签 99"},
+							JD:      "这是JD 99",
+							Content: fmt.Sprintf("# JD分析\n这是JD分析 %d\n# 面试问题\n这是面试问题 %d\n# 问题分析\n这是问题分析 %d\n", 99, 99, 99),
+							Resume:  "这是简历 99",
+							Status:  domain.UnPublishedStatus.ToUint8(),
+							Utime:   123,
 						},
 						{
-							ID:               99,
-							Title:            "标题 98",
-							Desc:             "描述 98",
-							Labels:           []string{"标签 98"},
-							JD:               "这是JD 98",
-							JDAnalysis:       "这是JD分析 98",
-							Questions:        "这是面试问题 98",
-							QuestionAnalysis: "这是问题分析 98",
-							Resume:           "这是简历 98",
-							Status:           domain.UnPublishedStatus.ToUint8(),
-							Utime:            123,
+							ID: 99,
+							Company: web.Company{
+								ID:   99,
+								Name: fmt.Sprintf("company-%d", 99),
+							},
+							Title:   "标题 98",
+							Desc:    "描述 98",
+							Labels:  []string{"标签 98"},
+							JD:      "这是JD 98",
+							Content: fmt.Sprintf("# JD分析\n这是JD分析 %d\n# 面试问题\n这是面试问题 %d\n# 问题分析\n这是问题分析 %d\n", 98, 98, 98),
+							Resume:  "这是简历 98",
+							Status:  domain.UnPublishedStatus.ToUint8(),
+							Utime:   123,
 						},
 					},
 				},
@@ -702,17 +730,19 @@ func (s *AdminHandlerTestSuite) TestList() {
 					Total: 100,
 					List: []web.Review{
 						{
-							ID:               1,
-							Title:            "标题 0",
-							Desc:             "描述 0",
-							Labels:           []string{"标签 0"},
-							JD:               "这是JD 0",
-							JDAnalysis:       "这是JD分析 0",
-							Questions:        "这是面试问题 0",
-							QuestionAnalysis: "这是问题分析 0",
-							Resume:           "这是简历 0",
-							Status:           domain.UnPublishedStatus.ToUint8(),
-							Utime:            123,
+							ID: 1,
+							Company: web.Company{
+								ID:   1,
+								Name: fmt.Sprintf("company-%d", 1),
+							},
+							Title:   "标题 0",
+							Desc:    "描述 0",
+							Labels:  []string{"标签 0"},
+							JD:      "这是JD 0",
+							Content: fmt.Sprintf("# JD分析\n这是JD分析 %d\n# 面试问题\n这是面试问题 %d\n# 问题分析\n这是问题分析 %d\n", 0, 0, 0),
+							Resume:  "这是简历 0",
+							Status:  domain.UnPublishedStatus.ToUint8(),
+							Utime:   123,
 						},
 					},
 				},

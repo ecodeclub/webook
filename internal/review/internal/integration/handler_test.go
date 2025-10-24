@@ -1,3 +1,17 @@
+// Copyright 2023 ecodeclub
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package integration
 
 import (
@@ -8,6 +22,9 @@ import (
 	"strconv"
 	"testing"
 	"time"
+
+	"github.com/ecodeclub/webook/internal/company"
+	companymocks "github.com/ecodeclub/webook/internal/company/mocks"
 
 	"github.com/ecodeclub/ecache"
 
@@ -75,9 +92,32 @@ func (s *TestSuite) SetupSuite() {
 	svc.EXPECT().Get(gomock.Any(), "review", gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, biz string, id, uid int64) (interactive.Interactive, error) {
 		return mockInteractive(biz, id), nil
 	}).AnyTimes()
+
+	companySvc := companymocks.NewMockCompanyService(ctrl)
+	companySvc.EXPECT().GetByIds(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, ids []int64) (map[int64]company.Company, error) {
+		companies := make(map[int64]company.Company, len(ids))
+		for _, id := range ids {
+			companies[id] = company.Company{
+				ID:   id,
+				Name: fmt.Sprintf("company-%d", id),
+			}
+		}
+		return companies, nil
+	}).AnyTimes()
+	companySvc.EXPECT().GetById(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, id int64) (company.Company, error) {
+		return company.Company{
+			ID:   id,
+			Name: fmt.Sprintf("company-%d", id),
+		}, nil
+	}).AnyTimes()
+
 	mou := startup.InitModule(db, &interactive.Module{
 		Svc: svc,
-	}, testmq, rdb, session.DefaultProvider())
+	},
+		&company.Module{
+			Svc: companySvc,
+		},
+		testmq, rdb, session.DefaultProvider())
 	econf.Set("server", map[string]any{"contextTimeout": "1s"})
 	server := egin.Load("server").Build()
 	server.Use(func(ctx *gin.Context) {
@@ -119,13 +159,12 @@ func (s *TestSuite) TestPubList() {
 				Valid: true,
 				Val:   []string{fmt.Sprintf("标签 %d", idx)},
 			},
-			JD:               fmt.Sprintf("这是JD %d", idx),
-			JDAnalysis:       fmt.Sprintf("这是JD分析 %d", idx),
-			Questions:        fmt.Sprintf("这是面试问题 %d", idx),
-			QuestionAnalysis: fmt.Sprintf("这是问题分析 %d", idx),
-			Resume:           fmt.Sprintf("这是简历 %d", idx),
-			Status:           domain.UnPublishedStatus.ToUint8(),
-			Utime:            123,
+			Cid:     int64(idx),
+			JD:      fmt.Sprintf("这是JD %d", idx),
+			Content: fmt.Sprintf("# JD分析\n这是JD分析 %d\n# 面试问题\n这是面试问题 %d\n# 问题分析\n这是问题分析 %d\n", idx, idx, idx),
+			Resume:  fmt.Sprintf("这是简历 %d", idx),
+			Status:  domain.UnPublishedStatus.ToUint8(),
+			Utime:   123,
 		}
 		data = append(data, review)
 
@@ -159,17 +198,19 @@ func (s *TestSuite) TestPubList() {
 					Total: 0, // 只有50条已发布的记录
 					List: []web.Review{
 						{
-							ID:               100,
-							Title:            "标题 100",
-							Desc:             "描述 100",
-							Labels:           []string{"标签 100"},
-							JD:               "这是JD 100",
-							JDAnalysis:       "这是JD分析 100",
-							Questions:        "这是面试问题 100",
-							QuestionAnalysis: "这是问题分析 100",
-							Resume:           "这是简历 100",
-							Status:           domain.PublishedStatus.ToUint8(),
-							Utime:            123,
+							ID:    100,
+							Title: "标题 100",
+							Desc:  "描述 100",
+							Company: web.Company{
+								ID:   100,
+								Name: fmt.Sprintf("company-%d", 100),
+							},
+							Labels:  []string{"标签 100"},
+							JD:      "这是JD 100",
+							Content: fmt.Sprintf("# JD分析\n这是JD分析 %d\n# 面试问题\n这是面试问题 %d\n# 问题分析\n这是问题分析 %d\n", 100, 100, 100),
+							Resume:  "这是简历 100",
+							Status:  domain.PublishedStatus.ToUint8(),
+							Utime:   123,
 							Interactive: web.Interactive{
 								CollectCnt: 103,   // id + 3
 								LikeCnt:    102,   // id + 2
@@ -179,17 +220,19 @@ func (s *TestSuite) TestPubList() {
 							},
 						},
 						{
-							ID:               98,
-							Title:            "标题 98",
-							Desc:             "描述 98",
-							Labels:           []string{"标签 98"},
-							JD:               "这是JD 98",
-							JDAnalysis:       "这是JD分析 98",
-							Questions:        "这是面试问题 98",
-							QuestionAnalysis: "这是问题分析 98",
-							Resume:           "这是简历 98",
-							Status:           domain.PublishedStatus.ToUint8(),
-							Utime:            123,
+							ID: 98,
+							Company: web.Company{
+								ID:   98,
+								Name: fmt.Sprintf("company-%d", 98),
+							},
+							Title:   "标题 98",
+							Desc:    "描述 98",
+							Labels:  []string{"标签 98"},
+							JD:      "这是JD 98",
+							Content: fmt.Sprintf("# JD分析\n这是JD分析 %d\n# 面试问题\n这是面试问题 %d\n# 问题分析\n这是问题分析 %d\n", 98, 98, 98),
+							Resume:  "这是简历 98",
+							Status:  domain.PublishedStatus.ToUint8(),
+							Utime:   123,
 							Interactive: web.Interactive{
 								CollectCnt: 101,   // id + 3
 								LikeCnt:    100,   // id + 2
@@ -214,17 +257,19 @@ func (s *TestSuite) TestPubList() {
 					Total: 0,
 					List: []web.Review{
 						{
-							ID:               4,
-							Title:            "标题 4",
-							Desc:             "描述 4",
-							Labels:           []string{"标签 4"},
-							JD:               "这是JD 4",
-							JDAnalysis:       "这是JD分析 4",
-							Questions:        "这是面试问题 4",
-							QuestionAnalysis: "这是问题分析 4",
-							Resume:           "这是简历 4",
-							Status:           domain.PublishedStatus.ToUint8(),
-							Utime:            123,
+							ID:    4,
+							Title: "标题 4",
+							Company: web.Company{
+								ID:   4,
+								Name: fmt.Sprintf("company-%d", 4),
+							},
+							Desc:    "描述 4",
+							Labels:  []string{"标签 4"},
+							JD:      "这是JD 4",
+							Content: fmt.Sprintf("# JD分析\n这是JD分析 %d\n# 面试问题\n这是面试问题 %d\n# 问题分析\n这是问题分析 %d\n", 4, 4, 4),
+							Resume:  "这是简历 4",
+							Status:  domain.PublishedStatus.ToUint8(),
+							Utime:   123,
 							Interactive: web.Interactive{
 								CollectCnt: 7,     // id + 3
 								LikeCnt:    6,     // id + 2
@@ -234,17 +279,19 @@ func (s *TestSuite) TestPubList() {
 							},
 						},
 						{
-							ID:               2,
-							Title:            "标题 2",
-							Desc:             "描述 2",
-							Labels:           []string{"标签 2"},
-							JD:               "这是JD 2",
-							JDAnalysis:       "这是JD分析 2",
-							Questions:        "这是面试问题 2",
-							QuestionAnalysis: "这是问题分析 2",
-							Resume:           "这是简历 2",
-							Status:           domain.PublishedStatus.ToUint8(),
-							Utime:            123,
+							ID: 2,
+							Company: web.Company{
+								ID:   2,
+								Name: fmt.Sprintf("company-%d", 2),
+							},
+							Title:   "标题 2",
+							Desc:    "描述 2",
+							Labels:  []string{"标签 2"},
+							JD:      "这是JD 2",
+							Content: fmt.Sprintf("# JD分析\n这是JD分析 %d\n# 面试问题\n这是面试问题 %d\n# 问题分析\n这是问题分析 %d\n", 2, 2, 2),
+							Resume:  "这是简历 2",
+							Status:  domain.PublishedStatus.ToUint8(),
+							Utime:   123,
 							Interactive: web.Interactive{
 								CollectCnt: 5,     // id + 3
 								LikeCnt:    4,     // id + 2
@@ -291,6 +338,7 @@ func (s *TestSuite) TestPubDetail() {
 				// 创建原始记录
 				review := dao.Review{
 					ID:    1,
+					Cid:   111,
 					Uid:   uid,
 					Title: "已发布的标题",
 					Desc:  "已发布的描述",
@@ -298,12 +346,10 @@ func (s *TestSuite) TestPubDetail() {
 						Valid: true,
 						Val:   []string{"已发布的标签"},
 					},
-					JD:               "已发布的JD",
-					JDAnalysis:       "已发布的JD分析",
-					Questions:        "已发布的面试问题",
-					QuestionAnalysis: "已发布的问题分析",
-					Resume:           "已发布的简历",
-					Status:           domain.PublishedStatus.ToUint8(),
+					JD:      "已发布的JD",
+					Content: "# 已发布的JD分析\n# 已发布的面试问题\n# 已发布的问题分析\n",
+					Resume:  "已发布的简历",
+					Status:  domain.PublishedStatus.ToUint8(),
 				}
 				_, err := s.reviewDao.Save(ctx, review)
 				require.NoError(t, err)
@@ -314,17 +360,18 @@ func (s *TestSuite) TestPubDetail() {
 			},
 			after: func(t *testing.T) {
 				s.assertCachedReview(t, domain.Review{
-					ID:               1,
-					Uid:              uid,
-					Title:            "已发布的标题",
-					Desc:             "已发布的描述",
-					Labels:           []string{"已发布的标签"},
-					JD:               "已发布的JD",
-					JDAnalysis:       "已发布的JD分析",
-					Questions:        "已发布的面试问题",
-					QuestionAnalysis: "已发布的问题分析",
-					Resume:           "已发布的简历",
-					Status:           domain.PublishedStatus,
+					ID:  1,
+					Uid: uid,
+					Company: domain.Company{
+						ID: 111,
+					},
+					Title:   "已发布的标题",
+					Desc:    "已发布的描述",
+					Labels:  []string{"已发布的标签"},
+					JD:      "已发布的JD",
+					Content: "# 已发布的JD分析\n# 已发布的面试问题\n# 已发布的问题分析\n",
+					Resume:  "已发布的简历",
+					Status:  domain.PublishedStatus,
 				})
 			},
 			req: web.DetailReq{
@@ -333,16 +380,18 @@ func (s *TestSuite) TestPubDetail() {
 			wantCode: 200,
 			wantResp: test.Result[web.Review]{
 				Data: web.Review{
-					ID:               1,
-					Title:            "已发布的标题",
-					Desc:             "已发布的描述",
-					Labels:           []string{"已发布的标签"},
-					JD:               "已发布的JD",
-					JDAnalysis:       "已发布的JD分析",
-					Questions:        "已发布的面试问题",
-					QuestionAnalysis: "已发布的问题分析",
-					Resume:           "已发布的简历",
-					Status:           domain.PublishedStatus.ToUint8(),
+					ID:    1,
+					Title: "已发布的标题",
+					Desc:  "已发布的描述",
+					Company: web.Company{
+						ID:   111,
+						Name: fmt.Sprintf("company-%d", 111),
+					},
+					Labels:  []string{"已发布的标签"},
+					JD:      "已发布的JD",
+					Content: "# 已发布的JD分析\n# 已发布的面试问题\n# 已发布的问题分析\n",
+					Resume:  "已发布的简历",
+					Status:  domain.PublishedStatus.ToUint8(),
 					Interactive: web.Interactive{
 						CollectCnt: 4,
 						LikeCnt:    3,
@@ -359,18 +408,19 @@ func (s *TestSuite) TestPubDetail() {
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 				defer cancel()
 				re := domain.Review{
-					ID:               1,
-					Uid:              uid,
-					Title:            "已发布的标题",
-					Desc:             "已发布的描述",
-					Labels:           []string{"已发布的标签"},
-					JD:               "已发布的JD",
-					JDAnalysis:       "已发布的JD分析",
-					Questions:        "已发布的面试问题",
-					QuestionAnalysis: "已发布的问题分析",
-					Resume:           "已发布的简历",
-					Status:           domain.PublishedStatus,
-					Utime:            1111111,
+					ID:  1,
+					Uid: uid,
+					Company: domain.Company{
+						ID: 111,
+					},
+					Title:   "已发布的标题",
+					Desc:    "已发布的描述",
+					Labels:  []string{"已发布的标签"},
+					JD:      "已发布的JD",
+					Content: "# 已发布的JD分析\n# 已发布的面试问题\n# 已发布的问题分析\n",
+					Resume:  "已发布的简历",
+					Status:  domain.PublishedStatus,
+					Utime:   1111111,
 				}
 				reByte, err := json.Marshal(re)
 				require.NoError(t, err)
@@ -379,17 +429,18 @@ func (s *TestSuite) TestPubDetail() {
 			},
 			after: func(t *testing.T) {
 				s.assertCachedReview(t, domain.Review{
-					ID:               1,
-					Uid:              uid,
-					Title:            "已发布的标题",
-					Desc:             "已发布的描述",
-					Labels:           []string{"已发布的标签"},
-					JD:               "已发布的JD",
-					JDAnalysis:       "已发布的JD分析",
-					Questions:        "已发布的面试问题",
-					QuestionAnalysis: "已发布的问题分析",
-					Resume:           "已发布的简历",
-					Status:           domain.PublishedStatus,
+					ID: 1,
+					Company: domain.Company{
+						ID: 111,
+					},
+					Uid:     uid,
+					Title:   "已发布的标题",
+					Desc:    "已发布的描述",
+					Labels:  []string{"已发布的标签"},
+					JD:      "已发布的JD",
+					Content: "# 已发布的JD分析\n# 已发布的面试问题\n# 已发布的问题分析\n",
+					Resume:  "已发布的简历",
+					Status:  domain.PublishedStatus,
 				})
 			},
 			req: web.DetailReq{
@@ -398,16 +449,18 @@ func (s *TestSuite) TestPubDetail() {
 			wantCode: 200,
 			wantResp: test.Result[web.Review]{
 				Data: web.Review{
-					ID:               1,
-					Title:            "已发布的标题",
-					Desc:             "已发布的描述",
-					Labels:           []string{"已发布的标签"},
-					JD:               "已发布的JD",
-					JDAnalysis:       "已发布的JD分析",
-					Questions:        "已发布的面试问题",
-					QuestionAnalysis: "已发布的问题分析",
-					Resume:           "已发布的简历",
-					Status:           domain.PublishedStatus.ToUint8(),
+					ID:    1,
+					Title: "已发布的标题",
+					Company: web.Company{
+						ID:   111,
+						Name: fmt.Sprintf("company-%d", 111),
+					},
+					Desc:    "已发布的描述",
+					Labels:  []string{"已发布的标签"},
+					JD:      "已发布的JD",
+					Content: "# 已发布的JD分析\n# 已发布的面试问题\n# 已发布的问题分析\n",
+					Resume:  "已发布的简历",
+					Status:  domain.PublishedStatus.ToUint8(),
 					Interactive: web.Interactive{
 						CollectCnt: 4,
 						LikeCnt:    3,

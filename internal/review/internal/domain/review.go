@@ -3,18 +3,21 @@ package domain
 const ReviewBiz = "review"
 
 type Review struct {
-	ID               int64
-	Title            string
-	Desc             string
-	Labels           []string
-	Uid              int64
-	JD               string
-	JDAnalysis       string
-	Questions        string
-	QuestionAnalysis string
-	Resume           string
-	Status           ReviewStatus
-	Utime            int64
+	ID      int64
+	Title   string
+	Desc    string
+	Labels  []string
+	Uid     int64
+	JD      string
+	Company Company
+	Content string
+	Resume  string
+	Status  ReviewStatus
+	Utime   int64
+}
+type Company struct {
+	ID   int64
+	Name string
 }
 type ReviewStatus uint8
 
