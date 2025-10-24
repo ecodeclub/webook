@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 
@@ -99,6 +100,10 @@ func (s *AdminHandlerTestSuite) TearDownTest() {
 	err := s.db.Exec("TRUNCATE TABLE roadmaps").Error
 	require.NoError(s.T(), err)
 	err = s.db.Exec("TRUNCATE TABLE roadmap_edges").Error
+	require.NoError(s.T(), err)
+	err = s.db.Exec("TRUNCATE TABLE roadmap_nodes").Error
+	require.NoError(s.T(), err)
+	err = s.db.Exec("TRUNCATE TABLE roadmap_edges_v1").Error
 	require.NoError(s.T(), err)
 }
 
@@ -299,72 +304,98 @@ func (s *AdminHandlerTestSuite) TestList() {
 }
 
 func (s *AdminHandlerTestSuite) TestDetail() {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
-	db := s.db.WithContext(ctx)
-	// 插入数据的
-	err := db.Create(&dao.Roadmap{
-		Id:    1,
-		Title: "标题1",
-		Biz:   sqlx.NewNullString(domain.BizQuestion),
-		BizId: sqlx.NewNullInt64(123),
-		Ctime: 222,
-		Utime: 222,
-	}).Error
-	require.NoError(s.T(), err)
-	edges := []dao.Edge{
-		{Id: 1, Rid: 1, SrcBiz: domain.BizQuestionSet, SrcId: 1, DstBiz: domain.BizQuestion, DstId: 2, Utime: 123},
-		{Id: 2, Rid: 1, SrcBiz: domain.BizQuestion, SrcId: 2, DstBiz: domain.BizQuestionSet, DstId: 3, Utime: 124},
-		{Id: 3, Rid: 2, SrcBiz: domain.BizQuestion, SrcId: 2, DstBiz: domain.BizQuestionSet, DstId: 3, Utime: 125},
-	}
-	err = db.Create(&edges).Error
-	require.NoError(s.T(), err)
-
 	testCases := []struct {
-		name string
-
+		name     string
+		before   func(t *testing.T)
+		after    func(t *testing.T)
 		req      web.IdReq
 		wantCode int
 		wantResp test.Result[web.Roadmap]
 	}{
 		{
-			name:     "获取成功",
+			name: "获取成功",
+			before: func(t *testing.T) {
+				// 创建roadmap
+				err := s.db.Create(&dao.Roadmap{
+					Id:    1,
+					Title: "Roadmap 1",
+					Biz:   sqlx.NewNullString("question"),
+					BizId: sqlx.NewNullInt64(123),
+				}).Error
+				require.NoError(t, err)
+
+				// 创建三个节点
+				nodes := []dao.Node{
+					{Id: 1, Biz: "question", Rid: 1, RefId: 123, Attrs: "attributes1"},
+					{Id: 2, Biz: "questionSet", Rid: 1, RefId: 456, Attrs: "attributes2"},
+					{Id: 3, Biz: "questionSet", Rid: 1, RefId: 789, Attrs: "attributes3"},
+				}
+				err = s.db.Create(&nodes).Error
+				require.NoError(t, err)
+
+				// 创建三条边
+				edges := []dao.EdgeV1{
+					{Id: 1, Rid: 1, SrcNode: 1, DstNode: 3, Type: "default", Attrs: "edge attributes 1"},
+					{Id: 2, Rid: 1, SrcNode: 3, DstNode: 2, Type: "default", Attrs: "edge attributes 2"},
+					{Id: 3, Rid: 2, SrcNode: 3, DstNode: 2, Type: "default", Attrs: "edge attributes 3"},
+				}
+				err = s.db.Create(&edges).Error
+				require.NoError(t, err)
+			},
+			after: func(t *testing.T) {
+				// 清理数据库或其他后置操作
+			},
 			req:      web.IdReq{Id: 1},
 			wantCode: 200,
 			wantResp: test.Result[web.Roadmap]{
 				Data: web.Roadmap{
 					Id:       1,
-					Title:    "标题1",
-					Biz:      domain.BizQuestion,
+					Title:    "Roadmap 1",
+					Biz:      "question",
 					BizId:    123,
 					BizTitle: "题目123",
-					Utime:    222,
 					Edges: []web.Edge{
 						{
 							Id: 2,
 							Src: web.Node{
-								BizId: 2,
-								Biz:   domain.BizQuestion,
-								Title: "题目2",
+								ID:    3,
+								Biz:   "questionSet",
+								BizId: 789,
+								Rid:   1,
+								Attrs: "attributes3",
+								Title: "题集789",
 							},
 							Dst: web.Node{
-								BizId: 3,
-								Biz:   domain.BizQuestionSet,
-								Title: "题集3",
+								ID:    2,
+								Biz:   "questionSet",
+								BizId: 456,
+								Rid:   1,
+								Attrs: "attributes2",
+								Title: "题集456",
 							},
+							Type:  "default",
+							Attrs: "edge attributes 2",
 						},
 						{
 							Id: 1,
 							Src: web.Node{
-								Biz:   domain.BizQuestionSet,
-								BizId: 1,
-								Title: "题集1",
+								ID:    1,
+								Biz:   "question",
+								BizId: 123,
+								Rid:   1,
+								Attrs: "attributes1",
+								Title: "题目123",
 							},
 							Dst: web.Node{
-								Biz:   domain.BizQuestion,
-								BizId: 2,
-								Title: "题目2",
+								ID:    3,
+								Biz:   "questionSet",
+								BizId: 789,
+								Rid:   1,
+								Attrs: "attributes3",
+								Title: "题集789",
 							},
+							Type:  "default",
+							Attrs: "edge attributes 1",
 						},
 					},
 				},
@@ -374,6 +405,7 @@ func (s *AdminHandlerTestSuite) TestDetail() {
 
 	for _, tc := range testCases {
 		s.T().Run(tc.name, func(t *testing.T) {
+			tc.before(t)
 			req, err := http.NewRequest(http.MethodPost,
 				"/roadmap/detail", iox.NewJSONReader(tc.req))
 			req.Header.Set("content-type", "application/json")
@@ -382,58 +414,120 @@ func (s *AdminHandlerTestSuite) TestDetail() {
 			s.server.ServeHTTP(recorder, req)
 			require.Equal(t, tc.wantCode, recorder.Code)
 			assert.Equal(t, tc.wantResp, recorder.MustScan())
+			tc.after(t)
 		})
 	}
 }
 
-func (s *AdminHandlerTestSuite) TestAddEdge() {
+func (s *AdminHandlerTestSuite) TestSaveEdge() {
 	testCases := []struct {
-		name   string
-		before func(t *testing.T)
-		after  func(t *testing.T)
-
+		name     string
+		before   func(t *testing.T)
+		after    func(t *testing.T)
 		req      web.AddEdgeReq
 		wantCode int
 		wantResp test.Result[any]
 	}{
 		{
-			name: "添加成功",
+			name: "新增边成功",
 			before: func(t *testing.T) {
-
+				// 创建三个节点
+				nodes := []dao.Node{
+					{Id: 1, Biz: "question", Rid: 1, RefId: 123, Attrs: "attributes1"},
+					{Id: 2, Biz: "case", Rid: 1, RefId: 456, Attrs: "attributes2"},
+					{Id: 3, Biz: "common", Rid: 0, RefId: 789, Attrs: "attributes3"},
+				}
+				err := s.db.Create(&nodes).Error
+				require.NoError(t, err)
 			},
 			after: func(t *testing.T) {
-				var edge dao.Edge
+				// 验证边已被添加
+				var edge dao.EdgeV1
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 				defer cancel()
-				err := s.db.WithContext(ctx).Where("rid = ?", 1).First(&edge).Error
+				err := s.db.WithContext(ctx).Where("src_node = ? AND dst_node = ?", 1, 2).First(&edge).Error
 				require.NoError(t, err)
-				assert.True(t, edge.Ctime > 0)
+				require.True(t, edge.Ctime != 0)
+				require.True(t, edge.Utime != 0)
 				edge.Ctime = 0
-				assert.True(t, edge.Utime > 0)
 				edge.Utime = 0
-				assert.Equal(t, dao.Edge{
-					Id:     1,
-					Rid:    1,
-					SrcBiz: domain.BizQuestion,
-					SrcId:  123,
-					DstBiz: domain.BizQuestionSet,
-					DstId:  234,
+				assert.Equal(t, dao.EdgeV1{
+					Id:      1,
+					SrcNode: 1,
+					DstNode: 2,
+					Rid:     1,
+					Type:    "default",
+					Attrs:   "attrs",
 				}, edge)
 			},
 			req: web.AddEdgeReq{
 				Rid: 1,
 				Edge: web.Edge{
-					Src: web.Node{
-						Biz:   domain.BizQuestion,
-						BizId: 123,
-					},
-					Dst: web.Node{
-						Biz:   domain.BizQuestionSet,
-						BizId: 234,
-					},
+					Id:    1,
+					Src:   web.Node{ID: 1},
+					Dst:   web.Node{ID: 2},
+					Type:  "default",
+					Attrs: "attrs",
 				},
 			},
 			wantCode: 200,
+			wantResp: test.Result[any]{},
+		},
+		{
+			name: "编辑边成功",
+			before: func(t *testing.T) {
+				// 创建一个边
+				nodes := []dao.Node{
+					{Id: 1, Biz: "question", Rid: 1, RefId: 123, Attrs: "attributes1"},
+					{Id: 2, Biz: "case", Rid: 1, RefId: 456, Attrs: "attributes2"},
+					{Id: 3, Biz: "common", Rid: 0, RefId: 789, Attrs: "attributes3"},
+				}
+				err := s.db.Create(&nodes).Error
+				require.NoError(t, err)
+				err = s.db.Create(&dao.EdgeV1{
+					Id:      1,
+					SrcNode: 1,
+					DstNode: 2,
+					Rid:     1,
+					Type:    "default",
+					Attrs:   "attrs",
+					Ctime:   123,
+					Utime:   321,
+				}).Error
+				require.NoError(t, err)
+			},
+			after: func(t *testing.T) {
+				// 验证边已被编辑
+				var edge dao.EdgeV1
+				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+				defer cancel()
+				err := s.db.WithContext(ctx).Where("id = ?", 1).First(&edge).Error
+				require.NoError(t, err)
+				require.True(t, edge.Ctime != 0)
+				require.True(t, edge.Utime != 0)
+				edge.Ctime = 0
+				edge.Utime = 0
+				assert.Equal(t, dao.EdgeV1{
+					Id:      1,
+					SrcNode: 1,
+					DstNode: 3, // 更新后的目标节点
+					Rid:     1,
+					Type:    "updated",
+					Attrs:   "attrsv1",
+				}, edge)
+			},
+			req: web.AddEdgeReq{
+				Rid: 1,
+				Edge: web.Edge{
+					Id:    1, // 指定边的ID以进行编辑
+					Src:   web.Node{ID: 1},
+					Dst:   web.Node{ID: 3}, // 更新目标节点
+					Type:  "updated",
+					Attrs: "attrsv1",
+				},
+			},
+			wantCode: 200,
+			wantResp: test.Result[any]{},
 		},
 	}
 
@@ -449,11 +543,15 @@ func (s *AdminHandlerTestSuite) TestAddEdge() {
 			require.Equal(t, tc.wantCode, recorder.Code)
 			assert.Equal(t, tc.wantResp, recorder.MustScan())
 			tc.after(t)
+			err = s.db.Exec("TRUNCATE TABLE roadmap_nodes").Error
+			require.NoError(s.T(), err)
+			err = s.db.Exec("TRUNCATE TABLE roadmap_edges_v1").Error
+			require.NoError(s.T(), err)
 		})
 	}
 }
 
-func (s *AdminHandlerTestSuite) TestDelete() {
+func (s *AdminHandlerTestSuite) TestDeleteEdge() {
 	testCases := []struct {
 		name   string
 		before func(t *testing.T)
@@ -468,7 +566,7 @@ func (s *AdminHandlerTestSuite) TestDelete() {
 			before: func(t *testing.T) {
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 				defer cancel()
-				err := s.db.WithContext(ctx).Create(&dao.Edge{
+				err := s.db.WithContext(ctx).Create(&dao.EdgeV1{
 					Id: 1,
 				}).Error
 				require.NoError(t, err)
@@ -498,6 +596,290 @@ func (s *AdminHandlerTestSuite) TestDelete() {
 			tc.after(t)
 		})
 	}
+}
+
+func (s *AdminHandlerTestSuite) TestSaveNode() {
+	testCases := []struct {
+		name     string
+		before   func(t *testing.T)
+		after    func(t *testing.T)
+		req      web.Node
+		wantCode int
+		wantResp test.Result[int64]
+	}{
+		{
+			name: "新建节点成功",
+			before: func(t *testing.T) {
+				// 可以在这里设置测试前的数据库状态或其他依赖
+			},
+			after: func(t *testing.T) {
+				var node dao.Node
+				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+				defer cancel()
+				err := s.db.WithContext(ctx).Where("id = ?", 1).First(&node).Error
+				require.NoError(t, err)
+				assert.True(t, node.Ctime > 0)
+				node.Ctime = 0
+				assert.True(t, node.Utime > 0)
+				node.Utime = 0
+				assert.Equal(t, dao.Node{
+					Id:    1,
+					Biz:   "question",
+					Rid:   1,
+					RefId: 123,
+					Attrs: "some attributes",
+				}, node)
+			},
+			req: web.Node{
+				Biz:   "question",
+				Rid:   1,
+				BizId: 123,
+				Attrs: "some attributes",
+			},
+			wantCode: 200,
+			wantResp: test.Result[int64]{Data: 1},
+		},
+		{
+			name: "更新节点成功",
+			before: func(t *testing.T) {
+				err := s.db.Create(&dao.Node{
+					Id:    2,
+					Biz:   "question",
+					Rid:   2,
+					RefId: 456,
+					Attrs: "old attributes",
+					Ctime: 123,
+					Utime: 123,
+				}).Error
+				require.NoError(t, err)
+			},
+			after: func(t *testing.T) {
+				var node dao.Node
+				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+				defer cancel()
+				err := s.db.WithContext(ctx).Where("id = ?", 2).First(&node).Error
+				require.NoError(t, err)
+				assert.True(t, node.Utime > 123)
+				node.Utime = 0
+				assert.Equal(t, dao.Node{
+					Id:    2,
+					Biz:   "case",
+					Rid:   2,
+					RefId: 789,
+					Attrs: "new attributes",
+					Ctime: 123,
+				}, node)
+			},
+			req: web.Node{
+				ID:    2,
+				Biz:   "case",
+				Rid:   2,
+				BizId: 789,
+				Attrs: "new attributes",
+			},
+			wantCode: 200,
+			wantResp: test.Result[int64]{Data: 2},
+		},
+	}
+
+	for _, tc := range testCases {
+		s.T().Run(tc.name, func(t *testing.T) {
+			tc.before(t)
+			req, err := http.NewRequest(http.MethodPost,
+				"/roadmap/node/save", iox.NewJSONReader(tc.req))
+			req.Header.Set("content-type", "application/json")
+			require.NoError(t, err)
+			recorder := test.NewJSONResponseRecorder[int64]()
+			s.server.ServeHTTP(recorder, req)
+			require.Equal(t, tc.wantCode, recorder.Code)
+			assert.Equal(t, tc.wantResp, recorder.MustScan())
+			tc.after(t)
+		})
+	}
+}
+
+func (s *AdminHandlerTestSuite) TestDeleteNode() {
+	testCases := []struct {
+		name     string
+		before   func(t *testing.T)
+		after    func(t *testing.T)
+		req      web.IdReq
+		wantCode int
+		wantResp test.Result[any]
+	}{
+		{
+			name: "删除节点成功",
+			before: func(t *testing.T) {
+				// 预先插入一个节点
+				err := s.db.Create(&dao.Node{
+					Id:    1,
+					Biz:   "question",
+					Rid:   1,
+					RefId: 123,
+					Attrs: "some attributes",
+				}).Error
+				require.NoError(t, err)
+			},
+			after: func(t *testing.T) {
+				// 验证节点已被删除
+				var node dao.Node
+				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+				defer cancel()
+				err := s.db.WithContext(ctx).Where("id = ?", 1).First(&node).Error
+				assert.Equal(t, gorm.ErrRecordNotFound, err)
+			},
+			req:      web.IdReq{Id: 1},
+			wantCode: 200,
+			wantResp: test.Result[any]{},
+		},
+	}
+
+	for _, tc := range testCases {
+		s.T().Run(tc.name, func(t *testing.T) {
+			tc.before(t)
+			req, err := http.NewRequest(http.MethodPost,
+				"/roadmap/node/delete", iox.NewJSONReader(tc.req))
+			req.Header.Set("content-type", "application/json")
+			require.NoError(t, err)
+			recorder := test.NewJSONResponseRecorder[any]()
+			s.server.ServeHTTP(recorder, req)
+			require.Equal(t, tc.wantCode, recorder.Code)
+			assert.Equal(t, tc.wantResp, recorder.MustScan())
+			tc.after(t)
+		})
+	}
+}
+
+func (s *AdminHandlerTestSuite) TestNodeList() {
+	testCases := []struct {
+		name     string
+		before   func(t *testing.T)
+		after    func(t *testing.T)
+		req      web.IdReq
+		wantCode int
+		wantResp test.Result[[]web.Node]
+	}{
+		{
+			name: "获取节点列表成功，包括rid为0和rid为3的节点",
+			before: func(t *testing.T) {
+				// 预先插入一些节点，包括rid为0和rid为3的节点
+				nodes := []dao.Node{
+					{Id: 1, Biz: "question", Rid: 1, RefId: 123, Attrs: "attributes1"},
+					{Id: 2, Biz: "case", Rid: 1, RefId: 456, Attrs: "attributes2"},
+					{Id: 3, Biz: "common", Rid: 0, RefId: 789, Attrs: "attributes3"},  // rid为0的节点
+					{Id: 4, Biz: "special", Rid: 3, RefId: 101, Attrs: "attributes4"}, // rid为3的节点
+				}
+				err := s.db.Create(&nodes).Error
+				require.NoError(t, err)
+			},
+			after: func(t *testing.T) {
+				// 清理数据库或其他后置操作
+			},
+			req:      web.IdReq{Id: 1},
+			wantCode: 200,
+			wantResp: test.Result[[]web.Node]{
+				Data: []web.Node{
+					{ID: 3, Biz: "common", Rid: 0, BizId: 789, Attrs: "attributes3"},
+					{ID: 2, Biz: "case", Rid: 1, BizId: 456, Attrs: "attributes2"},
+					{ID: 1, Biz: "question", Rid: 1, BizId: 123, Attrs: "attributes1"},
+				},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		s.T().Run(tc.name, func(t *testing.T) {
+			tc.before(t)
+			req, err := http.NewRequest(http.MethodPost,
+				"/roadmap/node/list", iox.NewJSONReader(tc.req))
+			req.Header.Set("content-type", "application/json")
+			require.NoError(t, err)
+			recorder := test.NewJSONResponseRecorder[[]web.Node]()
+			s.server.ServeHTTP(recorder, req)
+			require.Equal(t, tc.wantCode, recorder.Code)
+			assert.Equal(t, tc.wantResp, recorder.MustScan())
+			tc.after(t)
+		})
+	}
+}
+
+func (s *AdminHandlerTestSuite) TestSanitize() {
+	roadmaps := []dao.Roadmap{
+		{Id: 1, Title: "Roadmap 1", Biz: sqlx.NewNullString("biz1"), BizId: sqlx.NewNullInt64(101)},
+		{Id: 2, Title: "Roadmap 2", Biz: sqlx.NewNullString("biz2"), BizId: sqlx.NewNullInt64(102)},
+		{Id: 3, Title: "Roadmap 3", Biz: sqlx.NewNullString("biz3"), BizId: sqlx.NewNullInt64(103)},
+	}
+	for _, roadmap := range roadmaps {
+		err := s.db.Create(&roadmap).Error
+		require.NoError(s.T(), err)
+	}
+	edges := []dao.Edge{
+		{Rid: 1, SrcBiz: "biz1", SrcId: 1, DstBiz: "biz1", DstId: 2},
+		{Rid: 1, SrcBiz: "biz1", SrcId: 2, DstBiz: "biz1", DstId: 3},
+		{Rid: 1, SrcBiz: "biz1", SrcId: 3, DstBiz: "biz1", DstId: 4},
+		{Rid: 1, SrcBiz: "biz1", SrcId: 4, DstBiz: "biz1", DstId: 5},
+		{Rid: 2, SrcBiz: "biz2", SrcId: 1, DstBiz: "biz2", DstId: 2},
+		{Rid: 2, SrcBiz: "biz2", SrcId: 2, DstBiz: "biz2", DstId: 3},
+		{Rid: 2, SrcBiz: "biz2", SrcId: 3, DstBiz: "biz2", DstId: 4},
+		{Rid: 2, SrcBiz: "biz2", SrcId: 4, DstBiz: "biz2", DstId: 5},
+		{Rid: 3, SrcBiz: "biz3", SrcId: 1, DstBiz: "biz3", DstId: 2},
+		{Rid: 3, SrcBiz: "biz3", SrcId: 2, DstBiz: "biz3", DstId: 3},
+		{Rid: 3, SrcBiz: "biz3", SrcId: 3, DstBiz: "biz3", DstId: 4},
+		{Rid: 3, SrcBiz: "biz3", SrcId: 4, DstBiz: "biz3", DstId: 5},
+	}
+	for _, edge := range edges {
+		err := s.db.Create(&edge).Error
+		require.NoError(s.T(), err)
+	}
+	req, err := http.NewRequest(http.MethodPost, "/roadmap/sanitize", nil)
+	require.NoError(s.T(), err)
+	recorder := httptest.NewRecorder()
+	s.server.ServeHTTP(recorder, req)
+	require.Equal(s.T(), http.StatusOK, recorder.Code)
+
+	time.Sleep(10 * time.Second)
+	s.checkSanitizeData(edges)
+}
+
+func (s *AdminHandlerTestSuite) checkSanitizeData(edge1s []dao.Edge) {
+	var nodes []dao.Node
+	err := s.db.WithContext(context.Background()).Model(&dao.Node{}).Find(&nodes).Error
+	require.NoError(s.T(), err)
+	nodeMap := s.getNodeMap(nodes)
+	wantEdgev1s := slice.Map(edge1s, func(idx int, src dao.Edge) dao.EdgeV1 {
+		return s.getEdgev1(src, nodeMap)
+	})
+	var edgev1s []dao.EdgeV1
+	err = s.db.WithContext(context.Background()).Model(&dao.EdgeV1{}).Find(&edgev1s).Error
+	require.NoError(s.T(), err)
+	actualEdgev1s := slice.Map(edgev1s, func(idx int, src dao.EdgeV1) dao.EdgeV1 {
+		require.True(s.T(), src.Ctime != 0)
+		require.True(s.T(), src.Utime != 0)
+		require.True(s.T(), src.Id != 0)
+		src.Ctime = 0
+		src.Utime = 0
+		src.Id = 0
+		return src
+	})
+	assert.ElementsMatch(s.T(), wantEdgev1s, actualEdgev1s)
+}
+
+func (s *AdminHandlerTestSuite) getEdgev1(edge dao.Edge, nodeMap map[string]dao.Node) dao.EdgeV1 {
+	dstNode := nodeMap[fmt.Sprintf("%d_%s_%d", edge.Rid, edge.DstBiz, edge.DstId)]
+	srcNode := nodeMap[fmt.Sprintf("%d_%s_%d", edge.Rid, edge.SrcBiz, edge.SrcId)]
+	return dao.EdgeV1{
+		Rid:     edge.Rid,
+		SrcNode: srcNode.Id,
+		DstNode: dstNode.Id,
+	}
+}
+
+func (s *AdminHandlerTestSuite) getNodeMap(nodes []dao.Node) map[string]dao.Node {
+	nodeMap := make(map[string]dao.Node, len(nodes))
+	for _, node := range nodes {
+		nodeMap[fmt.Sprintf("%d_%s_%d", node.Rid, node.Biz, node.RefId)] = node
+	}
+	return nodeMap
 }
 
 func TestAdminHandler(t *testing.T) {
