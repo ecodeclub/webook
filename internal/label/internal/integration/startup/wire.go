@@ -18,12 +18,11 @@ package startup
 
 import (
 	"github.com/ecodeclub/webook/internal/label"
-	"github.com/ecodeclub/webook/internal/label/internal/web"
 	testioc "github.com/ecodeclub/webook/internal/test/ioc"
 	"github.com/google/wire"
 )
 
-func InitHandler() (*web.Handler, error) {
-	wire.Build(testioc.BaseSet, label.InitHandler)
-	return new(web.Handler), nil
+func InitModule() (*label.Module, error) {
+	wire.Build(testioc.BaseSet, label.InitModule)
+	return new(label.Module), nil
 }

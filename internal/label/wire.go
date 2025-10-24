@@ -27,24 +27,38 @@ import (
 	"github.com/google/wire"
 )
 
-var HandlerSet = wire.NewSet(
+type Module struct {
+	AdminHandler *AdminHandler
+	Handler      *Handler
+}
+
+var ModuleSet = wire.NewSet(
 	repository.NewCachedLabelRepository,
 	InitTablesOnce,
 	service.NewService,
-	web.NewHandler)
+	web.NewHandler,
+	web.NewAdminHandler,
+)
 
-func InitHandler(db *egorm.Component) *Handler {
-	wire.Build(HandlerSet)
-	return new(Handler)
+func InitModule(db *egorm.Component) *Module {
+	wire.Build(
+		ModuleSet,
+		wire.Struct(new(Module), "*"),
+	)
+	return new(Module)
 }
 
 var once = &sync.Once{}
 
 func InitTablesOnce(db *egorm.Component) dao.LabelDAO {
 	once.Do(func() {
-		dao.InitTables(db)
+		err := dao.InitTables(db)
+		if err != nil {
+			panic(err)
+		}
 	})
 	return dao.NewLabelGORMDAO(db)
 }
 
+type AdminHandler = web.AdminHandler
 type Handler = web.Handler
