@@ -151,6 +151,7 @@ func initGinxServer(sp session.Provider,
 	user.PrivateRoutes(res.Engine)
 	cosHdl.PrivateRoutes(res.Engine)
 	pHdl.PrivateRoutes(res.Engine)
+	pHdl.PublicRoutes(res.Engine)
 	orderHdl.PrivateRoutes(res.Engine)
 	searchHdl.PrivateRoutes(res.Engine)
 	roadmapHdl.PrivateRoutes(res.Engine)
