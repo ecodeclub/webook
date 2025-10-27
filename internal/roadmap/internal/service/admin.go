@@ -103,6 +103,9 @@ func (svc *adminService) Save(ctx context.Context, r domain.Roadmap) (int64, err
 			}
 		})
 		err = svc.repo.SaveNodes(ctx, nodes)
+		if err != nil {
+			return 0, err
+		}
 	}
 	return id, err
 }
