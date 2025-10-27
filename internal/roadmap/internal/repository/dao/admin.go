@@ -18,6 +18,8 @@ import (
 	"context"
 	"time"
 
+	"gorm.io/gorm"
+
 	"github.com/ego-component/egorm"
 	"gorm.io/gorm/clause"
 )
@@ -28,7 +30,7 @@ type AdminDAO interface {
 	GetById(ctx context.Context, id int64) (Roadmap, error)
 	List(ctx context.Context, offset int, limit int) ([]Roadmap, error)
 	AllRoadmap(ctx context.Context) ([]Roadmap, error)
-
+	Delete(ctx context.Context, id int64) error
 	// 旧版本边的操作
 	GetEdgesByRid(ctx context.Context, rid int64) ([]Edge, error)
 	AddEdge(ctx context.Context, edge Edge) error
@@ -36,6 +38,7 @@ type AdminDAO interface {
 
 	// 新版本节点的操作
 	SaveNode(ctx context.Context, node Node) (int64, error)
+	SaveNodes(ctx context.Context, nodes []Node) error
 	DeleteNode(ctx context.Context, id int64) error
 	NodeList(ctx context.Context, rid int64) ([]Node, error)
 	CreateNodes(ctx context.Context, nodes []Node) ([]Node, error)
@@ -51,6 +54,25 @@ var _ AdminDAO = &GORMAdminDAO{}
 
 type GORMAdminDAO struct {
 	db *egorm.Component
+}
+
+func (dao *GORMAdminDAO) SaveNodes(ctx context.Context, nodes []Node) error {
+	return dao.db.WithContext(ctx).Create(&nodes).Error
+}
+
+func (dao *GORMAdminDAO) Delete(ctx context.Context, id int64) error {
+	db := dao.db
+	return db.Transaction(func(tx *gorm.DB) error {
+		err := tx.Where("id = ?", id).Delete(&Roadmap{}).Error
+		if err != nil {
+			return err
+		}
+		err = tx.Where("rid = ?", id).Delete(&EdgeV1{}).Error
+		if err != nil {
+			return err
+		}
+		return tx.Where("rid = ?", id).Delete(&Node{}).Error
+	})
 }
 
 func (dao *GORMAdminDAO) AllRoadmap(ctx context.Context) ([]Roadmap, error) {

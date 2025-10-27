@@ -34,6 +34,7 @@ func (h *AdminHandler) PrivateRoutes(server *gin.Engine) {
 	g.POST("/list", ginx.B(h.List))
 	g.POST("/detail", ginx.B(h.Detail))
 	g.POST("/sanitize", ginx.W(h.Sanitize))
+	g.POST("/delete", ginx.B(h.Delete))
 
 	edge := g.Group("/edge")
 	edge.POST("/save", ginx.B(h.SaveEdge))
@@ -43,7 +44,14 @@ func (h *AdminHandler) PrivateRoutes(server *gin.Engine) {
 	node.POST("/save", ginx.B(h.SaveNode))
 	node.POST("/delete", ginx.B[IdReq](h.DeleteNode))
 	node.POST("/list", ginx.B[IdReq](h.NodeList))
+}
 
+func (h *AdminHandler) Delete(ctx *ginx.Context, req IdReq) (ginx.Result, error) {
+	err := h.svc.Delete(ctx, req.Id)
+	if err != nil {
+		return systemErrorResult, err
+	}
+	return ginx.Result{}, nil
 }
 
 func (h *AdminHandler) Sanitize(ctx *ginx.Context) (ginx.Result, error) {
@@ -56,8 +64,18 @@ func (h *AdminHandler) NodeList(ctx *ginx.Context, req IdReq) (ginx.Result, erro
 	if err != nil {
 		return systemErrorResult, err
 	}
+	bizs := make([]string, 0, len(nodeList))
+	bizIds := make([]int64, 0, len(nodeList))
+	for _, n := range nodeList {
+		bizs = append(bizs, n.Biz.Biz)
+		bizIds = append(bizIds, n.Biz.BizId)
+	}
+	bizsMap, err := h.bizSvc.GetBizs(ctx, bizs, bizIds)
+	if err != nil {
+		return systemErrorResult, err
+	}
 	list := slice.Map(nodeList, func(idx int, src domain.Node) Node {
-		return newNode(src)
+		return newNode(src, bizsMap)
 	})
 	return ginx.Result{
 		Data: list,

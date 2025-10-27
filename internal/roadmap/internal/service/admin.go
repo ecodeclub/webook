@@ -17,6 +17,9 @@ package service
 import (
 	"context"
 
+	"github.com/ecodeclub/ekit/slice"
+	baguwen "github.com/ecodeclub/webook/internal/question"
+
 	"github.com/ecodeclub/webook/internal/roadmap/internal/domain"
 	"github.com/ecodeclub/webook/internal/roadmap/internal/repository"
 )
@@ -25,6 +28,8 @@ type AdminService interface {
 	Detail(ctx context.Context, id int64) (domain.Roadmap, error)
 	Save(ctx context.Context, r domain.Roadmap) (int64, error)
 	List(ctx context.Context, offset int, limit int) ([]domain.Roadmap, error)
+	Delete(ctx context.Context, id int64) error
+
 	SanitizeData()
 
 	SaveNode(ctx context.Context, node domain.Node) (int64, error)
@@ -37,7 +42,12 @@ type AdminService interface {
 var _ AdminService = &adminService{}
 
 type adminService struct {
-	repo repository.AdminRepository
+	repo      repository.AdminRepository
+	queSetSvc baguwen.QuestionSetService
+}
+
+func (svc *adminService) Delete(ctx context.Context, id int64) error {
+	return svc.repo.Delete(ctx, id)
 }
 
 func (svc *adminService) SanitizeData() {
@@ -73,11 +83,33 @@ func (svc *adminService) List(ctx context.Context, offset int, limit int) ([]dom
 }
 
 func (svc *adminService) Save(ctx context.Context, r domain.Roadmap) (int64, error) {
-	return svc.repo.Save(ctx, r)
+	id, err := svc.repo.Save(ctx, r)
+	if err != nil {
+		return 0, err
+	}
+	// 新增并且路线图是题集的，新建题目节点
+	if r.Biz == domain.BizQuestionSet && r.Id == 0 {
+		qs, err := svc.queSetSvc.Detail(ctx, r.BizId)
+		if err != nil {
+			return 0, err
+		}
+		nodes := slice.Map(qs.Questions, func(idx int, src baguwen.Question) domain.Node {
+			return domain.Node{
+				Biz: domain.Biz{
+					Biz:   domain.BizQuestion,
+					BizId: src.Id,
+				},
+				Rid: id,
+			}
+		})
+		err = svc.repo.SaveNodes(ctx, nodes)
+	}
+	return id, err
 }
 
-func NewAdminService(repo repository.AdminRepository) AdminService {
+func NewAdminService(repo repository.AdminRepository, queSetSvc baguwen.QuestionSetService) AdminService {
 	return &adminService{
-		repo: repo,
+		repo:      repo,
+		queSetSvc: queSetSvc,
 	}
 }

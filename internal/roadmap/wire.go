@@ -70,5 +70,6 @@ func NewConcurrentBizService(questionSvc baguwen.Service, questionSetSvc baguwen
 	return biz.NewConcurrentBizService(map[string]biz.Strategy{
 		domain.BizQuestion:    biz.NewQuestionStrategy(questionSvc),
 		domain.BizQuestionSet: biz.NewQuestionSetStrategy(questionSetSvc),
+		domain.BizTour:        biz.NewTourStrategy(),
 	})
 }

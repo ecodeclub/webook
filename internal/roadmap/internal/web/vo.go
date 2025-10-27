@@ -15,14 +15,16 @@
 package web
 
 import (
+	"encoding/json"
+
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/ecodeclub/webook/internal/roadmap/internal/domain"
 )
 
 type AddEdgeReq struct {
 	// roadmap 的 ID
-	Rid  int64
-	Edge Edge
+	Rid  int64 `json:"rid"`
+	Edge Edge  `json:"edge"`
 }
 
 type Page struct {
@@ -50,10 +52,8 @@ func newRoadmapWithBiz(r domain.Roadmap,
 	rm := newRoadmap(r)
 	rm.BizTitle = bizMap[r.Biz][r.BizId].Title
 	rm.Edges = slice.Map(r.Edges, func(idx int, edge domain.Edge) Edge {
-		src := newNode(edge.Src)
-		src.Title = bizMap[src.Biz][src.BizId].Title
-		dst := newNode(edge.Dst)
-		dst.Title = bizMap[dst.Biz][dst.BizId].Title
+		src := newNode(edge.Src, bizMap)
+		dst := newNode(edge.Dst, bizMap)
 		return Edge{
 			Id:    edge.Id,
 			Type:  edge.Type,
@@ -97,6 +97,14 @@ type Node struct {
 	Biz   string `json:"biz"`
 	Title string `json:"title"`
 }
+type LinkAttrs struct {
+	Url   string `json:"url"`
+	Title string `json:"title"`
+}
+type TextAttrs struct {
+	Content string `json:"content"`
+	Title   string `json:"title"`
+}
 
 func (n Node) toDomain() domain.Node {
 	return domain.Node{
@@ -110,16 +118,28 @@ func (n Node) toDomain() domain.Node {
 	}
 }
 
-func newNode(node domain.Node) Node {
-	return Node{
+func newNode(node domain.Node, bizMap map[string]map[int64]domain.Biz) Node {
+	n := Node{
 		ID:    node.ID,
 		Rid:   node.Rid,
 		Attrs: node.Attrs,
 		BizId: node.BizId,
-
 		Biz:   node.Biz.Biz,
 		Title: node.Title,
 	}
+	switch node.Biz.Biz {
+	case domain.BizLink:
+		var link LinkAttrs
+		_ = json.Unmarshal([]byte(node.Attrs), &link)
+		n.Title = link.Title
+	case domain.BizText:
+		var text TextAttrs
+		_ = json.Unmarshal([]byte(node.Attrs), &text)
+		n.Title = text.Title
+	case domain.BizQuestion, domain.BizQuestionSet:
+		n.Title = bizMap[node.Biz.Biz][node.BizId].Title
+	}
+	return n
 }
 
 type Edge struct {

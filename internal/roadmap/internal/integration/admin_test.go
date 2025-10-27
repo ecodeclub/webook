@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"sort"
 	"testing"
 	"time"
 
@@ -81,6 +82,23 @@ func (s *AdminHandlerTestSuite) SetupSuite() {
 				}
 			}), nil
 		}).AnyTimes()
+	mockQueSetSvc.EXPECT().Detail(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, id int64) (baguwen.QuestionSet, error) {
+		return baguwen.QuestionSet{
+			Id:    id,
+			Title: fmt.Sprintf("题集%d", id),
+			Questions: []baguwen.Question{
+				{
+					Id: 1,
+				},
+				{
+					Id: 2,
+				},
+				{
+					Id: 3,
+				},
+			},
+		}, nil
+	})
 
 	m := startup.InitModule(&baguwen.Module{
 		Svc:    mockQueSvc,
@@ -134,13 +152,42 @@ func (s *AdminHandlerTestSuite) TestSave() {
 				assert.Equal(t, dao.Roadmap{
 					Id:    1,
 					Title: "标题1",
-					Biz:   sqlx.NewNullString("test"),
+					Biz:   sqlx.NewNullString("questionSet"),
 					BizId: sqlx.NewNullInt64(123),
 				}, r)
+
+				nodes, err := s.dao.NodeList(ctx, 1)
+				require.NoError(t, err)
+				nodes = slice.Map(nodes, func(idx int, src dao.Node) dao.Node {
+					src.Id = 0
+					src.Ctime = 0
+					src.Utime = 0
+					return src
+				})
+				sort.Slice(nodes, func(i, j int) bool {
+					return nodes[i].RefId < nodes[j].RefId
+				})
+				assert.Equal(t, []dao.Node{
+					{
+						Biz:   domain.BizQuestion,
+						Rid:   1,
+						RefId: 1,
+					},
+					{
+						Biz:   domain.BizQuestion,
+						Rid:   1,
+						RefId: 2,
+					},
+					{
+						Biz:   domain.BizQuestion,
+						Rid:   1,
+						RefId: 3,
+					},
+				}, nodes)
 			},
 			req: web.Roadmap{
 				Title: "标题1",
-				Biz:   "test",
+				Biz:   "questionSet",
 				BizId: 123,
 			},
 			wantCode: 200,
@@ -551,6 +598,86 @@ func (s *AdminHandlerTestSuite) TestSaveEdge() {
 	}
 }
 
+func (s *AdminHandlerTestSuite) TestDelete() {
+	testCases := []struct {
+		name   string
+		before func(t *testing.T)
+		after  func(t *testing.T)
+
+		req      web.IdReq
+		wantCode int
+		wantResp test.Result[any]
+	}{
+		{
+			name: "删除成功，同时删除关联的Edge v1和Node",
+			before: func(t *testing.T) {
+				// 创建一个roadmap
+				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+				defer cancel()
+				err := s.db.WithContext(ctx).Create(&dao.Roadmap{
+					Id:    1,
+					Title: "Roadmap 1",
+					Biz:   sqlx.NewNullString("test"),
+					BizId: sqlx.NewNullInt64(123),
+				}).Error
+				require.NoError(t, err)
+
+				// 创建关联的节点
+				nodes := []dao.Node{
+					{Id: 1, Biz: "question", Rid: 1, RefId: 123, Attrs: "attributes1"},
+					{Id: 2, Biz: "case", Rid: 1, RefId: 456, Attrs: "attributes2"},
+				}
+				err = s.db.Create(&nodes).Error
+				require.NoError(t, err)
+
+				// 创建关联的边
+				edges := []dao.EdgeV1{
+					{Id: 1, Rid: 1, SrcNode: 1, DstNode: 2, Type: "default", Attrs: "edge attributes"},
+				}
+				err = s.db.Create(&edges).Error
+				require.NoError(t, err)
+			},
+			after: func(t *testing.T) {
+				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+				defer cancel()
+
+				// 验证roadmap已被删除
+				var roadmap dao.Roadmap
+				err := s.db.WithContext(ctx).Where("id = ?", 1).First(&roadmap).Error
+				assert.Equal(t, gorm.ErrRecordNotFound, err)
+
+				// 验证关联的节点已被删除
+				var node dao.Node
+				err = s.db.WithContext(ctx).Where("rid = ?", 1).First(&node).Error
+				assert.Equal(t, gorm.ErrRecordNotFound, err)
+
+				// 验证关联的边已被删除
+				var edge dao.EdgeV1
+				err = s.db.WithContext(ctx).Where("rid = ?", 1).First(&edge).Error
+				assert.Equal(t, gorm.ErrRecordNotFound, err)
+			},
+			req:      web.IdReq{Id: 1},
+			wantCode: 200,
+			wantResp: test.Result[any]{},
+		},
+	}
+
+	for _, tc := range testCases {
+		s.T().Run(tc.name, func(t *testing.T) {
+			tc.before(t)
+			req, err := http.NewRequest(http.MethodPost,
+				"/roadmap/delete", iox.NewJSONReader(tc.req))
+			req.Header.Set("content-type", "application/json")
+			require.NoError(t, err)
+			recorder := test.NewJSONResponseRecorder[any]()
+			s.server.ServeHTTP(recorder, req)
+			require.Equal(t, tc.wantCode, recorder.Code)
+			assert.Equal(t, tc.wantResp, recorder.MustScan())
+			tc.after(t)
+		})
+	}
+}
+
 func (s *AdminHandlerTestSuite) TestDeleteEdge() {
 	testCases := []struct {
 		name   string
@@ -781,7 +908,7 @@ func (s *AdminHandlerTestSuite) TestNodeList() {
 				Data: []web.Node{
 					{ID: 3, Biz: "common", Rid: 0, BizId: 789, Attrs: "attributes3"},
 					{ID: 2, Biz: "case", Rid: 1, BizId: 456, Attrs: "attributes2"},
-					{ID: 1, Biz: "question", Rid: 1, BizId: 123, Attrs: "attributes1"},
+					{ID: 1, Biz: "question", Rid: 1, BizId: 123, Title: "题目123", Attrs: "attributes1"},
 				},
 			},
 		},

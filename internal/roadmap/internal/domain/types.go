@@ -40,7 +40,8 @@ func (r Roadmap) Bizs() ([]string, []int64) {
 }
 
 type Node struct {
-	ID int64
+	ID    int64
+	Title string
 	Biz
 	Rid   int64
 	Attrs string
@@ -63,4 +64,7 @@ type Biz struct {
 const (
 	BizQuestion    = "question"
 	BizQuestionSet = "questionSet"
+	BizTour        = "tourGuide"
+	BizText        = "text"
+	BizLink        = "link"
 )

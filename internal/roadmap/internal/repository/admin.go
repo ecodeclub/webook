@@ -33,10 +33,12 @@ type AdminRepository interface {
 	Save(ctx context.Context, r domain.Roadmap) (int64, error)
 	List(ctx context.Context, offset int, limit int) ([]domain.Roadmap, error)
 	GetById(ctx context.Context, id int64) (domain.Roadmap, error)
+	Delete(ctx context.Context, id int64) error
 
 	AddEdge(ctx context.Context, rid int64, edge domain.Edge) error
 	DeleteEdge(ctx context.Context, id int64) error
 	SanitizeData()
+	SaveNodes(ctx context.Context, nodes []domain.Node) error
 
 	SaveNode(ctx context.Context, node domain.Node) (int64, error)
 	DeleteNode(ctx context.Context, id int64) error
@@ -52,6 +54,16 @@ type CachedAdminRepository struct {
 	converter
 	dao    dao.AdminDAO
 	logger *elog.Component
+}
+
+func (repo *CachedAdminRepository) SaveNodes(ctx context.Context, nodes []domain.Node) error {
+	return repo.dao.SaveNodes(ctx, slice.Map(nodes, func(idx int, src domain.Node) dao.Node {
+		return repo.toEntityNode(src)
+	}))
+}
+
+func (repo *CachedAdminRepository) Delete(ctx context.Context, id int64) error {
+	return repo.dao.Delete(ctx, id)
 }
 
 func (repo *CachedAdminRepository) SanitizeData() {
@@ -175,7 +187,8 @@ func (repo *CachedAdminRepository) SaveEdgeV1(ctx context.Context, rid int64, ed
 }
 
 func (repo *CachedAdminRepository) DeleteEdgeV1(ctx context.Context, id int64) error {
-	return repo.dao.DeleteEdge(ctx, id)
+
+	return repo.dao.DeleteEdgeV1(ctx, id)
 }
 
 func (repo *CachedAdminRepository) DeleteEdge(ctx context.Context, id int64) error {

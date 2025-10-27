@@ -2,7 +2,7 @@ package biz
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"sync"
 
 	"github.com/ecodeclub/ekit/mapx"
@@ -49,7 +49,7 @@ func (svc *ConcurrentBizService) GetBizs(ctx context.Context, bizs []string, ids
 				res[key] = bizMap
 				lock.Unlock()
 			}
-			return err
+			return nil
 		})
 	}
 	err := eg.Wait()
@@ -62,7 +62,7 @@ func (svc *ConcurrentBizService) GetBizsByIds(ctx context.Context, biz string, i
 	// 后续可以重构为策略模式
 	strategy, ok := svc.BizStrategyMap[biz]
 	if !ok {
-		return nil, fmt.Errorf("不支持的 Biz: %s", biz)
+		return nil, errors.New("biz not exist")
 	}
 	return strategy.GetBizsByIds(ctx, ids)
 }
