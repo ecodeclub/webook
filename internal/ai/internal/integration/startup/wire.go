@@ -5,7 +5,10 @@ package startup
 import (
 	"sync"
 
+	chatv1 "github.com/ecodeclub/webook/api/proto/gen/chat/v1"
 	"github.com/ecodeclub/webook/internal/ai/internal/event"
+	"github.com/ecodeclub/webook/ioc"
+	"github.com/gotomicro/ego/core/econf"
 
 	"github.com/ecodeclub/webook/internal/ai/internal/service/llm/knowledge_base/zhipu"
 
@@ -63,6 +66,10 @@ func InitModule(db *egorm.Component,
 		service.NewConfigService,
 		web.NewHandler,
 		web.NewAdminHandler,
+
+		InitGRPCClient,
+		web.NewMockInterviewHandler,
+
 		wire.Struct(new(ai.Module), "*"),
 		wire.FieldsOf(new(*credit.Module), "Svc"),
 	)
@@ -101,4 +108,13 @@ func InitTableOnce(db *gorm.DB) {
 func InitLLMCreditLogDAO(db *egorm.Component) dao.LLMCreditDAO {
 	InitTableOnce(db)
 	return dao.NewLLMCreditLogDAO(db)
+}
+
+func InitGRPCClient() chatv1.ServiceClient {
+	econf.Set("grpc.aiGateway.addr", "localhost:9090")
+	client, err := ioc.InitGrpcClient()
+	if err != nil {
+		panic(err)
+	}
+	return client
 }
