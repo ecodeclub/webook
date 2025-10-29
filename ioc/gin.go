@@ -69,7 +69,7 @@ import (
 func initGinxServer(sp session.Provider,
 	checkMembershipMiddleware *middleware.CheckMembershipMiddlewareBuilder,
 	localActiveLimiterMiddleware *locallimit.LocalActiveLimit,
-	// 这个暂时用不上
+// 这个暂时用不上
 	checkPermissionMiddleware *middleware.CheckPermissionMiddlewareBuilder,
 	qh *baguwen.Handler,
 	examineHdl *baguwen.ExamineHandler,
@@ -95,6 +95,7 @@ func initGinxServer(sp session.Provider,
 	resumePrjHdl *resume.ProjectHandler,
 	resumeAnaHdl *resume.AnalysisHandler,
 	aiHdl *ai.LLMHandler,
+	mockInterviewHdl *ai.MockInterviewHandler,
 	reviewHdl *review.Hdl,
 	commentHdl *comment.Handler,
 	materialHdl *material.Handler,
@@ -149,6 +150,7 @@ func initGinxServer(sp session.Provider,
 	// 登录校验
 	res.Use(session.CheckLoginMiddleware())
 	user.PrivateRoutes(res.Engine)
+	mockInterviewHdl.PrivateRoutes(res.Engine)
 	cosHdl.PrivateRoutes(res.Engine)
 	pHdl.PrivateRoutes(res.Engine)
 	orderHdl.PrivateRoutes(res.Engine)

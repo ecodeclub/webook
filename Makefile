@@ -41,3 +41,10 @@ e2e_down:
 mock:
 	@mockgen -destination=internal/test/mocks/session_provider.mock.go -package=mocks -typed=true github.com/ecodeclub/ginx/session Provider
 	@mockgen -destination=internal/test/mocks/session.mock.go -package=mocks -typed=true github.com/ecodeclub/ginx/session Session
+
+# 生成gRPC相关文件
+.PHONY: grpc
+grpc:
+	@buf format -w api/proto
+	@buf lint api/proto
+	@buf generate api/proto

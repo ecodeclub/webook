@@ -1,0 +1,147 @@
+// Copyright 2025 ecodeclub
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+package chat.v1;
+
+option go_package = "v1/chat;chatv1";
+
+message StreamRequest {
+  string sn = 1;
+  Message msg = 2;
+  int64 invocation_config_id = 3;
+  int64 uid = 4;
+  string key = 5;
+  string previous_response_id = 6;
+}
+
+message StreamResponse {
+  bool final = 1;
+  string reasoning_content = 2;
+  string content = 3;
+  string err = 4;
+  string id = 5;
+}
+
+service Service {
+  // 这部分是增删改查
+  rpc List(ListRequest) returns (ListResponse);
+  rpc Detail(DetailRequest) returns (DetailResponse);
+  // 会更新传入过来的字段，没有传递的字段将会被忽略
+  // 如果没有对应的 SN，则会执行创建的语义
+  rpc Save(SaveRequest) returns (SaveResponse);
+  // 这部分是真的发起会话
+  // Stream 是采用流式接口发起一轮对话
+  rpc Stream(StreamRequest) returns (stream StreamResponse);
+
+  rpc StreamV1(StreamV1Request) returns (stream StreamV1Response);
+}
+
+message StreamV1Request {
+  string chat_sn = 1;
+  // 这必然是用户的输入
+  UserInput input = 2;
+  // 对应的配置的 ID
+  int64 invocation_config_id = 3;
+  int64 uid = 4;
+  string key = 5;
+}
+
+message StreamV1Response {
+  // 这边采用
+  oneof event {
+    Delta delta = 1;
+    Attachments attachments = 2;
+    Error error = 3;
+    // 执行到了什么步骤的信息
+    StepUpdate step_update = 4;
+    Usage usage = 5;
+  }
+}
+
+message Usage {
+  int64 input_tokens = 1;
+  int64 output_tokens = 2;
+  int64 total_tokens = 3;
+}
+
+message UserInput {
+  // 文本输入
+  string content = 1;
+  // 音频文件 URL（会转写为文本并追加到 content 后）
+  string audio_url = 2;
+  // 其他附件
+  repeated string files = 3;
+}
+
+// Error 后续要考虑引入错误码？
+message Error {
+  // 错误信息
+  string message = 1;
+}
+
+message StepUpdate {
+  string name = 1;
+  string summary = 2;
+}
+
+message Attachments {
+  map<string, string> entries = 1;
+}
+
+message Delta {
+  string content = 1;
+}
+
+message SaveRequest {
+  Chat chat = 1;
+}
+
+message SaveResponse {
+  string sn = 1;
+}
+
+// 目前来说，我们认为聊天的上下文不会很长，所以不需要分页接口
+message DetailRequest {
+  string sn = 1;
+}
+
+message DetailResponse {
+  Chat chat = 1;
+}
+
+message Chat {
+  string sn = 1;
+  int64 uid = 2;
+  string title = 3;
+  repeated Message msgs = 4;
+  int64 ctime = 5;
+}
+
+message ListRequest {
+  int64 uid = 1;
+  int64 offset = 2;
+  int64 limit = 3;
+}
+
+message ListResponse {
+  repeated Chat chats = 1;
+}
+
+message Message {
+  int64 id = 1;
+  string role = 2;
+  string content = 3;
+  string reasoning_content = 4;
+}
