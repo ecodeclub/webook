@@ -10,31 +10,32 @@ import (
 	"sync"
 
 	baguwen "github.com/ecodeclub/webook/internal/question"
+	"github.com/ecodeclub/webook/internal/roadmap/internal/domain"
 	"github.com/ecodeclub/webook/internal/roadmap/internal/repository"
 	"github.com/ecodeclub/webook/internal/roadmap/internal/repository/dao"
 	"github.com/ecodeclub/webook/internal/roadmap/internal/service"
+	"github.com/ecodeclub/webook/internal/roadmap/internal/service/biz"
 	"github.com/ecodeclub/webook/internal/roadmap/internal/web"
 	"github.com/ego-component/egorm"
-	"gorm.io/gorm"
 )
 
 // Injectors from wire.go:
 
-func InitModule(db *gorm.DB, queModule *baguwen.Module) *Module {
+func InitModule(db *egorm.Component, queModule *baguwen.Module) *Module {
 	daoAdminDAO := initAdminDAO(db)
 	adminRepository := repository.NewCachedAdminRepository(daoAdminDAO)
-	adminService := service.NewAdminService(adminRepository)
-	serviceService := queModule.Svc
-	questionSetService := queModule.SetSvc
-	bizService := service.NewConcurrentBizService(serviceService, questionSetService)
-	adminHandler := web.NewAdminHandler(adminService, bizService)
+	v := queModule.SetSvc
+	adminService := service.NewAdminService(adminRepository, v)
+	v2 := queModule.Svc
+	bizService := NewConcurrentBizService(v2, v)
+	v3 := web.NewAdminHandler(adminService, bizService)
 	roadmapDAO := dao.NewGORMRoadmapDAO(db)
 	repositoryRepository := repository.NewCachedRepository(roadmapDAO)
-	service2 := service.NewService(repositoryRepository)
-	handler := web.NewHandler(service2, bizService)
+	serviceService := service.NewService(repositoryRepository)
+	v4 := web.NewHandler(serviceService, bizService)
 	module := &Module{
-		AdminHdl: adminHandler,
-		Hdl:      handler,
+		AdminHdl: v3,
+		Hdl:      v4,
 	}
 	return module
 }
@@ -55,4 +56,8 @@ func initAdminDAO(db *egorm.Component) dao.AdminDAO {
 		adminDAO = dao.NewGORMAdminDAO(db)
 	})
 	return adminDAO
+}
+
+func NewConcurrentBizService(questionSvc baguwen.Service, questionSetSvc baguwen.QuestionSetService) biz.Service {
+	return biz.NewConcurrentBizService(map[string]biz.Strategy{domain.BizQuestion: biz.NewQuestionStrategy(questionSvc), domain.BizQuestionSet: biz.NewQuestionSetStrategy(questionSetSvc), domain.BizTour: biz.NewTourStrategy()})
 }

@@ -95,6 +95,7 @@ func initGinxServer(sp session.Provider,
 	resumePrjHdl *resume.ProjectHandler,
 	resumeAnaHdl *resume.AnalysisHandler,
 	aiHdl *ai.LLMHandler,
+	mockInterviewHdl *ai.MockInterviewHandler,
 	reviewHdl *review.Hdl,
 	commentHdl *comment.Handler,
 	materialHdl *material.Handler,
@@ -145,10 +146,12 @@ func initGinxServer(sp session.Provider,
 	prjHdl.PublicRoutes(res.Engine)
 	reviewHdl.PublicRoutes(res.Engine)
 	lhdl.PublicRoutes(res.Engine)
+	pHdl.PublicRoutes(res.Engine)
 
 	// 登录校验
 	res.Use(session.CheckLoginMiddleware())
 	user.PrivateRoutes(res.Engine)
+	mockInterviewHdl.PrivateRoutes(res.Engine)
 	cosHdl.PrivateRoutes(res.Engine)
 	pHdl.PrivateRoutes(res.Engine)
 	pHdl.PublicRoutes(res.Engine)

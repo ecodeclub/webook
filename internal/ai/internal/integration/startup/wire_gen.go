@@ -9,6 +9,7 @@ package startup
 import (
 	"sync"
 
+	chatv1 "github.com/ecodeclub/webook/api/proto/gen/chat/v1"
 	"github.com/ecodeclub/webook/internal/ai"
 	"github.com/ecodeclub/webook/internal/ai/internal/event"
 	"github.com/ecodeclub/webook/internal/ai/internal/repository"
@@ -26,7 +27,9 @@ import (
 	"github.com/ecodeclub/webook/internal/ai/internal/service/llm/knowledge_base/zhipu"
 	"github.com/ecodeclub/webook/internal/ai/internal/web"
 	"github.com/ecodeclub/webook/internal/credit"
+	"github.com/ecodeclub/webook/ioc"
 	"github.com/ego-component/egorm"
+	"github.com/gotomicro/ego/core/econf"
 	"gorm.io/gorm"
 )
 
@@ -53,11 +56,14 @@ func InitModule(db *gorm.DB, hdl *hdlmocks.MockHandler, streamHandler *hdlmocks2
 	webHandler := web.NewHandler(generalService, jdService)
 	configService := service.NewConfigService(configRepository)
 	adminHandler := web.NewAdminHandler(configService)
+	serviceClient := InitGRPCClient()
+	mockInterviewHandler := web.NewMockInterviewHandler(serviceClient)
 	module := &ai.Module{
 		Svc:              llmService,
 		KnowledgeBaseSvc: baseSvc,
 		Hdl:              webHandler,
 		AdminHandler:     adminHandler,
+		MockInterviewHdl: mockInterviewHandler,
 		C:                consumer,
 	}
 	return module, nil
@@ -98,4 +104,13 @@ func InitTableOnce(db *gorm.DB) {
 func InitLLMCreditLogDAO(db *egorm.Component) dao.LLMCreditDAO {
 	InitTableOnce(db)
 	return dao.NewLLMCreditLogDAO(db)
+}
+
+func InitGRPCClient() chatv1.ServiceClient {
+	econf.Set("grpc.aiGateway.addr", "localhost:9090")
+	client, err := ioc.InitGrpcClient()
+	if err != nil {
+		panic(err)
+	}
+	return client
 }

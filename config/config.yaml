@@ -86,6 +86,10 @@ email:
    accessSecret: ""
    accountName: ""  #就是发送的email
 
+grpc:
+  aiGateway:
+    addr: "your grpc server addr"  # ai-gateway-go 的 gRPC 服务地址
+
 pdf:
   endpoint: ""
 
