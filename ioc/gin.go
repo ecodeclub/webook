@@ -69,7 +69,7 @@ import (
 func initGinxServer(sp session.Provider,
 	checkMembershipMiddleware *middleware.CheckMembershipMiddlewareBuilder,
 	localActiveLimiterMiddleware *locallimit.LocalActiveLimit,
-// 这个暂时用不上
+	// 这个暂时用不上
 	checkPermissionMiddleware *middleware.CheckPermissionMiddlewareBuilder,
 	qh *baguwen.Handler,
 	examineHdl *baguwen.ExamineHandler,
