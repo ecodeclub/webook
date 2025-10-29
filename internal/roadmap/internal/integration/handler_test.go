@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"net/http"
 	"testing"
-	"time"
 
 	"github.com/ecodeclub/ekit/iox"
 	"github.com/ecodeclub/ekit/slice"
@@ -94,29 +93,42 @@ func (s *HandlerTestSuite) TearDownTest() {
 	require.NoError(s.T(), err)
 	err = s.db.Exec("TRUNCATE TABLE roadmap_edges").Error
 	require.NoError(s.T(), err)
+	err = s.db.Exec("TRUNCATE TABLE roadmap_nodes").Error
+	require.NoError(s.T(), err)
+	err = s.db.Exec("TRUNCATE TABLE roadmap_edges_v1").Error
+	require.NoError(s.T(), err)
 }
 
 func (s *HandlerTestSuite) TestDetail() {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
-	db := s.db.WithContext(ctx)
-	// 插入数据的
-	err := db.Create(&dao.Roadmap{
+	t := s.T()
+	// 创建roadmap
+	err := s.db.Create(&dao.Roadmap{
 		Id:    1,
-		Title: "标题1",
-		Biz:   sqlx.NewNullString(domain.BizQuestion),
+		Title: "Roadmap 1",
+		Biz:   sqlx.NewNullString("question"),
 		BizId: sqlx.NewNullInt64(123),
 		Ctime: 222,
 		Utime: 222,
 	}).Error
-	require.NoError(s.T(), err)
-	edges := []dao.Edge{
-		{Id: 1, Rid: 1, SrcBiz: domain.BizQuestionSet, SrcId: 1, DstBiz: domain.BizQuestion, DstId: 2},
-		{Id: 2, Rid: 1, SrcBiz: domain.BizQuestion, SrcId: 2, DstBiz: domain.BizQuestionSet, DstId: 3},
-		{Id: 3, Rid: 2, SrcBiz: domain.BizQuestion, SrcId: 2, DstBiz: domain.BizQuestionSet, DstId: 3},
+	require.NoError(t, err)
+
+	// 创建三个节点
+	nodes := []dao.Node{
+		{Id: 1, Biz: "question", Rid: 1, RefId: 123, Attrs: "attributes1"},
+		{Id: 2, Biz: "questionSet", Rid: 1, RefId: 456, Attrs: "attributes2"},
+		{Id: 3, Biz: "questionSet", Rid: 1, RefId: 789, Attrs: "attributes3"},
 	}
-	err = db.Create(&edges).Error
-	require.NoError(s.T(), err)
+	err = s.db.Create(&nodes).Error
+	require.NoError(t, err)
+
+	// 创建三条边
+	edges := []dao.EdgeV1{
+		{Id: 1, Rid: 1, SrcNode: 1, DstNode: 3, Type: "default", Attrs: "edge attributes 1"},
+		{Id: 2, Rid: 1, SrcNode: 3, DstNode: 2, Type: "default", Attrs: "edge attributes 2"},
+		{Id: 3, Rid: 2, SrcNode: 3, DstNode: 2, Type: "default", Attrs: "edge attributes 3"},
+	}
+	err = s.db.Create(&edges).Error
+	require.NoError(t, err)
 
 	testCases := []struct {
 		name string
@@ -132,37 +144,53 @@ func (s *HandlerTestSuite) TestDetail() {
 			wantResp: test.Result[web.Roadmap]{
 				Data: web.Roadmap{
 					Id:       1,
-					Title:    "标题1",
-					Biz:      domain.BizQuestion,
+					Title:    "Roadmap 1",
+					Biz:      "question",
 					BizId:    123,
 					BizTitle: "题目123",
 					Utime:    222,
 					Edges: []web.Edge{
 						{
-							Id: 1,
-							Src: web.Node{
-								Biz:   domain.BizQuestionSet,
-								BizId: 1,
-								Title: "题集1",
-							},
-							Dst: web.Node{
-								Biz:   domain.BizQuestion,
-								BizId: 2,
-								Title: "题目2",
-							},
-						},
-						{
 							Id: 2,
 							Src: web.Node{
-								BizId: 2,
-								Biz:   domain.BizQuestion,
-								Title: "题目2",
+								ID:    3,
+								Biz:   "questionSet",
+								BizId: 789,
+								Rid:   1,
+								Attrs: "attributes3",
+								Title: "题集789",
 							},
 							Dst: web.Node{
-								BizId: 3,
-								Biz:   domain.BizQuestionSet,
-								Title: "题集3",
+								ID:    2,
+								Biz:   "questionSet",
+								BizId: 456,
+								Rid:   1,
+								Attrs: "attributes2",
+								Title: "题集456",
 							},
+							Type:  "default",
+							Attrs: "edge attributes 2",
+						},
+						{
+							Id: 1,
+							Src: web.Node{
+								ID:    1,
+								Biz:   "question",
+								BizId: 123,
+								Rid:   1,
+								Attrs: "attributes1",
+								Title: "题目123",
+							},
+							Dst: web.Node{
+								ID:    3,
+								Biz:   "questionSet",
+								BizId: 789,
+								Rid:   1,
+								Attrs: "attributes3",
+								Title: "题集789",
+							},
+							Type:  "default",
+							Attrs: "edge attributes 1",
 						},
 					},
 				},
@@ -179,7 +207,8 @@ func (s *HandlerTestSuite) TestDetail() {
 			recorder := test.NewJSONResponseRecorder[web.Roadmap]()
 			s.server.ServeHTTP(recorder, req)
 			require.Equal(t, tc.wantCode, recorder.Code)
-			assert.Equal(t, tc.wantResp, recorder.MustScan())
+			data := recorder.MustScan()
+			assert.Equal(t, tc.wantResp, data)
 		})
 	}
 }

@@ -34,22 +34,35 @@ func (converter) toDomain(r dao.Roadmap) domain.Roadmap {
 	}
 }
 
-func (converter) edgesToDomain(edges []dao.Edge) []domain.Edge {
-	return slice.Map(edges, func(idx int, edge dao.Edge) domain.Edge {
+func (c converter) edgesToDomain(edges []dao.EdgeV1, nodeMap map[int64]dao.Node) []domain.Edge {
+	return slice.Map(edges, func(idx int, edge dao.EdgeV1) domain.Edge {
+		var srcNode, dstNode domain.Node
+		daoSrcNode, ok := nodeMap[edge.SrcNode]
+		if ok {
+			srcNode = c.nodeToDomain(daoSrcNode)
+		}
+		daoDstNode, ok := nodeMap[edge.DstNode]
+		if ok {
+			dstNode = c.nodeToDomain(daoDstNode)
+		}
 		return domain.Edge{
-			Id: edge.Id,
-			Src: domain.Node{
-				Biz: domain.Biz{
-					BizId: edge.SrcId,
-					Biz:   edge.SrcBiz,
-				},
-			},
-			Dst: domain.Node{
-				Biz: domain.Biz{
-					BizId: edge.DstId,
-					Biz:   edge.DstBiz,
-				},
-			},
+			Id:    edge.Id,
+			Type:  edge.Type,
+			Attrs: edge.Attrs,
+			Src:   srcNode,
+			Dst:   dstNode,
 		}
 	})
+}
+
+func (converter) nodeToDomain(daoNode dao.Node) domain.Node {
+	return domain.Node{
+		ID:    daoNode.Id,
+		Rid:   daoNode.Rid,
+		Attrs: daoNode.Attrs,
+		Biz: domain.Biz{
+			Biz:   daoNode.Biz,
+			BizId: daoNode.RefId,
+		},
+	}
 }
