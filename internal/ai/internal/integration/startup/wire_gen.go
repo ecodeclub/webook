@@ -57,7 +57,10 @@ func InitModule(db *gorm.DB, hdl *hdlmocks.MockHandler, streamHandler *hdlmocks2
 	configService := service.NewConfigService(configRepository)
 	adminHandler := web.NewAdminHandler(configService)
 	serviceClient := InitGRPCClient()
-	mockInterviewHandler := web.NewMockInterviewHandler(serviceClient)
+	mockInterviewDAO := dao.NewMockInterviewDAO(db)
+	mockInterviewRepository := repository.NewMockInterviewRepository(mockInterviewDAO)
+	mockInterviewService := service.NewMockInterviewService(mockInterviewRepository)
+	mockInterviewHandler := web.NewMockInterviewHandler(serviceClient, mockInterviewService)
 	module := &ai.Module{
 		Svc:              llmService,
 		KnowledgeBaseSvc: baseSvc,

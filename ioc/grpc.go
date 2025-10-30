@@ -16,7 +16,6 @@ package ioc
 
 import (
 	"fmt"
-	"log"
 
 	chatv1 "github.com/ecodeclub/webook/api/proto/gen/chat/v1"
 	"github.com/gotomicro/ego/core/econf"
@@ -33,7 +32,6 @@ func InitGrpcClient() (chatv1.ServiceClient, error) {
 	if err != nil {
 		return nil, fmt.Errorf("读取 grpc.aiGateway 配置失败: %w", err)
 	}
-	log.Printf("grpc.aiGateway addr: %s\n", cfg.Addr)
 	conn, err := grpc.NewClient(cfg.Addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, fmt.Errorf("连接 grpc 服务失败: %w", err)

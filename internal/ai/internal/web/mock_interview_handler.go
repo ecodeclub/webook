@@ -25,6 +25,7 @@ import (
 	"github.com/ecodeclub/ginx"
 	"github.com/ecodeclub/ginx/session"
 	chatv1 "github.com/ecodeclub/webook/api/proto/gen/chat/v1"
+	"github.com/ecodeclub/webook/internal/ai/internal/service"
 	"github.com/gin-gonic/gin"
 	"github.com/gotomicro/ego/core/econf"
 	"github.com/gotomicro/ego/core/elog"
@@ -35,12 +36,14 @@ var _ ginx.Handler = &MockInterviewHandler{}
 
 type MockInterviewHandler struct {
 	client chatv1.ServiceClient
+	svc    service.MockInterviewService
 	logger *elog.Component
 }
 
-func NewMockInterviewHandler(client chatv1.ServiceClient) *MockInterviewHandler {
+func NewMockInterviewHandler(client chatv1.ServiceClient, svc service.MockInterviewService) *MockInterviewHandler {
 	return &MockInterviewHandler{
 		client: client,
+		svc:    svc,
 		logger: elog.DefaultLogger.With(elog.FieldComponent("MockInterviewHandler")),
 	}
 }
