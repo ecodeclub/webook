@@ -55,7 +55,10 @@ func InitModule(db *gorm.DB, creditSvc *credit.Module, q mq.MQ, grpcClient chatv
 	webHandler := web.NewHandler(generalService, jdService)
 	configService := service.NewConfigService(configRepository)
 	adminHandler := web.NewAdminHandler(configService)
-	mockInterviewHandler := web.NewMockInterviewHandler(grpcClient)
+	mockInterviewDAO := dao.NewMockInterviewDAO(db)
+	mockInterviewRepository := repository.NewMockInterviewRepository(mockInterviewDAO)
+	mockInterviewService := service.NewMockInterviewService(mockInterviewRepository)
+	mockInterviewHandler := web.NewMockInterviewHandler(grpcClient, mockInterviewService)
 	knowledgeBaseConsumer := initKnowledgeConsumer(repositoryBaseSvc, q)
 	module := &Module{
 		Svc:              llmService,
