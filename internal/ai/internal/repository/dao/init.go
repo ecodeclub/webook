@@ -8,5 +8,7 @@ func InitTables(db *egorm.Component) error {
 		&LLMRecord{},
 		&BizConfig{},
 		&KnowledgeBaseFile{},
+		&MockInterview{},
+		&MockInterviewQuestion{},
 	)
 }

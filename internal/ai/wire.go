@@ -35,10 +35,12 @@ func InitModule(db *egorm.Component, creditSvc *credit.Module, q mq.MQ, grpcClie
 		repository.NewLLMLogRepo,
 		repository.NewLLMCreditLogRepo,
 		repository.NewCachedConfigRepository,
+		repository.NewMockInterviewRepository,
 
 		InitLLMCreditLogDAO,
 		dao.NewGORMLLMLogDAO,
 		dao.NewGORMConfigDAO,
+		dao.NewMockInterviewDAO,
 
 		InitZhipuKnowledgeBase,
 		dao.NewKnowledgeBaseDAO,
@@ -56,6 +58,7 @@ func InitModule(db *egorm.Component, creditSvc *credit.Module, q mq.MQ, grpcClie
 		service.NewGeneralService,
 		service.NewJDService,
 		service.NewConfigService,
+		service.NewMockInterviewService,
 		web.NewHandler,
 		web.NewAdminHandler,
 		web.NewMockInterviewHandler,
