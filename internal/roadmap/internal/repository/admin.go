@@ -31,7 +31,7 @@ import (
 
 type AdminRepository interface {
 	Save(ctx context.Context, r domain.Roadmap) (int64, error)
-	List(ctx context.Context, offset int, limit int) ([]domain.Roadmap, error)
+	List(ctx context.Context, offset int, limit int) (int64, []domain.Roadmap, error)
 	GetById(ctx context.Context, id int64) (domain.Roadmap, error)
 	Delete(ctx context.Context, id int64) error
 
@@ -232,9 +232,9 @@ func (repo *CachedAdminRepository) GetById(ctx context.Context, id int64) (domai
 	return res, nil
 }
 
-func (repo *CachedAdminRepository) List(ctx context.Context, offset int, limit int) ([]domain.Roadmap, error) {
-	rs, err := repo.dao.List(ctx, offset, limit)
-	return slice.Map(rs, func(idx int, src dao.Roadmap) domain.Roadmap {
+func (repo *CachedAdminRepository) List(ctx context.Context, offset int, limit int) (int64, []domain.Roadmap, error) {
+	count, rs, err := repo.dao.List(ctx, offset, limit)
+	return count, slice.Map(rs, func(idx int, src dao.Roadmap) domain.Roadmap {
 		return repo.toDomain(src)
 	}), err
 }
@@ -247,7 +247,7 @@ func (repo *CachedAdminRepository) toEntity(r domain.Roadmap) dao.Roadmap {
 	return dao.Roadmap{
 		Id:    r.Id,
 		Title: r.Title,
-		Biz:   sqlx.NewNullString(r.Biz),
+		Biz:   sqlx.NewNullString(r.Biz.Biz),
 		BizId: sqlx.NewNullInt64(r.BizId),
 	}
 }
