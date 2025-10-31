@@ -112,14 +112,14 @@ func (h *AdminHandler) Save(ctx *ginx.Context, req Roadmap) (ginx.Result, error)
 }
 
 func (h *AdminHandler) List(ctx *ginx.Context, req Page) (ginx.Result, error) {
-	rs, err := h.svc.List(ctx, req.Offset, req.Limit)
+	count, rs, err := h.svc.List(ctx, req.Offset, req.Limit)
 	if err != nil {
 		return systemErrorResult, err
 	}
 	bizs := make([]string, 0, len(rs))
 	bizIds := make([]int64, 0, len(rs))
 	for _, r := range rs {
-		bizs = append(bizs, r.Biz)
+		bizs = append(bizs, r.Biz.Biz)
 		bizIds = append(bizIds, r.BizId)
 	}
 	// 获取 biz 对应的信息
@@ -129,10 +129,10 @@ func (h *AdminHandler) List(ctx *ginx.Context, req Page) (ginx.Result, error) {
 	}
 	return ginx.Result{
 		Data: RoadmapListResp{
-			Total: len(rs),
+			Total: int(count),
 			Maps: slice.Map(rs, func(idx int, src domain.Roadmap) Roadmap {
 				res := newRoadmap(src)
-				res.BizTitle = bizsMap[src.Biz][src.BizId].Title
+				res.BizTitle = bizsMap[src.Biz.Biz][src.BizId].Title
 				return res
 			}),
 		},

@@ -50,7 +50,7 @@ type Roadmap struct {
 func newRoadmapWithBiz(r domain.Roadmap,
 	bizMap map[string]map[int64]domain.Biz) Roadmap {
 	rm := newRoadmap(r)
-	rm.BizTitle = bizMap[r.Biz][r.BizId].Title
+	rm.BizTitle = bizMap[r.Biz.Biz][r.BizId].Title
 	rm.Edges = slice.Map(r.Edges, func(idx int, edge domain.Edge) Edge {
 		src := newNode(edge.Src, bizMap)
 		dst := newNode(edge.Dst, bizMap)
@@ -69,7 +69,7 @@ func newRoadmap(r domain.Roadmap) Roadmap {
 	return Roadmap{
 		Id:    r.Id,
 		Title: r.Title,
-		Biz:   r.Biz,
+		Biz:   r.Biz.Biz,
 		BizId: r.BizId,
 		Utime: r.Utime,
 	}
@@ -79,8 +79,10 @@ func (r Roadmap) toDomain() domain.Roadmap {
 	return domain.Roadmap{
 		Id:    r.Id,
 		Title: r.Title,
-		Biz:   r.Biz,
-		BizId: r.BizId,
+		Biz: domain.Biz{
+			BizId: r.BizId,
+			Biz:   r.Biz,
+		},
 		Utime: r.Utime,
 	}
 }

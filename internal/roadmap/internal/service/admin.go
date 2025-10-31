@@ -27,7 +27,7 @@ import (
 type AdminService interface {
 	Detail(ctx context.Context, id int64) (domain.Roadmap, error)
 	Save(ctx context.Context, r domain.Roadmap) (int64, error)
-	List(ctx context.Context, offset int, limit int) ([]domain.Roadmap, error)
+	List(ctx context.Context, offset int, limit int) (int64, []domain.Roadmap, error)
 	Delete(ctx context.Context, id int64) error
 
 	SanitizeData()
@@ -78,7 +78,7 @@ func (svc *adminService) Detail(ctx context.Context, id int64) (domain.Roadmap, 
 	return svc.repo.GetById(ctx, id)
 }
 
-func (svc *adminService) List(ctx context.Context, offset int, limit int) ([]domain.Roadmap, error) {
+func (svc *adminService) List(ctx context.Context, offset int, limit int) (int64, []domain.Roadmap, error) {
 	return svc.repo.List(ctx, offset, limit)
 }
 
@@ -88,7 +88,7 @@ func (svc *adminService) Save(ctx context.Context, r domain.Roadmap) (int64, err
 		return 0, err
 	}
 	// 新增并且路线图是题集的，新建题目节点
-	if r.Biz == domain.BizQuestionSet && r.Id == 0 {
+	if r.Biz.Biz == domain.BizQuestionSet && r.Id == 0 {
 		qs, err := svc.queSetSvc.Detail(ctx, r.BizId)
 		if err != nil {
 			return 0, err

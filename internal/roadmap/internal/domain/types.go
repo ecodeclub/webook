@@ -17,10 +17,7 @@ package domain
 type Roadmap struct {
 	Id    int64
 	Title string
-
-	Biz   string
-	BizId int64
-
+	Biz
 	Edges []Edge
 	Utime int64
 }
@@ -34,7 +31,7 @@ func (r Roadmap) Bizs() ([]string, []int64) {
 		bizIds = append(bizIds, edge.Src.BizId, edge.Dst.BizId)
 	}
 	// 加上本身的
-	bizs = append(bizs, r.Biz)
+	bizs = append(bizs, r.Biz.Biz)
 	bizIds = append(bizIds, r.BizId)
 	return bizs, bizIds
 }

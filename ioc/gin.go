@@ -129,7 +129,6 @@ func initGinxServer(sp session.Provider,
 
 	// 微信支付的回调不需要安全校验机制
 	paymentHdl.PublicRoutes(res.Engine)
-
 	// 虽然叫做 NonSense，但是我还是得告诉你，这是一个安全校验机制
 	// 但是我并不能在开源里面放出来，因为知道了如何校验，就知道了如何破解
 	// 虽然理论上可以用 plugin 机制，但是 plugin 机制比较容易遇到不兼容的问题
