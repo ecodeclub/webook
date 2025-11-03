@@ -35,4 +35,6 @@ type Question = domain.Question
 type QuestionSet = domain.QuestionSet
 type ExamResult = domain.ExamineResult
 type ExamRes = domain.Result
+type Answer = domain.Answer
+type AnswerElement = domain.AnswerElement
 type KnowledgeJobStarter = job.KnowledgeJobStarter

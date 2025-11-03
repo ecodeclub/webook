@@ -32,6 +32,8 @@ import (
 type AdminRepository interface {
 	Save(ctx context.Context, r domain.Roadmap) (int64, error)
 	List(ctx context.Context, offset int, limit int) ([]domain.Roadmap, error)
+	// ListSince 分页查找Utime大于等于since的路线图，返回结果包含边信息
+	ListSince(ctx context.Context, since int64, offset, limit int) ([]domain.Roadmap, error)
 	GetById(ctx context.Context, id int64) (domain.Roadmap, error)
 	Delete(ctx context.Context, id int64) error
 
@@ -236,6 +238,32 @@ func (repo *CachedAdminRepository) List(ctx context.Context, offset int, limit i
 	rs, err := repo.dao.List(ctx, offset, limit)
 	return slice.Map(rs, func(idx int, src dao.Roadmap) domain.Roadmap {
 		return repo.toDomain(src)
+	}), err
+}
+
+func (repo *CachedAdminRepository) ListSince(ctx context.Context, since int64, offset, limit int) ([]domain.Roadmap, error) {
+	rs, err := repo.dao.ListSince(ctx, since, offset, limit)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(rs) == 0 {
+		return []domain.Roadmap{}, nil
+	}
+
+	rids := slice.Map(rs, func(idx int, src dao.Roadmap) int64 {
+		return src.Id
+	})
+
+	nodeMap, edgeMap, err := repo.dao.GetEdgesByRidsV1(ctx, rids)
+	if err != nil {
+		return nil, err
+	}
+
+	return slice.Map(rs, func(idx int, src dao.Roadmap) domain.Roadmap {
+		rd := repo.toDomain(src)
+		rd.Edges = repo.edgesToDomain(edgeMap[src.Id], nodeMap)
+		return rd
 	}), err
 }
 

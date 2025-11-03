@@ -12,24 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package roadmap
-
-import (
-	"github.com/ecodeclub/webook/internal/roadmap/internal/domain"
-	"github.com/ecodeclub/webook/internal/roadmap/internal/service"
-	"github.com/ecodeclub/webook/internal/roadmap/internal/web"
-)
+package kbase
 
 type Module struct {
 	AdminHdl *AdminHandler
-	Hdl      *Handler
-	AdminSvc AdminService
 }
-
-type AdminHandler = web.AdminHandler
-type Handler = web.Handler
-type AdminService = service.AdminService
-type Roadmap = domain.Roadmap
-type Edge = domain.Edge
-type Node = domain.Node
-type Biz = domain.Biz

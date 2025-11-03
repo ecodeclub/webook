@@ -82,7 +82,7 @@ func (s *searchSyncService) questionSync(ctx context.Context) error {
 func (s *searchSyncService) pubQuestionSync(ctx context.Context) error {
 	offset := 0
 	for {
-		questions, err := s.repo.PubListSync(ctx, offset, defaultPageSize)
+		questions, err := s.repo.ListPubSince(ctx, 0, offset, defaultPageSize)
 		if err != nil {
 			return err
 		}

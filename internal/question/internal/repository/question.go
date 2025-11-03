@@ -48,8 +48,8 @@ type Repository interface {
 	QuestionIds(ctx context.Context) ([]int64, error)
 	// ListSync
 	ListSync(ctx context.Context, offset int, limit int) ([]domain.Question, error)
-	// PubListSync
-	PubListSync(ctx context.Context, offset int, limit int) ([]domain.Question, error)
+	// ListPubSince 分页查找Utime大于等于since的线上问题，返回结果包含答案
+	ListPubSince(ctx context.Context, since int64, offset int, limit int) ([]domain.Question, error)
 	// Delete 会直接删除制作库和线上库的数据
 	Delete(ctx context.Context, qid int64) error
 
@@ -86,10 +86,13 @@ func (c *CachedRepository) ListSync(ctx context.Context, offset int, limit int) 
 	}), nil
 }
 
-func (c *CachedRepository) PubListSync(ctx context.Context, offset int, limit int) ([]domain.Question, error) {
-	list, err := c.dao.PubListSync(ctx, offset, limit)
+func (c *CachedRepository) ListPubSince(ctx context.Context, since int64, offset int, limit int) ([]domain.Question, error) {
+	list, err := c.dao.ListPubSince(ctx, since, offset, limit)
 	if err != nil {
 		return nil, err
+	}
+	if len(list) == 0 {
+		return []domain.Question{}, nil
 	}
 	qids := slice.Map(list, func(idx int, src dao.PublishQuestion) int64 {
 		return src.Id

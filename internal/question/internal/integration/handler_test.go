@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/ecodeclub/ekit/sqlx"
+	"github.com/ecodeclub/webook/internal/question/internal/service"
 
 	"github.com/ecodeclub/webook/internal/member"
 	membermocks "github.com/ecodeclub/webook/internal/member/mocks"
@@ -63,6 +64,7 @@ const uid = 123
 type HandlerTestSuite struct {
 	BaseTestSuite
 	server *egin.Component
+	svc    service.Service
 	rdb    ecache.Cache
 }
 
@@ -155,12 +157,448 @@ func (s *HandlerTestSuite) SetupSuite() {
 		}))
 	})
 	module.Hdl.PublicRoutes(server.Engine)
+	s.svc = module.Svc
 
 	s.server = server
 	s.db = testioc.InitDB()
 	err = dao.InitTables(s.db)
 	require.NoError(s.T(), err)
 	s.rdb = testioc.InitCache()
+}
+
+func (s *HandlerTestSuite) assertQuestionsExact(t *testing.T, want []domain.Question, actual []domain.Question) {
+	require.Equal(t, len(want), len(actual))
+	for i, w := range want {
+		if i < len(actual) {
+			s.assertQuestionEqual(t, w, actual[i])
+		}
+	}
+}
+
+func (s *HandlerTestSuite) assertQuestionsContains(t *testing.T, want []domain.Question, actual []domain.Question) {
+	wantIdMap := make(map[int64]domain.Question, len(want))
+	for _, w := range want {
+		wantIdMap[w.Id] = w
+	}
+	for _, a := range actual {
+		if w, ok := wantIdMap[a.Id]; ok {
+			s.assertQuestionEqual(t, w, a)
+		}
+	}
+	require.GreaterOrEqual(t, len(actual), len(want), "结果数量应该至少包含期望的数据")
+}
+
+func (s *HandlerTestSuite) assertQuestionEqual(t *testing.T, want domain.Question, actual domain.Question) {
+	assert.Equal(t, want.Id, actual.Id)
+	assert.Equal(t, want.Title, actual.Title)
+	assert.Equal(t, want.Biz, actual.Biz)
+	assert.Equal(t, want.BizId, actual.BizId)
+	assert.Equal(t, want.Uid, actual.Uid)
+	assert.Equal(t, want.Content, actual.Content)
+	assert.Equal(t, want.Labels, actual.Labels)
+	assert.Equal(t, want.Status, actual.Status)
+	if !want.Utime.IsZero() {
+		assert.Equal(t, want.Utime.UnixMilli(), actual.Utime.UnixMilli())
+	}
+	s.assertAnswerEqual(t, want.Answer, actual.Answer)
+}
+
+func (s *HandlerTestSuite) assertAnswerEqual(t *testing.T, want domain.Answer, actual domain.Answer) {
+	if !want.Utime.IsZero() {
+		assert.Equal(t, want.Utime.UnixMilli(), actual.Utime.UnixMilli())
+	}
+	s.assertAnswerElementEqual(t, want.Analysis, actual.Analysis)
+	s.assertAnswerElementEqual(t, want.Basic, actual.Basic)
+	s.assertAnswerElementEqual(t, want.Intermediate, actual.Intermediate)
+	s.assertAnswerElementEqual(t, want.Advanced, actual.Advanced)
+}
+
+func (s *HandlerTestSuite) assertAnswerElementEqual(t *testing.T, want domain.AnswerElement, actual domain.AnswerElement) {
+	actual.Id = want.Id
+	assert.Equal(t, want, actual)
+}
+
+func (s *HandlerTestSuite) TestService_ListPubSince() {
+	testCases := []struct {
+		name    string
+		before  func(t *testing.T)
+		after   func(t *testing.T, result []domain.Question)
+		since   int64
+		offset  int
+		limit   int
+		wantErr error
+	}{
+		{
+			name: "基本查询-返回带答案的问题",
+			before: func(t *testing.T) {
+				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+				defer cancel()
+				err := s.db.WithContext(ctx).Create(&dao.PublishQuestion{
+					Id:      100,
+					Uid:     123,
+					Title:   "Question 1",
+					Content: "Content 1",
+					Biz:     domain.DefaultBiz,
+					BizId:   100,
+					Status:  domain.PublishedStatus.ToUint8(),
+					Utime:   1000,
+					Ctime:   1000,
+				}).Error
+				require.NoError(t, err)
+				elements := []dao.PublishAnswerElement{
+					{Qid: 100, Type: dao.AnswerElementTypeAnalysis, Content: "Analysis 1", Keywords: "kw1", Utime: 1000, Ctime: 1000},
+					{Qid: 100, Type: dao.AnswerElementTypeBasic, Content: "Basic 1", Keywords: "kw2", Utime: 1000, Ctime: 1000},
+					{Qid: 100, Type: dao.AnswerElementTypeIntermedia, Content: "Intermediate 1", Keywords: "kw3", Utime: 1000, Ctime: 1000},
+					{Qid: 100, Type: dao.AnswerElementTypeAdvanced, Content: "Advanced 1", Keywords: "kw4", Utime: 1000, Ctime: 1000},
+				}
+				err = s.db.WithContext(ctx).Create(&elements).Error
+				require.NoError(t, err)
+			},
+			after: func(t *testing.T, result []domain.Question) {
+				s.assertQuestionsContains(t, []domain.Question{
+					{
+						Id:      100,
+						Uid:     123,
+						Title:   "Question 1",
+						Content: "Content 1",
+						Biz:     domain.DefaultBiz,
+						BizId:   100,
+						Status:  domain.PublishedStatus,
+						Utime:   time.UnixMilli(1000),
+						Answer: domain.Answer{
+							Analysis: domain.AnswerElement{
+								Content:  "Analysis 1",
+								Keywords: "kw1",
+							},
+							Basic: domain.AnswerElement{
+								Content:  "Basic 1",
+								Keywords: "kw2",
+							},
+							Intermediate: domain.AnswerElement{
+								Content:  "Intermediate 1",
+								Keywords: "kw3",
+							},
+							Advanced: domain.AnswerElement{
+								Content:  "Advanced 1",
+								Keywords: "kw4",
+							},
+						},
+					},
+				}, result)
+			},
+			since:   0,
+			offset:  0,
+			limit:   10,
+			wantErr: nil,
+		},
+		{
+			name: "时间过滤-只返回utime大于等于since的数据",
+			before: func(t *testing.T) {
+				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+				defer cancel()
+				questions := []dao.PublishQuestion{
+					{Id: 200, Uid: 123, Title: "Old", Content: "Content", Biz: domain.DefaultBiz, BizId: 200, Status: domain.PublishedStatus.ToUint8(), Utime: 500, Ctime: 500},
+					{Id: 201, Uid: 123, Title: "Mid", Content: "Content", Biz: domain.DefaultBiz, BizId: 201, Status: domain.PublishedStatus.ToUint8(), Utime: 1200, Ctime: 1200},
+					{Id: 202, Uid: 123, Title: "New", Content: "Content", Biz: domain.DefaultBiz, BizId: 202, Status: domain.PublishedStatus.ToUint8(), Utime: 1500, Ctime: 1500},
+				}
+				err := s.db.WithContext(ctx).Create(&questions).Error
+				require.NoError(t, err)
+			},
+			after: func(t *testing.T, result []domain.Question) {
+				s.assertQuestionsExact(t, []domain.Question{
+					{Id: 202, Uid: 123, Title: "New", Content: "Content", Biz: domain.DefaultBiz, BizId: 202, Status: domain.PublishedStatus, Utime: time.UnixMilli(1500), Answer: domain.Answer{}},
+					{Id: 201, Uid: 123, Title: "Mid", Content: "Content", Biz: domain.DefaultBiz, BizId: 201, Status: domain.PublishedStatus, Utime: time.UnixMilli(1200), Answer: domain.Answer{}},
+				}, result)
+			},
+			since:   1200,
+			offset:  0,
+			limit:   10,
+			wantErr: nil,
+		},
+		{
+			name: "时间边界-utime等于since的数据被包含",
+			before: func(t *testing.T) {
+				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+				defer cancel()
+				err := s.db.WithContext(ctx).Create(&dao.PublishQuestion{
+					Id:      300,
+					Uid:     123,
+					Title:   "Boundary",
+					Content: "Content",
+					Biz:     domain.DefaultBiz,
+					BizId:   300,
+					Status:  domain.PublishedStatus.ToUint8(),
+					Utime:   5000,
+					Ctime:   5000,
+				}).Error
+				require.NoError(t, err)
+			},
+			after: func(t *testing.T, result []domain.Question) {
+				s.assertQuestionsExact(t, []domain.Question{
+					{Id: 300, Uid: 123, Title: "Boundary", Content: "Content", Biz: domain.DefaultBiz, BizId: 300, Status: domain.PublishedStatus, Utime: time.UnixMilli(5000), Answer: domain.Answer{}},
+				}, result)
+			},
+			since:   5000,
+			offset:  0,
+			limit:   10,
+			wantErr: nil,
+		},
+		{
+			name: "排序-按utime DESC, id DESC排序",
+			before: func(t *testing.T) {
+				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+				defer cancel()
+				questions := []dao.PublishQuestion{
+					{Id: 400, Uid: 123, Title: "Same Time 1", Content: "Content", Biz: domain.DefaultBiz, BizId: 400, Status: domain.PublishedStatus.ToUint8(), Utime: 1000, Ctime: 1000},
+					{Id: 402, Uid: 123, Title: "Same Time 3", Content: "Content", Biz: domain.DefaultBiz, BizId: 402, Status: domain.PublishedStatus.ToUint8(), Utime: 1000, Ctime: 1000},
+					{Id: 401, Uid: 123, Title: "Same Time 2", Content: "Content", Biz: domain.DefaultBiz, BizId: 401, Status: domain.PublishedStatus.ToUint8(), Utime: 1000, Ctime: 1000},
+					{Id: 403, Uid: 123, Title: "Newer", Content: "Content", Biz: domain.DefaultBiz, BizId: 403, Status: domain.PublishedStatus.ToUint8(), Utime: 2000, Ctime: 2000},
+				}
+				err := s.db.WithContext(ctx).Create(&questions).Error
+				require.NoError(t, err)
+			},
+			after: func(t *testing.T, result []domain.Question) {
+				s.assertQuestionsContains(t, []domain.Question{
+					{Id: 403, Uid: 123, Title: "Newer", Content: "Content", Biz: domain.DefaultBiz, BizId: 403, Status: domain.PublishedStatus, Utime: time.UnixMilli(2000), Answer: domain.Answer{}},
+					{Id: 402, Uid: 123, Title: "Same Time 3", Content: "Content", Biz: domain.DefaultBiz, BizId: 402, Status: domain.PublishedStatus, Utime: time.UnixMilli(1000), Answer: domain.Answer{}},
+					{Id: 401, Uid: 123, Title: "Same Time 2", Content: "Content", Biz: domain.DefaultBiz, BizId: 401, Status: domain.PublishedStatus, Utime: time.UnixMilli(1000), Answer: domain.Answer{}},
+					{Id: 400, Uid: 123, Title: "Same Time 1", Content: "Content", Biz: domain.DefaultBiz, BizId: 400, Status: domain.PublishedStatus, Utime: time.UnixMilli(1000), Answer: domain.Answer{}},
+				}, result)
+			},
+			since:   0,
+			offset:  0,
+			limit:   10,
+			wantErr: nil,
+		},
+		{
+			name: "分页-正常分页",
+			before: func(t *testing.T) {
+				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+				defer cancel()
+				questions := []dao.PublishQuestion{
+					{Id: 500, Uid: 123, Title: "Q1", Content: "Content", Biz: domain.DefaultBiz, BizId: 500, Status: domain.PublishedStatus.ToUint8(), Utime: 1000, Ctime: 1000},
+					{Id: 501, Uid: 123, Title: "Q2", Content: "Content", Biz: domain.DefaultBiz, BizId: 501, Status: domain.PublishedStatus.ToUint8(), Utime: 2000, Ctime: 2000},
+					{Id: 502, Uid: 123, Title: "Q3", Content: "Content", Biz: domain.DefaultBiz, BizId: 502, Status: domain.PublishedStatus.ToUint8(), Utime: 3000, Ctime: 3000},
+				}
+				err := s.db.WithContext(ctx).Create(&questions).Error
+				require.NoError(t, err)
+			},
+			after: func(t *testing.T, result []domain.Question) {
+				s.assertQuestionsContains(t, []domain.Question{
+					{Id: 501, Uid: 123, Title: "Q2", Content: "Content", Biz: domain.DefaultBiz, BizId: 501, Status: domain.PublishedStatus, Utime: time.UnixMilli(2000), Answer: domain.Answer{}},
+					{Id: 500, Uid: 123, Title: "Q1", Content: "Content", Biz: domain.DefaultBiz, BizId: 500, Status: domain.PublishedStatus, Utime: time.UnixMilli(1000), Answer: domain.Answer{}},
+				}, result)
+			},
+			since:   0,
+			offset:  1,
+			limit:   2,
+			wantErr: nil,
+		},
+		{
+			name: "分页-offset超出范围返回空",
+			before: func(t *testing.T) {
+				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+				defer cancel()
+				err := s.db.WithContext(ctx).Create(&dao.PublishQuestion{
+					Id:      600,
+					Uid:     123,
+					Title:   "Q1",
+					Content: "Content",
+					Biz:     domain.DefaultBiz,
+					BizId:   600,
+					Status:  domain.PublishedStatus.ToUint8(),
+					Utime:   1000,
+					Ctime:   1000,
+				}).Error
+				require.NoError(t, err)
+			},
+			after: func(t *testing.T, result []domain.Question) {
+				assert.Equal(t, 0, len(result))
+			},
+			since:   0,
+			offset:  100,
+			limit:   10,
+			wantErr: nil,
+		},
+		{
+			name: "空结果-没有符合条件的数据",
+			before: func(t *testing.T) {
+				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+				defer cancel()
+				err := s.db.WithContext(ctx).Create(&dao.PublishQuestion{
+					Id:      700,
+					Uid:     123,
+					Title:   "Old",
+					Content: "Content",
+					Biz:     domain.DefaultBiz,
+					BizId:   700,
+					Status:  domain.PublishedStatus.ToUint8(),
+					Utime:   100,
+					Ctime:   100,
+				}).Error
+				require.NoError(t, err)
+			},
+			after: func(t *testing.T, result []domain.Question) {
+				assert.Equal(t, 0, len(result))
+			},
+			since:   10000,
+			offset:  0,
+			limit:   10,
+			wantErr: nil,
+		},
+		{
+			name: "多个问题-每个都有不同的答案",
+			before: func(t *testing.T) {
+				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+				defer cancel()
+				questions := []dao.PublishQuestion{
+					{Id: 800, Uid: 123, Title: "Q1", Content: "Content", Biz: domain.DefaultBiz, BizId: 800, Status: domain.PublishedStatus.ToUint8(), Utime: 1000, Ctime: 1000},
+					{Id: 801, Uid: 123, Title: "Q2", Content: "Content", Biz: domain.DefaultBiz, BizId: 801, Status: domain.PublishedStatus.ToUint8(), Utime: 2000, Ctime: 2000},
+				}
+				err := s.db.WithContext(ctx).Create(&questions).Error
+				require.NoError(t, err)
+				elements := []dao.PublishAnswerElement{
+					{Qid: 800, Type: dao.AnswerElementTypeBasic, Content: "Basic Q1", Keywords: "kw1", Utime: 1000, Ctime: 1000},
+					{Qid: 801, Type: dao.AnswerElementTypeBasic, Content: "Basic Q2", Keywords: "kw2", Utime: 2000, Ctime: 2000},
+				}
+				err = s.db.WithContext(ctx).Create(&elements).Error
+				require.NoError(t, err)
+			},
+			after: func(t *testing.T, result []domain.Question) {
+				s.assertQuestionsContains(t, []domain.Question{
+					{
+						Id:      801,
+						Uid:     123,
+						Title:   "Q2",
+						Content: "Content",
+						Biz:     domain.DefaultBiz,
+						BizId:   801,
+						Status:  domain.PublishedStatus,
+						Utime:   time.UnixMilli(2000),
+						Answer: domain.Answer{
+							Basic: domain.AnswerElement{
+								Content:  "Basic Q2",
+								Keywords: "kw2",
+							},
+						},
+					},
+					{
+						Id:      800,
+						Uid:     123,
+						Title:   "Q1",
+						Content: "Content",
+						Biz:     domain.DefaultBiz,
+						BizId:   800,
+						Status:  domain.PublishedStatus,
+						Utime:   time.UnixMilli(1000),
+						Answer: domain.Answer{
+							Basic: domain.AnswerElement{
+								Content:  "Basic Q1",
+								Keywords: "kw1",
+							},
+						},
+					},
+				}, result)
+			},
+			since:   0,
+			offset:  0,
+			limit:   10,
+			wantErr: nil,
+		},
+		{
+			name: "没有答案的问题-返回空答案",
+			before: func(t *testing.T) {
+				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+				defer cancel()
+				err := s.db.WithContext(ctx).Create(&dao.PublishQuestion{
+					Id:      900,
+					Uid:     123,
+					Title:   "No Answer",
+					Content: "Content",
+					Biz:     domain.DefaultBiz,
+					BizId:   900,
+					Status:  domain.PublishedStatus.ToUint8(),
+					Utime:   1000,
+					Ctime:   1000,
+				}).Error
+				require.NoError(t, err)
+			},
+			after: func(t *testing.T, result []domain.Question) {
+				s.assertQuestionsContains(t, []domain.Question{
+					{Id: 900, Uid: 123, Title: "No Answer", Content: "Content", Biz: domain.DefaultBiz, BizId: 900, Status: domain.PublishedStatus, Utime: time.UnixMilli(1000), Answer: domain.Answer{}},
+				}, result)
+			},
+			since:   0,
+			offset:  0,
+			limit:   10,
+			wantErr: nil,
+		},
+		{
+			name: "since为0-查询所有数据",
+			before: func(t *testing.T) {
+				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+				defer cancel()
+				questions := []dao.PublishQuestion{
+					{Id: 1000, Uid: 123, Title: "Q1", Content: "Content", Biz: domain.DefaultBiz, BizId: 1000, Status: domain.PublishedStatus.ToUint8(), Utime: 500, Ctime: 500},
+					{Id: 1001, Uid: 123, Title: "Q2", Content: "Content", Biz: domain.DefaultBiz, BizId: 1001, Status: domain.PublishedStatus.ToUint8(), Utime: 1000, Ctime: 1000},
+					{Id: 1002, Uid: 123, Title: "Q3", Content: "Content", Biz: domain.DefaultBiz, BizId: 1002, Status: domain.PublishedStatus.ToUint8(), Utime: 1500, Ctime: 1500},
+				}
+				err := s.db.WithContext(ctx).Create(&questions).Error
+				require.NoError(t, err)
+			},
+			after: func(t *testing.T, result []domain.Question) {
+				s.assertQuestionsContains(t, []domain.Question{
+					{Id: 1002, Uid: 123, Title: "Q3", Content: "Content", Biz: domain.DefaultBiz, BizId: 1002, Status: domain.PublishedStatus, Utime: time.UnixMilli(1500), Answer: domain.Answer{}},
+					{Id: 1001, Uid: 123, Title: "Q2", Content: "Content", Biz: domain.DefaultBiz, BizId: 1001, Status: domain.PublishedStatus, Utime: time.UnixMilli(1000), Answer: domain.Answer{}},
+					{Id: 1000, Uid: 123, Title: "Q1", Content: "Content", Biz: domain.DefaultBiz, BizId: 1000, Status: domain.PublishedStatus, Utime: time.UnixMilli(500), Answer: domain.Answer{}},
+				}, result)
+			},
+			since:   0,
+			offset:  0,
+			limit:   10,
+			wantErr: nil,
+		},
+		{
+			name: "limit为0-返回空结果",
+			before: func(t *testing.T) {
+				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+				defer cancel()
+				err := s.db.WithContext(ctx).Create(&dao.PublishQuestion{
+					Id:      1100,
+					Uid:     123,
+					Title:   "Q1",
+					Content: "Content",
+					Biz:     domain.DefaultBiz,
+					BizId:   1100,
+					Status:  domain.PublishedStatus.ToUint8(),
+					Utime:   1000,
+					Ctime:   1000,
+				}).Error
+				require.NoError(t, err)
+			},
+			after: func(t *testing.T, result []domain.Question) {
+				assert.Equal(t, 0, len(result))
+			},
+			since:   0,
+			offset:  0,
+			limit:   0,
+			wantErr: nil,
+		},
+	}
+
+	for _, tc := range testCases {
+		s.T().Run(tc.name, func(t *testing.T) {
+			tc.before(t)
+			result, err := s.svc.ListPubSince(t.Context(), tc.since, tc.offset, tc.limit)
+			if tc.wantErr != nil {
+				assert.Error(t, err)
+				assert.Equal(t, tc.wantErr, err)
+				return
+			}
+			assert.NoError(t, err)
+			tc.after(t, result)
+		})
+	}
 }
 
 func (s *HandlerTestSuite) TestPubList() {
