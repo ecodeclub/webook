@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/ecodeclub/ekit/sqlx"
+	"github.com/ecodeclub/webook/internal/roadmap/internal/service"
 
 	"github.com/ecodeclub/ekit/iox"
 	"github.com/ecodeclub/ekit/slice"
@@ -52,6 +53,7 @@ type AdminHandlerTestSuite struct {
 	db            *egorm.Component
 	server        *egin.Component
 	hdl           *web.AdminHandler
+	svc           service.AdminService
 	dao           dao.AdminDAO
 	mockQueSetSvc *quemocks.MockQuestionSetService
 	mockQueSvc    *quemocks.MockService
@@ -98,13 +100,14 @@ func (s *AdminHandlerTestSuite) SetupSuite() {
 				},
 			},
 		}, nil
-	})
+	}).AnyTimes()
 
 	m := startup.InitModule(&baguwen.Module{
 		Svc:    mockQueSvc,
 		SetSvc: mockQueSetSvc,
 	})
 	s.hdl = m.AdminHdl
+	s.svc = m.AdminSvc
 
 	econf.Set("server", map[string]any{"contextTimeout": "10s"})
 	server := egin.Load("server").Build()
@@ -123,6 +126,450 @@ func (s *AdminHandlerTestSuite) TearDownTest() {
 	require.NoError(s.T(), err)
 	err = s.db.Exec("TRUNCATE TABLE roadmap_edges_v1").Error
 	require.NoError(s.T(), err)
+}
+
+// assertRoadmapsExact 精确匹配路线图列表
+func (s *AdminHandlerTestSuite) assertRoadmapsExact(t *testing.T, want []domain.Roadmap, actual []domain.Roadmap) {
+	require.Equal(t, len(want), len(actual))
+	for i, w := range want {
+		if i < len(actual) {
+			s.assertRoadmapEqual(t, w, actual[i])
+		}
+	}
+}
+
+// assertRoadmapsContains 验证实际结果包含期望的数据（用于since=0的情况，可能包含其他测试用例的数据）
+func (s *AdminHandlerTestSuite) assertRoadmapsContains(t *testing.T, want []domain.Roadmap, actual []domain.Roadmap) {
+	wantIdMap := make(map[int64]domain.Roadmap, len(want))
+	for _, w := range want {
+		wantIdMap[w.Id] = w
+	}
+	for _, a := range actual {
+		if w, ok := wantIdMap[a.Id]; ok {
+			s.assertRoadmapEqual(t, w, a)
+		}
+	}
+	require.GreaterOrEqual(t, len(actual), len(want), "结果数量应该至少包含期望的数据")
+}
+
+// assertRoadmapEqual 比较两个路线图是否相等
+func (s *AdminHandlerTestSuite) assertRoadmapEqual(t *testing.T, want domain.Roadmap, actual domain.Roadmap) {
+	assert.Equal(t, want.Id, actual.Id)
+	assert.Equal(t, want.Title, actual.Title)
+	assert.Equal(t, want.Biz, actual.Biz)
+	assert.Equal(t, want.BizId, actual.BizId)
+	assert.Equal(t, want.Utime, actual.Utime)
+	assert.Equal(t, len(want.Edges), len(actual.Edges), "路线图 %d 的边数量不匹配", want.Id)
+	if len(want.Edges) > 0 {
+		actualEdgeMap := make(map[int64]domain.Edge, len(actual.Edges))
+		for _, edge := range actual.Edges {
+			actualEdgeMap[edge.Id] = edge
+		}
+		for _, wantEdge := range want.Edges {
+			actualEdge, ok := actualEdgeMap[wantEdge.Id]
+			require.True(t, ok, "路线图 %d 缺少边 %d", want.Id, wantEdge.Id)
+			s.assertEdgeEqual(t, wantEdge, actualEdge)
+		}
+	}
+}
+
+// assertEdgeEqual 比较两个边是否相等
+func (s *AdminHandlerTestSuite) assertEdgeEqual(t *testing.T, want domain.Edge, actual domain.Edge) {
+	actual.Src.Title = want.Src.Title
+	actual.Src.Biz.Title = want.Src.Biz.Title
+	actual.Dst.Title = want.Dst.Title
+	actual.Dst.Biz.Title = want.Dst.Biz.Title
+	assert.Equal(t, want, actual)
+}
+
+func (s *AdminHandlerTestSuite) TestService_ListSince() {
+	testCases := []struct {
+		name    string
+		before  func(t *testing.T)
+		after   func(t *testing.T, result []domain.Roadmap)
+		since   int64
+		offset  int
+		limit   int
+		wantErr error
+	}{
+		{
+			name: "基本查询-返回带边的路线图",
+			before: func(t *testing.T) {
+				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+				defer cancel()
+				err := s.db.WithContext(ctx).Create(&dao.Roadmap{
+					Id:    100,
+					Title: "Roadmap 1",
+					Biz:   sqlx.NewNullString("questionSet"),
+					BizId: sqlx.NewNullInt64(100),
+					Utime: 1000,
+					Ctime: 1000,
+				}).Error
+				require.NoError(t, err)
+				// 创建节点
+				nodes := []dao.Node{
+					{Id: 100, Biz: "question", Rid: 100, RefId: 1, Attrs: "attrs1"},
+					{Id: 101, Biz: "question", Rid: 100, RefId: 2, Attrs: "attrs2"},
+				}
+				err = s.db.WithContext(ctx).Create(&nodes).Error
+				require.NoError(t, err)
+				// 创建边
+				err = s.db.WithContext(ctx).Create(&dao.EdgeV1{
+					Id:      100,
+					Rid:     100,
+					SrcNode: 100,
+					DstNode: 101,
+					Type:    "default",
+					Attrs:   "edge_attrs",
+					Utime:   1000,
+					Ctime:   1000,
+				}).Error
+				require.NoError(t, err)
+			},
+			after: func(t *testing.T, result []domain.Roadmap) {
+				s.assertRoadmapsContains(t, []domain.Roadmap{
+					{
+						Id:    100,
+						Title: "Roadmap 1",
+						Biz:   "questionSet",
+						BizId: 100,
+						Utime: 1000,
+						Edges: []domain.Edge{
+							{
+								Id:    100,
+								Type:  "default",
+								Attrs: "edge_attrs",
+								Src: domain.Node{
+									ID:    100,
+									Rid:   100,
+									Attrs: "attrs1",
+									Biz: domain.Biz{
+										Biz:   "question",
+										BizId: 1,
+									},
+								},
+								Dst: domain.Node{
+									ID:    101,
+									Rid:   100,
+									Attrs: "attrs2",
+									Biz: domain.Biz{
+										Biz:   "question",
+										BizId: 2,
+									},
+								},
+							},
+						},
+					},
+				}, result)
+			},
+			since:   0,
+			offset:  0,
+			limit:   10,
+			wantErr: nil,
+		},
+		{
+			name: "时间过滤-只返回utime大于等于since的数据",
+			before: func(t *testing.T) {
+				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+				defer cancel()
+				roadmaps := []dao.Roadmap{
+					{Id: 200, Title: "Old", Biz: sqlx.NewNullString("test2"), BizId: sqlx.NewNullInt64(200), Utime: 500, Ctime: 500},
+					{Id: 201, Title: "Mid", Biz: sqlx.NewNullString("test2"), BizId: sqlx.NewNullInt64(201), Utime: 1200, Ctime: 1200},
+					{Id: 202, Title: "New", Biz: sqlx.NewNullString("test2"), BizId: sqlx.NewNullInt64(202), Utime: 1500, Ctime: 1500},
+				}
+				err := s.db.WithContext(ctx).Create(&roadmaps).Error
+				require.NoError(t, err)
+			},
+			after: func(t *testing.T, result []domain.Roadmap) {
+				s.assertRoadmapsExact(t, []domain.Roadmap{
+					{Id: 202, Title: "New", Biz: "test2", BizId: 202, Utime: 1500, Edges: []domain.Edge{}},
+					{Id: 201, Title: "Mid", Biz: "test2", BizId: 201, Utime: 1200, Edges: []domain.Edge{}},
+				}, result)
+			},
+			since:   1200,
+			offset:  0,
+			limit:   10,
+			wantErr: nil,
+		},
+		{
+			name: "时间边界-utime等于since的数据被包含",
+			before: func(t *testing.T) {
+				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+				defer cancel()
+				err := s.db.WithContext(ctx).Create(&dao.Roadmap{
+					Id:    300,
+					Title: "Boundary",
+					Biz:   sqlx.NewNullString("test3"),
+					BizId: sqlx.NewNullInt64(300),
+					Utime: 5000,
+					Ctime: 5000,
+				}).Error
+				require.NoError(t, err)
+			},
+			after: func(t *testing.T, result []domain.Roadmap) {
+				s.assertRoadmapsExact(t, []domain.Roadmap{
+					{Id: 300, Title: "Boundary", Biz: "test3", BizId: 300, Utime: 5000, Edges: []domain.Edge{}},
+				}, result)
+			},
+			since:   5000,
+			offset:  0,
+			limit:   10,
+			wantErr: nil,
+		},
+		{
+			name: "排序-按utime DESC, id DESC排序",
+			before: func(t *testing.T) {
+				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+				defer cancel()
+				roadmaps := []dao.Roadmap{
+					{Id: 400, Title: "Same Time 1", Biz: sqlx.NewNullString("test4"), BizId: sqlx.NewNullInt64(400), Utime: 1000, Ctime: 1000},
+					{Id: 402, Title: "Same Time 3", Biz: sqlx.NewNullString("test4"), BizId: sqlx.NewNullInt64(402), Utime: 1000, Ctime: 1000},
+					{Id: 401, Title: "Same Time 2", Biz: sqlx.NewNullString("test4"), BizId: sqlx.NewNullInt64(401), Utime: 1000, Ctime: 1000},
+					{Id: 403, Title: "Newer", Biz: sqlx.NewNullString("test4"), BizId: sqlx.NewNullInt64(403), Utime: 2000, Ctime: 2000},
+				}
+				err := s.db.WithContext(ctx).Create(&roadmaps).Error
+				require.NoError(t, err)
+			},
+			after: func(t *testing.T, result []domain.Roadmap) {
+				s.assertRoadmapsContains(t, []domain.Roadmap{
+					{Id: 403, Title: "Newer", Biz: "test4", BizId: 403, Utime: 2000, Edges: []domain.Edge{}},
+					{Id: 402, Title: "Same Time 3", Biz: "test4", BizId: 402, Utime: 1000, Edges: []domain.Edge{}},
+					{Id: 401, Title: "Same Time 2", Biz: "test4", BizId: 401, Utime: 1000, Edges: []domain.Edge{}},
+					{Id: 400, Title: "Same Time 1", Biz: "test4", BizId: 400, Utime: 1000, Edges: []domain.Edge{}},
+				}, result)
+			},
+			since:   0,
+			offset:  0,
+			limit:   10,
+			wantErr: nil,
+		},
+		{
+			name: "分页-正常分页",
+			before: func(t *testing.T) {
+				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+				defer cancel()
+				roadmaps := []dao.Roadmap{
+					{Id: 500, Title: "R1", Biz: sqlx.NewNullString("test5"), BizId: sqlx.NewNullInt64(500), Utime: 1000, Ctime: 1000},
+					{Id: 501, Title: "R2", Biz: sqlx.NewNullString("test5"), BizId: sqlx.NewNullInt64(501), Utime: 2000, Ctime: 2000},
+					{Id: 502, Title: "R3", Biz: sqlx.NewNullString("test5"), BizId: sqlx.NewNullInt64(502), Utime: 3000, Ctime: 3000},
+				}
+				err := s.db.WithContext(ctx).Create(&roadmaps).Error
+				require.NoError(t, err)
+			},
+			after: func(t *testing.T, result []domain.Roadmap) {
+				s.assertRoadmapsContains(t, []domain.Roadmap{
+					{Id: 501, Title: "R2", Biz: "test5", BizId: 501, Utime: 2000, Edges: []domain.Edge{}},
+					{Id: 500, Title: "R1", Biz: "test5", BizId: 500, Utime: 1000, Edges: []domain.Edge{}},
+				}, result)
+			},
+			since:   0,
+			offset:  1,
+			limit:   2,
+			wantErr: nil,
+		},
+		{
+			name: "分页-offset超出范围返回空",
+			before: func(t *testing.T) {
+				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+				defer cancel()
+				err := s.db.WithContext(ctx).Create(&dao.Roadmap{
+					Id:    600,
+					Title: "R1",
+					Biz:   sqlx.NewNullString("test6"),
+					BizId: sqlx.NewNullInt64(600),
+					Utime: 1000,
+					Ctime: 1000,
+				}).Error
+				require.NoError(t, err)
+			},
+			after: func(t *testing.T, result []domain.Roadmap) {
+				assert.Equal(t, 0, len(result))
+			},
+			since:   0,
+			offset:  100,
+			limit:   10,
+			wantErr: nil,
+		},
+		{
+			name: "空结果-没有符合条件的数据",
+			before: func(t *testing.T) {
+				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+				defer cancel()
+				err := s.db.WithContext(ctx).Create(&dao.Roadmap{
+					Id:    700,
+					Title: "Old",
+					Biz:   sqlx.NewNullString("test7"),
+					BizId: sqlx.NewNullInt64(700),
+					Utime: 100,
+					Ctime: 100,
+				}).Error
+				require.NoError(t, err)
+			},
+			after: func(t *testing.T, result []domain.Roadmap) {
+				assert.Equal(t, 0, len(result))
+			},
+			since:   10000,
+			offset:  0,
+			limit:   10,
+			wantErr: nil,
+		},
+		{
+			name: "多个路线图-每个都有不同的边",
+			before: func(t *testing.T) {
+				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+				defer cancel()
+				roadmaps := []dao.Roadmap{
+					{Id: 800, Title: "R1", Biz: sqlx.NewNullString("test8"), BizId: sqlx.NewNullInt64(800), Utime: 1000, Ctime: 1000},
+					{Id: 801, Title: "R2", Biz: sqlx.NewNullString("test8"), BizId: sqlx.NewNullInt64(801), Utime: 2000, Ctime: 2000},
+				}
+				err := s.db.WithContext(ctx).Create(&roadmaps).Error
+				require.NoError(t, err)
+				// 为每个路线图创建节点
+				nodes := []dao.Node{
+					{Id: 800, Biz: "question", Rid: 800, RefId: 1},
+					{Id: 801, Biz: "question", Rid: 800, RefId: 2},
+					{Id: 802, Biz: "question", Rid: 801, RefId: 3},
+					{Id: 803, Biz: "question", Rid: 801, RefId: 4},
+				}
+				err = s.db.WithContext(ctx).Create(&nodes).Error
+				require.NoError(t, err)
+				// 创建边
+				edges := []dao.EdgeV1{
+					{Id: 800, Rid: 800, SrcNode: 800, DstNode: 801, Type: "type1", Attrs: "attrs1", Utime: 1000, Ctime: 1000},
+					{Id: 801, Rid: 801, SrcNode: 802, DstNode: 803, Type: "type2", Attrs: "attrs2", Utime: 2000, Ctime: 2000},
+				}
+				err = s.db.WithContext(ctx).Create(&edges).Error
+				require.NoError(t, err)
+			},
+			after: func(t *testing.T, result []domain.Roadmap) {
+				s.assertRoadmapsContains(t, []domain.Roadmap{
+					{
+						Id:    801,
+						Title: "R2",
+						Biz:   "test8",
+						BizId: 801,
+						Utime: 2000,
+						Edges: []domain.Edge{
+							{
+								Id:    801,
+								Type:  "type2",
+								Attrs: "attrs2",
+								Src:   domain.Node{ID: 802, Rid: 801, Biz: domain.Biz{Biz: "question", BizId: 3}},
+								Dst:   domain.Node{ID: 803, Rid: 801, Biz: domain.Biz{Biz: "question", BizId: 4}},
+							},
+						},
+					},
+					{
+						Id:    800,
+						Title: "R1",
+						Biz:   "test8",
+						BizId: 800,
+						Utime: 1000,
+						Edges: []domain.Edge{
+							{
+								Id:    800,
+								Type:  "type1",
+								Attrs: "attrs1",
+								Src:   domain.Node{ID: 800, Rid: 800, Biz: domain.Biz{Biz: "question", BizId: 1}},
+								Dst:   domain.Node{ID: 801, Rid: 800, Biz: domain.Biz{Biz: "question", BizId: 2}},
+							},
+						},
+					},
+				}, result)
+			},
+			since:   0,
+			offset:  0,
+			limit:   10,
+			wantErr: nil,
+		},
+		{
+			name: "没有边的路线图-返回空边列表",
+			before: func(t *testing.T) {
+				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+				defer cancel()
+				err := s.db.WithContext(ctx).Create(&dao.Roadmap{
+					Id:    900,
+					Title: "No Edges",
+					Biz:   sqlx.NewNullString("test9"),
+					BizId: sqlx.NewNullInt64(900),
+					Utime: 1000,
+					Ctime: 1000,
+				}).Error
+				require.NoError(t, err)
+			},
+			after: func(t *testing.T, result []domain.Roadmap) {
+				s.assertRoadmapsContains(t, []domain.Roadmap{
+					{Id: 900, Title: "No Edges", Biz: "test9", BizId: 900, Utime: 1000, Edges: []domain.Edge{}},
+				}, result)
+			},
+			since:   0,
+			offset:  0,
+			limit:   10,
+			wantErr: nil,
+		},
+		{
+			name: "since为0-查询所有数据",
+			before: func(t *testing.T) {
+				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+				defer cancel()
+				roadmaps := []dao.Roadmap{
+					{Id: 1000, Title: "R1", Biz: sqlx.NewNullString("test10"), BizId: sqlx.NewNullInt64(1000), Utime: 500, Ctime: 500},
+					{Id: 1001, Title: "R2", Biz: sqlx.NewNullString("test10"), BizId: sqlx.NewNullInt64(1001), Utime: 1000, Ctime: 1000},
+					{Id: 1002, Title: "R3", Biz: sqlx.NewNullString("test10"), BizId: sqlx.NewNullInt64(1002), Utime: 1500, Ctime: 1500},
+				}
+				err := s.db.WithContext(ctx).Create(&roadmaps).Error
+				require.NoError(t, err)
+			},
+			after: func(t *testing.T, result []domain.Roadmap) {
+				s.assertRoadmapsContains(t, []domain.Roadmap{
+					{Id: 1002, Title: "R3", Biz: "test10", BizId: 1002, Utime: 1500, Edges: []domain.Edge{}},
+					{Id: 1001, Title: "R2", Biz: "test10", BizId: 1001, Utime: 1000, Edges: []domain.Edge{}},
+					{Id: 1000, Title: "R1", Biz: "test10", BizId: 1000, Utime: 500, Edges: []domain.Edge{}},
+				}, result)
+			},
+			since:   0,
+			offset:  0,
+			limit:   10,
+			wantErr: nil,
+		},
+		{
+			name: "limit为0-返回空结果",
+			before: func(t *testing.T) {
+				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+				defer cancel()
+				err := s.db.WithContext(ctx).Create(&dao.Roadmap{
+					Id:    1100,
+					Title: "R1",
+					Biz:   sqlx.NewNullString("test11"),
+					BizId: sqlx.NewNullInt64(1100),
+					Utime: 1000,
+					Ctime: 1000,
+				}).Error
+				require.NoError(t, err)
+			},
+			after: func(t *testing.T, result []domain.Roadmap) {
+				assert.Equal(t, 0, len(result))
+			},
+			since:   0,
+			offset:  0,
+			limit:   0,
+			wantErr: nil,
+		},
+	}
+
+	for _, tc := range testCases {
+		s.T().Run(tc.name, func(t *testing.T) {
+			tc.before(t)
+			result, err := s.svc.ListSince(t.Context(), tc.since, tc.offset, tc.limit)
+			if tc.wantErr != nil {
+				assert.Error(t, err)
+				assert.Equal(t, tc.wantErr, err)
+				return
+			}
+			assert.NoError(t, err)
+			tc.after(t, result)
+		})
+	}
 }
 
 func (s *AdminHandlerTestSuite) TestSave() {

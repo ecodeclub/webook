@@ -36,8 +36,8 @@ type QuestionDAO interface {
 	Delete(ctx context.Context, qid int64) error
 
 	Sync(ctx context.Context, que Question, eles []AnswerElement) (int64, error)
-	// 给同步给搜索服务用
-	PubListSync(ctx context.Context, offset int, limit int) ([]PublishQuestion, error)
+	// ListPubSince 分页查找Utime大于等于since的线上问题
+	ListPubSince(ctx context.Context, since int64, offset int, limit int) ([]PublishQuestion, error)
 	// 获取ele
 	PubQuestionElementList(ctx context.Context, qids []int64) (map[int64][]PublishAnswerElement, error)
 	QuestionElementList(ctx context.Context, qids []int64) (map[int64][]AnswerElement, error)
@@ -84,11 +84,12 @@ func (g *GORMQuestionDAO) PubQuestionElementList(ctx context.Context, qids []int
 	return res, nil
 }
 
-func (g *GORMQuestionDAO) PubListSync(ctx context.Context, offset int, limit int) ([]PublishQuestion, error) {
+func (g *GORMQuestionDAO) ListPubSince(ctx context.Context, since int64, offset int, limit int) ([]PublishQuestion, error) {
 	var res []PublishQuestion
 	err := g.db.WithContext(ctx).
+		Where("utime >= ?", since).
+		Order("utime DESC, id DESC").
 		Offset(offset).Limit(limit).
-		Order("id DESC").
 		Find(&res).Error
 	return res, err
 }

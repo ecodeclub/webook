@@ -12,24 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package roadmap
+package web
 
-import (
-	"github.com/ecodeclub/webook/internal/roadmap/internal/domain"
-	"github.com/ecodeclub/webook/internal/roadmap/internal/service"
-	"github.com/ecodeclub/webook/internal/roadmap/internal/web"
-)
-
-type Module struct {
-	AdminHdl *AdminHandler
-	Hdl      *Handler
-	AdminSvc AdminService
+type Req struct {
+	Biz   string `json:"biz"`
+	BizID int64  `json:"bizId"`
 }
 
-type AdminHandler = web.AdminHandler
-type Handler = web.Handler
-type AdminService = service.AdminService
-type Roadmap = domain.Roadmap
-type Edge = domain.Edge
-type Node = domain.Node
-type Biz = domain.Biz
+type BatchUpsertReq struct {
+	Biz   string `json:"biz"`
+	Since int64  `json:"since"`
+}

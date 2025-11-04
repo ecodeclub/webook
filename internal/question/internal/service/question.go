@@ -44,6 +44,11 @@ type Service interface {
 	// GetPubByIDs 目前只会获取基础信息，也就是不包括答案在内的信息
 	GetPubByIDs(ctx context.Context, ids []int64) ([]domain.Question, error)
 	PubDetail(ctx context.Context, qid int64) (domain.Question, error)
+
+	// PubDetailWithoutCntView 内部不统计阅读计数
+	PubDetailWithoutCntView(ctx context.Context, qid int64) (domain.Question, error)
+	// ListPubSince 分页查找Utime大于等于since的线上问题，返回结果包含答案
+	ListPubSince(ctx context.Context, since int64, offset int, limit int) ([]domain.Question, error)
 }
 
 type service struct {
@@ -164,6 +169,14 @@ func (s *service) Publish(ctx context.Context, question *domain.Question) (int64
 	// 上传到知识库
 	s.uploadQuestion(qctx, que)
 	return id, nil
+}
+
+func (s *service) PubDetailWithoutCntView(ctx context.Context, qid int64) (domain.Question, error) {
+	return s.repo.GetPubByID(ctx, qid)
+}
+
+func (s *service) ListPubSince(ctx context.Context, since int64, offset int, limit int) ([]domain.Question, error) {
+	return s.repo.ListPubSince(ctx, since, offset, limit)
 }
 
 func NewService(repo repository.Repository,

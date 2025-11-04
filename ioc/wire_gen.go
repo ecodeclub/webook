@@ -17,6 +17,7 @@ import (
 	"github.com/ecodeclub/webook/internal/feedback"
 	"github.com/ecodeclub/webook/internal/interactive"
 	"github.com/ecodeclub/webook/internal/interview"
+	"github.com/ecodeclub/webook/internal/kbase"
 	"github.com/ecodeclub/webook/internal/label"
 	"github.com/ecodeclub/webook/internal/marketing"
 	"github.com/ecodeclub/webook/internal/material"
@@ -188,7 +189,9 @@ func InitApp() (*App, error) {
 	adminHandler7 := orderModule.AdminHandler
 	adminHandler8 := searchModule.AdminHandler
 	adminHandler9 := labelModule.AdminHandler
-	adminServer := InitAdminServer(adminHandler, webAdminHandler, adminHandler2, adminQuestionSetHandler, adminCaseHandler, adminCaseSetHandler, adminHandler3, adminHandler4, adminHandler5, knowledgeBaseHandler, webKnowledgeBaseHandler, adminHandler6, companyHandler, adminHandler7, adminHandler8, adminHandler9)
+	kbaseModule := kbase.InitModule(baguwenModule, roadmapModule)
+	adminHandler10 := kbaseModule.AdminHdl
+	adminServer := InitAdminServer(adminHandler, webAdminHandler, adminHandler2, adminQuestionSetHandler, adminCaseHandler, adminCaseSetHandler, adminHandler3, adminHandler4, adminHandler5, knowledgeBaseHandler, webKnowledgeBaseHandler, adminHandler6, companyHandler, adminHandler7, adminHandler8, adminHandler9, adminHandler10)
 	closeTimeoutOrdersJob := orderModule.CloseTimeoutOrdersJob
 	closeTimeoutLockedCreditsJob := creditModule.CloseTimeoutLockedCreditsJob
 	syncWechatOrderJob := paymentModule.SyncWechatOrderJob

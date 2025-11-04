@@ -79,6 +79,19 @@ cron:
     enableSeconds: true          # 是否使用秒作解析器，默认否
     spec: "* * * * *"           # 每分钟执行一次
 
+kbase:
+  baseURL: "http://localhost:8082"
+  batchSize: 100
+  questionSyncer:
+    indexName: question_index
+  questionRelSyncer:
+    indexName: question_rel_index
+  retryStrategy:
+    interval: 2000000000
+    maxInterval: 6000000000
+    maxRetries: 3
+
+
 
 email:
   ali:

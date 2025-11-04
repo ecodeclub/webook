@@ -17,25 +17,27 @@ import (
 	"github.com/ecodeclub/webook/internal/roadmap/internal/service/biz"
 	"github.com/ecodeclub/webook/internal/roadmap/internal/web"
 	"github.com/ego-component/egorm"
+	"gorm.io/gorm"
 )
 
 // Injectors from wire.go:
 
-func InitModule(db *egorm.Component, queModule *baguwen.Module) *Module {
+func InitModule(db *gorm.DB, queModule *baguwen.Module) *Module {
 	daoAdminDAO := initAdminDAO(db)
 	adminRepository := repository.NewCachedAdminRepository(daoAdminDAO)
-	v := queModule.SetSvc
-	adminService := service.NewAdminService(adminRepository, v)
-	v2 := queModule.Svc
-	bizService := NewConcurrentBizService(v2, v)
-	v3 := web.NewAdminHandler(adminService, bizService)
+	questionSetService := queModule.SetSvc
+	adminService := service.NewAdminService(adminRepository, questionSetService)
+	serviceService := queModule.Svc
+	bizService := NewConcurrentBizService(serviceService, questionSetService)
+	adminHandler := web.NewAdminHandler(adminService, bizService)
 	roadmapDAO := dao.NewGORMRoadmapDAO(db)
 	repositoryRepository := repository.NewCachedRepository(roadmapDAO)
-	serviceService := service.NewService(repositoryRepository)
-	v4 := web.NewHandler(serviceService, bizService)
+	service2 := service.NewService(repositoryRepository)
+	handler := web.NewHandler(service2, bizService)
 	module := &Module{
-		AdminHdl: v3,
-		Hdl:      v4,
+		AdminHdl: adminHandler,
+		Hdl:      handler,
+		AdminSvc: adminService,
 	}
 	return module
 }
