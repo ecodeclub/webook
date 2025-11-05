@@ -3,9 +3,9 @@ package web
 import (
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/ecodeclub/webook/internal/cases"
+	"github.com/ecodeclub/webook/internal/interactive"
 
 	"github.com/ecodeclub/webook/internal/search/internal/domain"
 )
@@ -17,22 +17,41 @@ type CSearchResp struct {
 	QuestionSet []CSearchRes `json:"questionSet,omitempty"`
 }
 
+type Interactive struct {
+	CollectCnt int  `json:"collectCnt"`
+	LikeCnt    int  `json:"likeCnt"`
+	ViewCnt    int  `json:"viewCnt"`
+	Liked      bool `json:"liked"`
+	Collected  bool `json:"collected"`
+}
 type CSearchRes struct {
-	Id          int64    `json:"id,omitempty"`
-	Title       string   `json:"title,omitempty"`
-	Description string   `json:"description,omitempty"`
-	Tags        []string `json:"tags,omitempty"`
-	Date        string   `json:"date,omitempty"`
-	Result      uint8    `json:"result,omitempty"`
+	Id          int64       `json:"id,omitempty"`
+	Title       string      `json:"title,omitempty"`
+	Description string      `json:"description,omitempty"`
+	Tags        []string    `json:"tags,omitempty"`
+	Result      uint8       `json:"result,omitempty"`
+	Interactive Interactive `json:"interactive,omitempty"`
+	Utime       int64       `json:"utime,omitempty"`
 }
 
-func newQuestionCSearchRes(que domain.Question) CSearchRes {
+func newInteractive(intr interactive.Interactive) Interactive {
+	return Interactive{
+		CollectCnt: intr.CollectCnt,
+		ViewCnt:    intr.ViewCnt,
+		LikeCnt:    intr.LikeCnt,
+		Liked:      intr.Liked,
+		Collected:  intr.Collected,
+	}
+}
+
+func newQuestionCSearchRes(que domain.Question, intr interactive.Interactive) CSearchRes {
 	res := CSearchRes{
 		Id:    que.ID,
 		Title: que.Title,
 		Tags:  que.Labels,
-		Date:  que.Utime.Format(time.DateTime),
+		Utime: que.Utime.UnixMilli(),
 	}
+	res.Interactive = newInteractive(intr)
 	res.Description = buildQuestionDescription(que)
 	return res
 }
@@ -42,7 +61,7 @@ func newSkillCSearchRes(skill domain.Skill) CSearchRes {
 		Id:    skill.ID,
 		Title: skill.Name,
 		Tags:  skill.Labels,
-		Date:  skill.Utime.Format(time.DateTime),
+		Utime: skill.Utime.UnixMilli(),
 	}
 	res.Description = buildSKillDescription(skill)
 	return res
@@ -115,18 +134,19 @@ func buildSKillDescription(sk domain.Skill) string {
 	return strings.TrimSpace(descBuilder.String())
 }
 
-func newCaseCSearchRes(ca domain.Case) CSearchRes {
+func newCaseCSearchRes(ca domain.Case, intr interactive.Interactive) CSearchRes {
 	res := CSearchRes{
 		Id:    ca.Id,
 		Title: ca.Title,
 		Tags:  ca.Labels,
-		Date:  ca.Utime.Format(time.DateTime),
+		Utime: ca.Utime.UnixMilli(),
 	}
 	if len(ca.Content.HighLightVals) > 0 {
 		res.Description = ca.Content.HighLightVals[0]
 	} else {
 		res.Description = truncateString(ca.Content.Val, 100)
 	}
+	res.Interactive = newInteractive(intr)
 	return res
 }
 
@@ -134,7 +154,7 @@ func newQuestionSetCSearchRes(qs domain.QuestionSet) CSearchRes {
 	res := CSearchRes{
 		Id:    qs.Id,
 		Title: qs.Title,
-		Date:  qs.Utime.Format(time.DateTime),
+		Utime: qs.Utime.UnixMilli(),
 	}
 	if len(qs.Description.HighLightVals) > 0 {
 		res.Description = qs.Description.HighLightVals[0]
@@ -144,20 +164,25 @@ func newQuestionSetCSearchRes(qs domain.QuestionSet) CSearchRes {
 	return res
 }
 
-func NewCSearchResult(res *domain.SearchResult, examMap map[int64]cases.ExamineResult) CSearchResp {
+func NewCSearchResult(res *domain.SearchResult,
+	examMap map[int64]cases.ExamineResult,
+	caseIntr map[int64]interactive.Interactive,
+	questionIntr map[int64]interactive.Interactive,
+) CSearchResp {
 	var newResult CSearchResp
 	for _, oldCase := range res.Cases {
-		newCase := newCaseCSearchRes(oldCase)
+		newCase := newCaseCSearchRes(oldCase, caseIntr[oldCase.Id])
 		if examMap != nil {
 			exam, ok := examMap[oldCase.Id]
 			if ok {
 				newCase.Result = exam.Result.ToUint8()
 			}
 		}
+
 		newResult.Cases = append(newResult.Cases, newCase)
 	}
 	for _, question := range res.Questions {
-		newQuestion := newQuestionCSearchRes(question)
+		newQuestion := newQuestionCSearchRes(question, questionIntr[question.ID])
 		newResult.Questions = append(newResult.Questions, newQuestion)
 	}
 	for _, skill := range res.Skills {

@@ -44,7 +44,7 @@ func (q *questionSetRepo) SearchQuestionSet(ctx context.Context, offset, limit i
 	return ans, nil
 }
 
-func (*questionSetRepo) toDomain(qs dao.QuestionSet) domain.QuestionSet {
+func (*questionSetRepo) toDomain(qs *dao.QuestionSet) domain.QuestionSet {
 	return domain.QuestionSet{
 		Id:    qs.Id,
 		Uid:   qs.Uid,

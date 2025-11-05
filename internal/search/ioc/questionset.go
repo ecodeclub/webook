@@ -2,7 +2,7 @@ package ioc
 
 import (
 	"github.com/ecodeclub/webook/internal/search/internal/repository/dao"
-	"github.com/olivere/elastic/v7"
+	"github.com/elastic/go-elasticsearch/v9"
 )
 
 const (
@@ -10,7 +10,7 @@ const (
 	questionSetDescription = 2
 )
 
-func InitQuestionSetDAO(client *elastic.Client) dao.QuestionSetDAO {
+func InitQuestionSetDAO(client *elasticsearch.TypedClient) dao.QuestionSetDAO {
 	metas := map[string]dao.FieldConfig{
 		"title": {
 			Name:  "title",
@@ -29,7 +29,7 @@ func InitQuestionSetDAO(client *elastic.Client) dao.QuestionSetDAO {
 	return dao.NewQuestionSetDAO(client, metas)
 }
 
-func InitAdminQuestionSetDAO(client *elastic.Client) dao.QuestionSetDAO {
+func InitAdminQuestionSetDAO(client *elasticsearch.TypedClient) dao.QuestionSetDAO {
 	metas := map[string]dao.FieldConfig{
 		"title": {
 			Name:  "title",

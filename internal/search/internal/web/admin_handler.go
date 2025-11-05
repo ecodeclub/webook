@@ -24,7 +24,9 @@ func (h *AdminHandler) PrivateRoutes(server *gin.Engine) {
 }
 
 func (h *AdminHandler) List(ctx *ginx.Context, req SearchReq) (ginx.Result, error) {
-	data, err := h.svc.Search(ctx, req.Offset, req.Limit, req.Keywords)
+	// 使用标准库上下文以保留超时/取消控制，避免并发使用 *gin.Context
+	stdCtx := ctx.Request.Context()
+	data, err := h.svc.Search(stdCtx, req.Offset, req.Limit, req.Keywords)
 	if err != nil {
 		return systemErrorResult, err
 	}

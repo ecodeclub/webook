@@ -20,6 +20,9 @@ import (
 	"context"
 	"sync"
 
+	"github.com/ecodeclub/webook/internal/interactive"
+	"github.com/elastic/go-elasticsearch/v9"
+
 	"github.com/ecodeclub/webook/internal/search/ioc"
 
 	"github.com/ecodeclub/webook/internal/cases"
@@ -32,12 +35,11 @@ import (
 	"github.com/ecodeclub/webook/internal/search/internal/service"
 	"github.com/ecodeclub/webook/internal/search/internal/web"
 	"github.com/google/wire"
-	"github.com/olivere/elastic/v7"
 )
 
 // 初始化adminHandler
 
-func initAdminHandler(es *elastic.Client) *AdminHandler {
+func initAdminHandler(es *elasticsearch.TypedClient) *AdminHandler {
 	InitIndexOnce(es)
 	caDAO := ioc.InitAdminCaseDAO(es)
 	questionDAO := ioc.InitAdminQuestionDAO(es)
@@ -70,10 +72,15 @@ var SyncSvcSet = wire.NewSet(
 	InitSyncSvc,
 )
 
-func InitModule(es *elastic.Client, q mq.MQ, caModule *cases.Module) (*Module, error) {
+func InitModule(es *elasticsearch.TypedClient,
+	q mq.MQ,
+	caModule *cases.Module,
+	intrModule *interactive.Module,
+) (*Module, error) {
 	wire.Build(
 		initAdminHandler,
 		wire.FieldsOf(new(*cases.Module), "ExamineSvc"),
+		wire.FieldsOf(new(*interactive.Module), "Svc"),
 		HandlerSet,
 		SyncSvcSet,
 		initSyncConsumer,
@@ -84,7 +91,7 @@ func InitModule(es *elastic.Client, q mq.MQ, caModule *cases.Module) (*Module, e
 
 var daoOnce = sync.Once{}
 
-func InitIndexOnce(es *elastic.Client) {
+func InitIndexOnce(es *elasticsearch.TypedClient) {
 	daoOnce.Do(func() {
 		err := dao.InitES(es)
 		if err != nil {
@@ -93,14 +100,14 @@ func InitIndexOnce(es *elastic.Client) {
 	})
 }
 
-func InitAnyRepo(es *elastic.Client) repository.AnyRepo {
+func InitAnyRepo(es *elasticsearch.TypedClient) repository.AnyRepo {
 	InitIndexOnce(es)
 	anyDAO := dao.NewAnyEsDAO(es)
 	anyRepo := repository.NewAnyRepo(anyDAO)
 	return anyRepo
 }
 
-func InitSyncSvc(es *elastic.Client) service.SyncService {
+func InitSyncSvc(es *elasticsearch.TypedClient) service.SyncService {
 	anyRepo := InitAnyRepo(es)
 	return service.NewSyncSvc(anyRepo)
 }

@@ -15,11 +15,12 @@
 package dao
 
 import (
+	"bytes"
 	"context"
 	_ "embed"
 	"time"
 
-	"github.com/olivere/elastic/v7"
+	"github.com/elastic/go-elasticsearch/v9"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -44,7 +45,7 @@ var (
 )
 
 // InitES 创建索引
-func InitES(client *elastic.Client) error {
+func InitES(client *elasticsearch.TypedClient) error {
 	const timeout = time.Second * 10
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
@@ -72,7 +73,7 @@ func InitES(client *elastic.Client) error {
 }
 
 // InitEsTest 创建索引测试用
-func InitEsTest(client *elastic.Client) error {
+func InitEsTest(client *elasticsearch.TypedClient) error {
 	const timeout = time.Second * 10
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
@@ -100,17 +101,21 @@ func InitEsTest(client *elastic.Client) error {
 }
 
 func tryCreateIndex(ctx context.Context,
-	client *elastic.Client,
+	client *elasticsearch.TypedClient,
 	idxName, idxCfg string,
 ) error {
-	// 索引可能已经建好了
-	ok, err := client.IndexExists(idxName).Do(ctx)
+	// 检查索引是否存在
+	exists, err := client.Indices.Exists(idxName).Do(ctx)
 	if err != nil {
 		return err
 	}
-	if ok {
+	if exists {
 		return nil
 	}
-	_, err = client.CreateIndex(idxName).Body(idxCfg).Do(ctx)
+
+	// 创建索引，直接传入 JSON 配置字符串
+	_, err = client.Indices.Create(idxName).
+		Raw(bytes.NewReader([]byte(idxCfg))).
+		Do(ctx)
 	return err
 }

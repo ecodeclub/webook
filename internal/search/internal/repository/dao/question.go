@@ -16,11 +16,10 @@ package dao
 
 import (
 	"context"
-	"encoding/json"
 
 	"github.com/ecodeclub/webook/internal/search/internal/domain"
 
-	"github.com/olivere/elastic/v7"
+	"github.com/elastic/go-elasticsearch/v9"
 )
 
 const (
@@ -41,6 +40,11 @@ type Question struct {
 	Utime        int64               `json:"utime"`
 	EsHighLights map[string][]string `json:"-"`
 }
+
+func (q *Question) SetEsHighLights(highLights map[string][]string) {
+	q.EsHighLights = highLights
+}
+
 type Answer struct {
 	Analysis     AnswerElement `json:"analysis"`
 	Basic        AnswerElement `json:"basic"`
@@ -58,47 +62,19 @@ type AnswerElement struct {
 }
 
 type questionElasticDAO struct {
-	client  *elastic.Client
-	metas   map[string]FieldConfig
-	index   string
-	builder searchBuilder
+	client *searchClient[*Question]
 }
 
-func NewQuestionElasticDAO(esClient *elastic.Client, index string, metas map[string]FieldConfig) QuestionDAO {
+func NewQuestionElasticDAO(esClient *elasticsearch.TypedClient, index string, metas map[string]FieldConfig) QuestionDAO {
 	return &questionElasticDAO{
-		client: esClient,
-		index:  index,
-		metas:  metas,
+		client: &searchClient[*Question]{
+			client:     esClient,
+			index:      index,
+			colsConfig: metas,
+		},
 	}
 }
 
-func (q *questionElasticDAO) SearchQuestion(ctx context.Context, offset, limit int, queryMetas []domain.QueryMeta) ([]Question, error) {
-	cols, highlights := q.builder.build(q.metas, queryMetas)
-	query := elastic.NewBoolQuery().Must(
-		elastic.NewBoolQuery().Should(cols...))
-	builder := q.client.Search(q.index).
-		From(offset).
-		Size(limit).
-		Query(query)
-	if len(highlights) > 0 {
-		builder = builder.Highlight(elastic.NewHighlight().Fields(highlights...))
-	}
-	resp, err := builder.Do(ctx)
-	if err != nil {
-		return nil, err
-	}
-	res := make([]Question, 0, len(resp.Hits.Hits))
-	for _, hit := range resp.Hits.Hits {
-		var (
-			ele Question
-		)
-		err = json.Unmarshal(hit.Source, &ele)
-		if err != nil {
-			return nil, err
-		}
-		ele.EsHighLights = getEsHighLights(hit.Highlight)
-
-		res = append(res, ele)
-	}
-	return res, nil
+func (q *questionElasticDAO) SearchQuestion(ctx context.Context, offset, limit int, queryMetas []domain.QueryMeta) ([]*Question, error) {
+	return q.client.getSearchRes(ctx, queryMetas, offset, limit)
 }

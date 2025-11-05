@@ -16,10 +16,9 @@ package dao
 
 import (
 	"context"
-	"encoding/json"
 
 	"github.com/ecodeclub/webook/internal/search/internal/domain"
-	"github.com/olivere/elastic/v7"
+	"github.com/elastic/go-elasticsearch/v9"
 )
 
 const (
@@ -48,48 +47,24 @@ type Case struct {
 	EsHighLights map[string][]string `json:"-"`
 }
 
+func (c *Case) SetEsHighLights(highLights map[string][]string) {
+	c.EsHighLights = highLights
+}
+
 type CaseElasticDAO struct {
-	client  *elastic.Client
-	metas   map[string]FieldConfig
-	builder searchBuilder
-	index   string
+	builder searchClient[*Case]
 }
 
-func (c *CaseElasticDAO) SearchCase(ctx context.Context, offset, limit int, queryMetas []domain.QueryMeta) ([]Case, error) {
-	cols, highlights := c.builder.build(c.metas, queryMetas)
-	query := elastic.NewBoolQuery().Must(
-		elastic.NewBoolQuery().Should(cols...))
-	builder := c.client.Search(c.index).
-		From(offset).
-		Size(limit).
-		Query(query)
-	if len(highlights) > 0 {
-		builder = builder.Highlight(elastic.NewHighlight().Fields(highlights...))
-	}
-	resp, err := builder.Do(ctx)
-	if err != nil {
-		return nil, err
-	}
-	res := make([]Case, 0, len(resp.Hits.Hits))
-	for _, hit := range resp.Hits.Hits {
-		var (
-			ele Case
-		)
-		err = json.Unmarshal(hit.Source, &ele)
-		if err != nil {
-			return nil, err
-		}
-		ele.EsHighLights = getEsHighLights(hit.Highlight)
-		res = append(res, ele)
-	}
-	return res, nil
+func (c *CaseElasticDAO) SearchCase(ctx context.Context, offset, limit int, queryMetas []domain.QueryMeta) ([]*Case, error) {
+	return c.builder.getSearchRes(ctx, queryMetas, offset, limit)
 }
 
-func NewCaseElasticDAO(client *elastic.Client, metas map[string]FieldConfig, index string) *CaseElasticDAO {
+func NewCaseElasticDAO(client *elasticsearch.TypedClient, metas map[string]FieldConfig, index string) *CaseElasticDAO {
 	return &CaseElasticDAO{
-		client:  client,
-		metas:   metas,
-		index:   index,
-		builder: newSearchBuilder(),
+		builder: searchClient[*Case]{
+			client:     client,
+			index:      index,
+			colsConfig: metas,
+		},
 	}
 }

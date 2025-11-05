@@ -15,25 +15,26 @@
 package dao
 
 import (
+	"bytes"
 	"context"
 
-	"github.com/olivere/elastic/v7"
+	"github.com/elastic/go-elasticsearch/v9"
 )
 
 type anyESDAO struct {
-	client *elastic.Client
+	client *elasticsearch.TypedClient
 }
 
-func NewAnyEsDAO(client *elastic.Client) AnyDAO {
+func NewAnyEsDAO(client *elasticsearch.TypedClient) AnyDAO {
 	return &anyESDAO{
 		client: client,
 	}
 }
 
 func (a *anyESDAO) Input(ctx context.Context, index string, docID string, data string) error {
-	_, err := a.client.Index().
-		Index(index).
+	_, err := a.client.Index(index).
 		Id(docID).
-		BodyJson(data).Do(ctx)
+		Raw(bytes.NewReader([]byte(data))).
+		Do(ctx)
 	return err
 }

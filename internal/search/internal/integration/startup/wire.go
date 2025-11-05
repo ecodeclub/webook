@@ -20,6 +20,9 @@ import (
 	"context"
 	"sync"
 
+	"github.com/ecodeclub/webook/internal/interactive"
+	"github.com/elastic/go-elasticsearch/v9"
+
 	"github.com/ecodeclub/mq-api"
 	"github.com/ecodeclub/webook/internal/cases"
 	baguwen "github.com/ecodeclub/webook/internal/search"
@@ -31,10 +34,9 @@ import (
 	"github.com/ecodeclub/webook/internal/search/ioc"
 	testioc "github.com/ecodeclub/webook/internal/test/ioc"
 	"github.com/google/wire"
-	"github.com/olivere/elastic/v7"
 )
 
-func initAdminHandler(es *elastic.Client) *web.AdminHandler {
+func initAdminHandler(es *elasticsearch.TypedClient) *web.AdminHandler {
 	InitIndexOnce(es)
 	caDAO := ioc.InitAdminCaseDAO(es)
 	questionDAO := ioc.InitAdminQuestionDAO(es)
@@ -67,21 +69,21 @@ var SyncSvcSet = wire.NewSet(
 	InitSyncSvc,
 )
 
-func InitAnyRepo(es *elastic.Client) repository.AnyRepo {
+func InitAnyRepo(es *elasticsearch.TypedClient) repository.AnyRepo {
 	InitIndexOnce(es)
 	anyDAO := dao.NewAnyEsDAO(es)
 	anyRepo := repository.NewAnyRepo(anyDAO)
 	return anyRepo
 }
 
-func InitSyncSvc(es *elastic.Client) service.SyncService {
+func InitSyncSvc(es *elasticsearch.TypedClient) service.SyncService {
 	anyRepo := InitAnyRepo(es)
 	return service.NewSyncSvc(anyRepo)
 }
 
 var daoOnce = sync.Once{}
 
-func InitIndexOnce(es *elastic.Client) {
+func InitIndexOnce(es *elasticsearch.TypedClient) {
 	daoOnce.Do(func() {
 		err := dao.InitEsTest(es)
 		if err != nil {
@@ -90,10 +92,15 @@ func InitIndexOnce(es *elastic.Client) {
 	})
 }
 
-func InitModule(es *elastic.Client, q mq.MQ, caModule *cases.Module) (*baguwen.Module, error) {
+func InitModule(es *elasticsearch.TypedClient,
+	q mq.MQ,
+	caModule *cases.Module,
+	intrModule *interactive.Module,
+) (*baguwen.Module, error) {
 	wire.Build(
 		initAdminHandler,
 		wire.FieldsOf(new(*cases.Module), "ExamineSvc"),
+		wire.FieldsOf(new(*interactive.Module), "Svc"),
 		HandlerSet,
 		SyncSvcSet,
 		initSyncConsumer,
@@ -111,13 +118,14 @@ func initSyncConsumer(svc service.SyncService, q mq.MQ) *event.SyncConsumer {
 	return c
 }
 
-func InitHandler(caModule *cases.Module) (*web.Handler, error) {
+func InitHandler(caModule *cases.Module, intrModule *interactive.Module) (*web.Handler, error) {
 	wire.Build(testioc.BaseSet, InitModule,
-		wire.FieldsOf(new(*baguwen.Module), "Hdl"))
+		wire.FieldsOf(new(*baguwen.Module), "Hdl"),
+	)
 	return new(web.Handler), nil
 }
 
-func InitAdminHandler(caModule *cases.Module) (*web.AdminHandler, error) {
+func InitAdminHandler(caModule *cases.Module, intrModule *interactive.Module) (*web.AdminHandler, error) {
 	wire.Build(testioc.BaseSet, InitModule,
 		wire.FieldsOf(new(*baguwen.Module), "AdminHandler"))
 	return new(web.AdminHandler), nil

@@ -1,8 +1,6 @@
 package dao
 
-import "github.com/olivere/elastic/v7"
-
-func getEsHighLights(field elastic.SearchHitHighlight) map[string][]string {
+func getEsHighLights(field map[string][]string) map[string][]string {
 	highlights := make(map[string][]string)
 	if field != nil {
 		highlights = field

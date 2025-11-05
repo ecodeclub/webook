@@ -2,7 +2,7 @@ package ioc
 
 import (
 	"github.com/ecodeclub/webook/internal/search/internal/repository/dao"
-	"github.com/olivere/elastic/v7"
+	"github.com/elastic/go-elasticsearch/v9"
 )
 
 const (
@@ -11,7 +11,7 @@ const (
 	skillDescBoost  = 2
 )
 
-func InitSkillDAO(client *elastic.Client) dao.SkillDAO {
+func InitSkillDAO(client *elasticsearch.TypedClient) dao.SkillDAO {
 	metas := map[string]dao.FieldConfig{
 		"name": {
 			Name:  "name",
@@ -43,7 +43,7 @@ func InitSkillDAO(client *elastic.Client) dao.SkillDAO {
 	return dao.NewSkillDAO(client, metas)
 }
 
-func InitAdminSkillDAO(client *elastic.Client) dao.SkillDAO {
+func InitAdminSkillDAO(client *elasticsearch.TypedClient) dao.SkillDAO {
 	metas := map[string]dao.FieldConfig{
 		"name": {
 			Name:  "name",

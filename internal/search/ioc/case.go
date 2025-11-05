@@ -2,7 +2,7 @@ package ioc
 
 import (
 	"github.com/ecodeclub/webook/internal/search/internal/repository/dao"
-	"github.com/olivere/elastic/v7"
+	"github.com/elastic/go-elasticsearch/v9"
 )
 
 const (
@@ -13,7 +13,7 @@ const (
 	caseGuidanceBoost = 1
 )
 
-func InitAdminCaseDAO(client *elastic.Client) dao.CaseDAO {
+func InitAdminCaseDAO(client *elasticsearch.TypedClient) dao.CaseDAO {
 	metas := map[string]dao.FieldConfig{
 		"title": {
 			Name:  "title",
@@ -48,7 +48,7 @@ func InitAdminCaseDAO(client *elastic.Client) dao.CaseDAO {
 	return dao.NewCaseElasticDAO(client, metas, "case_index")
 }
 
-func InitCaseDAO(client *elastic.Client) dao.CaseDAO {
+func InitCaseDAO(client *elasticsearch.TypedClient) dao.CaseDAO {
 	metas := map[string]dao.FieldConfig{
 		"title": {
 			Name:  "title",

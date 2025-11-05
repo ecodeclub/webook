@@ -55,13 +55,21 @@ func (b *basePaymentService) convertToPaymentDomain(txn *payments.Transaction, s
 	if status == domain.PaymentStatusPaidSuccess {
 		paidAt = time.Now().UnixMilli()
 	}
+	var orderSN string
+	if txn != nil && txn.OutTradeNo != nil {
+		orderSN = *txn.OutTradeNo
+	}
+	var paymentNO3rd string
+	if txn != nil && txn.TransactionId != nil {
+		paymentNO3rd = *txn.TransactionId
+	}
 	return domain.Payment{
-		OrderSN: *txn.OutTradeNo,
+		OrderSN: orderSN,
 		PaidAt:  paidAt,
 		Status:  status,
 		Records: []domain.PaymentRecord{
 			{
-				PaymentNO3rd: *txn.TransactionId,
+				PaymentNO3rd: paymentNO3rd,
 				Channel:      b.name,
 				PaidAt:       paidAt,
 				Status:       status,

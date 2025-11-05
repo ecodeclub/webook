@@ -17,12 +17,16 @@
 package integration
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"net/http"
 	"strconv"
 	"testing"
 	"time"
+
+	"github.com/ecodeclub/webook/internal/interactive"
+	intrmocks "github.com/ecodeclub/webook/internal/interactive/mocks"
 
 	"github.com/ecodeclub/ekit/iox"
 	"github.com/ecodeclub/ekit/slice"
@@ -37,10 +41,11 @@ import (
 	"github.com/ecodeclub/webook/internal/search/internal/web"
 	"github.com/ecodeclub/webook/internal/test"
 	testioc "github.com/ecodeclub/webook/internal/test/ioc"
+	"github.com/elastic/go-elasticsearch/v9"
+	"github.com/elastic/go-elasticsearch/v9/typedapi/types"
 	"github.com/gin-gonic/gin"
 	"github.com/gotomicro/ego/core/econf"
 	"github.com/gotomicro/ego/server/egin"
-	"github.com/olivere/elastic/v7"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -50,20 +55,44 @@ import (
 type HandlerTestSuite struct {
 	suite.Suite
 	server   *egin.Component
-	es       *elastic.Client
+	es       *elasticsearch.TypedClient
 	producer mq.Producer
 }
 
 func (s *HandlerTestSuite) TearDownSuite() {
-	// 创建范围查询，匹配 5000< id < 10000 的文档
-	query := elastic.NewRangeQuery("id").Gt(5000).Lt(9000)
-	_, err := s.es.DeleteByQuery("pub_case_index").Query(query).Do(context.Background())
+	// 创建范围查询，匹配 5000< id < 9000 的文档
+	gt := types.Float64(5000)
+	lt := types.Float64(9000)
+	rangeQuery := types.NewNumberRangeQuery()
+	rangeQuery.Gt = &gt
+	rangeQuery.Lt = &lt
+
+	query := &types.Query{
+		Range: map[string]types.RangeQuery{
+			"id": rangeQuery.RangeQueryCaster(),
+		},
+	}
+
+	deleteReq := map[string]interface{}{
+		"query": query,
+	}
+	deleteBytes, _ := json.Marshal(deleteReq)
+
+	_, err := s.es.DeleteByQuery("pub_case_index").
+		Raw(bytes.NewReader(deleteBytes)).
+		Do(context.Background())
 	require.NoError(s.T(), err)
-	_, err = s.es.DeleteByQuery("pub_question_index").Query(query).Do(context.Background())
+	_, err = s.es.DeleteByQuery("pub_question_index").
+		Raw(bytes.NewReader(deleteBytes)).
+		Do(context.Background())
 	require.NoError(s.T(), err)
-	_, err = s.es.DeleteByQuery("skill_index").Query(query).Do(context.Background())
+	_, err = s.es.DeleteByQuery("skill_index").
+		Raw(bytes.NewReader(deleteBytes)).
+		Do(context.Background())
 	require.NoError(s.T(), err)
-	_, err = s.es.DeleteByQuery(dao.QuestionSetIndexName).Query(query).Do(context.Background())
+	_, err = s.es.DeleteByQuery(dao.QuestionSetIndexName).
+		Raw(bytes.NewReader(deleteBytes)).
+		Do(context.Background())
 	require.NoError(s.T(), err)
 }
 
@@ -83,8 +112,22 @@ func (s *HandlerTestSuite) SetupSuite() {
 		}
 		return resMap, nil
 	}).AnyTimes()
+
+	intrSvc := intrmocks.NewMockService(ctrl)
+	intrSvc.EXPECT().GetByIds(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context,
+		biz string, uid int64, ids []int64) (map[int64]interactive.Interactive, error) {
+		res := make(map[int64]interactive.Interactive, len(ids))
+		for _, id := range ids {
+			intr := s.mockInteractive(biz, id)
+			res[id] = intr
+		}
+		return res, nil
+	}).AnyTimes()
+
 	handler, err := startup.InitHandler(&cases.Module{
 		ExamineSvc: examSvc,
+	}, &interactive.Module{
+		Svc: intrSvc,
 	})
 	require.NoError(s.T(), err)
 	econf.Set("server", map[string]any{"contextTimeout": "1s"})
@@ -118,18 +161,21 @@ func (s *HandlerTestSuite) initSkills() {
 			Labels: []string{"programming", "golang"},
 			Name:   "test_name",
 			Desc:   "Learn Golang programming language",
+			Utime:  1619708855,
 		},
 		{
 			ID:     5002,
 			Labels: []string{"programming", "test_label"},
 			Name:   "",
 			Desc:   "Learn Golang programming language",
+			Utime:  1619708855,
 		},
 		{
 			ID:     5003,
 			Labels: []string{"programming"},
 			Name:   "",
 			Desc:   "test_desc",
+			Utime:  1619708855,
 		},
 		{
 			ID:     5004,
@@ -143,6 +189,7 @@ func (s *HandlerTestSuite) initSkills() {
 				Questions: []int64{1},
 				Cases:     []int64{1},
 			},
+			Utime: 1619708855,
 		},
 		{
 			ID:     5005,
@@ -156,6 +203,7 @@ func (s *HandlerTestSuite) initSkills() {
 				Questions: []int64{1},
 				Cases:     []int64{1},
 			},
+			Utime: 1619708855,
 		},
 		{
 			ID:     5006,
@@ -169,15 +217,16 @@ func (s *HandlerTestSuite) initSkills() {
 				Questions: []int64{1},
 				Cases:     []int64{1},
 			},
+			Utime: 1619708855,
 		},
 	}
 	for _, skill := range skills {
 		by, err := json.Marshal(skill)
 		require.NoError(s.T(), err)
-		_, err = s.es.Index().
-			Index(dao.SkillIndexName).
+		_, err = s.es.Index(dao.SkillIndexName).
 			Id(strconv.FormatInt(skill.ID, 10)).
-			BodyJson(string(by)).Do(context.Background())
+			Raw(bytes.NewReader(by)).
+			Do(context.Background())
 		require.NoError(s.T(), err)
 	}
 }
@@ -198,8 +247,8 @@ func (s *HandlerTestSuite) TestBizSearch() {
 			after: func(t *testing.T, wantRes web.CSearchResp, actual web.CSearchResp) {
 				for idx := range actual.Cases {
 					que := actual.Cases[idx]
-					require.True(t, que.Date != "")
-					actual.Cases[idx].Date = ""
+					require.True(t, que.Utime > 0)
+					actual.Cases[idx].Utime = 0
 				}
 				assert.ElementsMatch(t, wantRes.Cases, actual.Cases)
 			},
@@ -211,6 +260,13 @@ func (s *HandlerTestSuite) TestBizSearch() {
 						Tags:        []string{"label1"},
 						Description: "Elasticsearch内容",
 						Result:      0,
+						Interactive: web.Interactive{
+							ViewCnt:    10007,
+							LikeCnt:    10008,
+							CollectCnt: 10009,
+							Liked:      false,
+							Collected:  true,
+						},
 					},
 					{
 						Id:          10005,
@@ -218,6 +274,13 @@ func (s *HandlerTestSuite) TestBizSearch() {
 						Tags:        []string{"test_label"},
 						Description: "Elasticsearch内容",
 						Result:      1,
+						Interactive: web.Interactive{
+							ViewCnt:    10006,
+							LikeCnt:    10007,
+							CollectCnt: 10008,
+							Liked:      true,
+							Collected:  false,
+						},
 					},
 					{
 						Id:          10002,
@@ -225,6 +288,13 @@ func (s *HandlerTestSuite) TestBizSearch() {
 						Tags:        []string{"label1"},
 						Description: "Elasticsearch内容",
 						Result:      0,
+						Interactive: web.Interactive{
+							ViewCnt:    10003,
+							LikeCnt:    10004,
+							CollectCnt: 10005,
+							Liked:      false,
+							Collected:  true,
+						},
 					},
 					{
 						Id:          10003,
@@ -232,6 +302,13 @@ func (s *HandlerTestSuite) TestBizSearch() {
 						Tags:        []string{"label1", "label2"},
 						Description: "Elasticsearch内容",
 						Result:      1,
+						Interactive: web.Interactive{
+							ViewCnt:    10004,
+							LikeCnt:    10005,
+							CollectCnt: 10006,
+							Liked:      true,
+							Collected:  false,
+						},
 					},
 					{
 						Id:          10001,
@@ -239,6 +316,13 @@ func (s *HandlerTestSuite) TestBizSearch() {
 						Tags:        []string{"label1", "label2"},
 						Description: "<strong>test_content</strong>",
 						Result:      1,
+						Interactive: web.Interactive{
+							ViewCnt:    10002,
+							LikeCnt:    10003,
+							CollectCnt: 10004,
+							Liked:      true,
+							Collected:  false,
+						},
 					},
 					{
 						Id:          10004,
@@ -246,6 +330,13 @@ func (s *HandlerTestSuite) TestBizSearch() {
 						Tags:        []string{"label1", "label2"},
 						Description: "Elasticsearch内容",
 						Result:      0,
+						Interactive: web.Interactive{
+							ViewCnt:    10005,
+							LikeCnt:    10006,
+							CollectCnt: 10007,
+							Liked:      false,
+							Collected:  true,
+						},
 					},
 					{
 						Id:          10007,
@@ -253,6 +344,13 @@ func (s *HandlerTestSuite) TestBizSearch() {
 						Tags:        []string{"xxxx"},
 						Description: "Elasticsearch内容",
 						Result:      1,
+						Interactive: web.Interactive{
+							ViewCnt:    10008,
+							LikeCnt:    10009,
+							CollectCnt: 10010,
+							Liked:      true,
+							Collected:  false,
+						},
 					},
 				},
 			},
@@ -269,9 +367,7 @@ func (s *HandlerTestSuite) TestBizSearch() {
 			},
 			after: func(t *testing.T, wantRes web.CSearchResp, actual web.CSearchResp) {
 				for idx := range actual.Questions {
-					que := actual.Questions[idx]
-					require.True(t, que.Date != "")
-					actual.Questions[idx].Date = ""
+					actual.Questions[idx].Utime = 0
 				}
 				assert.ElementsMatch(t, wantRes.Questions, actual.Questions)
 			},
@@ -282,78 +378,169 @@ func (s *HandlerTestSuite) TestBizSearch() {
 						Title:       "test_title",
 						Tags:        []string{"elasticsearch", "search"},
 						Description: "I want to know how to use Elasticsearch for searching.",
+						Interactive: web.Interactive{
+							ViewCnt:    10003,
+							LikeCnt:    10004,
+							CollectCnt: 10005,
+							Liked:      false,
+							Collected:  true,
+						},
 					},
 					{
 						Id:          10001,
 						Title:       "dasdsa",
 						Tags:        []string{"test_label"},
 						Description: "I want to know how to use Elasticsearch for searching.",
+						Interactive: web.Interactive{
+							ViewCnt:    10002,
+							LikeCnt:    10003,
+							CollectCnt: 10004,
+							Liked:      true,
+							Collected:  false,
+						},
 					},
 					{
 						Id:          10004,
 						Title:       "Elasticsearch",
 						Tags:        []string{"tElasticsearch"},
 						Description: "描述：<strong>test_content</strong><br/>",
+						Interactive: web.Interactive{
+							ViewCnt:    10005,
+							LikeCnt:    10006,
+							CollectCnt: 10007,
+							Liked:      false,
+							Collected:  true,
+						},
 					},
 					{
 						Id:          10003,
 						Title:       "How to use Elasticsearch?",
 						Tags:        []string{"elasticsearch", "search"},
 						Description: "题目分析：<strong>test_analysis_content</strong><br/>",
+						Interactive: web.Interactive{
+							ViewCnt:    10004,
+							LikeCnt:    10005,
+							CollectCnt: 10006,
+							Liked:      true,
+							Collected:  false,
+						},
 					},
 					{
 						Id:          10005,
 						Title:       "How to use Elasticsearch?",
 						Tags:        []string{"elasticsearch", "search"},
 						Description: "I want to know how to use Elasticsearch for searching.",
+						Interactive: web.Interactive{
+							ViewCnt:    10006,
+							LikeCnt:    10007,
+							CollectCnt: 10008,
+							Liked:      true,
+							Collected:  false,
+						},
 					},
 					{
 						Id:          10006,
 						Title:       "How to use Elasticsearch?",
 						Tags:        []string{"elasticsearch", "search"},
 						Description: "I want to know how to use Elasticsearch for searching.",
+						Interactive: web.Interactive{
+							ViewCnt:    10007,
+							LikeCnt:    10008,
+							CollectCnt: 10009,
+							Liked:      false,
+							Collected:  true,
+						},
 					},
 					{
 						Id:          10007,
 						Title:       "How to use Elasticsearch?",
 						Tags:        []string{"elasticsearch", "search"},
 						Description: "I want to know how to use Elasticsearch for searching.",
+						Interactive: web.Interactive{
+							ViewCnt:    10008,
+							LikeCnt:    10009,
+							CollectCnt: 10010,
+							Liked:      true,
+							Collected:  false,
+						},
 					},
 					{
 						Id:          10008,
 						Title:       "How to use Elasticsearch?",
 						Tags:        []string{"elasticsearch", "search"},
 						Description: "基础回答：<strong>test_basic_content</strong><br/>",
+						Interactive: web.Interactive{
+							ViewCnt:    10009,
+							LikeCnt:    10010,
+							CollectCnt: 10011,
+							Liked:      false,
+							Collected:  true,
+						},
 					},
 					{
 						Id:          10009,
 						Title:       "How to use Elasticsearch?",
 						Tags:        []string{"elasticsearch", "search"},
 						Description: "I want to know how to use Elasticsearch for searching.",
+						Interactive: web.Interactive{
+							ViewCnt:    10010,
+							LikeCnt:    10011,
+							CollectCnt: 10012,
+							Liked:      true,
+							Collected:  false,
+						},
 					},
 					{
 						Id:          10010,
 						Title:       "How to use Elasticsearch?",
 						Tags:        []string{"elasticsearch", "search"},
 						Description: "I want to know how to use Elasticsearch for searching.",
+						Interactive: web.Interactive{
+							ViewCnt:    10011,
+							LikeCnt:    10012,
+							CollectCnt: 10013,
+							Liked:      false,
+							Collected:  true,
+						},
 					},
 					{
 						Id:          10011,
 						Title:       "How to use Elasticsearch?",
 						Tags:        []string{"elasticsearch", "search"},
 						Description: "I want to know how to use Elasticsearch for searching.",
+						Interactive: web.Interactive{
+							ViewCnt:    10012,
+							LikeCnt:    10013,
+							CollectCnt: 10014,
+							Liked:      true,
+							Collected:  false,
+						},
 					},
 					{
 						Id:          10012,
 						Title:       "How to use Elasticsearch?",
 						Tags:        []string{"elasticsearch", "search"},
 						Description: "中级回答：<strong>test_intermediate_content</strong><br/>",
+						Interactive: web.Interactive{
+							ViewCnt:    10013,
+							LikeCnt:    10014,
+							CollectCnt: 10015,
+							Liked:      false,
+							Collected:  true,
+						},
 					},
 					{
 						Id:          10013,
 						Title:       "How to use Elasticsearch?",
 						Tags:        []string{"elasticsearch", "search"},
 						Description: "I want to know how to use Elasticsearch for searching.",
+						Interactive: web.Interactive{
+							ViewCnt:    10014,
+							LikeCnt:    10015,
+							CollectCnt: 10016,
+							Liked:      true,
+							Collected:  false,
+						},
 					},
 					{
 						Id:    10014,
@@ -361,6 +548,13 @@ func (s *HandlerTestSuite) TestBizSearch() {
 
 						Tags:        []string{"elasticsearch", "search"},
 						Description: "I want to know how to use Elasticsearch for searching.",
+						Interactive: web.Interactive{
+							ViewCnt:    10015,
+							LikeCnt:    10016,
+							CollectCnt: 10017,
+							Liked:      false,
+							Collected:  true,
+						},
 					},
 					{
 						Id:    10015,
@@ -368,6 +562,13 @@ func (s *HandlerTestSuite) TestBizSearch() {
 
 						Tags:        []string{"elasticsearch", "search"},
 						Description: "I want to know how to use Elasticsearch for searching.",
+						Interactive: web.Interactive{
+							ViewCnt:    10016,
+							LikeCnt:    10017,
+							CollectCnt: 10018,
+							Liked:      true,
+							Collected:  false,
+						},
 					},
 					{
 						Id:    10016,
@@ -375,6 +576,13 @@ func (s *HandlerTestSuite) TestBizSearch() {
 
 						Tags:        []string{"elasticsearch", "search"},
 						Description: "I want to know how to use Elasticsearch for searching.",
+						Interactive: web.Interactive{
+							ViewCnt:    10017,
+							LikeCnt:    10018,
+							CollectCnt: 10019,
+							Liked:      false,
+							Collected:  true,
+						},
 					},
 					{
 						Id:    10017,
@@ -382,6 +590,13 @@ func (s *HandlerTestSuite) TestBizSearch() {
 
 						Tags:        []string{"elasticsearch", "search"},
 						Description: "I want to know how to use Elasticsearch for searching.",
+						Interactive: web.Interactive{
+							ViewCnt:    10018,
+							LikeCnt:    10019,
+							CollectCnt: 10020,
+							Liked:      true,
+							Collected:  false,
+						},
 					},
 					{
 						Id:    10018,
@@ -389,6 +604,13 @@ func (s *HandlerTestSuite) TestBizSearch() {
 
 						Tags:        []string{"elasticsearch", "search"},
 						Description: "I want to know how to use Elasticsearch for searching.",
+						Interactive: web.Interactive{
+							ViewCnt:    10019,
+							LikeCnt:    10020,
+							CollectCnt: 10021,
+							Liked:      false,
+							Collected:  true,
+						},
 					},
 					{
 						Id:    10019,
@@ -396,6 +618,13 @@ func (s *HandlerTestSuite) TestBizSearch() {
 
 						Tags:        []string{"elasticsearch", "search"},
 						Description: "高级回答：<strong>test_advanced_content</strong><br/>",
+						Interactive: web.Interactive{
+							ViewCnt:    10020,
+							LikeCnt:    10021,
+							CollectCnt: 10022,
+							Liked:      true,
+							Collected:  false,
+						},
 					},
 				},
 			},
@@ -412,9 +641,9 @@ func (s *HandlerTestSuite) TestBizSearch() {
 			},
 			after: func(t *testing.T, wantRes web.CSearchResp, actual web.CSearchResp) {
 				for idx := range actual.Skills {
-					que := actual.Skills[idx]
-					require.True(t, que.Date != "")
-					actual.Skills[idx].Date = ""
+					skill := actual.Skills[idx]
+					require.True(t, skill.Utime > 0)
+					actual.Skills[idx].Utime = 0
 				}
 				assert.ElementsMatch(t, wantRes.Skills, actual.Skills)
 			},
@@ -472,8 +701,8 @@ func (s *HandlerTestSuite) TestBizSearch() {
 			after: func(t *testing.T, wantRes web.CSearchResp, actual web.CSearchResp) {
 				for idx := range actual.QuestionSet {
 					que := actual.QuestionSet[idx]
-					require.True(t, que.Date != "")
-					actual.QuestionSet[idx].Date = ""
+					require.True(t, que.Utime > 0)
+					actual.QuestionSet[idx].Utime = 0
 				}
 				assert.ElementsMatch(t, wantRes.QuestionSet, actual.QuestionSet)
 			},
@@ -1033,10 +1262,10 @@ func (s *HandlerTestSuite) insertQuestion(ques []dao.Question) {
 	for _, que := range ques {
 		by, err := json.Marshal(que)
 		require.NoError(s.T(), err)
-		_, err = s.es.Index().
-			Index(dao.PubQuestionIndexName).
+		_, err = s.es.Index(dao.PubQuestionIndexName).
 			Id(strconv.FormatInt(que.ID, 10)).
-			BodyJson(string(by)).Do(context.Background())
+			Raw(bytes.NewReader(by)).
+			Do(context.Background())
 		require.NoError(s.T(), err)
 	}
 }
@@ -1045,10 +1274,10 @@ func (s *HandlerTestSuite) insertCase(cas []dao.Case) {
 	for _, ca := range cas {
 		by, err := json.Marshal(ca)
 		require.NoError(s.T(), err)
-		_, err = s.es.Index().
-			Index(dao.PubCaseIndexName).
+		_, err = s.es.Index(dao.PubCaseIndexName).
 			Id(strconv.FormatInt(ca.Id, 10)).
-			BodyJson(string(by)).Do(s.T().Context())
+			Raw(bytes.NewReader(by)).
+			Do(context.Background())
 		require.NoError(s.T(), err)
 	}
 }
@@ -1081,10 +1310,10 @@ func (s *HandlerTestSuite) insertQuestionSet(qs []dao.QuestionSet) {
 	for _, q := range qs {
 		by, err := json.Marshal(q)
 		require.NoError(s.T(), err)
-		_, err = s.es.Index().
-			Index(dao.QuestionSetIndexName).
+		_, err = s.es.Index(dao.QuestionSetIndexName).
 			Id(strconv.FormatInt(q.Id, 10)).
-			BodyJson(string(by)).Do(context.Background())
+			Raw(bytes.NewReader(by)).
+			Do(context.Background())
 		require.NoError(s.T(), err)
 	}
 }
@@ -1095,4 +1324,18 @@ func handlerSkillLevel(t *testing.T, sk web.SkillLevel) web.SkillLevel {
 	sk.Utime = ""
 	sk.Ctime = ""
 	return sk
+}
+
+func (s *HandlerTestSuite) mockInteractive(biz string, id int64) interactive.Interactive {
+	liked := id%2 == 1
+	collected := id%2 == 0
+	return interactive.Interactive{
+		Biz:        biz,
+		BizId:      id,
+		ViewCnt:    int(id + 1),
+		LikeCnt:    int(id + 2),
+		CollectCnt: int(id + 3),
+		Liked:      liked,
+		Collected:  collected,
+	}
 }
