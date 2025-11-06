@@ -16,11 +16,10 @@ package dao
 
 import (
 	"context"
-	"encoding/json"
+
+	"github.com/elastic/go-elasticsearch/v9"
 
 	"github.com/ecodeclub/webook/internal/search/internal/domain"
-
-	"github.com/olivere/elastic/v7"
 )
 
 const (
@@ -42,46 +41,25 @@ type QuestionSet struct {
 	Utime        int64               `json:"utime"`
 	EsHighLights map[string][]string `json:"-"`
 }
+
+func (qs *QuestionSet) SetEsHighLights(highLights map[string][]string) {
+	qs.EsHighLights = highLights
+}
+
 type questionSetElasticDAO struct {
-	client  *elastic.Client
-	builder searchBuilder
-	metas   map[string]FieldConfig
+	client *searchClient[*QuestionSet]
 }
 
-func NewQuestionSetDAO(client *elastic.Client, metas map[string]FieldConfig) QuestionSetDAO {
+func NewQuestionSetDAO(client *elasticsearch.TypedClient, metas map[string]FieldConfig) QuestionSetDAO {
 	return &questionSetElasticDAO{
-		client: client,
-		metas:  metas,
+		client: &searchClient[*QuestionSet]{
+			client:     client,
+			index:      QuestionSetIndexName,
+			colsConfig: metas,
+		},
 	}
 }
 
-func (q *questionSetElasticDAO) SearchQuestionSet(ctx context.Context, offset, limit int, queryMetas []domain.QueryMeta) ([]QuestionSet, error) {
-	cols, highlights := q.builder.build(q.metas, queryMetas)
-	query := elastic.NewBoolQuery().Must(
-		elastic.NewBoolQuery().Should(cols...))
-	builder := q.client.Search(QuestionSetIndexName).
-		From(offset).
-		Size(limit).
-		Query(query)
-	if len(highlights) > 0 {
-		builder = builder.Highlight(elastic.NewHighlight().Fields(highlights...))
-	}
-	resp, err := builder.Do(ctx)
-	if err != nil {
-		return nil, err
-	}
-	res := make([]QuestionSet, 0, len(resp.Hits.Hits))
-	for _, hit := range resp.Hits.Hits {
-		var (
-			ele QuestionSet
-		)
-		err = json.Unmarshal(hit.Source, &ele)
-		if err != nil {
-			return nil, err
-		}
-		ele.EsHighLights = getEsHighLights(hit.Highlight)
-		res = append(res, ele)
-	}
-	return res, nil
-
+func (q *questionSetElasticDAO) SearchQuestionSet(ctx context.Context, offset, limit int, queryMetas []domain.QueryMeta) ([]*QuestionSet, error) {
+	return q.client.getSearchRes(ctx, queryMetas, offset, limit)
 }

@@ -231,8 +231,10 @@ func (s *AdminHandlerTestSuite) TestService_ListSince() {
 					{
 						Id:    100,
 						Title: "Roadmap 1",
-						Biz:   "questionSet",
-						BizId: 100,
+						Biz: domain.Biz{
+							Biz:   "questionSet",
+							BizId: 100,
+						},
 						Utime: 1000,
 						Edges: []domain.Edge{
 							{
@@ -282,8 +284,14 @@ func (s *AdminHandlerTestSuite) TestService_ListSince() {
 			},
 			after: func(t *testing.T, result []domain.Roadmap) {
 				s.assertRoadmapsExact(t, []domain.Roadmap{
-					{Id: 202, Title: "New", Biz: "test2", BizId: 202, Utime: 1500, Edges: []domain.Edge{}},
-					{Id: 201, Title: "Mid", Biz: "test2", BizId: 201, Utime: 1200, Edges: []domain.Edge{}},
+					{Id: 202, Title: "New", Biz: domain.Biz{
+						Biz:   "test2",
+						BizId: 202,
+					}, Utime: 1500, Edges: []domain.Edge{}},
+					{Id: 201, Title: "Mid", Biz: domain.Biz{
+						Biz:   "test2",
+						BizId: 201,
+					}, Utime: 1200, Edges: []domain.Edge{}},
 				}, result)
 			},
 			since:   1200,
@@ -308,7 +316,10 @@ func (s *AdminHandlerTestSuite) TestService_ListSince() {
 			},
 			after: func(t *testing.T, result []domain.Roadmap) {
 				s.assertRoadmapsExact(t, []domain.Roadmap{
-					{Id: 300, Title: "Boundary", Biz: "test3", BizId: 300, Utime: 5000, Edges: []domain.Edge{}},
+					{Id: 300, Title: "Boundary", Biz: domain.Biz{
+						Biz:   "test3",
+						BizId: 300,
+					}, Utime: 5000, Edges: []domain.Edge{}},
 				}, result)
 			},
 			since:   5000,
@@ -332,10 +343,22 @@ func (s *AdminHandlerTestSuite) TestService_ListSince() {
 			},
 			after: func(t *testing.T, result []domain.Roadmap) {
 				s.assertRoadmapsContains(t, []domain.Roadmap{
-					{Id: 403, Title: "Newer", Biz: "test4", BizId: 403, Utime: 2000, Edges: []domain.Edge{}},
-					{Id: 402, Title: "Same Time 3", Biz: "test4", BizId: 402, Utime: 1000, Edges: []domain.Edge{}},
-					{Id: 401, Title: "Same Time 2", Biz: "test4", BizId: 401, Utime: 1000, Edges: []domain.Edge{}},
-					{Id: 400, Title: "Same Time 1", Biz: "test4", BizId: 400, Utime: 1000, Edges: []domain.Edge{}},
+					{Id: 403, Title: "Newer", Biz: domain.Biz{
+						Biz:   "test4",
+						BizId: 403,
+					}, Utime: 2000, Edges: []domain.Edge{}},
+					{Id: 402, Title: "Same Time 3", Biz: domain.Biz{
+						Biz:   "test4",
+						BizId: 402,
+					}, Utime: 1000, Edges: []domain.Edge{}},
+					{Id: 401, Title: "Same Time 2", Biz: domain.Biz{
+						Biz:   "test4",
+						BizId: 401,
+					}, Utime: 1000, Edges: []domain.Edge{}},
+					{Id: 400, Title: "Same Time 1", Biz: domain.Biz{
+						Biz:   "test4",
+						BizId: 400,
+					}, Utime: 1000, Edges: []domain.Edge{}},
 				}, result)
 			},
 			since:   0,
@@ -358,8 +381,14 @@ func (s *AdminHandlerTestSuite) TestService_ListSince() {
 			},
 			after: func(t *testing.T, result []domain.Roadmap) {
 				s.assertRoadmapsContains(t, []domain.Roadmap{
-					{Id: 501, Title: "R2", Biz: "test5", BizId: 501, Utime: 2000, Edges: []domain.Edge{}},
-					{Id: 500, Title: "R1", Biz: "test5", BizId: 500, Utime: 1000, Edges: []domain.Edge{}},
+					{Id: 501, Title: "R2", Biz: domain.Biz{
+						Biz:   "test5",
+						BizId: 501,
+					}, Utime: 2000, Edges: []domain.Edge{}},
+					{Id: 500, Title: "R1", Biz: domain.Biz{
+						Biz:   "test5",
+						BizId: 501,
+					}, Utime: 1000, Edges: []domain.Edge{}},
 				}, result)
 			},
 			since:   0,
@@ -446,8 +475,10 @@ func (s *AdminHandlerTestSuite) TestService_ListSince() {
 					{
 						Id:    801,
 						Title: "R2",
-						Biz:   "test8",
-						BizId: 801,
+						Biz: domain.Biz{
+							Biz:   "test8",
+							BizId: 801,
+						},
 						Utime: 2000,
 						Edges: []domain.Edge{
 							{
@@ -462,8 +493,10 @@ func (s *AdminHandlerTestSuite) TestService_ListSince() {
 					{
 						Id:    800,
 						Title: "R1",
-						Biz:   "test8",
-						BizId: 800,
+						Biz: domain.Biz{
+							Biz:   "test8",
+							BizId: 800,
+						},
 						Utime: 1000,
 						Edges: []domain.Edge{
 							{
@@ -499,7 +532,10 @@ func (s *AdminHandlerTestSuite) TestService_ListSince() {
 			},
 			after: func(t *testing.T, result []domain.Roadmap) {
 				s.assertRoadmapsContains(t, []domain.Roadmap{
-					{Id: 900, Title: "No Edges", Biz: "test9", BizId: 900, Utime: 1000, Edges: []domain.Edge{}},
+					{Id: 900, Title: "No Edges",
+						Biz: domain.Biz{
+							Biz: "test9", BizId: 900,
+						}, Utime: 1000, Edges: []domain.Edge{}},
 				}, result)
 			},
 			since:   0,
@@ -522,9 +558,18 @@ func (s *AdminHandlerTestSuite) TestService_ListSince() {
 			},
 			after: func(t *testing.T, result []domain.Roadmap) {
 				s.assertRoadmapsContains(t, []domain.Roadmap{
-					{Id: 1002, Title: "R3", Biz: "test10", BizId: 1002, Utime: 1500, Edges: []domain.Edge{}},
-					{Id: 1001, Title: "R2", Biz: "test10", BizId: 1001, Utime: 1000, Edges: []domain.Edge{}},
-					{Id: 1000, Title: "R1", Biz: "test10", BizId: 1000, Utime: 500, Edges: []domain.Edge{}},
+					{Id: 1002, Title: "R3", Biz: domain.Biz{
+						Biz:   "test10",
+						BizId: 1002,
+					}, Utime: 1500, Edges: []domain.Edge{}},
+					{Id: 1001, Title: "R2", Biz: domain.Biz{
+						Biz:   "test10",
+						BizId: 1001,
+					}, Utime: 1000, Edges: []domain.Edge{}},
+					{Id: 1000, Title: "R1", Biz: domain.Biz{
+						Biz:   "test10",
+						BizId: 1000,
+					}, Utime: 500, Edges: []domain.Edge{}},
 				}, result)
 			},
 			since:   0,

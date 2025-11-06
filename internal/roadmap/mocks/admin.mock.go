@@ -195,12 +195,13 @@ func (c *MockAdminServiceDetailCall) DoAndReturn(f func(context.Context, int64) 
 }
 
 // List mocks base method.
-func (m *MockAdminService) List(ctx context.Context, offset, limit int) ([]domain.Roadmap, error) {
+func (m *MockAdminService) List(ctx context.Context, offset, limit int) (int64, []domain.Roadmap, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "List", ctx, offset, limit)
-	ret0, _ := ret[0].([]domain.Roadmap)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].([]domain.Roadmap)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
 }
 
 // List indicates an expected call of List.
@@ -216,19 +217,19 @@ type MockAdminServiceListCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockAdminServiceListCall) Return(arg0 []domain.Roadmap, arg1 error) *MockAdminServiceListCall {
-	c.Call = c.Call.Return(arg0, arg1)
+func (c *MockAdminServiceListCall) Return(arg0 int64, arg1 []domain.Roadmap, arg2 error) *MockAdminServiceListCall {
+	c.Call = c.Call.Return(arg0, arg1, arg2)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockAdminServiceListCall) Do(f func(context.Context, int, int) ([]domain.Roadmap, error)) *MockAdminServiceListCall {
+func (c *MockAdminServiceListCall) Do(f func(context.Context, int, int) (int64, []domain.Roadmap, error)) *MockAdminServiceListCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockAdminServiceListCall) DoAndReturn(f func(context.Context, int, int) ([]domain.Roadmap, error)) *MockAdminServiceListCall {
+func (c *MockAdminServiceListCall) DoAndReturn(f func(context.Context, int, int) (int64, []domain.Roadmap, error)) *MockAdminServiceListCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

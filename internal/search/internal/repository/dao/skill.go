@@ -16,11 +16,10 @@ package dao
 
 import (
 	"context"
-	"encoding/json"
+
+	"github.com/elastic/go-elasticsearch/v9"
 
 	"github.com/ecodeclub/webook/internal/search/internal/domain"
-
-	"github.com/olivere/elastic/v7"
 )
 
 const (
@@ -49,44 +48,23 @@ type Skill struct {
 	Utime        int64               `json:"utime"`
 }
 
-type skillElasticDAO struct {
-	client  *elastic.Client
-	metas   map[string]FieldConfig
-	builder searchBuilder
+func (s *Skill) SetEsHighLights(highLights map[string][]string) {
+	s.EsHighLights = highLights
 }
 
-func NewSkillDAO(client *elastic.Client, metas map[string]FieldConfig) SkillDAO {
+type skillElasticDAO struct {
+	client *searchClient[*Skill]
+}
+
+func NewSkillDAO(client *elasticsearch.TypedClient, metas map[string]FieldConfig) SkillDAO {
 	return &skillElasticDAO{
-		client: client,
-		metas:  metas,
+		client: &searchClient[*Skill]{
+			client:     client,
+			index:      SkillIndexName,
+			colsConfig: metas,
+		},
 	}
 }
-func (s *skillElasticDAO) SearchSkill(ctx context.Context, offset, limit int, queryMetas []domain.QueryMeta) ([]Skill, error) {
-	cols, highlights := s.builder.build(s.metas, queryMetas)
-	query := elastic.NewBoolQuery().Must(
-		elastic.NewBoolQuery().Should(cols...))
-	builder := s.client.Search(SkillIndexName).
-		From(offset).
-		Size(limit).
-		Query(query)
-	if len(highlights) > 0 {
-		builder = builder.Highlight(elastic.NewHighlight().Fields(highlights...))
-	}
-	resp, err := builder.Do(ctx)
-	if err != nil {
-		return nil, err
-	}
-	res := make([]Skill, 0, len(resp.Hits.Hits))
-	for _, hit := range resp.Hits.Hits {
-		var (
-			ele Skill
-		)
-		err = json.Unmarshal(hit.Source, &ele)
-		if err != nil {
-			return nil, err
-		}
-		ele.EsHighLights = getEsHighLights(hit.Highlight)
-		res = append(res, ele)
-	}
-	return res, nil
+func (s *skillElasticDAO) SearchSkill(ctx context.Context, offset, limit int, queryMetas []domain.QueryMeta) ([]*Skill, error) {
+	return s.client.getSearchRes(ctx, queryMetas, offset, limit)
 }

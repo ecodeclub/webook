@@ -1,14 +1,16 @@
 package service
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"time"
 
+	"github.com/elastic/go-elasticsearch/v9"
+
 	"github.com/ecodeclub/webook/internal/cases/internal/event"
 	"github.com/ecodeclub/webook/internal/cases/internal/repository"
 	"github.com/gotomicro/ego/core/elog"
-	"github.com/olivere/elastic/v7"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -25,11 +27,11 @@ type SearchSyncService interface {
 
 type caseSearchSyncService struct {
 	repo     repository.CaseRepo
-	esClient *elastic.Client
+	esClient *elasticsearch.TypedClient
 	logger   *elog.Component
 }
 
-func NewCaseSearchSyncService(repo repository.CaseRepo, esClient *elastic.Client) SearchSyncService {
+func NewCaseSearchSyncService(repo repository.CaseRepo, esClient *elasticsearch.TypedClient) SearchSyncService {
 	return &caseSearchSyncService{
 		repo:     repo,
 		esClient: esClient,
@@ -63,13 +65,13 @@ func (s *caseSearchSyncService) caseSync(ctx context.Context) error {
 		}
 		for _, ca := range cases {
 			evt := event.NewCaseEvent(ca)
-			_, err = s.esClient.Index().
-				Index(caseIndex).
+			_, err = s.esClient.Index(caseIndex).
 				Id(fmt.Sprintf("%d", ca.Id)).
-				BodyString(evt.Data).
+				Raw(bytes.NewReader([]byte(evt.Data))).
 				Do(ctx)
 			if err != nil {
-				return err
+				s.logger.Error("", elog.FieldErr(err))
+				continue
 			}
 		}
 		offset += len(cases)
@@ -89,10 +91,9 @@ func (s *caseSearchSyncService) pubCaseSync(ctx context.Context) error {
 		}
 		for _, ca := range cases {
 			evt := event.NewCaseEvent(ca)
-			_, err = s.esClient.Index().
-				Index(pubCaseIndex).
+			_, err = s.esClient.Index(pubCaseIndex).
 				Id(fmt.Sprintf("%d", ca.Id)).
-				BodyString(evt.Data).
+				Raw(bytes.NewReader([]byte(evt.Data))).
 				Do(ctx)
 			if err != nil {
 				s.logger.Error("", elog.FieldErr(err))

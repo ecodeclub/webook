@@ -18,6 +18,7 @@ require (
 	github.com/ecodeclub/mq-api v0.0.0-20240508035004-fd7de3346cfe
 	github.com/ego-component/egorm v1.1.4
 	github.com/elastic/go-elasticsearch/v7 v7.17.10
+	github.com/elastic/go-elasticsearch/v9 v9.2.0
 	github.com/gin-contrib/cors v1.7.6
 	github.com/gin-gonic/gin v1.10.1
 	github.com/go-sql-driver/mysql v1.9.3
@@ -25,7 +26,6 @@ require (
 	github.com/gotomicro/ego v1.2.5
 	github.com/lithammer/shortuuid/v4 v4.2.0
 	github.com/lukasjarosch/go-docx v0.5.0
-	github.com/olivere/elastic/v7 v7.0.32
 	github.com/openai/openai-go v0.1.0-alpha.61
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.22.0
@@ -72,6 +72,7 @@ require (
 	github.com/coreos/go-systemd v0.0.0-20190719114852-fd7a80b32e1f // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
+	github.com/elastic/elastic-transport-go/v8 v8.7.0 // indirect
 	github.com/fasthttp/websocket v1.5.2 // indirect
 	github.com/felixge/fgprof v0.9.5 // indirect
 	github.com/fsnotify/fsnotify v1.5.4 // indirect

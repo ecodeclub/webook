@@ -28,8 +28,10 @@ func (converter) toDomain(r dao.Roadmap) domain.Roadmap {
 	return domain.Roadmap{
 		Id:    r.Id,
 		Title: r.Title,
-		Biz:   r.Biz.String,
-		BizId: r.BizId.Int64,
+		Biz: domain.Biz{
+			Biz:   r.Biz.String,
+			BizId: r.BizId.Int64,
+		},
 		Utime: r.Utime,
 	}
 }

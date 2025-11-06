@@ -1,16 +1,18 @@
 package service
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"time"
+
+	"github.com/elastic/go-elasticsearch/v9"
 
 	"github.com/gotomicro/ego/core/elog"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/ecodeclub/webook/internal/question/internal/event"
 	"github.com/ecodeclub/webook/internal/question/internal/repository"
-	"github.com/olivere/elastic/v7"
 )
 
 const (
@@ -25,11 +27,11 @@ type SearchSyncService interface {
 }
 type searchSyncService struct {
 	repo   repository.Repository
-	client *elastic.Client
+	client *elasticsearch.TypedClient
 	logger *elog.Component
 }
 
-func NewSearchSyncService(repo repository.Repository, client *elastic.Client) SearchSyncService {
+func NewSearchSyncService(repo repository.Repository, client *elasticsearch.TypedClient) SearchSyncService {
 	return &searchSyncService{
 		repo:   repo,
 		client: client,
@@ -64,14 +66,13 @@ func (s *searchSyncService) questionSync(ctx context.Context) error {
 		}
 		for _, q := range questions {
 			evt := event.NewQuestionEvent(q)
-			_, err = s.client.Index().
-				Index(questionIndex).
+			_, err = s.client.Index(questionIndex).
 				Id(fmt.Sprintf("%d", q.Id)).
-				BodyString(evt.Data).
+				Raw(bytes.NewReader([]byte(evt.Data))).
 				Do(ctx)
 			if err != nil {
-
-				return err
+				s.logger.Error("", elog.FieldErr(err))
+				continue
 			}
 		}
 		offset += len(questions)
@@ -91,10 +92,9 @@ func (s *searchSyncService) pubQuestionSync(ctx context.Context) error {
 		}
 		for _, q := range questions {
 			evt := event.NewQuestionEvent(q)
-			_, err = s.client.Index().
-				Index(pubQuestionIndex).
+			_, err = s.client.Index(pubQuestionIndex).
 				Id(fmt.Sprintf("%d", q.Id)).
-				BodyString(evt.Data).
+				Raw(bytes.NewReader([]byte(evt.Data))).
 				Do(ctx)
 			if err != nil {
 				s.logger.Error("", elog.FieldErr(err))

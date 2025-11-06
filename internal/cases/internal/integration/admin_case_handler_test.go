@@ -17,6 +17,7 @@
 package integration
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -25,8 +26,6 @@ import (
 	"sync"
 	"testing"
 	"time"
-
-	"github.com/olivere/elastic/v7"
 
 	"github.com/ecodeclub/ginx"
 	"github.com/ecodeclub/webook/internal/member"
@@ -50,6 +49,8 @@ import (
 	"github.com/ecodeclub/webook/internal/test"
 	testioc "github.com/ecodeclub/webook/internal/test/ioc"
 	"github.com/ego-component/egorm"
+	"github.com/elastic/go-elasticsearch/v9"
+	"github.com/elastic/go-elasticsearch/v9/typedapi/types"
 	"github.com/gotomicro/ego/core/econf"
 	"github.com/gotomicro/ego/server/egin"
 	"github.com/stretchr/testify/assert"
@@ -59,7 +60,7 @@ import (
 
 type AdminCaseHandlerTestSuite struct {
 	suite.Suite
-	esClient              *elastic.Client
+	esClient              *elasticsearch.TypedClient
 	server                *egin.Component
 	db                    *egorm.Component
 	rdb                   ecache.Cache
@@ -1010,18 +1011,33 @@ func (s *AdminCaseHandlerTestSuite) TestSyncAll() {
 	time.Sleep(4 * time.Second)
 
 	// 验证制作库 ES 数据
+	matchQuery := types.NewMatchQuery()
+	matchQuery.Query = "制作库案例"
+	query := &types.Query{
+		Match: map[string]types.MatchQuery{
+			"title": *matchQuery,
+		},
+	}
+
+	searchReq := map[string]interface{}{
+		"query": query,
+		"sort": []map[string]interface{}{
+			{"id": map[string]interface{}{"order": "asc"}},
+		},
+	}
+	searchBytes, _ := json.Marshal(searchReq)
+
 	devSearchResult, err := s.esClient.Search().
 		Index("case_index").
-		Sort("id", true).
-		Query(elastic.NewMatchQuery("title", "制作库案例")).
+		Raw(bytes.NewReader(searchBytes)).
 		Do(context.Background())
 	require.NoError(s.T(), err)
-	require.Equal(s.T(), int64(5), devSearchResult.TotalHits())
+	require.Equal(s.T(), int64(5), devSearchResult.Hits.Total.Value)
 
 	// 验证制作库数据内容
 	for i := 0; i < 5; i++ {
 		var caseData map[string]interface{}
-		err = json.Unmarshal(devSearchResult.Hits.Hits[i].Source, &caseData)
+		err = json.Unmarshal(devSearchResult.Hits.Hits[i].Source_, &caseData)
 		require.NoError(s.T(), err)
 		idx := i + 1
 		assert.Equal(s.T(), fmt.Sprintf("制作库案例%d", idx), caseData["title"])
@@ -1039,18 +1055,33 @@ func (s *AdminCaseHandlerTestSuite) TestSyncAll() {
 	}
 
 	// 验证线上库 ES 数据
+	matchQuery2 := types.NewMatchQuery()
+	matchQuery2.Query = "线上库案例"
+	query2 := &types.Query{
+		Match: map[string]types.MatchQuery{
+			"title": *matchQuery2,
+		},
+	}
+
+	searchReq2 := map[string]interface{}{
+		"query": query2,
+		"sort": []map[string]interface{}{
+			{"id": map[string]interface{}{"order": "asc"}},
+		},
+	}
+	searchBytes2, _ := json.Marshal(searchReq2)
+
 	prodSearchResult, err := s.esClient.Search().
 		Index("pub_case_index").
-		Sort("id", true).
-		Query(elastic.NewMatchQuery("title", "线上库案例")).
+		Raw(bytes.NewReader(searchBytes2)).
 		Do(context.Background())
 	require.NoError(s.T(), err)
-	require.Equal(s.T(), int64(2), prodSearchResult.TotalHits())
+	require.Equal(s.T(), int64(2), prodSearchResult.Hits.Total.Value)
 
 	// 验证线上库数据内容
 	for i := 0; i < 2; i++ {
 		var caseData map[string]interface{}
-		err = json.Unmarshal(prodSearchResult.Hits.Hits[i].Source, &caseData)
+		err = json.Unmarshal(prodSearchResult.Hits.Hits[i].Source_, &caseData)
 		require.NoError(s.T(), err)
 		idx := i + 6
 		assert.Equal(s.T(), fmt.Sprintf("线上库案例%d", idx), caseData["title"])
@@ -1073,14 +1104,26 @@ func (s *AdminCaseHandlerTestSuite) TestSyncAll() {
 	err = s.db.Exec("TRUNCATE TABLE `publish_cases`").Error
 	require.NoError(s.T(), err)
 	// 删除制作库索引中的 case biz 文档
+	termQuery := types.NewTermQuery()
+	termQuery.Value = "case"
+	deleteQuery := &types.Query{
+		Term: map[string]types.TermQuery{
+			"biz": *termQuery,
+		},
+	}
+	deleteReq := map[string]interface{}{
+		"query": deleteQuery,
+	}
+	deleteBytes, _ := json.Marshal(deleteReq)
+
 	_, err = s.esClient.DeleteByQuery("case_index").
-		Query(elastic.NewTermQuery("biz", "case")).
+		Raw(bytes.NewReader(deleteBytes)).
 		Do(ctx)
 	require.NoError(s.T(), err)
 
 	// 删除线上库索引中的 case biz 文档
 	_, err = s.esClient.DeleteByQuery("pub_case_index").
-		Query(elastic.NewTermQuery("biz", "case")).
+		Raw(bytes.NewReader(deleteBytes)).
 		Do(ctx)
 	require.NoError(s.T(), err)
 
@@ -1153,16 +1196,28 @@ func (s *AdminCaseHandlerTestSuite) TestSyncAllTemplate() {
 	time.Sleep(4 * time.Second)
 
 	// 验证制作库 ES 数据
+	termQuery1 := types.NewTermQuery()
+	termQuery1.Value = 1
+	query1 := &types.Query{
+		Term: map[string]types.TermQuery{
+			"id": *termQuery1,
+		},
+	}
+	searchReq1 := map[string]interface{}{
+		"query": query1,
+	}
+	searchBytes1, _ := json.Marshal(searchReq1)
+
 	devSearchResult, err := s.esClient.Search().
 		Index("case_index").
-		Query(elastic.NewTermQuery("id", 1)).
+		Raw(bytes.NewReader(searchBytes1)).
 		Do(context.Background())
 	require.NoError(s.T(), err)
-	require.Equal(s.T(), int64(1), devSearchResult.TotalHits())
+	require.Equal(s.T(), int64(1), devSearchResult.Hits.Total.Value)
 
 	// 验证HTML内容已被转换为纯文本
 	var devCaseData map[string]interface{}
-	err = json.Unmarshal(devSearchResult.Hits.Hits[0].Source, &devCaseData)
+	err = json.Unmarshal(devSearchResult.Hits.Hits[0].Source_, &devCaseData)
 	require.NoError(s.T(), err)
 
 	// 验证内容已被转换为纯文本
@@ -1178,16 +1233,28 @@ func (s *AdminCaseHandlerTestSuite) TestSyncAllTemplate() {
 	assert.Equal(s.T(), "指导", devCaseData["guidance"])
 
 	// 验证线上库 ES 数据
+	termQuery2 := types.NewTermQuery()
+	termQuery2.Value = 2
+	query2 := &types.Query{
+		Term: map[string]types.TermQuery{
+			"id": *termQuery2,
+		},
+	}
+	searchReq2 := map[string]interface{}{
+		"query": query2,
+	}
+	searchBytes2, _ := json.Marshal(searchReq2)
+
 	prodSearchResult, err := s.esClient.Search().
 		Index("pub_case_index").
-		Query(elastic.NewTermQuery("id", 2)).
+		Raw(bytes.NewReader(searchBytes2)).
 		Do(context.Background())
 	require.NoError(s.T(), err)
-	require.Equal(s.T(), int64(1), prodSearchResult.TotalHits())
+	require.Equal(s.T(), int64(1), prodSearchResult.Hits.Total.Value)
 
 	// 验证HTML内容已被转换为纯文本
 	var prodCaseData map[string]interface{}
-	err = json.Unmarshal(prodSearchResult.Hits.Hits[0].Source, &prodCaseData)
+	err = json.Unmarshal(prodSearchResult.Hits.Hits[0].Source_, &prodCaseData)
 	require.NoError(s.T(), err)
 
 	// 验证内容已被转换为纯文本
@@ -1209,13 +1276,25 @@ func (s *AdminCaseHandlerTestSuite) TestSyncAllTemplate() {
 	require.NoError(s.T(), err)
 
 	// 删除ES索引中的测试数据
+	termQuery3 := types.NewTermQuery()
+	termQuery3.Value = "html_test_case"
+	deleteQuery3 := &types.Query{
+		Term: map[string]types.TermQuery{
+			"biz": *termQuery3,
+		},
+	}
+	deleteReq3 := map[string]interface{}{
+		"query": deleteQuery3,
+	}
+	deleteBytes3, _ := json.Marshal(deleteReq3)
+
 	_, err = s.esClient.DeleteByQuery("case_index").
-		Query(elastic.NewTermQuery("biz", "html_test_case")).
+		Raw(bytes.NewReader(deleteBytes3)).
 		Do(ctx)
 	require.NoError(s.T(), err)
 
 	_, err = s.esClient.DeleteByQuery("pub_case_index").
-		Query(elastic.NewTermQuery("biz", "html_test_case")).
+		Raw(bytes.NewReader(deleteBytes3)).
 		Do(ctx)
 	require.NoError(s.T(), err)
 }

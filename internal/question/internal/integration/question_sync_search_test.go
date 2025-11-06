@@ -3,6 +3,7 @@
 package integration
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -18,7 +19,8 @@ import (
 	"github.com/ecodeclub/webook/internal/question/internal/service"
 	testioc "github.com/ecodeclub/webook/internal/test/ioc"
 	"github.com/ego-component/egorm"
-	"github.com/olivere/elastic/v7"
+	"github.com/elastic/go-elasticsearch/v9"
+	"github.com/elastic/go-elasticsearch/v9/typedapi/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -28,7 +30,7 @@ type SearchSyncTestSuite struct {
 	suite.Suite
 	db     *egorm.Component
 	repo   repository.Repository
-	client *elastic.Client
+	client *elasticsearch.TypedClient
 	svc    service.SearchSyncService
 }
 
@@ -39,12 +41,7 @@ func (s *SearchSyncTestSuite) SetupSuite() {
 	require.NoError(s.T(), err)
 
 	// Initialize elastic client
-	client, err := elastic.NewClient(
-		elastic.SetURL("http://localhost:9200"),
-		elastic.SetSniff(false),
-	)
-	require.NoError(s.T(), err)
-	s.client = client
+	s.client = testioc.InitES()
 	queCache := cache.NewQuestionECache(ca)
 
 	// Initialize repository
@@ -56,13 +53,26 @@ func (s *SearchSyncTestSuite) SetupSuite() {
 
 func (s *SearchSyncTestSuite) TearDownSuite() {
 	// Clean up elasticsearch indices
-	query := elastic.NewTermQuery("biz", "test_question")
+	termQuery := types.NewTermQuery()
+	termQuery.Value = "test_question"
+
+	query := &types.Query{
+		Term: map[string]types.TermQuery{
+			"biz": *termQuery,
+		},
+	}
+
+	deleteReq := map[string]interface{}{
+		"query": query,
+	}
+	deleteBytes, _ := json.Marshal(deleteReq)
+
 	_, err := s.client.DeleteByQuery("question_index").
-		Query(query).
+		Raw(bytes.NewReader(deleteBytes)).
 		Do(context.Background())
 	require.NoError(s.T(), err)
 	_, err = s.client.DeleteByQuery("pub_question_index").
-		Query(query).
+		Raw(bytes.NewReader(deleteBytes)).
 		Do(context.Background())
 	require.NoError(s.T(), err)
 	err = s.db.WithContext(s.T().Context()).Where("biz = ?", "test").Delete(&dao.Question{}).Error
@@ -311,16 +321,14 @@ func (s *SearchSyncTestSuite) TestSyncAll() {
 	productionQuestions = append(productionQuestions, publishedQuestions...)
 	time.Sleep(3 * time.Second)
 	for _, q := range productionQuestions {
-		res, err := s.client.Get().
-			Index("question_index").
-			Id(fmt.Sprintf("%d", q.Id)).
+		res, err := s.client.Get("question_index", fmt.Sprintf("%d", q.Id)).
 			Do(ctx)
 		require.NoError(s.T(), err)
 		assert.True(s.T(), res.Found)
 
 		// 解析ES返回的数据
 		var esQuestion event.Question
-		err = json.Unmarshal([]byte(res.Source), &esQuestion)
+		err = json.Unmarshal(res.Source_, &esQuestion)
 		require.NoError(s.T(), err)
 
 		// 验证字段匹配
@@ -359,16 +367,14 @@ func (s *SearchSyncTestSuite) TestSyncAll() {
 
 	// 验证线上库数据同步到 pub_question_index
 	for _, q := range publishedQuestions {
-		res, err := s.client.Get().
-			Index("pub_question_index").
-			Id(fmt.Sprintf("%d", q.Id)).
+		res, err := s.client.Get("pub_question_index", fmt.Sprintf("%d", q.Id)).
 			Do(ctx)
 		require.NoError(s.T(), err)
 		assert.True(s.T(), res.Found)
 
 		// 解析ES返回的数据
 		var esQuestion event.Question
-		err = json.Unmarshal([]byte(res.Source), &esQuestion)
+		err = json.Unmarshal(res.Source_, &esQuestion)
 		require.NoError(s.T(), err)
 
 		// 验证字段匹配
@@ -467,16 +473,14 @@ func (s *SearchSyncTestSuite) TestSyncHtml() {
 	time.Sleep(3 * time.Second)
 
 	// 验证ES中的数据
-	res, err := s.client.Get().
-		Index("pub_question_index").
-		Id(fmt.Sprintf("%d", htmlQuestion.Id)).
+	res, err := s.client.Get("pub_question_index", fmt.Sprintf("%d", htmlQuestion.Id)).
 		Do(ctx)
 	require.NoError(s.T(), err)
 	assert.True(s.T(), res.Found)
 
 	// 解析ES返回的数据
 	var esQuestion event.Question
-	err = json.Unmarshal([]byte(res.Source), &esQuestion)
+	err = json.Unmarshal(res.Source_, &esQuestion)
 	require.NoError(s.T(), err)
 
 	// 验证内容已被转换为纯文本（HTML标签被去除）

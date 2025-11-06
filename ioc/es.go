@@ -15,14 +15,15 @@
 package ioc
 
 import (
+	"context"
 	"fmt"
 	"time"
 
+	"github.com/elastic/go-elasticsearch/v9"
 	"github.com/gotomicro/ego/core/econf"
-	"github.com/olivere/elastic/v7"
 )
 
-func InitES() *elastic.Client {
+func InitES() *elasticsearch.TypedClient {
 	type Config struct {
 		Url      string `yaml:"url"`
 		Sniff    bool   `yaml:"sniff"`
@@ -34,16 +35,24 @@ func InitES() *elastic.Client {
 	if err != nil {
 		panic(fmt.Errorf("读取 ES 配置失败 %w", err))
 	}
-	const timeout = 10 * time.Second
-	opts := []elastic.ClientOptionFunc{
-		elastic.SetURL(cfg.Url),
-		elastic.SetSniff(cfg.Sniff),
-		elastic.SetHealthcheckTimeoutStartup(timeout),
-		elastic.SetBasicAuth(cfg.Username, cfg.Password),
+
+	esCfg := elasticsearch.Config{
+		Addresses: []string{cfg.Url},
+		Username:  cfg.Username,
+		Password:  cfg.Password,
 	}
-	client, err := elastic.NewClient(opts...)
+
+	client, err := elasticsearch.NewTypedClient(esCfg)
 	if err != nil {
 		panic(err)
+	}
+
+	// 健康检查
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	_, err = client.Ping().Do(ctx)
+	if err != nil {
+		panic(fmt.Errorf("ES 连接失败 %w", err))
 	}
 	return client
 }

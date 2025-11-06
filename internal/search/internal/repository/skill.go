@@ -44,7 +44,7 @@ func (s *skillRepo) SearchSkill(ctx context.Context, offset, limit int, queryMet
 	return ans, nil
 }
 
-func (sk *skillRepo) toSkillDomain(s dao.Skill) domain.Skill {
+func (sk *skillRepo) toSkillDomain(s *dao.Skill) domain.Skill {
 	return domain.Skill{
 		ID:     s.ID,
 		Labels: s.Labels,

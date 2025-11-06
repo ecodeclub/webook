@@ -48,7 +48,7 @@ func (q *QuestionRelSyncer) Upsert(ctx context.Context, id int64) error {
 	if err != nil {
 		return err
 	}
-	return q.svc.BulkUpsert(ctx, q.indexName, q.toKbaseDocuments(rd.Biz, rd.BizId, rd.Edges))
+	return q.svc.BulkUpsert(ctx, q.indexName, q.toKbaseDocuments(rd.Biz.Biz, rd.BizId, rd.Edges))
 }
 
 func (q *QuestionRelSyncer) toKbaseDocuments(biz string, bizID int64, edges []roadmap.Edge) []domain.Document {
@@ -83,7 +83,7 @@ func (q *QuestionRelSyncer) UpsertSince(ctx context.Context, startTime int64) er
 		}
 
 		for i := range roadmaps {
-			docs := q.toKbaseDocuments(roadmaps[i].Biz, roadmaps[i].BizId, roadmaps[i].Edges)
+			docs := q.toKbaseDocuments(roadmaps[i].Biz.Biz, roadmaps[i].BizId, roadmaps[i].Edges)
 			for _, doc := range docs {
 				if len(batchDocs) >= q.batchSize {
 					err = q.svc.BulkUpsert(ctx, q.indexName, batchDocs)

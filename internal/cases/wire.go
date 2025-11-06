@@ -5,7 +5,7 @@ package cases
 import (
 	"sync"
 
-	"github.com/olivere/elastic/v7"
+	"github.com/elastic/go-elasticsearch/v9"
 
 	"github.com/ecodeclub/ecache"
 	"github.com/ecodeclub/webook/internal/cases/internal/repository/cache"
@@ -33,7 +33,7 @@ import (
 func InitModule(db *egorm.Component,
 	intrModule *interactive.Module,
 	aiModule *ai.Module,
-	esClient *elastic.Client,
+	esClient *elasticsearch.TypedClient,
 	memberModule *member.Module,
 	sp session.Provider,
 	redisCache ecache.Cache,

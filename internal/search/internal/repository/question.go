@@ -44,7 +44,7 @@ func (q *questionRepository) SearchQuestion(ctx context.Context, offset, limit i
 	return ans, nil
 }
 
-func (q *questionRepository) questionToDomain(que dao.Question) domain.Question {
+func (q *questionRepository) questionToDomain(que *dao.Question) domain.Question {
 	highlightMap := que.EsHighLights
 	return domain.Question{
 		ID:     que.ID,

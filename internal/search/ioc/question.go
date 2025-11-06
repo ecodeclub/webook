@@ -2,7 +2,7 @@ package ioc
 
 import (
 	"github.com/ecodeclub/webook/internal/search/internal/repository/dao"
-	"github.com/olivere/elastic/v7"
+	"github.com/elastic/go-elasticsearch/v9"
 )
 
 const (
@@ -11,7 +11,7 @@ const (
 	questionContentBoost = 2
 )
 
-func InitQuestionDAO(client *elastic.Client) dao.QuestionDAO {
+func InitQuestionDAO(client *elasticsearch.TypedClient) dao.QuestionDAO {
 	meta := map[string]dao.FieldConfig{
 		"title": {
 			Name:  "title",
@@ -99,7 +99,7 @@ func InitQuestionDAO(client *elastic.Client) dao.QuestionDAO {
 	return dao.NewQuestionElasticDAO(client, "pub_question_index", meta)
 }
 
-func InitAdminQuestionDAO(client *elastic.Client) dao.QuestionDAO {
+func InitAdminQuestionDAO(client *elasticsearch.TypedClient) dao.QuestionDAO {
 	meta := map[string]dao.FieldConfig{
 		"title": {
 			Name:  "title",

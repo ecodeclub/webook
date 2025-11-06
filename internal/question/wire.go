@@ -19,7 +19,7 @@ package baguwen
 import (
 	"sync"
 
-	"github.com/olivere/elastic/v7"
+	"github.com/elastic/go-elasticsearch/v9"
 
 	"github.com/ecodeclub/ginx/session"
 
@@ -59,7 +59,7 @@ var ExamineHandlerSet = wire.NewSet(
 func InitModule(db *egorm.Component,
 	intrModule *interactive.Module,
 	ec ecache.Cache,
-	esClient *elastic.Client,
+	esClient *elasticsearch.TypedClient,
 	perm *permission.Module,
 	aiModule *ai.Module,
 	memberModule *member.Module,

@@ -1,12 +1,15 @@
 package dao
 
 import (
+	"bytes"
+	"context"
+	"encoding/json"
 	"strings"
 
-	"github.com/ecodeclub/ekit/slice"
+	"github.com/elastic/go-elasticsearch/v9"
 
 	"github.com/ecodeclub/webook/internal/search/internal/domain"
-	"github.com/olivere/elastic/v7"
+	"github.com/elastic/go-elasticsearch/v9/typedapi/types"
 )
 
 const (
@@ -48,76 +51,176 @@ type HighLightConfig struct {
 	RequireFieldMatch bool     // 是否高亮查询命中字段
 }
 
-type searchBuilder struct {
+type searchData interface {
+	SetEsHighLights(map[string][]string)
 }
 
-func newSearchBuilder() searchBuilder {
-	return searchBuilder{}
+type searchClient[T searchData] struct {
+	client     *elasticsearch.TypedClient
+	index      string
+	colsConfig map[string]FieldConfig
 }
 
-func (s searchBuilder) build(cols map[string]FieldConfig, queryMetas []domain.QueryMeta) ([]elastic.Query, []*elastic.HighlighterField) {
-	return s.buildQuery(cols, queryMetas), s.buildHighLights(cols, queryMetas)
+func (s searchClient[T]) build(cols map[string]FieldConfig,
+	queryMetas []domain.QueryMeta, offset, limit int) map[string]any {
+	queryQueries := s.buildQuery(cols, queryMetas)
+	highLightCfg := s.buildHighLights(cols, queryMetas)
+	var boolQuery *types.BoolQuery
+	if len(queryQueries) > 0 {
+		// 内层 BoolQuery 用于 Should 条件
+		innerBool := types.NewBoolQuery()
+		innerBool.Should = queryQueries
+		// 外层 BoolQuery 用于 Must 条件
+		boolQuery = types.NewBoolQuery()
+		boolQuery.Must = []types.Query{
+			{
+				Bool: innerBool,
+			},
+		}
+	}
+	searchReq := map[string]any{
+		"query": map[string]any{
+			"bool": boolQuery,
+		},
+		"from": offset,
+		"size": limit,
+	}
+	if highLightCfg != nil {
+		highlightMap := make(map[string]any)
+		if len(highLightCfg.PreTags) > 0 {
+			highlightMap["pre_tags"] = highLightCfg.PreTags
+		}
+		if len(highLightCfg.PostTags) > 0 {
+			highlightMap["post_tags"] = highLightCfg.PostTags
+		}
+		if len(highLightCfg.Fields) > 0 {
+			fieldsMap := make(map[string]any)
+			for _, fieldMap := range highLightCfg.Fields {
+				for fieldName, fieldConfig := range fieldMap {
+					fieldCfg := make(map[string]any)
+					if fieldConfig.FragmentSize != nil {
+						fieldCfg["fragment_size"] = *fieldConfig.FragmentSize
+					}
+					if fieldConfig.NumberOfFragments != nil {
+						fieldCfg["number_of_fragments"] = *fieldConfig.NumberOfFragments
+					}
+					fieldsMap[fieldName] = fieldCfg
+				}
+			}
+			highlightMap["fields"] = fieldsMap
+		}
+		searchReq["highlight"] = highlightMap
+	}
+	return searchReq
 }
 
-func (s searchBuilder) getSearchCol(cols map[string]FieldConfig, queryMetas []domain.QueryMeta) map[string][]string {
+func (s searchClient[T]) getSearchCol(cols map[string]FieldConfig, queryMetas []domain.QueryMeta) map[string][]string {
 	colMap := make(map[string][]string, len(cols))
 	for _, meta := range queryMetas {
 		if meta.IsAll {
 			for _, col := range cols {
-				colMap = setCol(colMap, col.Name, meta.Keyword)
+				colMap = s.setCol(colMap, col.Name, meta.Keyword)
 			}
 		} else {
-			colMap = setCol(colMap, meta.Col, meta.Keyword)
+			colMap = s.setCol(colMap, meta.Col, meta.Keyword)
 		}
 	}
 	return colMap
 }
 
-func (s searchBuilder) buildQuery(cols map[string]FieldConfig, queryMetas []domain.QueryMeta) []elastic.Query {
+func (s searchClient[T]) buildQuery(cols map[string]FieldConfig, queryMetas []domain.QueryMeta) []types.Query {
 	colMap := s.getSearchCol(cols, queryMetas)
-	queries := make([]elastic.Query, 0, len(colMap))
+	queries := make([]types.Query, 0, len(colMap))
 	for colname, keyword := range colMap {
 		col := cols[colname]
-		var query elastic.Query
+		var query types.Query
 		if col.IsTerm {
-			termVals := slice.Map(keyword, func(idx int, src string) any {
-				return src
-			})
-			query = elastic.NewTermsQuery(colname, termVals...).Boost(float64(col.Boost))
+			// 构建 TermsQuery
+			termsQuery := types.NewTermsQuery()
+			// TermsQueryField 可以是 []FieldValue，而 FieldValue 可以是 string
+			termsQuery.TermsQuery = map[string]types.TermsQueryField{
+				colname: keyword, // 直接将 []string 转换为 TermsQueryField
+			}
+			if col.Boost > 0 {
+				boost := float32(col.Boost)
+				termsQuery.Boost = &boost
+			}
+			query = types.Query{
+				Terms: termsQuery,
+			}
 		} else {
-			query = elastic.NewMatchQuery(colname, strings.Join(keyword, " ")).Boost(float64(col.Boost))
+			// 构建 MatchQuery
+			matchQuery := &types.MatchQuery{
+				Query: strings.Join(keyword, " "),
+			}
+			if col.Boost > 0 {
+				boost := float32(col.Boost)
+				matchQuery.Boost = &boost
+			}
+			query = types.Query{
+				Match: map[string]types.MatchQuery{
+					colname: *matchQuery,
+				},
+			}
 		}
 		queries = append(queries, query)
 	}
 	return queries
 }
 
-func (s searchBuilder) buildHighLights(cols map[string]FieldConfig, queryMetas []domain.QueryMeta) []*elastic.HighlighterField {
+func (s searchClient[T]) buildHighLights(cols map[string]FieldConfig, queryMetas []domain.QueryMeta) *types.Highlight {
 	colMap := s.getSearchCol(cols, queryMetas)
-	fields := make([]*elastic.HighlighterField, 0, len(cols))
+	fields := make([]map[string]types.HighlightField, 0, len(cols))
+
+	// 收集所有字段的 PreTags 和 PostTags（使用第一个字段的配置）
+	var preTags, postTags []string
+	hasHighlight := false
+
 	for name, colField := range cols {
 		if _, ok := colMap[name]; ok && colField.HighLightConfig.Status {
-			fields = append(fields, buildHighLightConfig(name, colField))
+			hasHighlight = true
+			field := s.buildHighLightConfig(colField)
+			fields = append(fields, map[string]types.HighlightField{
+				name: field,
+			})
+			// 使用第一个字段的 PreTags/PostTags 配置（通常所有字段使用相同的标签）
+			if len(preTags) == 0 && len(colField.HighLightConfig.PreTag) > 0 {
+				preTags = colField.HighLightConfig.PreTag
+			}
+			if len(postTags) == 0 && len(colField.HighLightConfig.PostTag) > 0 {
+				postTags = colField.HighLightConfig.PostTag
+			}
 		}
 	}
-	return fields
+
+	if !hasHighlight {
+		return nil
+	}
+
+	highlight := &types.Highlight{
+		Fields: fields,
+	}
+	if len(preTags) > 0 {
+		highlight.PreTags = preTags
+	}
+	if len(postTags) > 0 {
+		highlight.PostTags = postTags
+	}
+	return highlight
 }
 
-func buildHighLightConfig(name string, conf FieldConfig) *elastic.HighlighterField {
-	field := elastic.NewHighlighterField(name)
-	if len(conf.HighLightConfig.PostTag) > 0 && len(conf.HighLightConfig.PreTag) > 0 {
-		field = field.PostTags(conf.HighLightConfig.PostTag...).PreTags(conf.HighLightConfig.PreTag...)
-	}
+func (s searchClient[T]) buildHighLightConfig(conf FieldConfig) types.HighlightField {
+	field := types.HighlightField{}
 	if conf.HighLightConfig.FragmentSize > 0 {
-		field = field.FragmentSize(conf.HighLightConfig.FragmentSize)
+		field.FragmentSize = &conf.HighLightConfig.FragmentSize
 	}
 	if conf.HighLightConfig.FragmentsNumber > 0 {
-		field = field.NumOfFragments(conf.HighLightConfig.FragmentsNumber)
+		field.NumberOfFragments = &conf.HighLightConfig.FragmentsNumber
 	}
 	return field
 }
 
-func setCol(colMap map[string][]string, col, keyword string) map[string][]string {
+func (s searchClient[T]) setCol(colMap map[string][]string, col, keyword string) map[string][]string {
 	ks, ok := colMap[col]
 	if ok {
 		ks = append(ks, keyword)
@@ -128,4 +231,37 @@ func setCol(colMap map[string][]string, col, keyword string) map[string][]string
 		}
 	}
 	return colMap
+}
+
+func (s searchClient[T]) getSearchRes(
+	ctx context.Context,
+	queryMetas []domain.QueryMeta,
+	offset, limit int) ([]T, error) {
+	searchReq := s.build(s.colsConfig, queryMetas, offset, limit)
+	// 执行搜索 - 使用 Raw 方法传入 JSON
+	searchBytes, err := json.Marshal(searchReq)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := s.client.Search().
+		Index(s.index).
+		Raw(bytes.NewReader(searchBytes)).
+		Do(ctx)
+	if err != nil {
+		return nil, err
+	}
+	// 解析结果
+	res := make([]T, 0, len(resp.Hits.Hits))
+	for _, hit := range resp.Hits.Hits {
+		var ele T
+		if len(hit.Source_) > 0 {
+			err = json.Unmarshal(hit.Source_, &ele)
+			if err != nil {
+				return nil, err
+			}
+		}
+		ele.SetEsHighLights(getEsHighLights(hit.Highlight))
+		res = append(res, ele)
+	}
+	return res, nil
 }

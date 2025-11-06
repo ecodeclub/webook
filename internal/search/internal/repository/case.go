@@ -44,7 +44,7 @@ func (c *caseRepository) SearchCase(ctx context.Context, offset, limit int, quer
 	return ans, err
 }
 
-func (*caseRepository) toDomain(p dao.Case) domain.Case {
+func (*caseRepository) toDomain(p *dao.Case) domain.Case {
 	return domain.Case{
 		Id:     p.Id,
 		Uid:    p.Uid,

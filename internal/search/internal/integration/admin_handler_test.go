@@ -17,12 +17,15 @@
 package integration
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"net/http"
 	"strconv"
 	"testing"
 	"time"
+
+	"github.com/ecodeclub/webook/internal/interactive"
 
 	"github.com/ecodeclub/mq-api"
 	"github.com/ecodeclub/webook/internal/cases"
@@ -36,10 +39,12 @@ import (
 	"github.com/ecodeclub/webook/internal/search/internal/web"
 	"github.com/ecodeclub/webook/internal/test"
 	testioc "github.com/ecodeclub/webook/internal/test/ioc"
+	"github.com/elastic/go-elasticsearch/v9"
+	"github.com/elastic/go-elasticsearch/v9/typedapi/core/get"
+	"github.com/elastic/go-elasticsearch/v9/typedapi/types"
 	"github.com/gin-gonic/gin"
 	"github.com/gotomicro/ego/core/econf"
 	"github.com/gotomicro/ego/server/egin"
-	"github.com/olivere/elastic/v7"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -50,12 +55,14 @@ const uid = 123
 type AdminHandlerTestSuite struct {
 	suite.Suite
 	server   *egin.Component
-	es       *elastic.Client
+	es       *elasticsearch.TypedClient
 	producer mq.Producer
 }
 
 func (s *AdminHandlerTestSuite) SetupSuite() {
 	adminHdl, err := startup.InitAdminHandler(&cases.Module{
+		Svc: nil,
+	}, &interactive.Module{
 		Svc: nil,
 	})
 	require.NoError(s.T(), err)
@@ -86,14 +93,36 @@ func (s *AdminHandlerTestSuite) SetupSuite() {
 
 func (s *AdminHandlerTestSuite) TearDownSuite() {
 	// 创建范围查询，匹配 id > 10000 的文档
-	query := elastic.NewRangeQuery("id").Gt(10000)
-	_, err := s.es.DeleteByQuery("case_index").Query(query).Do(context.Background())
+	gt := types.Float64(10000)
+	rangeQuery := types.NewNumberRangeQuery()
+	rangeQuery.Gt = &gt
+
+	query := &types.Query{
+		Range: map[string]types.RangeQuery{
+			"id": rangeQuery.RangeQueryCaster(),
+		},
+	}
+
+	deleteReq := map[string]interface{}{
+		"query": query,
+	}
+	deleteBytes, _ := json.Marshal(deleteReq)
+
+	_, err := s.es.DeleteByQuery("case_index").
+		Raw(bytes.NewReader(deleteBytes)).
+		Do(context.Background())
 	require.NoError(s.T(), err)
-	_, err = s.es.DeleteByQuery("question_index").Query(query).Do(context.Background())
+	_, err = s.es.DeleteByQuery("question_index").
+		Raw(bytes.NewReader(deleteBytes)).
+		Do(context.Background())
 	require.NoError(s.T(), err)
-	_, err = s.es.DeleteByQuery("skill_index").Query(query).Do(context.Background())
+	_, err = s.es.DeleteByQuery("skill_index").
+		Raw(bytes.NewReader(deleteBytes)).
+		Do(context.Background())
 	require.NoError(s.T(), err)
-	_, err = s.es.DeleteByQuery(dao.QuestionSetIndexName).Query(query).Do(context.Background())
+	_, err = s.es.DeleteByQuery(dao.QuestionSetIndexName).
+		Raw(bytes.NewReader(deleteBytes)).
+		Do(context.Background())
 	require.NoError(s.T(), err)
 }
 
@@ -1189,7 +1218,7 @@ func (s *AdminHandlerTestSuite) TestSync() {
 			after: func(t *testing.T) {
 				res := s.getDataFromEs(t, "pub_case_index", "1")
 				var ans dao.Case
-				err := json.Unmarshal(res.Source, &ans)
+				err := json.Unmarshal(res.Source_, &ans)
 				require.NoError(t, err)
 				assert.Equal(t, dao.Case{
 					Id:         1,
@@ -1217,7 +1246,7 @@ func (s *AdminHandlerTestSuite) TestSync() {
 			after: func(t *testing.T) {
 				res := s.getDataFromEs(t, dao.QuestionIndexName, "1")
 				var ans dao.Question
-				err := json.Unmarshal(res.Source, &ans)
+				err := json.Unmarshal(res.Source_, &ans)
 				require.NoError(t, err)
 				q := dao.Question{
 					ID:      1,
@@ -1282,7 +1311,7 @@ func (s *AdminHandlerTestSuite) TestSync() {
 			after: func(t *testing.T) {
 				res := s.getDataFromEs(t, dao.SkillIndexName, "99")
 				var ans dao.Skill
-				err := json.Unmarshal(res.Source, &ans)
+				err := json.Unmarshal(res.Source_, &ans)
 				require.NoError(t, err)
 				skill := dao.Skill{
 					ID:     99,
@@ -1500,12 +1529,28 @@ func (s *AdminHandlerTestSuite) TestSearchLimit() {
 							Val: "test_desc",
 						},
 					},
+					{
+						ID:     10005,
+						Labels: []string{"programming"},
+						Name:   "",
+						Desc: web.EsVal{
+							Val: "test_desc",
+						},
+						Intermediate: web.SkillLevel{
+							ID: 2,
+							Desc: web.EsVal{
+								Val: "test_intermediate",
+							},
+							Questions: []int64{1},
+							Cases:     []int64{1},
+						},
+					},
 				},
 			},
 			req: web.SearchReq{
 				Keywords: "biz:skill:test_name test_label test_desc test_advanced test_basic test_intermediate",
 				Offset:   0,
-				Limit:    3,
+				Limit:    4,
 			},
 		},
 		{
@@ -1555,10 +1600,8 @@ func (s *AdminHandlerTestSuite) TestSearchLimit() {
 	}
 }
 
-func (s *AdminHandlerTestSuite) getDataFromEs(t *testing.T, index, docID string) *elastic.GetResult {
-	doc, err := s.es.Get().
-		Index(index).
-		Id(docID).
+func (s *AdminHandlerTestSuite) getDataFromEs(t *testing.T, index, docID string) *get.Response {
+	doc, err := s.es.Get(index, docID).
 		Do(context.Background())
 	require.NoError(t, err)
 	return doc
@@ -2259,10 +2302,10 @@ func (s *AdminHandlerTestSuite) initSkills() {
 	for _, skill := range skills {
 		by, err := json.Marshal(skill)
 		require.NoError(s.T(), err)
-		_, err = s.es.Index().
-			Index(dao.SkillIndexName).
+		_, err = s.es.Index(dao.SkillIndexName).
 			Id(strconv.FormatInt(skill.ID, 10)).
-			BodyJson(string(by)).Do(context.Background())
+			Raw(bytes.NewReader(by)).
+			Do(context.Background())
 		require.NoError(s.T(), err)
 	}
 }
@@ -2295,10 +2338,10 @@ func (s *AdminHandlerTestSuite) insertQuestion(ques []dao.Question) {
 	for _, que := range ques {
 		by, err := json.Marshal(que)
 		require.NoError(s.T(), err)
-		_, err = s.es.Index().
-			Index(dao.QuestionIndexName).
+		_, err = s.es.Index(dao.QuestionIndexName).
 			Id(strconv.FormatInt(que.ID, 10)).
-			BodyJson(string(by)).Do(context.Background())
+			Raw(bytes.NewReader(by)).
+			Do(context.Background())
 		require.NoError(s.T(), err)
 	}
 }
@@ -2307,10 +2350,10 @@ func (s *AdminHandlerTestSuite) insertCase(cas []dao.Case) {
 	for _, ca := range cas {
 		by, err := json.Marshal(ca)
 		require.NoError(s.T(), err)
-		_, err = s.es.Index().
-			Index(dao.CaseIndexName).
+		_, err = s.es.Index(dao.CaseIndexName).
 			Id(strconv.FormatInt(ca.Id, 10)).
-			BodyJson(string(by)).Do(context.Background())
+			Raw(bytes.NewReader(by)).
+			Do(context.Background())
 		require.NoError(s.T(), err)
 	}
 }
@@ -2319,10 +2362,10 @@ func (s *AdminHandlerTestSuite) insertQuestionSet(qs []dao.QuestionSet) {
 	for _, q := range qs {
 		by, err := json.Marshal(q)
 		require.NoError(s.T(), err)
-		_, err = s.es.Index().
-			Index(dao.QuestionSetIndexName).
+		_, err = s.es.Index(dao.QuestionSetIndexName).
 			Id(strconv.FormatInt(q.Id, 10)).
-			BodyJson(string(by)).Do(context.Background())
+			Raw(bytes.NewReader(by)).
+			Do(context.Background())
 		require.NoError(s.T(), err)
 	}
 }
@@ -2331,10 +2374,10 @@ func (s *AdminHandlerTestSuite) insertSkills(sks []dao.Skill) {
 	for _, sk := range sks {
 		by, err := json.Marshal(sk)
 		require.NoError(s.T(), err)
-		_, err = s.es.Index().
-			Index(dao.SkillIndexName).
+		_, err = s.es.Index(dao.SkillIndexName).
 			Id(strconv.FormatInt(sk.ID, 10)).
-			BodyJson(string(by)).Do(context.Background())
+			Raw(bytes.NewReader(by)).
+			Do(context.Background())
 		require.NoError(s.T(), err)
 	}
 }

@@ -18,6 +18,8 @@ import (
 	"context"
 	"time"
 
+	"golang.org/x/sync/errgroup"
+
 	"gorm.io/gorm"
 
 	"github.com/ego-component/egorm"
@@ -28,7 +30,7 @@ type AdminDAO interface {
 	// 路线图的相关方法
 	Save(ctx context.Context, r Roadmap) (int64, error)
 	GetById(ctx context.Context, id int64) (Roadmap, error)
-	List(ctx context.Context, offset int, limit int) ([]Roadmap, error)
+	List(ctx context.Context, offset int, limit int) (int64, []Roadmap, error)
 	// ListSince 分页查找Utime大于等于since的路线图
 	ListSince(ctx context.Context, since int64, offset, limit int) ([]Roadmap, error)
 	AllRoadmap(ctx context.Context) ([]Roadmap, error)
@@ -243,10 +245,23 @@ func (dao *GORMAdminDAO) GetEdgesByRid(ctx context.Context, rid int64) ([]Edge, 
 	return res, err
 }
 
-func (dao *GORMAdminDAO) List(ctx context.Context, offset int, limit int) ([]Roadmap, error) {
-	var res []Roadmap
-	err := dao.db.WithContext(ctx).Order("id DESC").Offset(offset).Limit(limit).Find(&res).Error
-	return res, err
+func (dao *GORMAdminDAO) List(ctx context.Context, offset int, limit int) (int64, []Roadmap, error) {
+	var (
+		res   []Roadmap
+		egg   errgroup.Group
+		count int64
+	)
+
+	egg.Go(func() error {
+		return dao.db.WithContext(ctx).Order("id DESC").Offset(offset).Limit(limit).Find(&res).Error
+	})
+
+	egg.Go(func() error {
+		return dao.db.Model(&Roadmap{}).WithContext(ctx).Count(&count).Error
+
+	})
+	err := egg.Wait()
+	return count, res, err
 }
 
 func (dao *GORMAdminDAO) ListSince(ctx context.Context, since int64, offset, limit int) ([]Roadmap, error) {

@@ -160,9 +160,11 @@ func (s *AdminHandlerTestSuite) TestUpsert() {
 			setup: func() {
 				s.mockRdSvc.EXPECT().Detail(gomock.Any(), int64(123)).
 					Return(roadmap.Roadmap{
-						Id:    123,
-						Biz:   "questionSet",
-						BizId: 456,
+						Id: 123,
+						Biz: roadmap.Biz{
+							Biz:   "questionSet",
+							BizId: 456,
+						},
 						Edges: []roadmap.Edge{
 							{
 								Id:  1,

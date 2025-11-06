@@ -43,8 +43,7 @@ func TestQuestionRelSyncer_Upsert(t *testing.T) {
 					Return(roadmap.Roadmap{
 						Id:    123,
 						Title: "测试路线图",
-						Biz:   "questionSet",
-						BizId: 456,
+						Biz:   roadmap.Biz{Biz: "questionSet", BizId: 456},
 						Edges: []roadmap.Edge{
 							{
 								Id:    1,
@@ -101,9 +100,8 @@ func TestQuestionRelSyncer_Upsert(t *testing.T) {
 			setup: func(roadmapSvc *roadmapmocks.MockAdminService, kbaseSvc *kbasemocks.MockService) {
 				roadmapSvc.EXPECT().Detail(gomock.Any(), int64(123)).
 					Return(roadmap.Roadmap{
-						Id:    123,
-						Biz:   "questionSet",
-						BizId: 456,
+						Id:  123,
+						Biz: roadmap.Biz{Biz: "questionSet", BizId: 456},
 						Edges: []roadmap.Edge{
 							{Id: 1},
 						},
@@ -160,9 +158,8 @@ func TestQuestionRelSyncer_UpsertSince(t *testing.T) {
 				roadmapSvc.EXPECT().ListSince(gomock.Any(), int64(1000), 0, 100).
 					Return([]roadmap.Roadmap{
 						{
-							Id:    1,
-							Biz:   "questionSet",
-							BizId: 100,
+							Id:  1,
+							Biz: roadmap.Biz{Biz: "questionSet", BizId: 100},
 							Edges: []roadmap.Edge{
 								{Id: 1, Src: roadmap.Node{ID: 10, Rid: 1}, Dst: roadmap.Node{ID: 20, Rid: 1}},
 								{Id: 2, Src: roadmap.Node{ID: 11, Rid: 1}, Dst: roadmap.Node{ID: 21, Rid: 1}},
@@ -194,8 +191,7 @@ func TestQuestionRelSyncer_UpsertSince(t *testing.T) {
 					Return([]roadmap.Roadmap{
 						{
 							Id:    1,
-							Biz:   "questionSet",
-							BizId: 100,
+							Biz:   roadmap.Biz{Biz: "questionSet", BizId: 100},
 							Edges: edges,
 						},
 					}, nil).Times(1)
@@ -222,18 +218,16 @@ func TestQuestionRelSyncer_UpsertSince(t *testing.T) {
 				roadmapSvc.EXPECT().ListSince(gomock.Any(), int64(1000), 0, 100).
 					Return([]roadmap.Roadmap{
 						{
-							Id:    1,
-							Biz:   "questionSet",
-							BizId: 100,
+							Id:  1,
+							Biz: roadmap.Biz{Biz: "questionSet", BizId: 100},
 							Edges: []roadmap.Edge{
 								{Id: 1, Src: roadmap.Node{ID: 10, Rid: 1}, Dst: roadmap.Node{ID: 20, Rid: 1}},
 								{Id: 2, Src: roadmap.Node{ID: 11, Rid: 1}, Dst: roadmap.Node{ID: 21, Rid: 1}},
 							},
 						},
 						{
-							Id:    2,
-							Biz:   "questionSet",
-							BizId: 200,
+							Id:  2,
+							Biz: roadmap.Biz{Biz: "questionSet", BizId: 200},
 							Edges: []roadmap.Edge{
 								{Id: 3, Src: roadmap.Node{ID: 12, Rid: 2}, Dst: roadmap.Node{ID: 22, Rid: 2}},
 							},
@@ -274,8 +268,7 @@ func TestQuestionRelSyncer_UpsertSince(t *testing.T) {
 					Return([]roadmap.Roadmap{
 						{
 							Id:    1,
-							Biz:   "questionSet",
-							BizId: 100,
+							Biz:   roadmap.Biz{Biz: "questionSet", BizId: 100},
 							Edges: edges,
 						},
 					}, nil).Times(1)
@@ -295,9 +288,8 @@ func TestQuestionRelSyncer_UpsertSince(t *testing.T) {
 				roadmapSvc.EXPECT().ListSince(gomock.Any(), int64(1000), 0, 100).
 					Return([]roadmap.Roadmap{
 						{
-							Id:    1,
-							Biz:   "questionSet",
-							BizId: 100,
+							Id:  1,
+							Biz: roadmap.Biz{Biz: "questionSet", BizId: 100},
 							Edges: []roadmap.Edge{
 								{Id: 1, Src: roadmap.Node{ID: 10, Rid: 1}, Dst: roadmap.Node{ID: 20, Rid: 1}},
 							},
