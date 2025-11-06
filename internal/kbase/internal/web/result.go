@@ -12,24 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package roadmap
+package web
 
 import (
-	"github.com/ecodeclub/webook/internal/roadmap/internal/domain"
-	"github.com/ecodeclub/webook/internal/roadmap/internal/service"
-	"github.com/ecodeclub/webook/internal/roadmap/internal/web"
+	"github.com/ecodeclub/ginx"
+	"github.com/ecodeclub/webook/internal/kbase/internal/errs"
 )
 
-type Module struct {
-	AdminHdl *AdminHandler
-	Hdl      *Handler
-	AdminSvc AdminService
-}
-
-type AdminHandler = web.AdminHandler
-type Handler = web.Handler
-type AdminService = service.AdminService
-type Roadmap = domain.Roadmap
-type Edge = domain.Edge
-type Node = domain.Node
-type Biz = domain.Biz
+var (
+	systemErrorResult = ginx.Result{
+		Code: errs.SystemError.Code,
+		Msg:  errs.SystemError.Msg,
+	}
+)

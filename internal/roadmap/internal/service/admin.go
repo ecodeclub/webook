@@ -24,6 +24,7 @@ import (
 	"github.com/ecodeclub/webook/internal/roadmap/internal/repository"
 )
 
+//go:generate mockgen -source=./admin.go -destination=../../mocks/admin.mock.go -package=roadmapmocks -typed=true AdminService
 type AdminService interface {
 	Detail(ctx context.Context, id int64) (domain.Roadmap, error)
 	Save(ctx context.Context, r domain.Roadmap) (int64, error)
@@ -37,6 +38,9 @@ type AdminService interface {
 	NodeList(ctx context.Context, rid int64) ([]domain.Node, error)
 	SaveEdge(ctx context.Context, rid int64, edge domain.Edge) error
 	DeleteEdge(ctx context.Context, id int64) error
+
+	// ListSince 分页查找Utime大于等于since的路线图，返回结果包含边信息
+	ListSince(ctx context.Context, since int64, offset, limit int) ([]domain.Roadmap, error)
 }
 
 var _ AdminService = &adminService{}
@@ -108,6 +112,10 @@ func (svc *adminService) Save(ctx context.Context, r domain.Roadmap) (int64, err
 		}
 	}
 	return id, err
+}
+
+func (svc *adminService) ListSince(ctx context.Context, since int64, offset, limit int) ([]domain.Roadmap, error) {
+	return svc.repo.ListSince(ctx, since, offset, limit)
 }
 
 func NewAdminService(repo repository.AdminRepository, queSetSvc baguwen.QuestionSetService) AdminService {

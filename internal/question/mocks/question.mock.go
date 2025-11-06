@@ -21,6 +21,7 @@ import (
 type MockService struct {
 	ctrl     *gomock.Controller
 	recorder *MockServiceMockRecorder
+	isgomock struct{}
 }
 
 // MockServiceMockRecorder is the mock recorder for MockService.
@@ -196,6 +197,45 @@ func (c *MockServiceListCall) DoAndReturn(f func(context.Context, int, int) ([]d
 	return c
 }
 
+// ListPubSince mocks base method.
+func (m *MockService) ListPubSince(ctx context.Context, since int64, offset, limit int) ([]domain.Question, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListPubSince", ctx, since, offset, limit)
+	ret0, _ := ret[0].([]domain.Question)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListPubSince indicates an expected call of ListPubSince.
+func (mr *MockServiceMockRecorder) ListPubSince(ctx, since, offset, limit any) *MockServiceListPubSinceCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListPubSince", reflect.TypeOf((*MockService)(nil).ListPubSince), ctx, since, offset, limit)
+	return &MockServiceListPubSinceCall{Call: call}
+}
+
+// MockServiceListPubSinceCall wrap *gomock.Call
+type MockServiceListPubSinceCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockServiceListPubSinceCall) Return(arg0 []domain.Question, arg1 error) *MockServiceListPubSinceCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockServiceListPubSinceCall) Do(f func(context.Context, int64, int, int) ([]domain.Question, error)) *MockServiceListPubSinceCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockServiceListPubSinceCall) DoAndReturn(f func(context.Context, int64, int, int) ([]domain.Question, error)) *MockServiceListPubSinceCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // PubDetail mocks base method.
 func (m *MockService) PubDetail(ctx context.Context, qid int64) (domain.Question, error) {
 	m.ctrl.T.Helper()
@@ -231,6 +271,45 @@ func (c *MockServicePubDetailCall) Do(f func(context.Context, int64) (domain.Que
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
 func (c *MockServicePubDetailCall) DoAndReturn(f func(context.Context, int64) (domain.Question, error)) *MockServicePubDetailCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// PubDetailWithoutCntView mocks base method.
+func (m *MockService) PubDetailWithoutCntView(ctx context.Context, qid int64) (domain.Question, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "PubDetailWithoutCntView", ctx, qid)
+	ret0, _ := ret[0].(domain.Question)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// PubDetailWithoutCntView indicates an expected call of PubDetailWithoutCntView.
+func (mr *MockServiceMockRecorder) PubDetailWithoutCntView(ctx, qid any) *MockServicePubDetailWithoutCntViewCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PubDetailWithoutCntView", reflect.TypeOf((*MockService)(nil).PubDetailWithoutCntView), ctx, qid)
+	return &MockServicePubDetailWithoutCntViewCall{Call: call}
+}
+
+// MockServicePubDetailWithoutCntViewCall wrap *gomock.Call
+type MockServicePubDetailWithoutCntViewCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockServicePubDetailWithoutCntViewCall) Return(arg0 domain.Question, arg1 error) *MockServicePubDetailWithoutCntViewCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockServicePubDetailWithoutCntViewCall) Do(f func(context.Context, int64) (domain.Question, error)) *MockServicePubDetailWithoutCntViewCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockServicePubDetailWithoutCntViewCall) DoAndReturn(f func(context.Context, int64) (domain.Question, error)) *MockServicePubDetailWithoutCntViewCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

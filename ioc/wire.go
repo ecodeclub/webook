@@ -27,6 +27,7 @@ import (
 	"github.com/ecodeclub/webook/internal/feedback"
 	"github.com/ecodeclub/webook/internal/interactive"
 	"github.com/ecodeclub/webook/internal/interview"
+	"github.com/ecodeclub/webook/internal/kbase"
 	"github.com/ecodeclub/webook/internal/label"
 	"github.com/ecodeclub/webook/internal/marketing"
 	"github.com/ecodeclub/webook/internal/material"
@@ -113,6 +114,8 @@ func InitApp() (*App, error) {
 		wire.FieldsOf(new(*interview.Module), "JourneyHdl", "OfferHdl"),
 		company.InitModule,
 		wire.FieldsOf(new(*company.Module), "Hdl", "AdminHdl"),
+		kbase.InitModule,
+		wire.FieldsOf(new(*kbase.Module), "AdminHdl"),
 
 		initLocalActiveLimiterBuilder,
 		initCronJobs,

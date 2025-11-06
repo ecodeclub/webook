@@ -31,6 +31,8 @@ type AdminDAO interface {
 	Save(ctx context.Context, r Roadmap) (int64, error)
 	GetById(ctx context.Context, id int64) (Roadmap, error)
 	List(ctx context.Context, offset int, limit int) (int64, []Roadmap, error)
+	// ListSince 分页查找Utime大于等于since的路线图
+	ListSince(ctx context.Context, since int64, offset, limit int) ([]Roadmap, error)
 	AllRoadmap(ctx context.Context) ([]Roadmap, error)
 	Delete(ctx context.Context, id int64) error
 	// 旧版本边的操作
@@ -47,6 +49,7 @@ type AdminDAO interface {
 
 	// 新版本边的操作
 	GetEdgesByRidV1(ctx context.Context, rid int64) (map[int64]Node, []EdgeV1, error)
+	GetEdgesByRidsV1(ctx context.Context, rids []int64) (map[int64]Node, map[int64][]EdgeV1, error)
 	CreateEdgeV1s(ctx context.Context, edgev1List []EdgeV1) error
 	SaveEdgeV1(ctx context.Context, edge EdgeV1) error
 	DeleteEdgeV1(ctx context.Context, id int64) error
@@ -127,6 +130,39 @@ func (dao *GORMAdminDAO) GetEdgesByRidV1(ctx context.Context, rid int64) (map[in
 		nodeMap[node.Id] = node
 	}
 	return nodeMap, edges, nil
+}
+
+func (dao *GORMAdminDAO) GetEdgesByRidsV1(ctx context.Context, rids []int64) (map[int64]Node, map[int64][]EdgeV1, error) {
+	if len(rids) == 0 {
+		return make(map[int64]Node), make(map[int64][]EdgeV1), nil
+	}
+
+	var edges []EdgeV1
+	err := dao.db.WithContext(ctx).Where("rid IN ?", rids).
+		Order("id desc").
+		Find(&edges).Error
+	if err != nil {
+		return nil, nil, err
+	}
+
+	nodeIds := make(map[int64]struct{})
+	edgesMap := make(map[int64][]EdgeV1, len(rids))
+	for _, edge := range edges {
+		edgesMap[edge.Rid] = append(edgesMap[edge.Rid], edge)
+		nodeIds[edge.SrcNode] = struct{}{}
+		nodeIds[edge.DstNode] = struct{}{}
+	}
+
+	var nodes []Node
+	err = dao.db.WithContext(ctx).Where("id IN ?", keys(nodeIds)).Find(&nodes).Error
+	if err != nil {
+		return nil, nil, err
+	}
+	nodeMap := make(map[int64]Node, len(nodes))
+	for _, node := range nodes {
+		nodeMap[node.Id] = node
+	}
+	return nodeMap, edgesMap, nil
 }
 
 func keys(m map[int64]struct{}) []int64 {
@@ -226,6 +262,13 @@ func (dao *GORMAdminDAO) List(ctx context.Context, offset int, limit int) (int64
 	})
 	err := egg.Wait()
 	return count, res, err
+}
+
+func (dao *GORMAdminDAO) ListSince(ctx context.Context, since int64, offset, limit int) ([]Roadmap, error) {
+	var res []Roadmap
+	err := dao.db.WithContext(ctx).Where("utime >= ?", since).
+		Order("utime DESC, id DESC").Offset(offset).Limit(limit).Find(&res).Error
+	return res, err
 }
 
 func (dao *GORMAdminDAO) GetById(ctx context.Context, id int64) (Roadmap, error) {

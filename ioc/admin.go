@@ -18,6 +18,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/ecodeclub/webook/internal/kbase"
 	"github.com/ecodeclub/webook/internal/label"
 
 	"github.com/ecodeclub/webook/internal/order"
@@ -65,6 +66,7 @@ func InitAdminServer(prj *project.AdminHandler,
 	orderHdl *order.AdminHandler,
 	searchHdl *search.AdminHandler,
 	labelHdl *label.AdminHandler,
+	kbaseHdl *kbase.AdminHandler,
 ) AdminServer {
 	res := egin.Load("admin").Build()
 	res.Use(cors.New(cors.Config{
@@ -105,6 +107,7 @@ func InitAdminServer(prj *project.AdminHandler,
 	orderHdl.PrivateRoutes(res.Engine)
 	searchHdl.PrivateRoutes(res.Engine)
 	labelHdl.PrivateRoutes(res.Engine)
+	kbaseHdl.PrivateRoutes(res.Engine)
 	return res
 }
 
