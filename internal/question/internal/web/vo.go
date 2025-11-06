@@ -45,8 +45,6 @@ type Question struct {
 	Advanced    AnswerElement `json:"advanced,omitempty"`
 	Interactive Interactive   `json:"interactive"`
 
-	ExamineResult uint8 `json:"examineResult"`
-
 	// 是否有权限
 	Permitted bool `json:"permitted"`
 }

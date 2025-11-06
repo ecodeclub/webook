@@ -27,8 +27,6 @@ import (
 
 	"github.com/ecodeclub/webook/internal/member"
 
-	"github.com/ecodeclub/webook/internal/ai"
-
 	"github.com/ecodeclub/webook/internal/permission"
 
 	"github.com/ecodeclub/ecache"
@@ -93,7 +91,7 @@ func (s *SetHandlerTestSuite) SetupSuite() {
 		return res, nil
 	}).AnyTimes()
 
-	module, err := startup.InitModule(s.producer, nil, intrModule, &permission.Module{}, &ai.Module{},
+	module, err := startup.InitModule(s.producer, intrModule, &permission.Module{},
 		session.DefaultProvider(),
 		&member.Module{})
 	require.NoError(s.T(), err)
@@ -248,16 +246,6 @@ func (s *SetHandlerTestSuite) TestQuestionSetDetailByBiz() {
 				qids := []int64{614, 615, 616}
 				require.NoError(t, s.questionSetDAO.UpdateQuestionsByID(ctx, id, qids))
 
-				// 添加用户答题记录，只需要添加一个就可以
-				err = s.db.WithContext(ctx).Create(&dao.QuestionResult{
-					Uid:    uid,
-					Qid:    614,
-					Result: domain.ResultAdvanced.ToUint8(),
-					Ctime:  now,
-					Utime:  now,
-				}).Error
-				require.NoError(t, err)
-
 				// 题集中题目为1
 				qs, err := s.questionSetDAO.GetQuestionsByID(ctx, id)
 				require.NoError(t, err)
@@ -292,10 +280,9 @@ func (s *SetHandlerTestSuite) TestQuestionSetDetailByBiz() {
 							Labels: []string{
 								"MySQL",
 							},
-							Title:         "Go问题1",
-							Content:       "Go问题1",
-							ExamineResult: domain.ResultAdvanced.ToUint8(),
-							Utime:         now,
+							Title:   "Go问题1",
+							Content: "Go问题1",
+							Utime:   now,
 							Interactive: web.Interactive{
 								ViewCnt:    615,
 								LikeCnt:    616,
@@ -492,16 +479,6 @@ func (s *SetHandlerTestSuite) TestQuestionSet_Detail() {
 				qids := []int64{614, 615, 616}
 				require.NoError(t, s.questionSetDAO.UpdateQuestionsByID(ctx, id, qids))
 
-				// 添加用户答题记录，只需要添加一个就可以
-				err = s.db.WithContext(ctx).Create(&dao.QuestionResult{
-					Uid:    uid,
-					Qid:    614,
-					Result: domain.ResultAdvanced.ToUint8(),
-					Ctime:  now,
-					Utime:  now,
-				}).Error
-				require.NoError(t, err)
-
 				// 题集中题目为1
 				qs, err := s.questionSetDAO.GetPubQuestionsByID(ctx, id)
 				require.NoError(t, err)
@@ -542,8 +519,7 @@ func (s *SetHandlerTestSuite) TestQuestionSet_Detail() {
 								Liked:      false,
 								Collected:  true,
 							},
-							ExamineResult: domain.ResultAdvanced.ToUint8(),
-							Utime:         now,
+							Utime: now,
 						},
 						{
 							Id:      615,
@@ -652,16 +628,6 @@ func (s *SetHandlerTestSuite) TestQuestionSet_Detail() {
 				require.NoError(t, err)
 				qids := []int64{714, 715, 716}
 				require.NoError(t, s.questionSetDAO.UpdateQuestionsByID(ctx, id, qids))
-
-				// 添加用户答题记录，只需要添加一个就可以
-				err = s.db.WithContext(ctx).Create(&dao.QuestionResult{
-					Uid:    uid,
-					Qid:    714,
-					Result: domain.ResultAdvanced.ToUint8(),
-					Ctime:  now,
-					Utime:  now,
-				}).Error
-				require.NoError(t, err)
 
 				// 题集中题目为1
 				qs, err := s.questionSetDAO.GetPubQuestionsByID(ctx, id)
@@ -828,16 +794,6 @@ func (s *SetHandlerTestSuite) TestQuestionSet_Detail() {
 				qids := []int64{814, 815, 816, 817}
 				require.NoError(t, s.questionSetDAO.UpdateQuestionsByID(ctx, id, qids))
 
-				// 添加用户答题记录，只需要添加一个就可以
-				err = s.db.WithContext(ctx).Create(&dao.QuestionResult{
-					Uid:    uid,
-					Qid:    814,
-					Result: domain.ResultAdvanced.ToUint8(),
-					Ctime:  now,
-					Utime:  now,
-				}).Error
-				require.NoError(t, err)
-
 				// 题集中题目为1
 				qs, err := s.questionSetDAO.GetPubQuestionsByID(ctx, id)
 				require.NoError(t, err)
@@ -878,8 +834,7 @@ func (s *SetHandlerTestSuite) TestQuestionSet_Detail() {
 								Liked:      false,
 								Collected:  true,
 							},
-							ExamineResult: domain.ResultAdvanced.ToUint8(),
-							Utime:         now,
+							Utime: now,
 						},
 						{
 							Id:      815,

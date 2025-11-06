@@ -25,12 +25,6 @@ import (
 
 	"github.com/ecodeclub/webook/internal/member"
 
-	"github.com/ecodeclub/webook/internal/ai"
-
-	"github.com/gotomicro/ego/core/econf"
-
-	"github.com/ecodeclub/webook/internal/question/internal/job"
-
 	"github.com/ecodeclub/webook/internal/permission"
 
 	"github.com/ecodeclub/webook/internal/interactive"
@@ -50,18 +44,11 @@ import (
 	"gorm.io/gorm"
 )
 
-var ExamineHandlerSet = wire.NewSet(
-	web.NewExamineHandler,
-	service.NewLLMExamineService,
-	repository.NewCachedExamineRepository,
-	dao.NewGORMExamineDAO)
-
 func InitModule(db *egorm.Component,
 	intrModule *interactive.Module,
 	ec ecache.Cache,
 	esClient *elasticsearch.TypedClient,
 	perm *permission.Module,
-	aiModule *ai.Module,
 	memberModule *member.Module,
 	sp session.Provider,
 	q mq.MQ) (*Module, error) {
@@ -70,27 +57,19 @@ func InitModule(db *egorm.Component,
 		repository.NewCacheRepository,
 		event.NewSyncEventProducer,
 		event.NewInteractiveEventProducer,
-		InitKnowledgeBaseUploadProducer,
 		service.NewService,
 		service.NewSearchSyncService,
 		web.NewHandler,
 		web.NewAdminHandler,
 		web.NewAdminQuestionSetHandler,
 
-		ExamineHandlerSet,
-
 		InitQuestionSetDAO,
 		repository.NewQuestionSetRepository,
 		service.NewQuestionSetService,
 		web.NewQuestionSetHandler,
-		initKnowledgeStarter,
-		InitKnowledgeBaseSvc,
-		web.NewKnowledgeBaseHandler,
 		wire.FieldsOf(new(*interactive.Module), "Svc"),
 		wire.FieldsOf(new(*permission.Module), "Svc"),
 		wire.FieldsOf(new(*member.Module), "Svc"),
-
-		wire.FieldsOf(new(*ai.Module), "Svc", "KnowledgeBaseSvc"),
 
 		wire.Struct(new(Module), "*"),
 	)
@@ -98,11 +77,6 @@ func InitModule(db *egorm.Component,
 }
 
 var daoOnce = sync.Once{}
-
-func initKnowledgeStarter(svc service.Service) *job.KnowledgeJobStarter {
-	baseDir := econf.GetString("job.genKnowledge.baseDir")
-	return job.NewKnowledgeJobStarter(svc, baseDir)
-}
 
 func InitTableOnce(db *gorm.DB) {
 	daoOnce.Do(func() {

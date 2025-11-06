@@ -28,25 +28,22 @@ import (
 )
 
 type QuestionSetHandler struct {
-	svc        service.QuestionSetService
-	examineSvc service.ExamineService
-	logger     *elog.Component
-	intrSvc    interactive.Service
-	sp         session.Provider
+	svc     service.QuestionSetService
+	logger  *elog.Component
+	intrSvc interactive.Service
+	sp      session.Provider
 }
 
 func NewQuestionSetHandler(
 	svc service.QuestionSetService,
-	examineSvc service.ExamineService,
 	intrSvc interactive.Service,
 	sp session.Provider,
 ) *QuestionSetHandler {
 	return &QuestionSetHandler{
-		svc:        svc,
-		intrSvc:    intrSvc,
-		examineSvc: examineSvc,
-		logger:     elog.DefaultLogger,
-		sp:         sp,
+		svc:     svc,
+		intrSvc: intrSvc,
+		logger:  elog.DefaultLogger,
+		sp:      sp,
 	}
 }
 
@@ -128,7 +125,6 @@ func (h *QuestionSetHandler) getDetail(
 		eg         errgroup.Group
 		intr       interactive.Interactive
 		queIntrMap map[int64]interactive.Interactive
-		resultMap  map[int64]domain.ExamineResult
 		uid        int64
 	)
 	sess, err := h.sp.Get(ctx)
@@ -148,43 +144,33 @@ func (h *QuestionSetHandler) getDetail(
 		return eerr
 	})
 
-	eg.Go(func() error {
-		var err error
-		resultMap, err = h.examineSvc.GetResults(ctx, uid, qs.Qids())
-		return err
-	})
-
 	err = eg.Wait()
 	if err != nil {
 		return systemErrorResult, err
 	}
 
 	return ginx.Result{
-		Data: h.toQuestionSetVO(qs, intr, resultMap, queIntrMap),
+		Data: h.toQuestionSetVO(qs, intr, queIntrMap),
 	}, nil
 }
 
 func (h *QuestionSetHandler) toQuestionSetVO(
 	set domain.QuestionSet,
 	intr interactive.Interactive,
-	results map[int64]domain.ExamineResult,
 	queIntrMap map[int64]interactive.Interactive,
 ) QuestionSet {
 	qs := newQuestionSet(set)
-	qs.Questions = h.toQuestionVO(set.Questions, results, queIntrMap)
+	qs.Questions = h.toQuestionVO(set.Questions, queIntrMap)
 	qs.Interactive = newInteractive(intr)
 	return qs
 }
 
 func (h *QuestionSetHandler) toQuestionVO(
 	questions []domain.Question,
-	results map[int64]domain.ExamineResult,
 	queIntrMap map[int64]interactive.Interactive) []Question {
 	return slice.Map(questions, func(idx int, src domain.Question) Question {
 		intr := queIntrMap[src.Id]
 		que := newQuestion(src, intr)
-		res := results[que.Id]
-		que.ExamineResult = res.Result.ToUint8()
 		return que
 	})
 }

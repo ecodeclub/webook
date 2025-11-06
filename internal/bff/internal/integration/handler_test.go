@@ -41,7 +41,6 @@ func (c *CollectionHandlerTestSuite) SetupSuite() {
 	ctrl := gomock.NewController(c.T())
 	queSvc := quemocks.NewMockService(ctrl)
 	queSetSvc := quemocks.NewMockQuestionSetService(ctrl)
-	examSvc := quemocks.NewMockExamineService(ctrl)
 	intrSvc := intrmocks.NewMockService(ctrl)
 	intrSvc.EXPECT().CollectionInfo(gomock.Any(), int64(uid), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, uid int64, id int64, biz string, offset int, limit int) ([]interactive.CollectionRecord, int, error) {
 
@@ -133,19 +132,6 @@ func (c *CollectionHandlerTestSuite) SetupSuite() {
 			}
 		}), nil
 	}).AnyTimes()
-	examSvc.EXPECT().GetResults(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, uid int64, ids []int64) (map[int64]baguwen.ExamResult, error) {
-		res := slice.Map(ids, func(idx int, src int64) baguwen.ExamResult {
-			return baguwen.ExamResult{
-				Qid:    src,
-				Result: baguwen.ExamRes(src % 4),
-			}
-		})
-		resMap := make(map[int64]baguwen.ExamResult, len(res))
-		for _, examRes := range res {
-			resMap[examRes.Qid] = examRes
-		}
-		return resMap, nil
-	}).AnyTimes()
 
 	caseExamSvc := casemocks.NewMockExamineService(ctrl)
 	caseExamSvc.EXPECT().GetResults(gomock.Any(), gomock.Any(), gomock.Any()).
@@ -193,7 +179,7 @@ func (c *CollectionHandlerTestSuite) SetupSuite() {
 		}).AnyTimes()
 	handler, _ := st.InitHandler(&interactive.Module{Svc: intrSvc},
 		&cases.Module{Svc: caseSvc, SetSvc: caseSetSvc, ExamineSvc: caseExamSvc},
-		&baguwen.Module{Svc: queSvc, SetSvc: queSetSvc, ExamSvc: examSvc})
+		&baguwen.Module{Svc: queSvc, SetSvc: queSetSvc})
 	econf.Set("server", map[string]any{"contextTimeout": "1s"})
 	server := egin.Load("server").Build()
 	server.Use(func(ctx *gin.Context) {
@@ -235,9 +221,8 @@ func (c *CollectionHandlerTestSuite) Test_Handler() {
 					},
 					{
 						Question: web.Question{
-							ID:            2,
-							Title:         "这是题目2",
-							ExamineResult: 2 % 4,
+							ID:    2,
+							Title: "这是题目2",
 						},
 					},
 					{
@@ -246,14 +231,12 @@ func (c *CollectionHandlerTestSuite) Test_Handler() {
 							Title: "这是题集3",
 							Questions: []web.Question{
 								{
-									ID:            33,
-									Title:         "这是题目33",
-									ExamineResult: 33 % 4,
+									ID:    33,
+									Title: "这是题目33",
 								},
 								{
-									ID:            36,
-									Title:         "这是题目36",
-									ExamineResult: 36 % 4,
+									ID:    36,
+									Title: "这是题目36",
 								},
 							},
 						},
@@ -264,14 +247,12 @@ func (c *CollectionHandlerTestSuite) Test_Handler() {
 							Title: "这是题集4",
 							Questions: []web.Question{
 								{
-									ID:            44,
-									Title:         "这是题目44",
-									ExamineResult: 44 % 4,
+									ID:    44,
+									Title: "这是题目44",
 								},
 								{
-									ID:            48,
-									Title:         "这是题目48",
-									ExamineResult: 48 % 4,
+									ID:    48,
+									Title: "这是题目48",
 								},
 							},
 						},
@@ -359,9 +340,8 @@ func (c *CollectionHandlerTestSuite) Test_Handler() {
 				List: []web.CollectionRecord{
 					{
 						Question: web.Question{
-							ID:            2,
-							Title:         "这是题目2",
-							ExamineResult: 2 % 4,
+							ID:    2,
+							Title: "这是题目2",
 						},
 					},
 				},
@@ -385,14 +365,12 @@ func (c *CollectionHandlerTestSuite) Test_Handler() {
 							Title: "这是题集3",
 							Questions: []web.Question{
 								{
-									ID:            33,
-									Title:         "这是题目33",
-									ExamineResult: 33 % 4,
+									ID:    33,
+									Title: "这是题目33",
 								},
 								{
-									ID:            36,
-									Title:         "这是题目36",
-									ExamineResult: 36 % 4,
+									ID:    36,
+									Title: "这是题目36",
 								},
 							},
 						},
@@ -403,14 +381,12 @@ func (c *CollectionHandlerTestSuite) Test_Handler() {
 							Title: "这是题集4",
 							Questions: []web.Question{
 								{
-									ID:            44,
-									Title:         "这是题目44",
-									ExamineResult: 44 % 4,
+									ID:    44,
+									Title: "这是题目44",
 								},
 								{
-									ID:            48,
-									Title:         "这是题目48",
-									ExamineResult: 48 % 4,
+									ID:    48,
+									Title: "这是题目48",
 								},
 							},
 						},

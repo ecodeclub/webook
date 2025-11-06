@@ -35,8 +35,8 @@ func InitModule(syncProducer event.SyncEventProducer, knowledgeBaseProducer even
 		return nil, err
 	}
 	serviceService := service.NewService(caseRepo, interactiveEventProducer, knowledgeBaseProducer, syncProducer)
-	client := testioc.InitES()
-	searchSyncService := service.NewCaseSearchSyncService(caseRepo, client)
+	typedClient := testioc.InitES()
+	searchSyncService := service.NewCaseSearchSyncService(caseRepo, typedClient)
 	adminCaseHandler := web.NewAdminCaseHandler(serviceService, searchSyncService)
 	examineDAO := dao.NewGORMExamineDAO(db)
 	examineRepository := repository.NewCachedExamineRepository(examineDAO)
@@ -86,8 +86,8 @@ func InitExamModule(syncProducer event.SyncEventProducer, knowledgeBaseProducer 
 	service3 := memberModule.Svc
 	handler := web.NewHandler(serviceService, examineService, service2, service3, sp)
 	adminCaseSetHandler := web.NewAdminCaseSetHandler(caseSetService)
-	client := testioc.InitES()
-	searchSyncService := service.NewCaseSearchSyncService(caseRepo, client)
+	typedClient := testioc.InitES()
+	searchSyncService := service.NewCaseSearchSyncService(caseRepo, typedClient)
 	adminCaseHandler := web.NewAdminCaseHandler(serviceService, searchSyncService)
 	examineHandler := web.NewExamineHandler(examineService)
 	caseSetHandler := web.NewCaseSetHandler(caseSetService, examineService, service2, sp)

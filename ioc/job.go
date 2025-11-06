@@ -18,9 +18,6 @@ import (
 	"context"
 	"time"
 
-	baguwen "github.com/ecodeclub/webook/internal/question"
-	"github.com/gotomicro/ego/task/ejob"
-
 	"github.com/ecodeclub/webook/internal/credit"
 	"github.com/ecodeclub/webook/internal/order"
 	"github.com/ecodeclub/webook/internal/payment"
@@ -28,13 +25,6 @@ import (
 	"github.com/gotomicro/ego/core/elog"
 	"github.com/gotomicro/ego/task/ecron"
 )
-
-// 手动运行，或者通过 http 来触发
-func initJobs(knowledgeStarter *baguwen.KnowledgeJobStarter) []ejob.Ejob {
-	return []ejob.Ejob{
-		ejob.Job("gen-knowledge", knowledgeStarter.Start),
-	}
-}
 
 // initCronJobs 定时任务
 func initCronJobs(

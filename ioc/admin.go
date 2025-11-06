@@ -60,7 +60,6 @@ func InitAdminServer(prj *project.AdminHandler,
 	aiHdl *ai.AdminHandler,
 	reviewAdminHdl *review.AdminHdl,
 	caseKnowledgeBaseHdl *cases.KnowledgeBaseHandler,
-	queKnowledgeBaseHdl *baguwen.KnowledgeBaseHandler,
 	materialAdminHdl *material.AdminHandler,
 	companyHdl *company.AdminHandler,
 	orderHdl *order.AdminHandler,
@@ -100,7 +99,6 @@ func InitAdminServer(prj *project.AdminHandler,
 	caseSetHdl.PrivateRoutes(res.Engine)
 	aiHdl.RegisterRoutes(res.Engine)
 	reviewAdminHdl.PrivateRoutes(res.Engine)
-	queKnowledgeBaseHdl.PrivateRoutes(res.Engine)
 	caseKnowledgeBaseHdl.PrivateRoutes(res.Engine)
 	materialAdminHdl.PrivateRoutes(res.Engine)
 	companyHdl.PrivateRoutes(res.Engine)

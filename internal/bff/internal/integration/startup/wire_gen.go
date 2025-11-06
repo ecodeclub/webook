@@ -22,8 +22,7 @@ func InitHandler(intrModule *interactive.Module, caseModule *cases.Module, queSv
 	examineService := caseModule.ExamineSvc
 	service2 := queSvc.Svc
 	questionSetService := queSvc.SetSvc
-	serviceExamineService := queSvc.ExamSvc
-	handler := web.NewHandler(service, serviceService, caseSetService, examineService, service2, questionSetService, serviceExamineService)
+	handler := web.NewHandler(service, serviceService, caseSetService, examineService, service2, questionSetService)
 	return handler, nil
 }
 

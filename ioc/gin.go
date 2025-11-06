@@ -72,7 +72,6 @@ func initGinxServer(sp session.Provider,
 	// 这个暂时用不上
 	checkPermissionMiddleware *middleware.CheckPermissionMiddlewareBuilder,
 	qh *baguwen.Handler,
-	examineHdl *baguwen.ExamineHandler,
 	qsh *baguwen.QuestionSetHandler,
 	lhdl *label.Handler,
 	user *user.Handler,
@@ -171,7 +170,6 @@ func initGinxServer(sp session.Provider,
 
 	// 会员校验
 	res.Use(checkMembershipMiddleware.Build())
-	examineHdl.MemberRoutes(res.Engine)
 	fbHdl.MemberRoutes(res.Engine)
 	skillHdl.MemberRoutes(res.Engine)
 	caseExamineHdl.MemberRoutes(res.Engine)
