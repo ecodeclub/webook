@@ -31,8 +31,6 @@ import (
 	"github.com/ecodeclub/webook/internal/member"
 	membermocks "github.com/ecodeclub/webook/internal/member/mocks"
 
-	"github.com/ecodeclub/webook/internal/ai"
-
 	"github.com/ecodeclub/webook/internal/interactive"
 	intrmocks "github.com/ecodeclub/webook/internal/interactive/mocks"
 	"github.com/ecodeclub/webook/internal/permission"
@@ -120,8 +118,7 @@ func (s *HandlerTestSuite) SetupSuite() {
 			EndAt: 0,
 		}, nil
 	}).AnyTimes()
-	module, err := startup.InitModule(producer, nil, intrModule,
-		&permission.Module{Svc: permSvc}, &ai.Module{},
+	module, err := startup.InitModule(producer, intrModule, &permission.Module{Svc: permSvc},
 		session.DefaultProvider(),
 		&member.Module{
 			Svc: memSvc,
@@ -1024,7 +1021,6 @@ func (s *HandlerTestSuite) TestPubDetail() {
 					ViewCnt:    1042,
 					Liked:      true,
 				},
-				ExamineResult: 2,
 			},
 		},
 		{
@@ -1073,8 +1069,7 @@ func (s *HandlerTestSuite) TestPubDetail() {
 					ViewCnt:    1042,
 					Liked:      true,
 				},
-				ExamineResult: 2,
-				Permitted:     true,
+				Permitted: true,
 			},
 		},
 		{
@@ -1125,8 +1120,7 @@ func (s *HandlerTestSuite) TestPubDetail() {
 					ViewCnt:    1042,
 					Liked:      true,
 				},
-				ExamineResult: 0,
-				Permitted:     true,
+				Permitted: true,
 			},
 		},
 		{
@@ -1177,7 +1171,6 @@ func (s *HandlerTestSuite) TestPubDetail() {
 					ViewCnt:    1042,
 					Liked:      true,
 				},
-				ExamineResult: 0,
 			},
 		},
 		{
@@ -1228,7 +1221,6 @@ func (s *HandlerTestSuite) TestPubDetail() {
 					ViewCnt:    1043,
 					Collected:  true,
 				},
-				ExamineResult: 0,
 			},
 		},
 		{
@@ -1278,8 +1270,8 @@ func (s *HandlerTestSuite) TestPubDetail() {
 					ViewCnt:    1043,
 					Collected:  true,
 				},
-				ExamineResult: 2,
-				Permitted:     true,
+
+				Permitted: true,
 			},
 		},
 		{
@@ -1394,8 +1386,7 @@ func (s *HandlerTestSuite) TestPubDetail() {
 					ViewCnt:    23,
 					Collected:  true,
 				},
-				ExamineResult: 0,
-				Permitted:     true,
+				Permitted: true,
 			},
 		},
 		{
@@ -1525,12 +1516,6 @@ func (s *HandlerTestSuite) TestPubDetail() {
 
 func (s *HandlerTestSuite) initData() {
 	t := s.T()
-	res := dao.QuestionResult{
-		Id:     1,
-		Uid:    uid,
-		Qid:    1041,
-		Result: domain.ResultIntermediate.ToUint8(),
-	}
 	que := dao.PublishQuestion{
 		Id:      1041,
 		Uid:     uid,
@@ -1574,12 +1559,6 @@ func (s *HandlerTestSuite) initData() {
 		Shorthand: "注册中心选AP不选CP；",
 	}
 
-	prores := dao.QuestionResult{
-		Id:     2,
-		Uid:    uid,
-		Qid:    1042,
-		Result: domain.ResultIntermediate.ToUint8(),
-	}
 	proQue := dao.PublishQuestion{
 		Id:      1042,
 		Uid:     uid,
@@ -1623,12 +1602,7 @@ func (s *HandlerTestSuite) initData() {
 		Shorthand: "注册中心选AP不选CP；",
 	}
 
-	err := s.db.WithContext(context.Background()).Create([]dao.QuestionResult{
-		res,
-		prores,
-	}).Error
-	require.NoError(t, err)
-	err = s.db.WithContext(context.Background()).Create([]dao.PublishQuestion{
+	err := s.db.WithContext(context.Background()).Create([]dao.PublishQuestion{
 		que,
 		proQue,
 	}).Error

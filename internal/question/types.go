@@ -16,7 +16,6 @@ package baguwen
 
 import (
 	"github.com/ecodeclub/webook/internal/question/internal/domain"
-	"github.com/ecodeclub/webook/internal/question/internal/job"
 	"github.com/ecodeclub/webook/internal/question/internal/service"
 	"github.com/ecodeclub/webook/internal/question/internal/web"
 )
@@ -25,16 +24,11 @@ type AdminHandler = web.AdminHandler
 type AdminQuestionSetHandler = web.AdminQuestionSetHandler
 type Handler = web.Handler
 type QuestionSetHandler = web.QuestionSetHandler
-type ExamineHandler = web.ExamineHandler
-type KnowledgeBaseHandler = web.KnowledgeBaseHandler
 
 type Service = service.Service
 type QuestionSetService = service.QuestionSetService
-type ExamService = service.ExamineService
 type Question = domain.Question
 type QuestionSet = domain.QuestionSet
-type ExamResult = domain.ExamineResult
 type ExamRes = domain.Result
 type Answer = domain.Answer
 type AnswerElement = domain.AnswerElement
-type KnowledgeJobStarter = job.KnowledgeJobStarter

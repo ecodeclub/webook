@@ -31,7 +31,6 @@ func (h *Handler) CollectionRecords(ctx *ginx.Context, req CollectionInfoReq, se
 		cssmap         map[int64]cases.CaseSet
 		qsm            map[int64]baguwen.Question
 		qssmap         map[int64]baguwen.QuestionSet
-		queExamResMap  map[int64]baguwen.ExamResult
 		caseExamResMap map[int64]cases.ExamineResult
 		csets          []cases.CaseSet
 	)
@@ -91,12 +90,6 @@ func (h *Handler) CollectionRecords(ctx *ginx.Context, req CollectionInfoReq, se
 	for _, cs := range csets {
 		cids = append(cids, cs.Cids()...)
 	}
-	eg = errgroup.Group{}
-	eg.Go(func() error {
-		var err1 error
-		queExamResMap, err1 = h.queExamSvc.GetResults(recordCtx, uid, qid2s)
-		return err1
-	})
 
 	eg.Go(func() error {
 		var err1 error
@@ -110,7 +103,7 @@ func (h *Handler) CollectionRecords(ctx *ginx.Context, req CollectionInfoReq, se
 	}
 
 	res := slice.Map(records, func(idx int, src interactive.CollectionRecord) CollectionRecord {
-		return newCollectionRecord(src, csm, cssmap, qsm, qssmap, queExamResMap, caseExamResMap)
+		return newCollectionRecord(src, csm, cssmap, qsm, qssmap, caseExamResMap)
 	})
 	return ginx.Result{
 		Data: ginx.DataList[CollectionRecord]{

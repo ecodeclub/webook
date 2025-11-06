@@ -7,19 +7,14 @@
 package startup
 
 import (
-	"os"
-
 	"github.com/ecodeclub/ginx/session"
-	"github.com/ecodeclub/webook/internal/ai"
 	"github.com/ecodeclub/webook/internal/interactive"
 	"github.com/ecodeclub/webook/internal/member"
 	"github.com/ecodeclub/webook/internal/permission"
 	baguwen "github.com/ecodeclub/webook/internal/question"
 	"github.com/ecodeclub/webook/internal/question/internal/event"
-	"github.com/ecodeclub/webook/internal/question/internal/job"
 	"github.com/ecodeclub/webook/internal/question/internal/repository"
 	"github.com/ecodeclub/webook/internal/question/internal/repository/cache"
-	"github.com/ecodeclub/webook/internal/question/internal/repository/dao"
 	"github.com/ecodeclub/webook/internal/question/internal/service"
 	"github.com/ecodeclub/webook/internal/question/internal/web"
 	testioc "github.com/ecodeclub/webook/internal/test/ioc"
@@ -28,7 +23,7 @@ import (
 
 // Injectors from wire.go:
 
-func InitModule(p event.SyncDataToSearchEventProducer, knowledgeBaseP event.KnowledgeBaseEventProducer, intrModule *interactive.Module, permModule *permission.Module, aiModule *ai.Module, sp session.Provider, memberModule *member.Module) (*baguwen.Module, error) {
+func InitModule(p event.SyncDataToSearchEventProducer, intrModule *interactive.Module, permModule *permission.Module, sp session.Provider, memberModule *member.Module) (*baguwen.Module, error) {
 	db := testioc.InitDB()
 	questionDAO := baguwen.InitQuestionDAO(db)
 	ecacheCache := testioc.InitCache()
@@ -39,51 +34,30 @@ func InitModule(p event.SyncDataToSearchEventProducer, knowledgeBaseP event.Know
 	if err != nil {
 		return nil, err
 	}
-	serviceService := service.NewService(repositoryRepository, p, interactiveEventProducer, knowledgeBaseP)
+	serviceService := service.NewService(repositoryRepository, p, interactiveEventProducer)
 	questionSetDAO := baguwen.InitQuestionSetDAO(db)
 	questionSetRepository := repository.NewQuestionSetRepository(questionSetDAO)
 	questionSetService := service.NewQuestionSetService(questionSetRepository, repositoryRepository, interactiveEventProducer, p)
-	examineDAO := dao.NewGORMExamineDAO(db)
-	examineRepository := repository.NewCachedExamineRepository(examineDAO)
-	llmService := aiModule.Svc
-	examineService := service.NewLLMExamineService(repositoryRepository, examineRepository, llmService)
-	client := testioc.InitES()
-	searchSyncService := service.NewSearchSyncService(repositoryRepository, client)
+	typedClient := testioc.InitES()
+	searchSyncService := service.NewSearchSyncService(repositoryRepository, typedClient)
 	adminHandler := web.NewAdminHandler(serviceService, searchSyncService)
 	adminQuestionSetHandler := web.NewAdminQuestionSetHandler(questionSetService)
 	service2 := intrModule.Svc
 	service3 := permModule.Svc
 	service4 := memberModule.Svc
-	handler := web.NewHandler(service2, examineService, service3, serviceService, sp, service4)
-	questionSetHandler := web.NewQuestionSetHandler(questionSetService, examineService, service2, sp)
-	examineHandler := web.NewExamineHandler(examineService)
-	knowledgeJobStarter := initKnowledgeJobStarter(serviceService)
-	repositoryBaseSvc := aiModule.KnowledgeBaseSvc
-	questionKnowledgeBase := initKnowledgeBaseSvc(repositoryBaseSvc, repositoryRepository)
-	knowledgeBaseHandler := web.NewKnowledgeBaseHandler(questionKnowledgeBase)
+	handler := web.NewHandler(service2, service3, serviceService, sp, service4)
+	questionSetHandler := web.NewQuestionSetHandler(questionSetService, service2, sp)
 	module := &baguwen.Module{
-		Svc:                 serviceService,
-		SetSvc:              questionSetService,
-		ExamSvc:             examineService,
-		AdminHdl:            adminHandler,
-		AdminSetHdl:         adminQuestionSetHandler,
-		Hdl:                 handler,
-		QsHdl:               questionSetHandler,
-		ExamineHdl:          examineHandler,
-		KnowledgeJobStarter: knowledgeJobStarter,
-		KnowledgeBaseHdl:    knowledgeBaseHandler,
+		Svc:         serviceService,
+		SetSvc:      questionSetService,
+		AdminHdl:    adminHandler,
+		AdminSetHdl: adminQuestionSetHandler,
+		Hdl:         handler,
+		QsHdl:       questionSetHandler,
 	}
 	return module, nil
 }
 
 // wire.go:
 
-var moduleSet = wire.NewSet(baguwen.InitQuestionDAO, cache.NewQuestionECache, repository.NewCacheRepository, service.NewService, web.NewHandler, web.NewAdminHandler, initKnowledgeJobStarter, web.NewAdminQuestionSetHandler, baguwen.ExamineHandlerSet, baguwen.InitQuestionSetDAO, repository.NewQuestionSetRepository, service.NewQuestionSetService, service.NewSearchSyncService, web.NewQuestionSetHandler, initKnowledgeBaseSvc, web.NewKnowledgeBaseHandler, wire.Struct(new(baguwen.Module), "*"))
-
-func initKnowledgeJobStarter(svc service.Service) *job.KnowledgeJobStarter {
-	return job.NewKnowledgeJobStarter(svc, os.TempDir())
-}
-
-func initKnowledgeBaseSvc(svc ai.KnowledgeBaseService, queRepo repository.Repository) service.QuestionKnowledgeBase {
-	return service.NewQuestionKnowledgeBase("knowledge_id", queRepo, svc)
-}
+var moduleSet = wire.NewSet(baguwen.InitQuestionDAO, cache.NewQuestionECache, repository.NewCacheRepository, service.NewService, web.NewHandler, web.NewAdminHandler, web.NewAdminQuestionSetHandler, baguwen.InitQuestionSetDAO, repository.NewQuestionSetRepository, service.NewQuestionSetService, service.NewSearchSyncService, web.NewQuestionSetHandler, wire.Struct(new(baguwen.Module), "*"))

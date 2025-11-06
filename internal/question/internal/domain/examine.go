@@ -14,19 +14,6 @@
 
 package domain
 
-type ExamineResult struct {
-	Qid    int64
-	Result Result
-	// 原始回答，源自 AI
-	RawResult string
-
-	// 使用的 token 数量
-	Tokens int64
-	// 花费的金额
-	Amount int64
-	Tid    string
-}
-
 type Result uint8
 
 func (r Result) ToUint8() uint8 {

@@ -29,7 +29,7 @@ import (
 
 	"github.com/ecodeclub/webook/internal/kbase/internal/domain"
 	"github.com/ecodeclub/webook/internal/kbase/internal/service"
-	"github.com/elastic/go-elasticsearch/v7"
+	"github.com/elastic/go-elasticsearch/v9"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"

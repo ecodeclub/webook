@@ -34,11 +34,10 @@ import (
 )
 
 type Handler struct {
-	logger     *elog.Component
-	intrSvc    interactive.Service
-	examineSvc service.ExamineService
-	svc        service.Service
-	permSvc    permission.Service
+	logger  *elog.Component
+	intrSvc interactive.Service
+	svc     service.Service
+	permSvc permission.Service
 	// truncator 进行html的裁剪
 	truncator html_truncate.HTMLTruncator
 	sp        session.Provider
@@ -46,20 +45,18 @@ type Handler struct {
 }
 
 func NewHandler(intrSvc interactive.Service,
-	examineSvc service.ExamineService,
 	permSvc permission.Service,
 	svc service.Service,
 	sp session.Provider,
 	memberSvc member.Service,
 ) *Handler {
 	return &Handler{
-		intrSvc:    intrSvc,
-		permSvc:    permSvc,
-		examineSvc: examineSvc,
-		svc:        svc,
-		memberSvc:  memberSvc,
-		sp:         sp,
-		truncator:  html_truncate.DefaultHTMLTruncator(),
+		intrSvc:   intrSvc,
+		permSvc:   permSvc,
+		svc:       svc,
+		memberSvc: memberSvc,
+		sp:        sp,
+		truncator: html_truncate.DefaultHTMLTruncator(),
 	}
 }
 
@@ -71,9 +68,8 @@ func (h *Handler) PublicRoutes(server *gin.Engine) {
 func (h *Handler) PubDetail(ctx *ginx.Context,
 	req Qid) (ginx.Result, error) {
 	var (
-		eg      errgroup.Group
-		intr    interactive.Interactive
-		examine domain.Result
+		eg   errgroup.Group
+		intr interactive.Interactive
 	)
 
 	detail, err := h.svc.PubDetail(ctx, req.Qid)
@@ -95,19 +91,13 @@ func (h *Handler) PubDetail(ctx *ginx.Context,
 		return err
 	})
 
-	eg.Go(func() error {
-		var err error
-		// uid 为 0 的时候，肯定没测试结果，后续要优化
-		examine, err = h.examineSvc.QuestionResult(ctx, uid, req.Qid)
-		return err
-	})
 	err = eg.Wait()
 	if err != nil {
 		return systemErrorResult, err
 	}
 
 	que := newQuestion(detail, intr)
-	que.ExamineResult = examine.ToUint8()
+
 	// 记录是否有权限
 	que.Permitted = has
 	return ginx.Result{

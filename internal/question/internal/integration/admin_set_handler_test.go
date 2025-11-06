@@ -29,8 +29,6 @@ import (
 
 	"github.com/ecodeclub/webook/internal/question/internal/service"
 
-	"github.com/ecodeclub/webook/internal/ai"
-
 	"github.com/ecodeclub/webook/internal/permission"
 
 	"github.com/ecodeclub/ecache"
@@ -72,8 +70,8 @@ func (s *AdminSetHandlerTestSuite) SetupSuite() {
 
 	intrModule := &interactive.Module{}
 
-	module, err := startup.InitModule(s.producer, nil, intrModule,
-		&permission.Module{}, &ai.Module{},
+	module, err := startup.InitModule(s.producer, intrModule,
+		&permission.Module{},
 		session.DefaultProvider(),
 		&member.Module{})
 	require.NoError(s.T(), err)
@@ -910,16 +908,6 @@ func (s *AdminSetHandlerTestSuite) TestQuestionSet_Detail() {
 				qids := []int64{614, 615, 616}
 				require.NoError(t, s.questionSetDAO.UpdateQuestionsByID(ctx, id, qids))
 
-				// 添加用户答题记录，只需要添加一个就可以
-				err = s.db.WithContext(ctx).Create(&dao.QuestionResult{
-					Uid:    uid,
-					Qid:    614,
-					Result: domain.ResultAdvanced.ToUint8(),
-					Ctime:  now,
-					Utime:  now,
-				}).Error
-				require.NoError(t, err)
-
 				// 题集中题目为1
 				qs, err := s.questionSetDAO.GetQuestionsByID(ctx, id)
 				require.NoError(t, err)
@@ -1184,16 +1172,6 @@ func (s *AdminSetHandlerTestSuite) TestGetQuestionSets() {
 				require.NoError(t, err)
 				qids = []int64{618, 619, 620}
 				require.NoError(t, s.questionSetDAO.UpdateQuestionsByID(ctx, 323, qids))
-
-				// 添加用户答题记录，只需要添加一个就可以
-				err = s.db.WithContext(ctx).Create(&dao.QuestionResult{
-					Uid:    uid,
-					Qid:    614,
-					Result: domain.ResultAdvanced.ToUint8(),
-					Ctime:  now,
-					Utime:  now,
-				}).Error
-				require.NoError(t, err)
 
 				// 题集中题目为1
 				qs, err := s.questionSetDAO.GetQuestionsByID(ctx, 322)

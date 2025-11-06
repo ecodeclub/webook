@@ -36,19 +36,19 @@ func InitModule(es *elasticsearch.TypedClient, q mq.MQ, caModule *cases.Module, 
 	skillRepo := repository.NewSKillRepo(skillDAO)
 	caseDAO := ioc.InitCaseDAO(es)
 	caseRepo := repository.NewCaseRepo(caseDAO)
-	v := service.NewSearchSvc(questionRepo, questionSetRepo, skillRepo, caseRepo)
-	v2 := InitSyncSvc(es)
-	syncConsumer := initSyncConsumer(v2, q)
-	v3 := caModule.ExamineSvc
-	v4 := intrModule.Svc
-	v5 := web.NewHandler(v, v3, v4)
-	v6 := initAdminHandler(es)
+	searchService := service.NewSearchSvc(questionRepo, questionSetRepo, skillRepo, caseRepo)
+	syncService := InitSyncSvc(es)
+	syncConsumer := initSyncConsumer(syncService, q)
+	examineService := caModule.ExamineSvc
+	serviceService := intrModule.Svc
+	handler := web.NewHandler(searchService, examineService, serviceService)
+	adminHandler := initAdminHandler(es)
 	module := &search.Module{
-		SearchSvc:    v,
-		SyncSvc:      v2,
+		SearchSvc:    searchService,
+		SyncSvc:      syncService,
 		C:            syncConsumer,
-		Hdl:          v5,
-		AdminHandler: v6,
+		Hdl:          handler,
+		AdminHandler: adminHandler,
 	}
 	return module, nil
 }

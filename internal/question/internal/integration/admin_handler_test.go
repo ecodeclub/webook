@@ -28,8 +28,6 @@ import (
 
 	"github.com/ecodeclub/webook/internal/member"
 
-	"github.com/ecodeclub/webook/internal/ai"
-
 	"github.com/ecodeclub/webook/internal/permission"
 
 	"github.com/ecodeclub/webook/internal/interactive"
@@ -63,11 +61,10 @@ import (
 
 type AdminHandlerTestSuite struct {
 	BaseTestSuite
-	server                *egin.Component
-	rdb                   ecache.Cache
-	dao                   dao.QuestionDAO
-	producer              *eveMocks.MockSyncEventProducer
-	knowledgeBaseProducer *eveMocks.MockKnowledgeBaseEventProducer
+	server   *egin.Component
+	rdb      ecache.Cache
+	dao      dao.QuestionDAO
+	producer *eveMocks.MockSyncEventProducer
 }
 
 func (s *AdminHandlerTestSuite) SetupSuite() {
@@ -75,7 +72,6 @@ func (s *AdminHandlerTestSuite) SetupSuite() {
 
 	ctrl := gomock.NewController(s.T())
 	s.producer = eveMocks.NewMockSyncEventProducer(ctrl)
-	s.knowledgeBaseProducer = eveMocks.NewMockKnowledgeBaseEventProducer(ctrl)
 	intrSvc := intrmocks.NewMockService(ctrl)
 	intrModule := &interactive.Module{
 		Svc: intrSvc,
@@ -105,8 +101,8 @@ func (s *AdminHandlerTestSuite) SetupSuite() {
 	}).AnyTimes()
 
 	module, err := startup.InitModule(s.producer,
-		s.knowledgeBaseProducer, intrModule,
-		&permission.Module{}, &ai.Module{},
+		intrModule,
+		&permission.Module{},
 		session.DefaultProvider(),
 		&member.Module{})
 	require.NoError(s.T(), err)
@@ -333,7 +329,6 @@ func (s *AdminHandlerTestSuite) TestSync() {
 			name: "全部新建",
 			before: func(t *testing.T) {
 				s.producer.EXPECT().Produce(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
-				s.knowledgeBaseProducer.EXPECT().Produce(gomock.Any(), gomock.Any()).Return(nil)
 			},
 			after: func(t *testing.T) {
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
@@ -406,7 +401,6 @@ func (s *AdminHandlerTestSuite) TestSync() {
 			name: "部分更新",
 			before: func(t *testing.T) {
 				s.producer.EXPECT().Produce(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
-				s.knowledgeBaseProducer.EXPECT().Produce(gomock.Any(), gomock.Any()).Return(nil)
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 				defer cancel()
 				err := s.db.WithContext(ctx).Create(&dao.Question{
@@ -550,7 +544,6 @@ func (s *AdminHandlerTestSuite) TestSync() {
 			name: "更新缓存",
 			before: func(t *testing.T) {
 				s.producer.EXPECT().Produce(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
-				s.knowledgeBaseProducer.EXPECT().Produce(gomock.Any(), gomock.Any()).Return(nil)
 				ques := []domain.Question{
 					{
 						Id:      8,
@@ -781,21 +774,6 @@ func (s *AdminHandlerTestSuite) TestQuestionEvent() {
 		mu.Unlock()
 		return nil
 	}).AnyTimes()
-	s.knowledgeBaseProducer.EXPECT().Produce(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, knowledgeBaseEvent event.KnowledgeBaseEvent) error {
-		assert.Equal(t, "question", knowledgeBaseEvent.Biz)
-		var que domain.Question
-		json.Unmarshal(knowledgeBaseEvent.Data, &que)
-		que.Answer.Basic.Id = 0
-		que.Answer.Advanced.Id = 0
-		que.Answer.Analysis.Id = 0
-		que.Answer.Intermediate.Id = 0
-		que.Utime = time.UnixMilli(123)
-		assert.Equal(t, que.Id, knowledgeBaseEvent.BizID)
-		assert.Equal(t, fmt.Sprintf("question_%d", que.Id), knowledgeBaseEvent.Name)
-		assert.Equal(t, ai.RepositoryBaseTypeRetrieval, knowledgeBaseEvent.Type)
-		assert.Equal(t, s.getWantQuestion(que.Id), que)
-		return nil
-	})
 	// 保存
 	saveReq := web.SaveReq{
 		Question: web.Question{

@@ -15,7 +15,7 @@ func InitModule(intrModule *interactive.Module,
 	queModule *baguwen.Module) (*Module, error) {
 	wire.Build(
 		web.NewHandler,
-		wire.FieldsOf(new(*baguwen.Module), "Svc", "SetSvc", "ExamSvc"),
+		wire.FieldsOf(new(*baguwen.Module), "Svc", "SetSvc"),
 		wire.FieldsOf(new(*interactive.Module), "Svc"),
 		wire.FieldsOf(new(*cases.Module), "SetSvc", "Svc", "ExamineSvc"),
 		wire.Struct(new(Module), "*"),

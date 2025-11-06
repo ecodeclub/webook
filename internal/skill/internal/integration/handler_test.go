@@ -63,7 +63,6 @@ func (s *HandlerTestSuite) SetupSuite() {
 	ctrl := gomock.NewController(s.T())
 	queSvc := quemocks.NewMockService(ctrl)
 	queSetSvc := quemocks.NewMockQuestionSetService(ctrl)
-	examSvc := quemocks.NewMockExamineService(ctrl)
 
 	queSvc.EXPECT().GetPubByIDs(gomock.Any(), gomock.Any()).
 		DoAndReturn(func(ctx context.Context, ids []int64) ([]baguwen.Question, error) {
@@ -91,19 +90,6 @@ func (s *HandlerTestSuite) SetupSuite() {
 				},
 			}
 		}), nil
-	}).AnyTimes()
-	examSvc.EXPECT().GetResults(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, uid int64, ids []int64) (map[int64]baguwen.ExamResult, error) {
-		res := slice.Map(ids, func(idx int, src int64) baguwen.ExamResult {
-			return baguwen.ExamResult{
-				Qid:    src,
-				Result: baguwen.ExamRes(src % 4),
-			}
-		})
-		resMap := make(map[int64]baguwen.ExamResult, len(res))
-		for _, examRes := range res {
-			resMap[examRes.Qid] = examRes
-		}
-		return resMap, nil
 	}).AnyTimes()
 
 	caseSvc := casemocks.NewMockService(ctrl)
@@ -164,7 +150,7 @@ func (s *HandlerTestSuite) SetupSuite() {
 	s.producer = evemocks.NewMockSyncEventProducer(s.ctrl)
 
 	handler, err := startup.InitHandler(
-		&baguwen.Module{Svc: queSvc, SetSvc: queSetSvc, ExamSvc: examSvc},
+		&baguwen.Module{Svc: queSvc, SetSvc: queSetSvc},
 		&cases.Module{Svc: caseSvc, SetSvc: caseSetSvc, ExamineSvc: caseExamSvc},
 		s.producer,
 	)
@@ -1011,7 +997,7 @@ func (s *HandlerTestSuite) TestRefsByLevelIDs() {
 					{
 						Id: 1,
 						Questions: []web.Question{
-							{Id: 2, Title: "这是问题2", ExamineResult: 2 % 4},
+							{Id: 2, Title: "这是问题2"},
 						},
 						Cases: []web.Case{
 							{Id: 1, Title: "这是案例1"},
@@ -1022,14 +1008,12 @@ func (s *HandlerTestSuite) TestRefsByLevelIDs() {
 								Title: "这是题集1",
 								Questions: []web.Question{
 									{
-										Id:            11,
-										Title:         "这是题目11",
-										ExamineResult: 11 % 4,
+										Id:    11,
+										Title: "这是题目11",
 									},
 									{
-										Id:            12,
-										Title:         "这是题目12",
-										ExamineResult: 12 % 4,
+										Id:    12,
+										Title: "这是题目12",
 									},
 								},
 							},
@@ -1039,7 +1023,7 @@ func (s *HandlerTestSuite) TestRefsByLevelIDs() {
 					{
 						Id: 2,
 						Questions: []web.Question{
-							{Id: 1, Title: "这是问题1", ExamineResult: 1 % 4},
+							{Id: 1, Title: "这是问题1"},
 						},
 						Cases: []web.Case{},
 						QuestionSets: []web.QuestionSet{
@@ -1048,14 +1032,12 @@ func (s *HandlerTestSuite) TestRefsByLevelIDs() {
 								Title: "这是题集6",
 								Questions: []web.Question{
 									{
-										Id:            66,
-										Title:         "这是题目66",
-										ExamineResult: 66 % 4,
+										Id:    66,
+										Title: "这是题目66",
 									},
 									{
-										Id:            72,
-										Title:         "这是题目72",
-										ExamineResult: 72 % 4,
+										Id:    72,
+										Title: "这是题目72",
 									},
 								},
 							},

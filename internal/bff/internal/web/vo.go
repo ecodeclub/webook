@@ -29,9 +29,8 @@ type Case struct {
 }
 
 type Question struct {
-	ID            int64  `json:"id"`
-	Title         string `json:"title"`
-	ExamineResult uint8  `json:"examineResult"`
+	ID    int64  `json:"id"`
+	Title string `json:"title"`
 }
 
 type CaseSet struct {
@@ -51,7 +50,6 @@ func newCollectionRecord(record interactive.CollectionRecord,
 	csm map[int64]cases.CaseSet,
 	qm map[int64]baguwen.Question,
 	qsm map[int64]baguwen.QuestionSet,
-	queExamMap map[int64]baguwen.ExamResult,
 	caseExamMap map[int64]cases.ExamineResult,
 ) CollectionRecord {
 	res := CollectionRecord{
@@ -61,9 +59,9 @@ func newCollectionRecord(record interactive.CollectionRecord,
 	case CaseBiz:
 		res.Case = setCases(record, cm)
 	case QuestionBiz:
-		res.Question = setQuestion(record, qm, queExamMap)
+		res.Question = setQuestion(record, qm)
 	case QuestionSetBiz:
-		res.QuestionSet = setQuestionSet(record, qsm, queExamMap)
+		res.QuestionSet = setQuestionSet(record, qsm)
 	case CaseSetBiz:
 		res.CaseSet = setCaseSet(record, csm, caseExamMap)
 	}
@@ -96,25 +94,21 @@ func setCases(ca interactive.CollectionRecord, qm map[int64]cases.Case) Case {
 	}
 }
 
-func setQuestion(record interactive.CollectionRecord, qm map[int64]baguwen.Question, examMap map[int64]baguwen.ExamResult) Question {
+func setQuestion(record interactive.CollectionRecord, qm map[int64]baguwen.Question) Question {
 	q := qm[record.Question]
-	exam := examMap[record.Question]
 	return Question{
-		ID:            q.Id,
-		Title:         q.Title,
-		ExamineResult: exam.Result.ToUint8(),
+		ID:    q.Id,
+		Title: q.Title,
 	}
 }
 
-func setQuestionSet(record interactive.CollectionRecord, qsm map[int64]baguwen.QuestionSet, examMap map[int64]baguwen.ExamResult) QuestionSet {
+func setQuestionSet(record interactive.CollectionRecord, qsm map[int64]baguwen.QuestionSet) QuestionSet {
 	qs := qsm[record.QuestionSet]
 	questions := make([]Question, 0, len(qs.Questions))
 	for _, q := range qs.Questions {
-		exam := examMap[q.Id]
 		questions = append(questions, Question{
-			ID:            q.Id,
-			Title:         q.Title,
-			ExamineResult: exam.Result.ToUint8(),
+			ID:    q.Id,
+			Title: q.Title,
 		})
 	}
 	return QuestionSet{
