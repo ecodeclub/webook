@@ -52,10 +52,9 @@ type Service interface {
 }
 
 type service struct {
-	repo                  repository.Repository
-	syncProducer          event.SyncDataToSearchEventProducer
-	intrProducer          event.InteractiveEventProducer
-	knowledgeBaseProducer event.KnowledgeBaseEventProducer
+	repo         repository.Repository
+	syncProducer event.SyncDataToSearchEventProducer
+	intrProducer event.InteractiveEventProducer
 
 	logger      *elog.Component
 	syncTimeout time.Duration
@@ -166,8 +165,7 @@ func (s *service) Publish(ctx context.Context, question *domain.Question) (int64
 	s.syncQuestion(qctx, que)
 
 	s.syncPubQuestion(qctx, que)
-	// 上传到知识库
-	s.uploadQuestion(qctx, que)
+
 	return id, nil
 }
 
@@ -182,15 +180,13 @@ func (s *service) ListPubSince(ctx context.Context, since int64, offset int, lim
 func NewService(repo repository.Repository,
 	syncEvent event.SyncDataToSearchEventProducer,
 	intrEvent event.InteractiveEventProducer,
-	knowledgeBaseProducer event.KnowledgeBaseEventProducer,
 ) Service {
 	return &service{
-		repo:                  repo,
-		syncProducer:          syncEvent,
-		intrProducer:          intrEvent,
-		knowledgeBaseProducer: knowledgeBaseProducer,
-		logger:                elog.DefaultLogger,
-		syncTimeout:           10 * time.Second,
+		repo:         repo,
+		syncProducer: syncEvent,
+		intrProducer: intrEvent,
+		logger:       elog.DefaultLogger,
+		syncTimeout:  10 * time.Second,
 	}
 }
 
@@ -226,21 +222,4 @@ func (s *service) getQuestion(ctx context.Context, id int64) (domain.Question, e
 		return domain.Question{}, err
 	}
 	return que, nil
-}
-
-func (s *service) uploadQuestion(ctx context.Context, que domain.Question) {
-	evt, err := event.NewKnowledgeBaseEvent(que)
-	if err != nil {
-		s.logger.Error("获取知识库事件失败",
-			elog.FieldErr(err),
-		)
-		return
-	}
-	err = s.knowledgeBaseProducer.Produce(ctx, evt)
-	if err != nil {
-		s.logger.Error("发送上传知识库事件失败",
-			elog.FieldErr(err),
-			elog.Any("event", evt),
-		)
-	}
 }

@@ -12,12 +12,10 @@ import (
 	"github.com/ecodeclub/ecache"
 	"github.com/ecodeclub/ginx/session"
 	"github.com/ecodeclub/mq-api"
-	"github.com/ecodeclub/webook/internal/ai"
 	"github.com/ecodeclub/webook/internal/interactive"
 	"github.com/ecodeclub/webook/internal/member"
 	"github.com/ecodeclub/webook/internal/permission"
 	"github.com/ecodeclub/webook/internal/question/internal/event"
-	"github.com/ecodeclub/webook/internal/question/internal/job"
 	"github.com/ecodeclub/webook/internal/question/internal/repository"
 	"github.com/ecodeclub/webook/internal/question/internal/repository/cache"
 	"github.com/ecodeclub/webook/internal/question/internal/repository/dao"
@@ -25,14 +23,12 @@ import (
 	"github.com/ecodeclub/webook/internal/question/internal/web"
 	"github.com/ego-component/egorm"
 	"github.com/elastic/go-elasticsearch/v9"
-	"github.com/google/wire"
-	"github.com/gotomicro/ego/core/econf"
 	"gorm.io/gorm"
 )
 
 // Injectors from wire.go:
 
-func InitModule(db *egorm.Component, intrModule *interactive.Module, ec ecache.Cache, esClient *elasticsearch.TypedClient, perm *permission.Module, aiModule *ai.Module, memberModule *member.Module, sp session.Provider, q mq.MQ) (*Module, error) {
+func InitModule(db *gorm.DB, intrModule *interactive.Module, ec ecache.Cache, esClient *elasticsearch.TypedClient, perm *permission.Module, memberModule *member.Module, sp session.Provider, q mq.MQ) (*Module, error) {
 	questionDAO := InitQuestionDAO(db)
 	questionCache := cache.NewQuestionECache(ec)
 	repositoryRepository := repository.NewCacheRepository(questionDAO, questionCache)
@@ -44,53 +40,32 @@ func InitModule(db *egorm.Component, intrModule *interactive.Module, ec ecache.C
 	if err != nil {
 		return nil, err
 	}
-	knowledgeBaseEventProducer := InitKnowledgeBaseUploadProducer(q)
-	v := service.NewService(repositoryRepository, syncDataToSearchEventProducer, interactiveEventProducer, knowledgeBaseEventProducer)
+	serviceService := service.NewService(repositoryRepository, syncDataToSearchEventProducer, interactiveEventProducer)
 	questionSetDAO := InitQuestionSetDAO(db)
 	questionSetRepository := repository.NewQuestionSetRepository(questionSetDAO)
-	v2 := service.NewQuestionSetService(questionSetRepository, repositoryRepository, interactiveEventProducer, syncDataToSearchEventProducer)
-	examineDAO := dao.NewGORMExamineDAO(db)
-	examineRepository := repository.NewCachedExamineRepository(examineDAO)
-	v3 := aiModule.Svc
-	v4 := service.NewLLMExamineService(repositoryRepository, examineRepository, v3)
+	questionSetService := service.NewQuestionSetService(questionSetRepository, repositoryRepository, interactiveEventProducer, syncDataToSearchEventProducer)
 	searchSyncService := service.NewSearchSyncService(repositoryRepository, esClient)
-	v5 := web.NewAdminHandler(v, searchSyncService)
-	v6 := web.NewAdminQuestionSetHandler(v2)
-	v7 := intrModule.Svc
-	v8 := perm.Svc
-	v9 := memberModule.Svc
-	v10 := web.NewHandler(v7, v4, v8, v, sp, v9)
-	v11 := web.NewQuestionSetHandler(v2, v4, v7, sp)
-	v12 := web.NewExamineHandler(v4)
-	v13 := initKnowledgeStarter(v)
-	v14 := aiModule.KnowledgeBaseSvc
-	questionKnowledgeBase := InitKnowledgeBaseSvc(v14, repositoryRepository)
-	v15 := web.NewKnowledgeBaseHandler(questionKnowledgeBase)
+	adminHandler := web.NewAdminHandler(serviceService, searchSyncService)
+	adminQuestionSetHandler := web.NewAdminQuestionSetHandler(questionSetService)
+	service2 := intrModule.Svc
+	service3 := perm.Svc
+	service4 := memberModule.Svc
+	handler := web.NewHandler(service2, service3, serviceService, sp, service4)
+	questionSetHandler := web.NewQuestionSetHandler(questionSetService, service2, sp)
 	module := &Module{
-		Svc:                 v,
-		SetSvc:              v2,
-		ExamSvc:             v4,
-		AdminHdl:            v5,
-		AdminSetHdl:         v6,
-		Hdl:                 v10,
-		QsHdl:               v11,
-		ExamineHdl:          v12,
-		KnowledgeJobStarter: v13,
-		KnowledgeBaseHdl:    v15,
+		Svc:         serviceService,
+		SetSvc:      questionSetService,
+		AdminHdl:    adminHandler,
+		AdminSetHdl: adminQuestionSetHandler,
+		Hdl:         handler,
+		QsHdl:       questionSetHandler,
 	}
 	return module, nil
 }
 
 // wire.go:
 
-var ExamineHandlerSet = wire.NewSet(web.NewExamineHandler, service.NewLLMExamineService, repository.NewCachedExamineRepository, dao.NewGORMExamineDAO)
-
 var daoOnce = sync.Once{}
-
-func initKnowledgeStarter(svc service.Service) *job.KnowledgeJobStarter {
-	baseDir := econf.GetString("job.genKnowledge.baseDir")
-	return job.NewKnowledgeJobStarter(svc, baseDir)
-}
 
 func InitTableOnce(db *gorm.DB) {
 	daoOnce.Do(func() {

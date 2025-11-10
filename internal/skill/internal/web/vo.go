@@ -46,7 +46,7 @@ type SkillLevel struct {
 	CaseSets     []CaseSet     `json:"caseSets"`
 }
 
-func (s SkillLevel) toDomain() domain.SkillLevel {
+func (s *SkillLevel) toDomain() domain.SkillLevel {
 	return domain.SkillLevel{
 		Id:   s.Id,
 		Desc: s.Desc,
@@ -79,25 +79,15 @@ func (s *SkillLevel) setQuestions(qm map[int64]baguwen.Question) {
 	})
 }
 
-func (s *SkillLevel) setQuestionsWithExam(qm map[int64]baguwen.Question, resultMap map[int64]baguwen.ExamResult) {
-	s.Questions = slice.Map(s.Questions, func(idx int, src Question) Question {
-		src.Title = qm[src.Id].Title
-		src.ExamineResult = resultMap[src.Id].Result.ToUint8()
-		return src
-	})
-}
-
-func (s *SkillLevel) setQuestionSet(qsm map[int64]baguwen.QuestionSet, resultMap map[int64]baguwen.ExamResult) {
+func (s *SkillLevel) setQuestionSet(qsm map[int64]baguwen.QuestionSet) {
 	s.QuestionSets = slice.Map(s.QuestionSets, func(idx int, src QuestionSet) QuestionSet {
 		qs := qsm[src.ID]
 		src.Title = qs.Title
 		res := make([]Question, 0, len(src.Questions))
 		for _, q := range qs.Questions {
-			exam := resultMap[q.Id]
 			res = append(res, Question{
-				Id:            q.Id,
-				Title:         q.Title,
-				ExamineResult: exam.Result.ToUint8(),
+				Id:    q.Id,
+				Title: q.Title,
 			})
 		}
 		src.Questions = res
@@ -139,7 +129,7 @@ type SkillList struct {
 	Total  int64   `json:"total,omitempty"`
 }
 
-func (s Skill) toDomain() domain.Skill {
+func (s *Skill) toDomain() domain.Skill {
 	skill := domain.Skill{
 		ID:     s.ID,
 		Labels: s.Labels,
@@ -167,10 +157,9 @@ func newSkill(s domain.Skill) Skill {
 }
 
 func (s *Skill) setQuestionSets(qm map[int64]baguwen.QuestionSet) {
-	res := map[int64]baguwen.ExamResult{}
-	s.Basic.setQuestionSet(qm, res)
-	s.Intermediate.setQuestionSet(qm, res)
-	s.Advanced.setQuestionSet(qm, res)
+	s.Basic.setQuestionSet(qm)
+	s.Intermediate.setQuestionSet(qm)
+	s.Advanced.setQuestionSet(qm)
 }
 
 func (s *Skill) setQuestions(qm map[int64]baguwen.Question) {
@@ -213,9 +202,8 @@ func newSkillLevel(s domain.SkillLevel) SkillLevel {
 }
 
 type Question struct {
-	Id            int64  `json:"id,omitempty"`
-	Title         string `json:"title,omitempty"`
-	ExamineResult uint8  `json:"examineResult,omitempty"`
+	Id    int64  `json:"id,omitempty"`
+	Title string `json:"title,omitempty"`
 }
 
 type Case struct {

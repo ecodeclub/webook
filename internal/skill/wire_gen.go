@@ -39,8 +39,7 @@ func InitHandler(db *gorm.DB, ec ecache.Cache, queModule *baguwen.Module, caseMo
 	caseSetService := caseModule.SetSvc
 	examineService := caseModule.ExamineSvc
 	questionSetService := queModule.SetSvc
-	serviceExamineService := queModule.ExamSvc
-	handler := web.NewHandler(skillService, serviceService, service2, caseSetService, examineService, questionSetService, serviceExamineService)
+	handler := web.NewHandler(skillService, serviceService, service2, caseSetService, examineService, questionSetService)
 	return handler, nil
 }
 

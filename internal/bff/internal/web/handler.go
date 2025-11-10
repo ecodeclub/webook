@@ -15,7 +15,6 @@ type Handler struct {
 	caseExamSvc cases.ExamineService
 	queSvc      baguwen.Service
 	queSetSvc   baguwen.QuestionSetService
-	queExamSvc  baguwen.ExamService
 }
 
 func NewHandler(
@@ -25,14 +24,12 @@ func NewHandler(
 	caseExamineSvc cases.ExamineService,
 	queSvc baguwen.Service,
 	queSetSvc baguwen.QuestionSetService,
-	queExamSvc baguwen.ExamService,
 ) *Handler {
 	return &Handler{
 		intrSvc:     intrSvc,
 		caseSvc:     caseSvc,
 		queSvc:      queSvc,
 		queSetSvc:   queSetSvc,
-		queExamSvc:  queExamSvc,
 		caseSetSvc:  caseSetSvc,
 		caseExamSvc: caseExamineSvc,
 	}

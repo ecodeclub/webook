@@ -15,19 +15,20 @@ import (
 	"github.com/ecodeclub/webook/internal/label/internal/web"
 	"github.com/ego-component/egorm"
 	"github.com/google/wire"
+	"gorm.io/gorm"
 )
 
 // Injectors from wire.go:
 
-func InitModule(db *egorm.Component) *Module {
+func InitModule(db *gorm.DB) *Module {
 	labelDAO := InitTablesOnce(db)
 	labelRepository := repository.NewCachedLabelRepository(labelDAO)
 	serviceService := service.NewService(labelRepository)
-	v := web.NewAdminHandler(serviceService)
-	v2 := web.NewHandler(serviceService)
+	adminHandler := web.NewAdminHandler(serviceService)
+	handler := web.NewHandler(serviceService)
 	module := &Module{
-		AdminHandler: v,
-		Handler:      v2,
+		AdminHandler: adminHandler,
+		Handler:      handler,
 	}
 	return module
 }

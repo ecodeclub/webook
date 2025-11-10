@@ -41,7 +41,6 @@ func main() {
 			egovernor.Load("server.governor").Build(),
 			app.Web,
 			(*egin.Component)(app.Admin)).
-		Job(app.Jobs...).
 		Cron(app.Crons...).
 		Run()
 	if err != nil {

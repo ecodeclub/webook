@@ -16,7 +16,7 @@ func InitHandler(intrModule *interactive.Module,
 	wire.Build(
 		web.NewHandler,
 		wire.FieldsOf(new(*interactive.Module), "Svc"),
-		wire.FieldsOf(new(*baguwen.Module), "Svc", "SetSvc", "ExamSvc"),
+		wire.FieldsOf(new(*baguwen.Module), "Svc", "SetSvc"),
 		wire.FieldsOf(new(*cases.Module), "ExamineSvc", "Svc", "SetSvc"),
 	)
 	return new(web.Handler), nil

@@ -46,9 +46,7 @@ func InitHandler(
 	q mq.MQ) (*Handler, error) {
 	wire.Build(
 		InitSkillDAO,
-		wire.FieldsOf(new(*baguwen.Module), "Svc"),
-		wire.FieldsOf(new(*baguwen.Module), "SetSvc"),
-		wire.FieldsOf(new(*baguwen.Module), "ExamSvc"),
+		wire.FieldsOf(new(*baguwen.Module), "Svc", "SetSvc"),
 		wire.FieldsOf(new(*cases.Module), "ExamineSvc", "Svc", "SetSvc"),
 		cache.NewSkillCache,
 		repository.NewSkillRepo,

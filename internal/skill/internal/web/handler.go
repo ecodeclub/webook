@@ -25,7 +25,6 @@ type Handler struct {
 	caseSetSvc  cases.SetService
 	caseExamSvc cases.ExamineService
 	queSetSvc   baguwen.QuestionSetService
-	queExamSvc  baguwen.ExamService
 	logger      *elog.Component
 }
 
@@ -34,14 +33,12 @@ func NewHandler(svc service.SkillService,
 	caseSvc cases.Service,
 	caseSetSvc cases.SetService,
 	caseExamSvc cases.ExamineService,
-	queSetSvc baguwen.QuestionSetService,
-	examSvc baguwen.ExamService) *Handler {
+	queSetSvc baguwen.QuestionSetService) *Handler {
 	return &Handler{
 		svc:         svc,
 		logger:      elog.DefaultLogger,
 		queSvc:      queSvc,
 		queSetSvc:   queSetSvc,
-		queExamSvc:  examSvc,
 		caseSvc:     caseSvc,
 		caseSetSvc:  caseSetSvc,
 		caseExamSvc: caseExamSvc,
@@ -199,7 +196,7 @@ func (h *Handler) RefsByLevelIDs(ctx *ginx.Context, req IDs, sess session.Sessio
 	if err != nil {
 		return systemErrorResult, err
 	}
-	csm, cssm, caseResultMap, qsm, qssmap, examResMap, err := h.skillLevels(ctx, uid, res)
+	csm, cssm, caseResultMap, qsm, qssmap, err := h.skillLevels(ctx, uid, res)
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -208,8 +205,8 @@ func (h *Handler) RefsByLevelIDs(ctx *ginx.Context, req IDs, sess session.Sessio
 		Data: slice.Map(res, func(idx int, src domain.SkillLevel) SkillLevel {
 			sl := newSkillLevel(src)
 			sl.setCases(csm)
-			sl.setQuestionsWithExam(qsm, examResMap)
-			sl.setQuestionSet(qssmap, examResMap)
+			sl.setQuestions(qsm)
+			sl.setQuestionSet(qssmap)
 			sl.setCaseSet(cssm, caseResultMap)
 			return sl
 		}),
@@ -222,7 +219,6 @@ func (h *Handler) skillLevels(ctx context.Context, uid int64, levels []domain.Sk
 	map[int64]cases.ExamineResult,
 	map[int64]baguwen.Question,
 	map[int64]baguwen.QuestionSet,
-	map[int64]baguwen.ExamResult,
 	error,
 ) {
 	var (
@@ -231,7 +227,6 @@ func (h *Handler) skillLevels(ctx context.Context, uid int64, levels []domain.Sk
 		cssm           map[int64]cases.CaseSet
 		qsm            map[int64]baguwen.Question
 		qssmap         map[int64]baguwen.QuestionSet
-		queExamResMap  map[int64]baguwen.ExamResult
 		caseExamResMap map[int64]cases.ExamineResult
 	)
 	qids := make([]int64, 0, 32)
@@ -299,15 +294,8 @@ func (h *Handler) skillLevels(ctx context.Context, uid int64, levels []domain.Sk
 	})
 
 	if err := eg.Wait(); err != nil {
-		return nil, nil, nil, nil, nil, nil, err
+		return nil, nil, nil, nil, nil, err
 	}
-
-	eg = errgroup.Group{}
-	eg.Go(func() error {
-		var err1 error
-		queExamResMap, err1 = h.queExamSvc.GetResults(ctx, uid, qid2s)
-		return err1
-	})
 
 	eg.Go(func() error {
 		var err1 error
@@ -316,7 +304,7 @@ func (h *Handler) skillLevels(ctx context.Context, uid int64, levels []domain.Sk
 	})
 
 	if err := eg.Wait(); err != nil {
-		return nil, nil, nil, nil, nil, nil, err
+		return nil, nil, nil, nil, nil, err
 	}
-	return csm, cssm, caseExamResMap, qsm, qssmap, queExamResMap, nil
+	return csm, cssm, caseExamResMap, qsm, qssmap, nil
 }

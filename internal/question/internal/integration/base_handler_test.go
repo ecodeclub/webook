@@ -53,9 +53,6 @@ func (s *BaseTestSuite) TearDownTest() {
 
 	err = s.db.Exec("TRUNCATE TABLE `question_set_questions`").Error
 	require.NoError(s.T(), err)
-
-	err = s.db.Exec("TRUNCATE TABLE `question_results`").Error
-	require.NoError(s.T(), err)
 }
 
 // assertQuestionSetEqual 不比较 id

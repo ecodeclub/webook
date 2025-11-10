@@ -17,17 +17,13 @@
 package startup
 
 import (
-	"os"
-
 	"github.com/ecodeclub/ginx/session"
 
-	"github.com/ecodeclub/webook/internal/ai"
 	"github.com/ecodeclub/webook/internal/interactive"
 	"github.com/ecodeclub/webook/internal/member"
 	"github.com/ecodeclub/webook/internal/permission"
 	baguwen "github.com/ecodeclub/webook/internal/question"
 	"github.com/ecodeclub/webook/internal/question/internal/event"
-	"github.com/ecodeclub/webook/internal/question/internal/job"
 	"github.com/ecodeclub/webook/internal/question/internal/repository"
 	"github.com/ecodeclub/webook/internal/question/internal/repository/cache"
 	"github.com/ecodeclub/webook/internal/question/internal/service"
@@ -37,10 +33,8 @@ import (
 )
 
 func InitModule(p event.SyncDataToSearchEventProducer,
-	knowledgeBaseP event.KnowledgeBaseEventProducer,
 	intrModule *interactive.Module,
 	permModule *permission.Module,
-	aiModule *ai.Module,
 	sp session.Provider,
 	memberModule *member.Module,
 ) (*baguwen.Module, error) {
@@ -51,7 +45,6 @@ func InitModule(p event.SyncDataToSearchEventProducer,
 		wire.FieldsOf(new(*interactive.Module), "Svc"),
 		wire.FieldsOf(new(*permission.Module), "Svc"),
 		wire.FieldsOf(new(*member.Module), "Svc"),
-		wire.FieldsOf(new(*ai.Module), "Svc", "KnowledgeBaseSvc"),
 	)
 	return new(baguwen.Module), nil
 }
@@ -62,23 +55,11 @@ var moduleSet = wire.NewSet(baguwen.InitQuestionDAO,
 	service.NewService,
 	web.NewHandler,
 	web.NewAdminHandler,
-	initKnowledgeJobStarter,
 	web.NewAdminQuestionSetHandler,
-	baguwen.ExamineHandlerSet,
 	baguwen.InitQuestionSetDAO,
 	repository.NewQuestionSetRepository,
 	service.NewQuestionSetService,
 	service.NewSearchSyncService,
 	web.NewQuestionSetHandler,
-	initKnowledgeBaseSvc,
-	web.NewKnowledgeBaseHandler,
 	wire.Struct(new(baguwen.Module), "*"),
 )
-
-func initKnowledgeJobStarter(svc service.Service) *job.KnowledgeJobStarter {
-	return job.NewKnowledgeJobStarter(svc, os.TempDir())
-}
-
-func initKnowledgeBaseSvc(svc ai.KnowledgeBaseService, queRepo repository.Repository) service.QuestionKnowledgeBase {
-	return service.NewQuestionKnowledgeBase("knowledge_id", queRepo, svc)
-}
