@@ -15,7 +15,7 @@ require (
 	github.com/ecodeclub/ecache v0.0.0-20240111145855-75679834beca
 	github.com/ecodeclub/ekit v0.0.10
 	github.com/ecodeclub/ginx v0.0.3-0.20250724125208-2ec06fc61450
-	github.com/ecodeclub/mq-api v0.0.0-20240508035004-fd7de3346cfe
+	github.com/ecodeclub/mq-api v0.0.0-20251110020251-51167081e41e
 	github.com/ego-component/egorm v1.1.4
 	github.com/elastic/go-elasticsearch/v7 v7.17.10
 	github.com/elastic/go-elasticsearch/v9 v9.2.0
