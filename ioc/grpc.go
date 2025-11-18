@@ -17,8 +17,8 @@ package ioc
 import (
 	"fmt"
 
-	chatv1 "github.com/ecodeclub/webook/api/proto/gen/chat/v1"
-	"github.com/gotomicro/ego/core/econf"
+  chatv1 "github.com/ecodeclub/ai-gateway-go/api/proto/gen/chat/v1"
+  "github.com/gotomicro/ego/core/econf"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
@@ -28,9 +28,9 @@ func InitGrpcClient() (chatv1.ServiceClient, error) {
 		Addr string `yaml:"addr"`
 	}
 	var cfg Config
-	err := econf.UnmarshalKey("grpc.aiGateway", &cfg)
+	err := econf.UnmarshalKey("grpc.client.chat", &cfg)
 	if err != nil {
-		return nil, fmt.Errorf("读取 grpc.aiGateway 配置失败: %w", err)
+		return nil, fmt.Errorf("读取 grpc.client.chat 配置失败: %w", err)
 	}
 	conn, err := grpc.NewClient(cfg.Addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {

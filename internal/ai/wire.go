@@ -6,8 +6,8 @@ import (
 	"context"
 	"sync"
 
-	"github.com/ecodeclub/mq-api"
-	chatv1 "github.com/ecodeclub/webook/api/proto/gen/chat/v1"
+  chatv1 "github.com/ecodeclub/ai-gateway-go/api/proto/gen/chat/v1"
+  "github.com/ecodeclub/mq-api"
 	"github.com/ecodeclub/webook/internal/ai/internal/event"
 	"github.com/ecodeclub/webook/internal/ai/internal/service/llm/knowledge_base"
 

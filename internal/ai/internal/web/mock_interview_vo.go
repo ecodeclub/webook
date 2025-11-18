@@ -14,23 +14,16 @@
 
 package web
 
-type CreateMockInterviewReq struct {
-	Title string `json:"title"`
+type StartMockInterviewRequest struct {
+  // 模拟面试的类型
+  Biz string `json:"biz"`
+  BizID int64 `json:"bizID"`
 }
 
-type StreamMockInterviewReq struct {
-	InterviewID string `json:"interviewId"`
-	Content     string `json:"content"`
-	AudioURL    string `json:"audioUrl"`
-	ConfigID    int64  `json:"configId"`
-}
 
-type COSTempCredentialsResp struct {
-	TmpSecretId  string `json:"tmpSecretId"`
-	TmpSecretKey string `json:"tmpSecretKey"`
-	SessionToken string `json:"sessionToken"`
-	StartTime    int64  `json:"startTime"`
-	ExpiredTime  int64  `json:"expiredTime"`
-	Bucket       string `json:"bucket"`
-	Region       string `json:"region"`
+type NextQuestionRequest struct {
+  // Chat SN
+  SN string `json:"sn"`
+  Answer string `json:"answer"`
+  State string `json:"state"`
 }

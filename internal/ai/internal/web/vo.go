@@ -58,7 +58,8 @@ type EvtMsg struct {
 }
 
 const (
-	EndEvt = "end"
-	MsgEvt = "msg"
-	ErrEvt = "error"
+	EndEvt        = "end"
+	MsgEvt        = "msg"
+	ErrEvt        = "error"
+	StepUpdateEvt = "step_update"
 )

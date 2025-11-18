@@ -7,9 +7,7 @@
 package startup
 
 import (
-	"sync"
-
-	chatv1 "github.com/ecodeclub/webook/api/proto/gen/chat/v1"
+	"github.com/ecodeclub/ai-gateway-go/api/proto/gen/chat/v1"
 	"github.com/ecodeclub/webook/internal/ai"
 	"github.com/ecodeclub/webook/internal/ai/internal/event"
 	"github.com/ecodeclub/webook/internal/ai/internal/repository"
@@ -20,7 +18,7 @@ import (
 	"github.com/ecodeclub/webook/internal/ai/internal/service/llm/handler/config"
 	credit2 "github.com/ecodeclub/webook/internal/ai/internal/service/llm/handler/credit"
 	"github.com/ecodeclub/webook/internal/ai/internal/service/llm/handler/log"
-	hdlmocks "github.com/ecodeclub/webook/internal/ai/internal/service/llm/handler/mocks"
+	"github.com/ecodeclub/webook/internal/ai/internal/service/llm/handler/mocks"
 	"github.com/ecodeclub/webook/internal/ai/internal/service/llm/handler/record"
 	hdlmocks2 "github.com/ecodeclub/webook/internal/ai/internal/service/llm/handler/stream_mocks"
 	"github.com/ecodeclub/webook/internal/ai/internal/service/llm/knowledge_base"
@@ -31,6 +29,7 @@ import (
 	"github.com/ego-component/egorm"
 	"github.com/gotomicro/ego/core/econf"
 	"gorm.io/gorm"
+	"sync"
 )
 
 // Injectors from wire.go:
@@ -110,7 +109,7 @@ func InitLLMCreditLogDAO(db *egorm.Component) dao.LLMCreditDAO {
 }
 
 func InitGRPCClient() chatv1.ServiceClient {
-	econf.Set("grpc.aiGateway.addr", "localhost:9090")
+	econf.Set("grpc.client.chat.addr", "localhost:9090")
 	client, err := ioc.InitGrpcClient()
 	if err != nil {
 		panic(err)

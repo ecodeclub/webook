@@ -8,10 +8,8 @@ package ai
 
 import (
 	"context"
-	"sync"
-
+	"github.com/ecodeclub/ai-gateway-go/api/proto/gen/chat/v1"
 	"github.com/ecodeclub/mq-api"
-	chatv1 "github.com/ecodeclub/webook/api/proto/gen/chat/v1"
 	"github.com/ecodeclub/webook/internal/ai/internal/event"
 	"github.com/ecodeclub/webook/internal/ai/internal/repository"
 	"github.com/ecodeclub/webook/internal/ai/internal/repository/dao"
@@ -26,6 +24,7 @@ import (
 	"github.com/ecodeclub/webook/internal/credit"
 	"github.com/ego-component/egorm"
 	"gorm.io/gorm"
+	"sync"
 )
 
 // Injectors from wire.go:

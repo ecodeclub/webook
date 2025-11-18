@@ -5,8 +5,8 @@ package startup
 import (
 	"sync"
 
-	chatv1 "github.com/ecodeclub/webook/api/proto/gen/chat/v1"
-	"github.com/ecodeclub/webook/internal/ai/internal/event"
+  chatv1 "github.com/ecodeclub/ai-gateway-go/api/proto/gen/chat/v1"
+  "github.com/ecodeclub/webook/internal/ai/internal/event"
 	"github.com/ecodeclub/webook/ioc"
 	"github.com/gotomicro/ego/core/econf"
 
@@ -114,7 +114,7 @@ func InitLLMCreditLogDAO(db *egorm.Component) dao.LLMCreditDAO {
 }
 
 func InitGRPCClient() chatv1.ServiceClient {
-	econf.Set("grpc.aiGateway.addr", "localhost:9090")
+	econf.Set("grpc.client.chat.addr", "localhost:9090")
 	client, err := ioc.InitGrpcClient()
 	if err != nil {
 		panic(err)

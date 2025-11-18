@@ -5,11 +5,14 @@ import (
 
 	"go.opentelemetry.io/otel/sdk/trace"
 
+	"log/slog"
+
 	"github.com/ecodeclub/webook/ioc"
 	"github.com/gotomicro/ego"
 	"github.com/gotomicro/ego/core/elog"
 	"github.com/gotomicro/ego/server/egin"
 	"github.com/gotomicro/ego/server/egovernor"
+	slogzap "github.com/samber/slog-zap/v2"
 )
 
 // export EGO_DEBUG=true
@@ -30,6 +33,9 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+
+	initSlog()
+
 	// 启动消费者
 	for i := range app.Consumers {
 		app.Consumers[i].Start(context.Background())
@@ -47,4 +53,20 @@ func main() {
 	if err != nil {
 		elog.DefaultLogger.Error("App运行错误", elog.FieldErr(err))
 	}
+}
+
+func initSlog() {
+	zl := elog.DefaultLogger.ZapLogger()
+  level := slog.LevelInfo
+  if elog.DefaultLogger.IsDebugMode() {
+    level = slog.LevelDebug
+  }
+	h := slogzap.Option{
+		Level:    level , // slog 的阈值
+		AddSource: true,           // 映射到 zap 的 caller
+		Logger:    zl,             // 复用同一个 zap.Logger
+	}
+
+	logger := slog.New(h.NewZapHandler())
+	slog.SetDefault(logger)
 }
