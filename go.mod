@@ -132,7 +132,7 @@ require (
 	github.com/segmentio/asm v1.2.0 // indirect
 	github.com/segmentio/kafka-go v0.4.44 // indirect
 	github.com/shirou/gopsutil/v3 v3.23.12 // indirect
-	github.com/shoenig/go-m1cpu v0.1.6 // indirect
+	github.com/shoenig/go-m1cpu v0.1.7 // indirect
 	github.com/shopspring/decimal v1.4.0 // indirect
 	github.com/spf13/cast v1.9.2 // indirect
 	github.com/stoewer/go-strcase v1.2.0 // indirect

@@ -67,11 +67,7 @@ func InitApp() (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	serviceClient, err := InitGrpcClient()
-	if err != nil {
-		return nil, err
-	}
-	aiModule, err := ai.InitModule(db, creditModule, mq, serviceClient)
+	aiModule, err := ai.InitModule(db, creditModule, mq)
 	if err != nil {
 		return nil, err
 	}
@@ -147,7 +143,6 @@ func InitApp() (*App, error) {
 	projectHandler := resumeModule.PrjHdl
 	analysisHandler := resumeModule.AnalysisHandler
 	handler17 := aiModule.Hdl
-	mockInterviewHandler := aiModule.MockInterviewHdl
 	companyModule, err := company.InitModule(db)
 	if err != nil {
 		return nil, err
@@ -171,7 +166,7 @@ func InitApp() (*App, error) {
 	interviewJourneyHandler := interviewModule.JourneyHdl
 	offerHandler := interviewModule.OfferHdl
 	handler21 := companyModule.Hdl
-	component := initGinxServer(provider, checkMembershipMiddlewareBuilder, localActiveLimit, checkPermissionMiddlewareBuilder, handler, examineHandler, questionSetHandler, webHandler, handler2, handler3, handler4, handler5, handler6, handler7, handler8, handler9, handler10, handler11, handler12, handler13, handler14, handler15, handler16, caseSetHandler, webExamineHandler, projectHandler, analysisHandler, handler17, mockInterviewHandler, handler18, handler19, handler20, interviewJourneyHandler, offerHandler, handler21)
+	component := initGinxServer(provider, checkMembershipMiddlewareBuilder, localActiveLimit, checkPermissionMiddlewareBuilder, handler, examineHandler, questionSetHandler, webHandler, handler2, handler3, handler4, handler5, handler6, handler7, handler8, handler9, handler10, handler11, handler12, handler13, handler14, handler15, handler16, caseSetHandler, webExamineHandler, projectHandler, analysisHandler, handler17, handler18, handler19, handler20, interviewJourneyHandler, offerHandler, handler21)
 	adminHandler := projectModule.AdminHdl
 	webAdminHandler := roadmapModule.AdminHdl
 	adminHandler2 := baguwenModule.AdminHdl
