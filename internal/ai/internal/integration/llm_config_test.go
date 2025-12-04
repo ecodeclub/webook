@@ -36,7 +36,7 @@ func (s *ConfigSuite) SetupSuite() {
 	err := dao.InitTables(db)
 	s.NoError(err)
 	// 先插入 BizConfig
-	mou, err := startup.InitModule(s.db, nil, nil, nil, &credit.Module{}, nil)
+	mou, err := startup.InitModule(s.db, nil, nil, nil, &credit.Module{})
 	require.NoError(s.T(), err)
 	s.adminHandler = mou.AdminHandler
 	econf.Set("server", map[string]any{"contextTimeout": "1s"})

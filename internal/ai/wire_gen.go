@@ -7,12 +7,9 @@
 package ai
 
 import (
-	"context"
 	"sync"
 
 	"github.com/ecodeclub/mq-api"
-	chatv1 "github.com/ecodeclub/webook/api/proto/gen/chat/v1"
-	"github.com/ecodeclub/webook/internal/ai/internal/event"
 	"github.com/ecodeclub/webook/internal/ai/internal/repository"
 	"github.com/ecodeclub/webook/internal/ai/internal/repository/dao"
 	"github.com/ecodeclub/webook/internal/ai/internal/service"
@@ -21,7 +18,6 @@ import (
 	credit2 "github.com/ecodeclub/webook/internal/ai/internal/service/llm/handler/credit"
 	"github.com/ecodeclub/webook/internal/ai/internal/service/llm/handler/log"
 	"github.com/ecodeclub/webook/internal/ai/internal/service/llm/handler/record"
-	"github.com/ecodeclub/webook/internal/ai/internal/service/llm/knowledge_base"
 	"github.com/ecodeclub/webook/internal/ai/internal/web"
 	"github.com/ecodeclub/webook/internal/credit"
 	"github.com/ego-component/egorm"
@@ -30,7 +26,7 @@ import (
 
 // Injectors from wire.go:
 
-func InitModule(db *gorm.DB, creditSvc *credit.Module, q mq.MQ, grpcClient chatv1.ServiceClient) (*Module, error) {
+func InitModule(db *gorm.DB, creditSvc *credit.Module, q mq.MQ) (*Module, error) {
 	handlerBuilder := log.NewHandler()
 	configDAO := dao.NewGORMConfigDAO(db)
 	configRepository := repository.NewCachedConfigRepository(configDAO)
@@ -55,15 +51,11 @@ func InitModule(db *gorm.DB, creditSvc *credit.Module, q mq.MQ, grpcClient chatv
 	webHandler := web.NewHandler(generalService, jdService)
 	configService := service.NewConfigService(configRepository)
 	adminHandler := web.NewAdminHandler(configService)
-	mockInterviewHandler := web.NewMockInterviewHandler(grpcClient)
-	knowledgeBaseConsumer := initKnowledgeConsumer(repositoryBaseSvc, q)
 	module := &Module{
 		Svc:              llmService,
 		KnowledgeBaseSvc: repositoryBaseSvc,
 		Hdl:              webHandler,
 		AdminHandler:     adminHandler,
-		MockInterviewHdl: mockInterviewHandler,
-		C:                knowledgeBaseConsumer,
 	}
 	return module, nil
 }
@@ -84,13 +76,4 @@ func InitTableOnce(db *gorm.DB) {
 func InitLLMCreditLogDAO(db *egorm.Component) dao.LLMCreditDAO {
 	InitTableOnce(db)
 	return dao.NewLLMCreditLogDAO(db)
-}
-
-func initKnowledgeConsumer(svc knowledge_base.RepositoryBaseSvc, q mq.MQ) *event.KnowledgeBaseConsumer {
-	c, err := event.NewKnowledgeBaseConsumer(svc, q)
-	if err != nil {
-		panic(err)
-	}
-	c.Start(context.Background())
-	return c
 }

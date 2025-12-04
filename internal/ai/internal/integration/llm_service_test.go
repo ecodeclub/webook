@@ -506,7 +506,7 @@ func (s *LLMServiceSuite) TestService() {
 			ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 			defer cancel()
 			mockHdl, mockCredit := tc.before(t, ctrl)
-			mou, err := startup.InitModule(s.db, mockHdl, nil, nil, &credit.Module{Svc: mockCredit}, nil)
+			mou, err := startup.InitModule(s.db, mockHdl, nil, nil, &credit.Module{Svc: mockCredit})
 			require.NoError(t, err)
 			resp, err := mou.Svc.Invoke(ctx, tc.req)
 			tc.assertFunc(t, err)
@@ -612,7 +612,7 @@ func (s *LLMServiceSuite) TestHandler_Ask() {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
 			mockHdl, mockCredit := tc.before(t, ctrl)
-			mou, err := startup.InitModule(s.db, mockHdl, nil, nil, &credit.Module{Svc: mockCredit}, nil)
+			mou, err := startup.InitModule(s.db, mockHdl, nil, nil, &credit.Module{Svc: mockCredit})
 			require.NoError(t, err)
 			req, err := http.NewRequest(http.MethodPost,
 				"/ai/ask", iox.NewJSONReader(tc.req))
@@ -722,7 +722,7 @@ func (s *LLMServiceSuite) TestHandler_AnalysisJD() {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
 			mockHdl, mockCredit := tc.before(t, ctrl)
-			mou, err := startup.InitModule(s.db, mockHdl, nil, nil, &credit.Module{Svc: mockCredit}, nil)
+			mou, err := startup.InitModule(s.db, mockHdl, nil, nil, &credit.Module{Svc: mockCredit})
 			require.NoError(t, err)
 			req, err := http.NewRequest(http.MethodPost,
 				"/ai/analysis_jd", iox.NewJSONReader(tc.req))
@@ -816,7 +816,7 @@ func (s *LLMServiceSuite) TestHandler_Stream() {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
 			streamMockHdl := tc.before(t, ctrl)
-			mou, err := startup.InitModule(s.db, nil, streamMockHdl, nil, &credit.Module{Svc: nil}, nil)
+			mou, err := startup.InitModule(s.db, nil, streamMockHdl, nil, &credit.Module{Svc: nil})
 			require.NoError(t, err)
 			req, err := http.NewRequest(http.MethodPost,
 				"/ai/stream", iox.NewJSONReader(tc.req))
